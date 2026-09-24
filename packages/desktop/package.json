@@ -1,0 +1,11 @@
+{
+  "name": "@aionui/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "OpenH3 desktop Electron application",
+  "main": "../../out/main/index.js",
+  "dependencies": {
+    "@aionui/web-host": "workspace:*"
+  }
+}

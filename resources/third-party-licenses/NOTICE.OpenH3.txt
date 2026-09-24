@@ -1,0 +1,39 @@
+OpenH3 third-party release notices
+=================================
+
+This file is an inventory and source map for the OpenH3 technical preview. It
+does not relicense third-party software and does not grant redistribution rights
+for model weights, LoRAs, converted checkpoints, or workflow assets.
+
+Project source
+--------------
+OpenH3 source is covered by the repository Apache-2.0 license. Upstream AionUi
+copyright and modification notices remain in the source tree.
+
+Fixed runtime and node evidence shipped beside this file
+---------------------------------------------------------
+- ComfyUI v0.35.0: LICENSE.ComfyUI-v0.35.0-LICENSE (GPL-3.0).
+- ComfyUI-MAINodes commit f4868b4a08e8a504ce86db54a17961d399ffa2bc:
+  LICENSE.ComfyUI-MAINodes-f4868b4a-LICENSE (GPL-3.0-or-later).
+- ComfyUI-PlagueKind-Nodes-only-sparse commit fd26ffb89dee294ca740a59632e5b3423b9a9d2a:
+  LICENSE.ComfyUI-PlagueKind-sparse-fd26ffb-LICENSE (MIT; inherited code still
+  requires upstream notice review).
+- ComfyUI-KJNodes commit d3cfe21625e5170126ce06fbfcfe1d88108688c3:
+  LICENSE.ComfyUI-KJNodes-d3cfe216-LICENSE (GPL-3.0).
+- FFmpeg/ffprobe 7.1.1 essentials build: see resources/ffmpeg/win32-x64/
+  LICENSE and README.txt. The shipped build is GPL v3; source commit is
+  db69d06eee.
+- AionCore v0.2.2: source URL is recorded in bundled-aioncore manifest.json.
+  The upstream Apache-2.0 license and corresponding source must be made
+  available with any public binary distribution.
+- Node v24.11.0 and npm/bun dependencies: their upstream license files are
+  present in the managed runtime where available; a complete dependency-level
+  NOTICE inventory is still a release gate.
+
+Source offers and unresolved rights
+-----------------------------------
+GPL components require a corresponding-source offer appropriate to the final
+distribution channel. OpenH3 does not claim that offer is complete in this
+preview. H3 weights, derived LoRAs, converted checkpoints, 7-Zip, and workflow
+assets remain download-only or user-provided until per-file redistribution
+rights are documented.

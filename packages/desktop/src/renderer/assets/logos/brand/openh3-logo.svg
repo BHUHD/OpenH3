@@ -1,0 +1,7 @@
+<svg width="320" height="80" viewBox="0 0 320 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>OpenH3</title>
+  <rect width="80" height="80" rx="20" fill="#111827"/>
+  <path d="M18 25V55M18 40H42M42 25V55" stroke="#F8FAFC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 25L65 40L48 55V45H42V35H48V25Z" fill="#18B6A4"/>
+  <text x="100" y="53" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="42" font-weight="700">OpenH3</text>
+</svg>

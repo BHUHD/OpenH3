@@ -1,0 +1,194 @@
+.viewer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  color: var(--text-primary);
+}
+.stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 160px;
+  background: var(--bg-2);
+}
+.video {
+  display: block;
+  width: 100%;
+  max-height: 55vh;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+.controls {
+  flex: 0 0 auto;
+  padding: 16px;
+  border-top: 1px solid var(--border-base);
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.fields :global(.arco-input-number) {
+  width: 100%;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.error {
+  color: rgb(var(--danger-6));
+  font-size: 13px;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+.jobStatus {
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.processingRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.h3Panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-base);
+}
+.h3Heading {
+  font-size: 13px;
+  font-weight: 600;
+}
+.runtimeReady,
+.runtimeMissing {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.runtimeReady {
+  color: rgb(var(--success-6));
+}
+.runtimeMissing {
+  color: rgb(var(--warning-6));
+}
+.h3Options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.h3Options label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.h3Options :global(.arco-input-number),
+.h3Options :global(.arco-select) {
+  min-width: 0;
+  width: 110px;
+}
+.h3Output {
+  display: block;
+  width: 100%;
+  max-height: 40vh;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: var(--bg-2);
+}
+.h3ReferenceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+}
+.h3ReferenceRow span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.h3Route {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.h3ReferenceList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.h3ReferenceItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.h3ReferenceItem > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.h3Versions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.h3Version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.h3Version > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.h3VersionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+@media (max-width: 560px) {
+  .h3Options {
+    grid-template-columns: 1fr;
+  }
+  .h3Options :global(.arco-input-number),
+  .h3Options :global(.arco-select) {
+    width: 100%;
+  }
+}

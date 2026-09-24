@@ -1,0 +1,20 @@
+{
+  "name": "@aionui/shared-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Shared build scripts for AionUi packages",
+  "type": "commonjs",
+  "exports": {
+    "./prepare-aioncore": "./src/prepare-aioncore.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "vitest": "^4.1.0"
+  }
+}
