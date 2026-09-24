@@ -131,3 +131,9 @@
 - [x] 删除上游专用 `CLAUDE.md` 及 `.claude/skills/`，项目规范统一放在 `AGENTS.md`、`CONTRIBUTING.md` 和 `docs/contributing/`。
 - [x] 将旧版 AionUi 变更记录替换为 OpenH3 专属 `CHANGELOG.md`，保留 Alpha 阶段和发布说明入口。
 - [x] `.gitignore` 忽略本地 `.claude/`、`.codex/` 和 `.gemini/` 配置，避免个人 AI 工具文件再次进入仓库。
+
+### 2026-09-24 README 产品定位更新
+
+- [x] 根 README 改为面向新用户的产品首页，明确 OpenH3 是开箱即用的本地视频 Agent 工作台。
+- [x] 产品定位改为“让视频创作像软件开发一样可对话、可执行、可追踪”，不使用竞品名称作宣传文案。
+- [x] README 补充核心能力、首次使用步骤、源码运行方式、目录结构和 Alpha 发布边界。
