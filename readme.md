@@ -34,6 +34,24 @@ node scripts/open-source-release-audit.js
 node node_modules/typescript/bin/tsc --noEmit --pretty false
 ```
 
+## Repository Map
+
+```text
+packages/desktop/                 Electron desktop app (main, preload, renderer)
+packages/desktop/src/common/      Shared data models, API clients, and chat documents
+packages/desktop/src/process/      Main-process services, media jobs, and H3 runtime
+packages/desktop/src/renderer/    React UI, conversation, preview, and settings
+packages/shared-scripts/           Shared build helpers
+packages/web-cli/                  Optional command-line and WebUI entry points
+packages/web-host/                 Optional WebUI host
+scripts/                           Build, audit, H3 setup, and release utilities
+tests/                             Unit, DOM, runtime, and end-to-end tests
+resources/                         Icons, licenses, and build-time resources
+docs/                              User guides, architecture, contribution notes, and release status
+```
+
+Most contributors only need `packages/desktop/src/`, `tests/`, `scripts/`, and `docs/`. Runtime downloads and generated output stay outside the source tree in `.runtime/` and `out/`; these directories are ignored and should not be committed.
+
 ## Licensing and Third-Party Components
 
 The OpenH3 application changes are distributed under Apache-2.0 while retaining upstream AionUi copyright and modification notices. Fixed-version third-party license texts and source boundaries are listed in [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt) and [`resources/third-party-licenses/SOURCE-OFFER.md`](resources/third-party-licenses/SOURCE-OFFER.md).
@@ -53,3 +71,9 @@ OpenH3 is based on the AionUi project. Upstream copyright, license files, and ap
 - Repository: https://github.com/pigq/OpenH3
 - Issues: https://github.com/pigq/OpenH3/issues
 - Releases: https://github.com/pigq/OpenH3/releases
+
+## Where to Start
+
+- New user: read [`docs/PRODUCT.md`](docs/PRODUCT.md) and the Alpha notice above.
+- Contributor: read [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/README.md`](docs/README.md), and [`docs/contributing/development.md`](docs/contributing/development.md).
+- H3/runtime work: read [`docs/implementation-status.md`](docs/implementation-status.md), [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt), and the runtime tests under [`tests/unit/runtime/`](tests/unit/runtime/).

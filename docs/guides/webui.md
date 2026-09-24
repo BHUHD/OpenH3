@@ -677,8 +677,7 @@ npm run resetpass -- username
 
 - [Main README](../readme.md)
 - [中文说明](./readme/readme_ch.md)
-- [日本語ドキュメント](./readme/readme_jp.md)
-- [GitHub Issues](https://github.com/iOfficeAI/AionUi/issues)
+- [GitHub Issues](https://github.com/pigq/OpenH3/issues)
 
 ---
 
@@ -687,7 +686,7 @@ npm run resetpass -- username
 If you encounter any issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Search [existing issues](https://github.com/iOfficeAI/AionUi/issues)
+2. Search [existing issues](https://github.com/pigq/OpenH3/issues)
 3. Create a [new issue](https://github.com/iOfficeAI/AionUi/issues/new) with:
    - Your OS and version
    - AionUi version
