@@ -1,4 +1,4 @@
-# AionUi - Project Guide
+# OpenH3 - Project Guide
 
 All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](CONTRIBUTING.zh.md))
 
@@ -8,7 +8,7 @@ All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) b
 
 - **Directory size limit**: Prefer ≤ **10** direct children per directory; new or substantially reorganized directories must satisfy this.
 
-See [docs/contributing/file-structure.md](docs/contributing/file-structure.md) for complete rules. Agents must also follow the `architecture` skill (`.claude/skills/architecture/SKILL.md`) when creating files or modules.
+See [docs/contributing/file-structure.md](docs/contributing/file-structure.md) for complete rules. Keep new modules within the documented `common`, `process`, `preload`, and `renderer` boundaries.
 
 ### Naming
 
@@ -49,7 +49,7 @@ Formatting rules (Oxfmt, Prettier-compatible):
 
 New or changed user-facing text must use i18n keys; do not introduce hardcoded strings. Languages and modules are defined in `packages/desktop/src/common/config/i18n-config.json`.
 
-See the `i18n` skill (`.claude/skills/i18n/SKILL.md`) for complete workflow, key naming, and validation steps.
+See the i18n workflow in this file and run `node scripts/check-i18n.js` after locale changes.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ bun run test              # run all tests
 bun run test:coverage     # with coverage report
 ```
 
-See the `testing` skill (`.claude/skills/testing/SKILL.md`) for complete workflow and quality rules.
+Add focused tests for changed behavior and run the relevant Vitest suite before pushing.
 
 ## Workflow
 
@@ -142,13 +142,4 @@ When opening a PR, fill in the PR body using [.github/pull_request_template.md](
 
 **NEVER add AI signatures** (Co-Authored-By, Generated with, etc.).
 
-## Skills Index
-
-| Skill            | Purpose                                                                     | Triggers                                                                                               |
-| ---------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **architecture** | File & directory structure conventions for all process types                | Creating files, adding modules, architectural decisions                                                |
-| **i18n**         | Internationalization workflow and standards                                 | Adding or changing user-facing text, modifying `locales/` or `packages/desktop/src/common/config/i18n` |
-| **testing**      | Testing workflow and quality standards                                      | Writing tests, changing runtime behavior, fixing bugs, or claiming behavior is verified                |
-| **bump-version** | Version bump workflow: update package.json, checks, branch, PR, tag release | Bumping version, `/bump-version`                                                                       |
-
-> Skills are located in `.claude/skills/` and contain project conventions that apply to **all** agents and contributors.
+Project conventions are documented in this file, `CONTRIBUTING.md`, and `docs/contributing/`.

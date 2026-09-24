@@ -104,9 +104,9 @@ out/
 .idea
 .vscode
 
-# AI CLI tool configurations (may contain sensitive information)
-**/.claude/settings.local.json
-**/.claude/settings.json
+# Local AI assistant configuration (not part of OpenH3 source)
+.claude/
+.codex/
 .qwen/
 .qwen/*/
 .specify/scripts/
@@ -150,9 +150,9 @@ test-*.js
 !examples/**/test-*.js
 diagnose-*.js
 
-# Keep .gemini config for AI code review (but ignore local cache)
-!.gemini/
-.gemini/cache/
+# Local review and assistant caches
+.gemini/
+.gemini/*/
 gha-creds-*.json
 
 # Spec-Kit working files
@@ -219,19 +219,11 @@ dist-server/
 .superset/
 .claude/teams/
 
-# Locally auto-injected agent skills: these are SYMLINKS into a developer's own
-# machine (e.g. ~/.aionui-dev/builtin-skills/...), so committing them gives
-# everyone else broken links. The repo's own skills live in real directories
-# next to them (.claude/skills/architecture/, /testing/, ...) and stay tracked.
+# Local agent configuration and generated skill links are not part of OpenH3.
 .aionrs/skills/
 .aionui/
 .gemini/
-.claude/commands/
-.claude/skills/aionui-config
-.claude/skills/antigravity-cli-issue-triage
-.claude/skills/cron
-.claude/skills/officecli
-.claude/skills/skill-creator
+.claude/
 .codex/skills/
 
 # Local Sentry feedback triage artifacts (analysis notes + case ledger).

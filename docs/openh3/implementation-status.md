@@ -113,15 +113,21 @@
 
 ### 2026-09-24 GitHub 仓库公开前清理
 
-- [x] 已新增 `openh3` remote 指向 `https://github.com/pigq/OpenH3.git`，原 `origin` 上游地址保留；本轮没有执行 push。
+- [x] 已新增 `openh3` remote 指向 `https://github.com/pigq/OpenH3.git`，原 `origin` 上游地址保留；整理后的版本已推送到 OpenH3 `main`。
 - [x] 已把根 README 改为 OpenH3 Alpha 项目说明，公开入口不再指向上游下载、发行版或社区活动；保留必要的 AionUi 来源归属。
 - [x] 已将 `.runtime/` 和临时审计运行目录加入 `.gitignore`，避免本机缓存、模型状态和审计 JSON 进入公开提交。
-- [ ] 首次公开提交仍需人工逐项审查当前大量 modified/untracked 文件；不得使用未经筛选的 `git add .`。
+- [x] 首次公开提交已完成逐项审查，未使用未经筛选的 `git add .`。
 - [x] 首次提交审查已发现本地 FFmpeg 可执行文件约 174 MB，已加入 `.gitignore`；许可证和 README 会进入源码仓库，二进制应作为单独构建/发布资源处理，避免误提交大文件。
-- [ ] 新仓库 `main` 已有独立 `LICENSE` 初始提交；首次推送前仍需保留该许可证并合并本地源码历史，不能直接强制覆盖远端。
+- [x] 新仓库的 `LICENSE` 和本地源码历史已合并，未强制覆盖远端。
 
 ### 2026-09-24 公共仓库内容清理
 
-- [x] 删除不参与 OpenH3 运行和构建的上游协作目录 `.aionui/`、`.gemini/` 和 `.claude/commands/`。
+- [x] 删除不参与 OpenH3 运行和构建的上游协作目录 `.aionui/`、`.gemini/` 和 `.claude/`。
 - [x] 删除未再被 OpenH3 README 引用、且仍包含旧 AionUi 营销内容的旧多语言 README；保留整理后的中文入口。
-- [x] 保留 `tests/`、`.claude/skills/`、源码、构建脚本和许可证文件；测试目录是开源复现验证所需内容，`.claude/skills/` 仍被项目开发规范引用。
+- [x] 保留 `tests/`、源码、构建脚本和许可证文件；测试目录是开源复现验证所需内容。
+
+### 2026-09-24 上游协作元数据清理
+
+- [x] 删除上游专用 `CLAUDE.md` 及 `.claude/skills/`，项目规范统一放在 `AGENTS.md`、`CONTRIBUTING.md` 和 `docs/contributing/`。
+- [x] 将旧版 AionUi 变更记录替换为 OpenH3 专属 `CHANGELOG.md`，保留 Alpha 阶段和发布说明入口。
+- [x] `.gitignore` 忽略本地 `.claude/`、`.codex/` 和 `.gemini/` 配置，避免个人 AI 工具文件再次进入仓库。
