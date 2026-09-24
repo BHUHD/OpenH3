@@ -25,6 +25,6 @@ npm run build-win:x64:fast
 
 ## 项目状态
 
-当前项目处于 Alpha 开发阶段。请先阅读 [`docs/PRODUCT.md`](../PRODUCT.md)、[`docs/stage-plan.md`](../stage-plan.md) 和 [`docs/implementation-status.md`](../implementation-status.md)。
+当前项目处于 Alpha 开发阶段。请先阅读 [`docs/openh3/PRODUCT.md`](../openh3/PRODUCT.md)、[`docs/README.md`](../README.md) 和 [`docs/openh3/implementation-status.md`](../openh3/implementation-status.md)。
 
 OpenH3 基于 AionUi 项目开发；上游版权、许可证和适用 NOTICE 继续保留在仓库中。

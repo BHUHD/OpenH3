@@ -60,7 +60,7 @@ The current Alpha release does **not** claim that all GPL corresponding-source o
 
 ## Project Status
 
-OpenH3 is under active Alpha development. See [`docs/PRODUCT.md`](docs/PRODUCT.md), [`docs/stage-plan.md`](docs/stage-plan.md), and [`docs/implementation-status.md`](docs/implementation-status.md) for supported scope, verification evidence, and remaining release gates.
+OpenH3 is under active Alpha development. See [`docs/openh3/PRODUCT.md`](docs/openh3/PRODUCT.md), [`docs/openh3/implementation-status.md`](docs/openh3/implementation-status.md), and [`docs/README.md`](docs/README.md) for supported scope, verification evidence, and remaining release gates.
 
 ## Original Project Credit
 
@@ -74,6 +74,6 @@ OpenH3 is based on the AionUi project. Upstream copyright, license files, and ap
 
 ## Where to Start
 
-- New user: read [`docs/PRODUCT.md`](docs/PRODUCT.md) and the Alpha notice above.
+- New user: read [`docs/openh3/PRODUCT.md`](docs/openh3/PRODUCT.md) and the Alpha notice above.
 - Contributor: read [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/README.md`](docs/README.md), and [`docs/contributing/development.md`](docs/contributing/development.md).
-- H3/runtime work: read [`docs/implementation-status.md`](docs/implementation-status.md), [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt), and the runtime tests under [`tests/unit/runtime/`](tests/unit/runtime/).
+- H3/runtime work: read [`docs/openh3/implementation-status.md`](docs/openh3/implementation-status.md), [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt), and the runtime tests under [`tests/unit/runtime/`](tests/unit/runtime/).
