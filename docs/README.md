@@ -28,4 +28,4 @@ Documentation is organized by reader intent, not by document type.
 | Exploratory research, analysis reports                     | `architecture/research/`    |
 | Feature requirements / design drafts driven by engineering | `specs/<feature-name>/`     |
 | Formal PRD owned by product team                           | `prds/` (coordinate first)  |
-| README translation                                         | `readme/readme_<locale>.md` |
+| README translation                                         | `readme/readme_ch.md`       |
