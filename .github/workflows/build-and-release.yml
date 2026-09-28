@@ -251,8 +251,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   # 发布到 GitHub Releases
-  # PUBLISH_RELEASE 未设置（上游 AionUi）：跳过构建，但正式 tag 仍创建纯源码 draft Release；
-  # PUBLISH_RELEASE=true（下游签名构建）：与之前一致，要求构建成功并附带安装包。
+  # PUBLISH_RELEASE 未设置：创建源码 draft Release，不上传安装包；
+  # PUBLISH_RELEASE=true：构建并附带安装包。
   release:
     name: Create Release
     runs-on: ubuntu-latest
@@ -285,7 +285,7 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "is_dev=$IS_DEV" >> $GITHUB_OUTPUT
 
-      # 仅下游签名构建有安装包产物；上游 AionUi 发布纯源码 Release，无产物可下载
+      # 只有启用发布构建时才下载并附带安装包产物。
       - name: Download all build artifacts
         if: vars.PUBLISH_RELEASE == 'true'
         uses: actions/download-artifact@v7

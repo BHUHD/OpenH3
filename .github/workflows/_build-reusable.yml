@@ -31,10 +31,7 @@ on:
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
   AIONUI_HUB_TAG: 'dist-ebc6a2b'
-  # Discontinued-build flag: only AionUi's final `-final` tag (e.g.
-  # v2.1.40-final) produces a build that guides users to the AionPro website.
-  # AionPro's own release tags never contain `-final`, so this stays 'false'
-  # there and in-app update behavior is untouched.
+  # Keep legacy update behavior unchanged for compatibility builds.
   IS_DISCONTINUED_BUILD: ${{ contains(github.ref_name, '-final') && 'true' || 'false' }}
 
 jobs:
@@ -372,7 +369,7 @@ jobs:
         run: node scripts/prepareAioncore.js
         env:
           # Version is pinned in repo-root package.json (aioncoreVersion).
-          # Set AIONUI_BACKEND_VERSION here only to override for ad-hoc builds.
+          # Set the legacy backend override only for ad-hoc compatibility builds.
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
           AIONUI_BACKEND_ARCH: ${{ matrix.arch }}
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -663,7 +660,7 @@ jobs:
             out/*.msi
             out/*.dmg
             out/*.deb
-            out/AionUi-*-mac-*.zip
+            out/OpenH3-*-mac-*.zip
             out/*.yml
           if-no-files-found: warn
           retention-days: 7

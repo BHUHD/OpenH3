@@ -1,6 +1,8 @@
-# AionUi WebUI Mode - Startup Guide
+# OpenH3 WebUI Mode - Startup Guide
 
-AionUi supports WebUI mode, allowing you to access the application through a web browser. This guide covers how to start WebUI mode on all supported platforms.
+OpenH3 supports WebUI mode, allowing you to access the application through a web browser. This guide covers how to start WebUI mode on supported platforms.
+
+> Compatibility note: some commands and process paths below retain the legacy `AionUi` executable name so existing installations and upgrade detection continue to work. The product name and user-facing interface are OpenH3.
 
 ## Table of Contents
 
@@ -16,10 +18,10 @@ AionUi supports WebUI mode, allowing you to access the application through a web
 
 ## What is WebUI Mode?
 
-WebUI mode starts AionUi with an embedded web server, allowing you to:
+WebUI mode starts OpenH3 with an embedded web server, allowing you to:
 
 - Access the application through any modern web browser
-- Use AionUi from remote devices on the same network (with `--remote` flag)
+- Use OpenH3 from remote devices on the same network (with `--remote` flag)
 - Run the application headless on servers
 
 Default access URL: `http://localhost:3000` (port may vary, check the application output)

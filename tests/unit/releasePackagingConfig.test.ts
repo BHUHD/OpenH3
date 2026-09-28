@@ -138,8 +138,8 @@ describe('release packaging configuration', () => {
   it('uploads mac zip artifacts without a stale Windows zip glob', () => {
     const workflow = readProjectFile('.github/workflows/_build-reusable.yml');
 
-    expect(workflow).toContain('out/AionUi-*-mac-*.zip');
-    expect(workflow).not.toContain('out/AionUi-*-win32-*.zip');
+    expect(workflow).toContain('out/OpenH3-*-mac-*.zip');
+    expect(workflow).not.toContain('out/OpenH3-*-win32-*.zip');
   });
 
   it('retries mac prepackaged builds with both dmg and zip targets', () => {

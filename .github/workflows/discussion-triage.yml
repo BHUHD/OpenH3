@@ -1,9 +1,5 @@
 name: Discussion Triage
 
-# Discussions have no assignee mechanism, so notify the on-duty owner by
-# posting a welcome comment that @-mentions them (mentions trigger GitHub
-# notifications). Announcements are our own posts — skip those.
-
 on:
   discussion:
     types: [created]
@@ -12,33 +8,15 @@ permissions:
   discussions: write
 
 jobs:
-  triage:
+  welcome:
     runs-on: ubuntu-latest
     steps:
-      - name: Welcome comment with owner mention
+      - name: Welcome new discussion
         uses: actions/github-script@v7
         with:
           script: |
-            // Category slug → on-duty owner. Q&A/Ideas and everything else
-            // route to IceyLiu (overall duty), who redirects to module owners
-            // by content. null = do not comment.
-            const CATEGORY_OWNERS = {
-              'announcements': null,
-              'q-a': 'IceyLiu',
-              'ideas': 'IceyLiu',
-            };
-            const FALLBACK_OWNER = 'IceyLiu';
-
             const discussion = context.payload.discussion;
-            const slug = discussion.category?.slug ?? '';
-            const owner = Object.hasOwn(CATEGORY_OWNERS, slug) ? CATEGORY_OWNERS[slug] : FALLBACK_OWNER;
-
-            if (owner === null) {
-              core.info(`Category "${slug}" is muted — no comment.`);
-              return;
-            }
-
-            core.info(`Category "${slug}" → @${owner}`);
+            if (discussion.category?.slug === 'announcements') return;
             await github.graphql(
               `mutation($discussionId: ID!, $body: String!) {
                 addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
@@ -47,6 +25,6 @@ jobs:
               }`,
               {
                 discussionId: discussion.node_id,
-                body: `Thanks for posting! @${owner} will take a look soon. / 感谢发帖！@${owner} 会尽快跟进。`,
+                body: 'Thanks for starting a discussion about OpenH3. Please include your platform, OpenH3 version or commit, and the smallest reproducible example when asking for help. / 感谢参与 OpenH3 讨论；反馈问题时请附上系统、版本或 commit，以及最小复现步骤。',
               }
             );

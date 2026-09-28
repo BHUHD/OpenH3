@@ -172,7 +172,7 @@ jobs:
         run: bun run test:coverage
 
       - name: Upload coverage to Codecov (Linux coverage only)
-        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository == 'iOfficeAI/AionUi'
+        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository == 'pigq/OpenH3'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -181,7 +181,7 @@ jobs:
           fail_ci_if_error: false
           verbose: true
       - name: Skip Codecov upload when preconditions are not met
-        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository != 'iOfficeAI/AionUi'
+        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository != 'pigq/OpenH3'
         shell: bash
         run: |
           echo 'Skipping Codecov upload due to unmet preconditions.'
@@ -440,7 +440,7 @@ jobs:
           Write-Host "SMOKE INSTALL: windows-x64"
           Write-Host "=========================================="
 
-          $installer = Get-ChildItem -Path out -Filter "AionUi-*-win-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $installer = Get-ChildItem -Path out -Filter "OpenH3-*-win-*.exe" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $installer) {
             throw "No Windows installer found in out/"
           }
@@ -449,6 +449,9 @@ jobs:
           Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
           $candidates = @(
+            "$env:LOCALAPPDATA\\Programs\\OpenH3\\AionUi.exe",
+            "$env:ProgramFiles\\OpenH3\\AionUi.exe",
+            "$env:ProgramFiles(x86)\\OpenH3\\AionUi.exe",
             "$env:LOCALAPPDATA\\Programs\\AionUi\\AionUi.exe",
             "$env:ProgramFiles\\AionUi\\AionUi.exe",
             "$env:ProgramFiles(x86)\\AionUi\\AionUi.exe"
@@ -471,8 +474,8 @@ jobs:
           echo "=========================================="
 
           DMG_FILE=$(ls out/*.dmg | head -n 1)
-          MOUNT_POINT="/tmp/aionui-smoke-mount"
-          APP_DIR="/tmp/aionui-smoke-app"
+          MOUNT_POINT="/tmp/openh3-smoke-mount"
+          APP_DIR="/tmp/openh3-smoke-app"
 
           rm -rf "$MOUNT_POINT" "$APP_DIR"
           mkdir -p "$MOUNT_POINT" "$APP_DIR"

@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report a bug or unexpected behavior in AionUi
+description: Report a bug or unexpected behavior in OpenH3
 title: '[Bug]: '
 labels: ['bug']
 body:
@@ -9,20 +9,15 @@ body:
       label: Module
       description: Which module does this issue belong to?
       options:
-        - Agent Detection & Connection
-        - Assistants & Presets
-        - Models & Authentication
-        - MCP & Tools
-        - Skills & Plugins
-        - Channel Integrations
-        - Conversation & Sessions
-        - Search & History
-        - Project, Files & Preview
-        - WebUI & Remote Access
-        - Scheduled Tasks
-        - Team Collaboration
-        - Interface, Display & Desktop Pet
-        - System Settings
+        - Video and image workflows
+        - Agent and tool execution
+        - H3 or ComfyUI runtime
+        - Provider and model configuration
+        - Task progress and cancellation
+        - Media preview and export
+        - Desktop UI
+        - Installation and packaging
+        - Documentation
         - Other
     validations:
       required: true
@@ -43,9 +38,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: AionUi Version
-      description: What version of AionUi are you using?
-      placeholder: e.g., 1.2.2
+      label: OpenH3 Version
+      description: What OpenH3 version or commit are you using?
+      placeholder: e.g., 2.2.2-alpha or commit SHA
     validations:
       required: true
 

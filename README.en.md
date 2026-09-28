@@ -2,6 +2,8 @@
 
 [中文说明](readme.md)
 
+[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Release](https://img.shields.io/github/v/release/pigq/OpenH3?include_prereleases)](https://github.com/pigq/OpenH3/releases)
+
 > **An out-of-the-box local video agent that makes video creation conversational, executable, and traceable.**
 
 OpenH3 is a local desktop agent workspace for video creators, researchers, and developers. Describe a goal in natural language, and OpenH3 can understand video and image context, call the right tools, connect to local H3 / ComfyUI runtimes, execute generation and processing tasks, and show progress and results in the conversation.
@@ -39,15 +41,22 @@ OpenH3 turns the request into an observable execution flow and uses the configur
 
 ## Quick start
 
-### Windows preview package
+### Download a preview package
 
-Download the Windows x64 preview package from [Releases](https://github.com/pigq/OpenH3/releases) and install it. The current Alpha installer is unsigned, so Windows may show a source warning.
+| Platform | Current status | Best for |
+| --- | --- | --- |
+| Windows 10/11 x64 | Alpha unsigned preview | Users who want the desktop app |
+| macOS / Linux | Run from source | Developers and contributors |
+
+Download the Windows x64 preview package from [Releases](https://github.com/pigq/OpenH3/releases) and install it. The first public package will be marked Alpha; it is unsigned, so Windows may show a source warning. It is not a production release.
 
 After the first launch:
 
 1. Configure your own provider and model credentials.
 2. Enable local H3 / ComfyUI when needed, and provide models, LoRAs, and workflows that you are authorized to use.
 3. Start a conversation, attach a video or image, and describe the task.
+
+See [`docs/getting-started/`](docs/getting-started/) for system requirements and the first-task walkthrough.
 
 ### Run from source
 
@@ -73,6 +82,13 @@ OpenH3 is currently in Alpha, focused on validating the core local video agent e
 - Optional GPUs, drivers, and local inference runtimes.
 
 Credentials and model files are not included in source code, tests, installers, or public builds. Before a formal release, the project still needs complete dependency licensing, per-file model redistribution authorization, and clean-machine installation validation.
+
+## System requirements
+
+- Windows 10/11 x64, or a macOS/Linux development environment that can run Bun/Node.js;
+- Video generation workflows usually require a discrete GPU; VRAM and disk requirements depend on the selected H3 model;
+- Provider API keys, H3 weights, LoRAs, converted files, and workflows are supplied by the user and must be authorized;
+- Read [`docs/getting-started/system-requirements.md`](docs/getting-started/system-requirements.md) before running a workflow.
 
 ## Repository layout
 
@@ -102,6 +118,14 @@ See [`AGENTS.md`](AGENTS.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md) for develo
 OpenH3 application changes are distributed under Apache-2.0 while retaining AionUi upstream copyright, licenses, and required attribution. Third-party components and corresponding-source boundaries are documented in [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt) and [`resources/third-party-licenses/SOURCE-OFFER.md`](resources/third-party-licenses/SOURCE-OFFER.md).
 
 Model weights, LoRAs, converted files, and workflows are not automatically covered by Apache-2.0. Confirm the source and redistribution license for each file before distributing it.
+
+## Documentation and community
+
+- [Getting started](docs/getting-started/README.md)
+- [Showcase](docs/showcase/README.md)
+- [Contributing](CONTRIBUTING.md)
+- [Support and troubleshooting](SUPPORT.md)
+- [Security reports](SECURITY.md)
 
 ## Links
 

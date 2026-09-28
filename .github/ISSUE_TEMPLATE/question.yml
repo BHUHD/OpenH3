@@ -1,5 +1,5 @@
 name: ❓ Question
-description: Ask a question about AionUi
+description: Ask a question about OpenH3
 title: '[Question]: '
 labels: ['question']
 body:
@@ -9,20 +9,13 @@ body:
       label: Module
       description: Which module does this question belong to?
       options:
-        - Agent Detection & Connection
-        - Assistants & Presets
-        - Models & Authentication
-        - MCP & Tools
-        - Skills & Plugins
-        - Channel Integrations
-        - Conversation & Sessions
-        - Search & History
-        - Project, Files & Preview
-        - WebUI & Remote Access
-        - Scheduled Tasks
-        - Team Collaboration
-        - Interface, Display & Desktop Pet
-        - System Settings
+        - Installation and first task
+        - Provider and model configuration
+        - H3 or ComfyUI runtime
+        - Video and image workflows
+        - Agent tools
+        - Task progress and results
+        - Development
         - Other
     validations:
       required: true
@@ -42,9 +35,9 @@ body:
       label: Question Category
       description: What type of question is this?
       options:
-        - Installation & Setup
+        - Installation and setup
         - Configuration
-        - Usage & Features
+        - Usage and features
         - Troubleshooting
         - Development
         - Other

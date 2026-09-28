@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: 💬 Community Discussions
-    url: https://github.com/iOfficeAI/AionUi/discussions
-    about: Ask questions, share ideas, and discuss AionUi with the community
   - name: 📖 Documentation
-    url: https://github.com/iOfficeAI/AionUi/wiki
-    about: Check our documentation for setup guides, configuration, and troubleshooting
+    url: https://github.com/pigq/OpenH3/tree/main/docs
+    about: Read OpenH3 setup guides, configuration notes, and troubleshooting documentation
   - name: 🔒 Security Issues
-    url: mailto:security@aionui.com
-    about: Report security vulnerabilities privately (DO NOT create public issues)
+    url: https://github.com/pigq/OpenH3/blob/main/SECURITY.md
+    about: Read how to report a security vulnerability privately; do not create a public issue

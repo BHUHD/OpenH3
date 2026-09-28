@@ -5,6 +5,8 @@ Documentation is organized by reader intent, not by document type.
 | Directory                       | For whom                 | What lives here                                                                                                               |
 | ------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | [`guides/`](guides)             | Users & operators        | How to deploy, test, and run the product. Server deployment, WebUI, Hub testing, CDP debugging.                               |
+| [`getting-started/`](getting-started) | New users            | Installation, system requirements, first task, and local runtime setup.                                                        |
+| [`showcase/`](showcase)         | Evaluators & users      | Reproducible OpenH3 workflows and product demonstrations.                                                                       |
 | [`contributing/`](contributing) | Contributors             | Dev environment setup, file-structure conventions, PR automation workflow.                                                    |
 | [`architecture/`](architecture) | Engineers & architects   | System architecture overview, subsystem deep-dives (ACP, queue, team mode), and supporting research notes.                    |
 | [`specs/`](specs)               | Engineering-driven specs | Feature design docs, requirements, implementation plans (ACP rewrite, extension market, remote agent, wake prompt, PR notes). |

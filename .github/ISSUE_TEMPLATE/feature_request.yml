@@ -1,5 +1,5 @@
 name: ✨ Feature Request
-description: Suggest an idea for AionUi
+description: Suggest an idea for OpenH3
 title: '[Feature]: '
 labels: ['enhancement']
 body:
@@ -36,10 +36,11 @@ body:
       label: Feature Category
       description: Which category does this feature belong to?
       options:
-        - UI/UX Improvement
-        - AI Model Integration
-        - File Management
-        - Multi-Agent Support
+        - Video workflow
+        - Image and video understanding
+        - Local H3 or ComfyUI integration
+        - Agent tools
+        - UI/UX improvement
         - Performance
         - Other
     validations:

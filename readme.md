@@ -2,6 +2,8 @@
 
 [English](README.en.md)
 
+[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Release](https://img.shields.io/github/v/release/pigq/OpenH3?include_prereleases)](https://github.com/pigq/OpenH3/releases)
+
 > **开箱即用的本地视频 Agent，让视频创作像软件开发一样可对话、可执行、可追踪。**
 
 OpenH3 是一个面向视频创作者、研究者和开发者的本地桌面 Agent 工作台。你只需要用自然语言描述目标，OpenH3 就能理解视频和图片上下文，调用合适的工具，连接本地 H3 / ComfyUI，执行生成、处理和分析，并在对话中展示进度与结果。
@@ -39,15 +41,22 @@ OpenH3 会把任务拆成可观察的执行过程；需要本地模型时，会�
 
 ## 快速开始
 
-### 使用 Windows 体验包
+### 下载体验包
 
-从 [Releases](https://github.com/pigq/OpenH3/releases) 下载 Windows x64 体验包并安装。当前 Alpha 安装包未签名，Windows 可能显示来源提示。
+| 平台 | 当前状态 | 适合人群 |
+| --- | --- | --- |
+| Windows 10/11 x64 | Alpha 未签名体验包 | 想直接体验桌面应用的用户 |
+| macOS / Linux | 从源码运行 | 开发者和贡献者 |
+
+从 [Releases](https://github.com/pigq/OpenH3/releases) 下载 Windows x64 体验包并安装。公开仓库后的首个安装包会标注为 Alpha；当前包未签名，Windows 可能显示来源提示，不代表正式生产发布。
 
 首次启动后：
 
 1. 配置你自己的 Provider 和模型凭据。
 2. 按需启用本地 H3 / ComfyUI，并准备拥有合法使用权的模型、LoRA 和工作流。
 3. 新建对话，拖入视频或图片，直接描述任务。
+
+系统要求和首次任务说明见 [`docs/getting-started/`](docs/getting-started/)。
 
 ### 从源码运行
 
@@ -73,6 +82,13 @@ OpenH3 当前处于 Alpha 阶段，重点是验证本地视频 Agent 的核心�
 - 可选的 GPU、驱动和本地推理环境。
 
 这些凭据和模型文件不会写入源码、测试、安装包或公开构建。当前 Windows 包为未签名技术预览版，正式发布前仍需完成依赖许可、模型再分发授权和干净机器安装验证。
+
+## 系统要求
+
+- Windows 10/11 x64，或可运行 Bun/Node.js 的 macOS/Linux 开发环境；
+- 视频生成工作流通常需要独立 GPU，显存和磁盘空间取决于所选 H3 模型；
+- Provider API Key、H3 权重、LoRA、转换文件和工作流由用户自行准备并确认授权；
+- 运行前请先阅读 [`docs/getting-started/system-requirements.md`](docs/getting-started/system-requirements.md)。
 
 ## 目录结构
 
@@ -102,6 +118,14 @@ node node_modules/typescript/bin/tsc --noEmit --pretty false
 OpenH3 的应用修改部分采用 Apache-2.0，同时保留 AionUi 上游版权、许可证和必要的来源说明。第三方组件和对应源码范围见 [`resources/third-party-licenses/NOTICE.OpenH3.txt`](resources/third-party-licenses/NOTICE.OpenH3.txt) 与 [`resources/third-party-licenses/SOURCE-OFFER.md`](resources/third-party-licenses/SOURCE-OFFER.md)。
 
 模型权重、LoRA、转换文件和工作流不自动获得 Apache-2.0 授权；重新分发前必须单独确认每个文件的来源和授权。
+
+## 文档与社区
+
+- [首次运行指南](docs/getting-started/README.md)
+- [演示案例](docs/showcase/README.md)
+- [贡献指南](CONTRIBUTING.md)
+- [支持与问题排查](SUPPORT.md)
+- [安全问题报告](SECURITY.md)
 
 ## 链接
 
