@@ -8,6 +8,14 @@ OpenH3 是一个面向视频创作者、研究者和开发者的本地桌面 Age
 
 OpenH3 优先在本机运行：素材、任务和本地推理过程由你的电脑掌控。安装桌面应用后即可开始使用，Provider、模型和可选的 H3 权重由用户按需配置。
 
+![OpenH3 视频生成演示：从参考图到应用内结果预览](docs/assets/openh3-demo.gif)
+
+一次真实任务：提供参考图和自然语言描述，OpenH3 调用本地视频工作流，显示生成进度，并在对话中预览结果。
+
+| 参考素材 | 应用内结果预览 |
+| --- | --- |
+| ![OpenH3 参考图](docs/assets/openh3-reference.png) | ![OpenH3 结果预览](docs/assets/openh3-result-preview.png) |
+
 ## 核心能力
 
 - **目标驱动的创作流程**：用自然语言描述剪辑、生成、分析和处理目标，Agent 负责拆解步骤并执行。

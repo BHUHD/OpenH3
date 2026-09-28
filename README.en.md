@@ -8,6 +8,14 @@ OpenH3 is a local desktop agent workspace for video creators, researchers, and d
 
 OpenH3 is local-first: your media, tasks, and local inference stay under your control. Install the desktop app and start working; configure your own provider, models, and optional H3 weights when needed.
 
+![OpenH3 video generation demo: from reference image to an in-app result preview](docs/assets/openh3-demo.gif)
+
+A real workflow: provide a reference image and a natural-language description, let OpenH3 run the local video workflow, follow its progress, and preview the result in the conversation.
+
+| Reference material | In-app result preview |
+| --- | --- |
+| ![OpenH3 reference image](docs/assets/openh3-reference.png) | ![OpenH3 result preview](docs/assets/openh3-result-preview.png) |
+
 ## Core capabilities
 
 - **Goal-driven creation**: describe editing, generation, analysis, or processing goals in natural language and let the agent break them into executable steps.
