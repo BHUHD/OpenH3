@@ -18,7 +18,15 @@ Video creators use a general-purpose agent to understand, generate and process m
 
 ## Known Release Gaps
 
-The Alpha release still needs a GPL corresponding-source plan, complete third-party NOTICE inventory, per-file authorization for H3 weights and derived adapters, and clean-machine installation regression. These are release gates, not claims that the core Agent or H3 implementation is absent.
+Release requirements depend on what is distributed:
+
+- Source publication: review the files and history being published, preserve applicable licenses and attribution, and exclude credentials and unauthorized assets. Windows signing and PC09 testing are not prerequisites for publishing source.
+- Binary distribution (including Alpha): satisfy the licenses of the components actually shipped. Bundled GPL binaries need an appropriate corresponding-source delivery mechanism; applicable dependency license and notice obligations still apply to previews. Build-only tools do not automatically need to be included in the installer notice inventory.
+- Model redistribution: per-file redistribution evidence is required for model, LoRA, converted, or workflow files that OpenH3 actually redistributes, including embedded workflows. User-supplied models do not require OpenH3 to obtain redistribution permission for absent files. Download integrations still need their own terms review.
+- Quality validation: verify installation, first launch, and a representative task outside the development setup before claiming broad support. PC09 is one test target, not a mandatory machine. Dense/SLA comparisons apply to acceleration claims.
+- Windows signing: recommended for publisher identity and installation trust, but not a universal prerequisite for an unsigned GitHub release. Signature status and Alpha/Beta/stable maturity are independent. Signing does not guarantee that SmartScreen will show no prompt.
+
+Current evidence remains incomplete for the existing bundled binary. Keep the Alpha designation until stability is established; do not use it as an exemption from dependency license obligations.
 
 ## Design Principles
 

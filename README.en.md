@@ -81,7 +81,7 @@ OpenH3 is currently in Alpha, focused on validating the core local video agent e
 - H3 weights, LoRAs, converted models, and workflows;
 - Optional GPUs, drivers, and local inference runtimes.
 
-Credentials and model files are not included in source code, tests, installers, or public builds. Before a formal release, the project still needs complete dependency licensing, per-file model redistribution authorization, and clean-machine installation validation.
+Credentials and model files are not included in source code, tests, installers, or public builds. Before distributing an installer, verify the license obligations of the components actually shipped. Model redistribution evidence applies to files actually redistributed. Signing improves publisher identity and installation trust; it is not a prerequisite for publishing source. Alpha maturity and signature status are independent. See [release requirements](docs/openh3/PRODUCT.md#known-release-gaps).
 
 ## System requirements
 
