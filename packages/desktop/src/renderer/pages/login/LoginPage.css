@@ -141,8 +141,10 @@ body.login-page-active {
 
 .login-page__logo svg,
 .login-page__logo img {
-  width: 64px;
-  height: 64px;
+  width: 220px;
+  height: auto;
+  max-height: 86px;
+  object-fit: contain;
   animation: login-pulse 3s infinite;
 }
 

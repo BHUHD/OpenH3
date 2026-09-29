@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceSvg = path.join(
+const sourceLogo = path.join(
   projectRoot,
   'packages',
   'desktop',
@@ -13,7 +13,18 @@ const sourceSvg = path.join(
   'assets',
   'logos',
   'brand',
-  'openh3-mark.svg'
+  'openh3-logo-source.png'
+);
+const transparentLogo = path.join(
+  projectRoot,
+  'packages',
+  'desktop',
+  'src',
+  'renderer',
+  'assets',
+  'logos',
+  'brand',
+  'openh3-logo.png'
 );
 const rendererPng = path.join(
   projectRoot,
@@ -58,21 +69,50 @@ function writeIco(images) {
 }
 
 async function main() {
-  if (!fs.existsSync(sourceSvg)) {
-    throw new Error(`OpenH3 source SVG not found: ${sourceSvg}`);
+  if (!fs.existsSync(sourceLogo)) {
+    throw new Error(`OpenH3 source logo not found: ${sourceLogo}`);
   }
 
   fs.mkdirSync(resourcesDir, { recursive: true });
+  const source = sharp(sourceLogo).removeAlpha().raw();
+  const { data, info } = await source.toBuffer({ resolveWithObject: true });
+  const rgba = Buffer.alloc(info.width * info.height * 4);
+  for (let index = 0; index < info.width * info.height; index += 1) {
+    const offset = index * info.channels;
+    const luminance = Math.max(data[offset], data[offset + 1], data[offset + 2]);
+    const rgbaOffset = index * 4;
+    rgba[rgbaOffset] = 0;
+    rgba[rgbaOffset + 1] = 0;
+    rgba[rgbaOffset + 2] = 0;
+    rgba[rgbaOffset + 3] = 255 - luminance;
+  }
+  const logo = sharp(rgba, { raw: { width: info.width, height: info.height, channels: 4 } }).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 } });
+  await logo.png().toFile(transparentLogo);
+  const logoMetadata = await sharp(transparentLogo).metadata();
+  const logoWidth = Math.round((logoMetadata.width ?? 1024) * 0.82);
+  const resizedLogo = await sharp(transparentLogo).resize({ width: logoWidth, fit: 'inside' }).png().toBuffer();
+  const rendererIcon = await sharp({
+    create: { width: 1024, height: 1024, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: resizedLogo, gravity: 'center' }])
+    .png()
+    .toBuffer();
+  const appLogo = await sharp({
+    create: { width: 1024, height: 1024, channels: 4, background: '#ffffff' },
+  })
+    .composite([{ input: resizedLogo, gravity: 'center' }])
+    .png()
+    .toBuffer();
   const sizes = [16, 24, 32, 48, 64, 128, 256];
   const images = await Promise.all(
     sizes.map(async (size) => ({
       size,
-      data: await sharp(sourceSvg).resize(size, size).png().toBuffer(),
+      data: await sharp(appLogo).resize(size, size).png().toBuffer(),
     }))
   );
 
-  await sharp(sourceSvg).resize(1024, 1024).png().toFile(rendererPng);
-  await sharp(sourceSvg).resize(1024, 1024).png().toFile(resourcePng);
+  await fs.promises.writeFile(rendererPng, rendererIcon);
+  await fs.promises.writeFile(resourcePng, appLogo);
   fs.writeFileSync(resourceIco, writeIco(images));
 
   console.log(`Generated OpenH3 PNG: ${rendererPng}`);

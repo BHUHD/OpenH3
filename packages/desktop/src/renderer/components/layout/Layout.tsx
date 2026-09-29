@@ -7,7 +7,7 @@
 import { ipcBridge } from '@/common';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import { PRODUCT_NAME } from '@/common/config/productIdentity';
-import openh3Mark from '@renderer/assets/logos/brand/openh3-mark.svg';
+import openh3Logo from '@renderer/assets/logos/brand/openh3-logo.png';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout, Tooltip } from '@arco-design/web-react';
@@ -406,13 +406,13 @@ const Layout: React.FC<{
                 )}
               >
                 <div
-                  className={classNames('bg-black shrink-0 size-32px relative rd-0.5rem', {
+                  className={classNames('bg-white shrink-0 size-32px relative rd-0.5rem border border-solid border-color', {
                     '!size-24px': collapsed,
                   })}
                   onClick={onClick}
                 >
                   <img
-                    src={openh3Mark}
+                    src={openh3Logo}
                     alt={PRODUCT_NAME}
                     className={classNames('w-full h-full object-contain', {
                       'p-2px': !collapsed,

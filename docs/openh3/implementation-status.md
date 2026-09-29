@@ -1,6 +1,10 @@
 
 ### 2026-09-29 安装包发布准备（尚未公开安装包）
 
+- 用户确认新的 OpenH3 字标为正式品牌资源；已保存原始 `openh3-logo-source.png`，生成透明 `openh3-logo.png`、桌面 `app.png` 和 Windows `app.ico`，并将登录页、侧栏和安装包切换到新字标。
+- 已加入 OpenH3 QQ 群 790631169 及二维码 `docs/assets/openh3-qq-group.png`，同步中英文 README 和支持文档。
+- 已重新构建采用新字标的 Windows x64 未签名 Alpha 体验包：`out/OpenH3-2.2.2-win-x64.exe`（240,151,599 bytes，SHA256=`0504375D3DF9909F10F1C08CBC7E04AD69DC5B8CC87B152FF33FD852D4EAAA5C`）。
+
 - 修复快速构建跳过版本/图标编辑的问题：改为仅禁用签名，保留 OpenH3 产品信息；带签名凭据时拒绝禁用签名的回归测试同步覆盖。
 - 发布配置与签名策略回归 17 passed、1 skipped；TypeScript 和 i18n 通过。首次重建后的 ASAR 检查 40,566 个条目，未发现 Provider bootstrap、模型权重或匹配的 Provider Key/本机用户路径。
 - 补充运行时原始许可证以及 npm NOTICE 生成脚本；清单覆盖 1,726 个依赖版本，包含 managed npm，ASAR 中 973 个包无清单遗漏。41 个包的标准许可证补充与原始证据缺失分开记录；jsonify 的 Public Domain 声明未伪造成许可证原文。
@@ -27,7 +31,7 @@
 
 ### 2026-09-23 OpenH3 品牌资源首轮
 
-- [x] 以 `openh3-mark.svg` 作为唯一品牌源，生成 renderer 登录页 PNG、Linux PNG 和 Windows 多尺寸 ICO。
+- [x] 以用户确认的 `openh3-logo-source.png` 作为品牌源，生成透明字标、renderer 图标、Linux PNG 和 Windows 多尺寸 ICO。
 - [x] Windows electron-builder 的 `resources/app.ico` 引用已补齐；未改 `appId`、协议 scheme、数据目录和更新仓库，保留旧版本升级兼容性。
 - [x] 新增 `npm run generate:openh3-icons`，可在换图后重复生成二进制图标资源。
 - [ ] macOS `app.icns` 仍需在 macOS 构建机生成并做安装包视觉回归；当前不能宣称全平台图标验收完成。

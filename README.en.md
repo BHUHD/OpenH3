@@ -131,6 +131,12 @@ Model weights, LoRAs, converted files, and workflows are not automatically cover
 - [Support and troubleshooting](SUPPORT.md)
 - [Security reports](SECURITY.md)
 
+### OpenH3 community
+
+Join the OpenH3 QQ group **790631169** to discuss local model setup, video workflows, and usage questions.
+
+![OpenH3 QQ group QR code](docs/assets/openh3-qq-group.png)
+
 ## Links
 
 - Repository: [github.com/pigq/OpenH3](https://github.com/pigq/OpenH3)

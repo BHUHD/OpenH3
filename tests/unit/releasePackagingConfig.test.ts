@@ -83,13 +83,14 @@ describe('release packaging configuration', () => {
     expect(builder).toContain('appId: com.aionui.app');
   });
 
-  it('ships the OpenH3 mark and wordmark as renderer assets', () => {
-    const mark = readProjectFile('packages/desktop/src/renderer/assets/logos/brand/openh3-mark.svg');
-    const wordmark = readProjectFile('packages/desktop/src/renderer/assets/logos/brand/openh3-logo.svg');
+  it('ships the user-approved OpenH3 logo source and transparent wordmark', () => {
+    const source = resolve(projectRoot, 'packages/desktop/src/renderer/assets/logos/brand/openh3-logo-source.png');
+    const wordmark = resolve(projectRoot, 'packages/desktop/src/renderer/assets/logos/brand/openh3-logo.png');
 
-    expect(mark).toContain('<title>OpenH3</title>');
-    expect(mark).toContain('#18B6A4');
-    expect(wordmark).toContain('OpenH3');
+    expect(existsSync(source)).toBe(true);
+    expect(statSync(source).size).toBeGreaterThan(1024);
+    expect(existsSync(wordmark)).toBe(true);
+    expect(statSync(wordmark).size).toBeGreaterThan(1024);
   });
 
   it('ships reproducible OpenH3 desktop icon assets', () => {

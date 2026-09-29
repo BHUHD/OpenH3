@@ -159,7 +159,7 @@ describe('Layout sider brand Home button', () => {
 
     // No actionable role/label in chat routes.
     expect(screen.queryByLabelText(BACK_KEY)).toBeNull();
-    const wordmark = screen.getByText('AionUi');
+    const wordmark = screen.getByText('OpenH3');
     fireEvent.click(wordmark);
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -168,7 +168,7 @@ describe('Layout sider brand Home button', () => {
     currentPathname = '/conversation/xyz';
     renderLayout();
 
-    fireEvent.click(screen.getByText('AionUi'));
+    fireEvent.click(screen.getByText('OpenH3'));
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -201,8 +201,8 @@ describe('Layout sider brand Home button', () => {
     sessionStorage.setItem('aion:last-non-settings-path', '/conversation/abc');
     const { container } = renderLayout();
 
-    // The icon is the SVG-wrapping div (bg-black), separate from the wordmark.
-    const icon = container.querySelector('.bg-black') as HTMLElement;
+    // The logo tile is separate from the wordmark and uses the approved OpenH3 image.
+    const icon = container.querySelector('.bg-white') as HTMLElement;
     expect(icon).toBeTruthy();
     for (let i = 0; i < 4; i++) fireEvent.click(icon);
     expect(openDevTools).toHaveBeenCalled();

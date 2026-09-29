@@ -1,4 +1,4 @@
-import loginLogo from '@renderer/assets/logos/brand/openh3-mark.svg';
+import loginLogo from '@renderer/assets/logos/brand/openh3-logo.png';
 import { PRODUCT_NAME } from '@/common/config/productIdentity';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

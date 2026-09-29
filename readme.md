@@ -131,6 +131,12 @@ OpenH3 的应用修改部分采用 Apache-2.0，同时保留 AionUi 上游版权
 - [支持与问题排查](SUPPORT.md)
 - [安全问题报告](SECURITY.md)
 
+### OpenH3 项目社群
+
+加入 QQ 群 **790631169**，交流本地模型配置、视频工作流和使用问题。
+
+![OpenH3 QQ 群二维码](docs/assets/openh3-qq-group.png)
+
 ## 链接
 
 - 仓库：[github.com/pigq/OpenH3](https://github.com/pigq/OpenH3)
