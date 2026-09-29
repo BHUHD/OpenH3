@@ -26,14 +26,23 @@ Fixed runtime and node evidence shipped beside this file
 - AionCore v0.2.2: source URL is recorded in bundled-aioncore manifest.json.
   The upstream Apache-2.0 license and corresponding source must be made
   available with any public binary distribution.
-- Node v24.11.0 and npm/bun dependencies: their upstream license files are
-  present in the managed runtime where available; a complete dependency-level
-  NOTICE inventory is still a release gate.
+- Node v24.11.0, npm v11.6.1 and Corepack v0.34.0: original license texts and
+  runtime provenance are preserved in runtime/. AionCore v0.2.2 is a Rust
+  binary, not a Bun executable. Its transitive Rust notices remain a separate
+  inventory task; the root AionCore license alone is not that inventory.
+- Installed npm dependency notices: THIRD-PARTY-NOTICES.txt and
+  npm-license-inventory.json. This conservative inventory includes build tools;
+  evidence categories and unresolved entries must not be treated as legal
+  clearance or proof that every listed package ships in the binary.
+- Three H3 API workflow graphs ARE embedded in the application. Their fixed
+  upstream revision, hashes, original LICENSE and NOTICE are in workflows/.
+  These files are not relicensed under the OpenH3 Apache-2.0 license.
 
 Source offers and unresolved rights
 -----------------------------------
 GPL components require a corresponding-source offer appropriate to the final
 distribution channel. OpenH3 does not claim that offer is complete in this
-preview. H3 weights, derived LoRAs, converted checkpoints, 7-Zip, and workflow
-assets remain download-only or user-provided until per-file redistribution
-rights are documented.
+preview. H3 weights, derived LoRAs and converted checkpoints are not bundled.
+The embedded workflow graphs are distinct from those model files and retain
+their upstream terms, including applicable territorial restrictions. No
+standalone 7-Zip or Bun executable is included in the application runtime.

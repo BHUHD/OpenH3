@@ -23,3 +23,9 @@
 *.woff binary
 *.woff2 binary
 *.ttf binary
+
+# Preserve verbatim upstream license evidence, including original whitespace.
+resources/third-party-licenses/runtime/LICENSE* -text -whitespace
+resources/third-party-licenses/workflows/LICENSE* -text -whitespace
+resources/third-party-licenses/workflows/NOTICE -text -whitespace
+resources/third-party-licenses/THIRD-PARTY-NOTICES.txt -whitespace

@@ -34,7 +34,7 @@ function windowsSigningPolicy(builderArgs, env) {
   const credentials = Boolean(env.WIN_CSC_LINK || env.CSC_LINK || env.AIONUI_WINDOWS_CERT_SHA1 || /certificate(?:File|Sha1|SubjectName)|azureSignOptions/.test(builderArgs));
   const required = windows && (env.AIONUI_REQUIRE_WINDOWS_SIGNING === '1' || credentials || /forceCodeSigning(?:=|\s+)true/.test(builderArgs));
   if (!required) return { required: false, flags: '' };
-  if (/signAndEditExecutable(?:=|\s+)false|forceCodeSigning(?:=|\s+)false|win\.sign(?:=|\s+)false/.test(builderArgs)) throw new Error('Signed Windows builds cannot disable signing or executable editing.');
+  if (/signAndEditExecutable(?:=|\s+)false|signExecutable(?:=|\s+)false|forceCodeSigning(?:=|\s+)false|win\.sign(?:=|\s+)false/.test(builderArgs)) throw new Error('Signed Windows builds cannot disable signing or executable editing.');
   if (!credentials) throw new Error('Windows release signing requires WIN_CSC_LINK/CSC_LINK, AIONUI_WINDOWS_CERT_SHA1, or configured certificate/cloud signing options.');
   const thumbprint = env.AIONUI_WINDOWS_CERT_SHA1;
   if (thumbprint && !/^[a-f0-9]{40}$/i.test(thumbprint)) throw new Error('AIONUI_WINDOWS_CERT_SHA1 must be a 40-character certificate thumbprint.');

@@ -1,0 +1,11 @@
+MiniMax H3 is licensed under the MiniMax H3 Community License Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
+
+ComfyUI-format conversion of the fused base: © 2026 xmarre (unchanged, carried from the source release).
+
+Modification notice: this file is a Model Derivative. The pruned fl2va transformer with the rank-1024 ref2va delta
+fused (source: xmarre/MiniMax-H3-Pruned-Ref-Delta-Fused-r1024-ComfyUI, bf16 file sha256 78b88298e241231b3bd95d752abde711efc9dd6517669a8a934faeb70baf6a98)
+was modified by merging two LoRAs into the weights and quantizing the 200 core Linear layers to INT8 ConvRot:
+  - lightx2v FL2VA Turbo 8-step v1.0 (Apache-2.0), rank-24 resize from Kijai/MiniMax-H3_comfy, strength 1.0
+  - Mystic v2.0 LoRA (Civitai model 2856467; its permissions allow derivatives and a different license, credit optional), strength 0.7 (merged for motion smoothness, noticed by patientx)
+Powered by MiniMax H3.
+

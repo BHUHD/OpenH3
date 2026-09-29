@@ -110,7 +110,7 @@ extraResources:
     to: app.png
   - from: resources/third-party-licenses
     to: third-party-licenses
-  # aioncore binary (pre-compiled per platform/arch, ships its own bun runtime)
+  # Rust AionCore binary and its managed Node.js runtime resources
   - from: resources/bundled-aioncore
     to: bundled-aioncore
   - from: resources/hub

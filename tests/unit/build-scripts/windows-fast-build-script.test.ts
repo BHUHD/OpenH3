@@ -8,13 +8,14 @@ const packageJson = JSON.parse(readFileSync('package.json', 'utf8')) as {
 const buildScript = readFileSync('scripts/build-with-builder.js', 'utf8');
 
 describe('Windows fast build scripts', () => {
-  it('provides an x64 fast installer build that lowers compression and skips executable editing', () => {
+  it('provides an unsigned x64 fast installer while retaining executable branding', () => {
     const script = packageJson.scripts['build-win:x64:fast'];
 
     expect(script).toBeTypeOf('string');
     expect(script).toContain('ELECTRON_BUILDER_COMPRESSION_LEVEL=1');
     expect(script).toContain('node scripts/build-with-builder.js x64 --win --x64');
-    expect(script).toContain('--config.win.signAndEditExecutable=false');
+    expect(script).toContain('--config.win.signExecutable=false');
+    expect(script).not.toContain('--config.win.signAndEditExecutable=false');
   });
 
   it('supports a temporary build-time auto-update version override', () => {
@@ -47,6 +48,10 @@ it('fails closed when a signed release has no credentials or attempts to disable
   expect(() => signingPolicy('--win --config.win.signAndEditExecutable=false', { CSC_LINK: 'private.pfx' })).toThrow(
     /cannot disable/
   );
+  expect(() => signingPolicy('--win --config.win.signExecutable=false', { CSC_LINK: 'private.pfx' })).toThrow(
+    /cannot disable/
+  );
+  expect(signingPolicy('--win --config.win.signExecutable=false', {}).required).toBe(false);
 });
 it('requires signing for supplied credentials and safely validates certificate selection', () => {
   expect(signingPolicy('--win', { WIN_CSC_LINK: 'private.pfx' })).toMatchObject({
