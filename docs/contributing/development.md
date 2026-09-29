@@ -12,20 +12,20 @@ On Windows, install the Rust MSVC toolchain. If Rust compilation fails because n
 
 ## Repository Layout
 
-AionUi development uses two repositories:
+OpenH3 development uses two repositories:
 
 - **AionCore** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binary: `aioncore` on macOS/Linux and `aioncore.exe` on Windows.
-- **AionUi** (`https://github.com/iOfficeAI/AionUi.git`) starts the Electron desktop app and launches the backend binary automatically.
+- **OpenH3** (`https://github.com/pigq/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
 
 Keep the repositories side by side when possible:
 
 ```text
 workspace/
 |-- AionCore/
-`-- AionUi/
+`-- OpenH3/
 ```
 
-The desktop development server resolves the backend from the `PATH` inherited by `bun run start`. Install AionCore first, verify the binary is discoverable in the same terminal, then start AionUi.
+The desktop development server resolves the backend from the `PATH` inherited by `bun run start`. Install AionCore first, verify the binary is discoverable in the same terminal, then start OpenH3.
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ The desktop development server resolves the backend from the `PATH` inherited by
 
 ```bash
 git clone https://github.com/iOfficeAI/AionCore.git
-git clone https://github.com/iOfficeAI/AionUi.git
+git clone https://github.com/pigq/OpenH3.git
 ```
 
 Use the `main` branch for both repositories unless a maintainer asks you to test another branch.
@@ -52,7 +52,7 @@ cargo install --path crates/aionui-app --locked
 # Make Cargo-installed binaries visible to this shell if needed.
 export PATH="$HOME/.cargo/bin:$PATH"
 
-# Verify that AionUi will be able to find the backend.
+# Verify that OpenH3 will be able to find the backend.
 which aioncore
 aioncore --help
 ```
@@ -69,19 +69,19 @@ cargo install --path crates/aionui-app --locked
 # Make Cargo-installed binaries visible to this PowerShell session if needed.
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
 
-# Verify that AionUi will be able to find the backend.
+# Verify that OpenH3 will be able to find the backend.
 where.exe aioncore
 aioncore --help
 ```
 
 If `where.exe aioncore` prints nothing, make sure `%USERPROFILE%\.cargo\bin` is in your user `Path`, open a new PowerShell window, and verify again.
 
-### 3. Start AionUi
+### 3. Start OpenH3
 
-Run these commands from the `AionUi` repository in a terminal where `aioncore` is discoverable.
+Run these commands from the `OpenH3` repository in a terminal where `aioncore` is discoverable.
 
 ```bash
-cd AionUi
+cd OpenH3
 
 # Install dependencies
 bun install
@@ -90,17 +90,17 @@ bun install
 bun run start
 ```
 
-During startup, AionUi launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start AionCore in a separate terminal.
+During startup, OpenH3 launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start AionCore in a separate terminal.
 
 ## Updating the Local Backend
 
-When you pull or change AionCore, reinstall the backend binary and restart AionUi:
+When you pull or change AionCore, reinstall the backend binary and restart OpenH3:
 
 ```bash
 cd ../AionCore
 cargo install --path crates/aionui-app --locked --force
 
-cd ../AionUi
+cd ../OpenH3
 bun run start
 ```
 
@@ -110,9 +110,9 @@ Use `--force` when rebuilding local changes with the same AionCore package versi
 
 ### `Cannot find "aioncore" binary`
 
-AionUi cannot find the backend from the `PATH` inherited by `bun run start`.
+OpenH3 cannot find the backend from the `PATH` inherited by `bun run start`.
 
-Check from the same terminal where you start AionUi:
+Check from the same terminal where you start OpenH3:
 
 ```bash
 # macOS / Linux
@@ -122,15 +122,15 @@ which aioncore
 where.exe aioncore
 ```
 
-If the command fails, add Cargo's binary directory to `PATH` and start AionUi from a new terminal.
+If the command fails, add Cargo's binary directory to `PATH` and start OpenH3 from a new terminal.
 
-### `aioncore` Works in a Terminal but AionUi Still Cannot Find It
+### `aioncore` Works in a Terminal but OpenH3 Still Cannot Find It
 
 Make sure you start `bun run start` from the same terminal environment that can run `aioncore --help`. IDE terminals and GUI-launched shells can inherit a different `PATH`; restart the IDE or launch it from a terminal after updating `PATH`.
 
 ### Backend Changes Do Not Show Up
 
-Quit AionUi, reinstall AionCore with `cargo install --path crates/aionui-app --locked --force`, then start AionUi again. The Electron app owns the backend subprocess during development, so a running AionUi instance will not pick up a newly installed binary until it restarts.
+Quit OpenH3, reinstall AionCore with `cargo install --path crates/aionui-app --locked --force`, then start OpenH3 again. The Electron app owns the backend subprocess during development, so a running OpenH3 instance will not pick up a newly installed binary until it restarts.
 
 ### Windows Rust Build Errors
 
@@ -220,7 +220,7 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 ## Multi-Instance Development
 
-When you have two clones of the repository (e.g. `AionUi` and `AionUi-refactor`) and need to run both simultaneously, the second instance can be started with:
+When you have two clones of the repository (e.g. `OpenH3` and `OpenH3-refactor`) and need to run both simultaneously, the second instance can be started with:
 
 ```bash
 bun run start:multi
@@ -255,7 +255,7 @@ prek run --from-ref origin/main --to-ref HEAD
 
 ## Build System
 
-AionUi uses **electron-vite** for fast bundling:
+OpenH3 uses **electron-vite** for fast bundling:
 
 - **Main process**: bundled with Vite (ESM)
 - **Renderer process**: bundled with Vite (React + TypeScript)

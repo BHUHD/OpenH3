@@ -2,13 +2,15 @@
 
 [English](README.en.md)
 
-[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Release](https://img.shields.io/github/v/release/pigq/OpenH3?include_prereleases)](https://github.com/pigq/OpenH3/releases)
+[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Status](https://img.shields.io/badge/status-alpha-orange)](https://github.com/pigq/OpenH3/releases)
 
-> **开箱即用的本地视频 Agent，让视频创作像软件开发一样可对话、可执行、可追踪。**
+> **对话驱动的本地 AI 创作引擎。**
 
-OpenH3 是一个面向视频创作者、研究者和开发者的本地桌面 Agent 工作台。你只需要用自然语言描述目标，OpenH3 就能理解视频和图片上下文，调用合适的工具，连接本地 H3 / ComfyUI，执行生成、处理和分析，并在对话中展示进度与结果。
+**从创作意图到生成结果，让 Agent 协同本地模型，完成每一步。**
 
-OpenH3 优先在本机运行：素材、任务和本地推理过程由你的电脑掌控。安装桌面应用后即可开始使用，Provider、模型和可选的 H3 权重由用户按需配置。
+OpenH3 将本地模型配置、Agent 对话、任务执行与结果预览整合在一个桌面工作台中。用自然语言描述目标，Agent 调用已配置的模型与工具完成任务，让本地 AI 从分散的工具变成连贯的创作流程。当前重点支持 H3 / ComfyUI 视频工作流，并保留视频、图像上下文与通用工具调用能力。
+
+OpenH3 优先在本机执行模型任务，Provider 和模型由用户按需配置。使用远程 Provider 时，提示词及任务所需的素材上下文可能发送给该服务；本地模型推理不代表 Agent 全程离线。
 
 ![OpenH3 视频生成演示：从参考图到应用内结果预览](docs/assets/openh3-demo.gif)
 
@@ -45,10 +47,10 @@ OpenH3 会把任务拆成可观察的执行过程；需要本地模型时，会�
 
 | 平台 | 当前状态 | 适合人群 |
 | --- | --- | --- |
-| Windows 10/11 x64 | Alpha 未签名体验包 | 想直接体验桌面应用的用户 |
-| macOS / Linux | 从源码运行 | 开发者和贡献者 |
+| Windows 10/11 x64 | 源码可用，公开安装包待发布 | 当前可从源码运行或构建 |
+| macOS / Linux | 源码开发入口，平台验收待完成 | 愿意参与验证的开发者 |
 
-从 [Releases](https://github.com/pigq/OpenH3/releases) 下载 Windows x64 体验包并安装。公开仓库后的首个安装包会标注为 Alpha；当前包未签名，Windows 可能显示来源提示，不代表正式生产发布。
+目前尚未上传公开安装包，请使用下方源码运行入口。[Releases](https://github.com/pigq/OpenH3/releases) 将提供后续版本、校验值和安装说明。本地已有的 Windows Alpha 构建未签名。
 
 首次启动后：
 
@@ -59,6 +61,8 @@ OpenH3 会把任务拆成可观察的执行过程；需要本地模型时，会�
 系统要求和首次任务说明见 [`docs/getting-started/`](docs/getting-started/)。
 
 ### 从源码运行
+
+先按[开发环境指南](docs/contributing/development.md)准备依赖和 Agent 后端，再在仓库根目录运行：
 
 ```bash
 bun install

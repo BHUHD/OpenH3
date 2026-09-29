@@ -16,4 +16,4 @@ The Alpha installer is unsigned. Windows may display a source warning until the 
 - a local Provider configuration for agent requests;
 - optional H3 / ComfyUI runtime and GPU according to the model's own requirements.
 
-OpenH3 does not bundle model weights or third-party runtime assets. Check each asset's license before using or redistributing it.
+OpenH3 does not bundle model weights. Desktop packages can include third-party runtime components; see the [third-party notices](../../resources/third-party-licenses/NOTICE.OpenH3.txt) for their distribution boundaries. Check the license of each additional model or workflow before using or redistributing it.

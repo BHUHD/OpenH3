@@ -1,4 +1,13 @@
 
+### 2026-09-29 公开仓库首页与 About
+
+- 已确认仓库公开，About description、使用指南 Website 和 9 个 Topics 已写入并通过 GitHub API 回读确认。
+- 产品主定位更新为“对话驱动的本地 AI 创作引擎”，中英文 README 同步，明确当前以 H3 / ComfyUI 视频工作流为核心。
+- GitHub Releases 暂无公开安装包；README 和快速开始改为源码入口，Release 徽章改为 Alpha 状态徽章，不再引导用户下载不存在的文件。
+- 修正文档首页失效入口、开发指南上游克隆地址、远程 Provider 数据边界以及第三方运行时分发说明。
+- Discussions 已启用，支持文档同步；私密漏洞报告尚未启用，安全文档移除不存在的 GitHub 私信方式。
+- 本轮为仓库元数据与文档修订，不重建安装包，也不改变现有许可证证据或实机测试结论。
+
 ### 2026-09-23 P0 发布审计首轮
 
 - [x] 新增 scripts/open-source-release-audit.js 和 npm run audit:open-source-release，检查源码、构建产物、Provider bootstrap 和许可证文件。

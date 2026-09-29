@@ -2,13 +2,15 @@
 
 [中文说明](readme.md)
 
-[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Release](https://img.shields.io/github/v/release/pigq/OpenH3?include_prereleases)](https://github.com/pigq/OpenH3/releases)
+[![CI](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pigq/OpenH3/actions/workflows/pr-checks.yml) [![License](https://img.shields.io/github/license/pigq/OpenH3)](LICENSE) [![Status](https://img.shields.io/badge/status-alpha-orange)](https://github.com/pigq/OpenH3/releases)
 
-> **An out-of-the-box local video agent that makes video creation conversational, executable, and traceable.**
+> **A conversational creative engine for local AI.**
 
-OpenH3 is a local desktop agent workspace for video creators, researchers, and developers. Describe a goal in natural language, and OpenH3 can understand video and image context, call the right tools, connect to local H3 / ComfyUI runtimes, execute generation and processing tasks, and show progress and results in the conversation.
+**From creative intent to generated results, let an agent orchestrate local models at every step.**
 
-OpenH3 is local-first: your media, tasks, and local inference stay under your control. Install the desktop app and start working; configure your own provider, models, and optional H3 weights when needed.
+OpenH3 brings local model setup, agent conversations, task execution, and result previews into one desktop workspace. Describe your goal in natural language and let the agent call configured models and tools. The current focus is H3 / ComfyUI video workflows, with video and image context and general-purpose tool calls.
+
+OpenH3 prioritizes local model execution, with providers and models configured by you. If you select a remote provider, prompts and media context needed for the task may be sent to that service. Local model inference does not mean the agent operates entirely offline.
 
 ![OpenH3 video generation demo: from reference image to an in-app result preview](docs/assets/openh3-demo.gif)
 
@@ -45,10 +47,10 @@ OpenH3 turns the request into an observable execution flow and uses the configur
 
 | Platform | Current status | Best for |
 | --- | --- | --- |
-| Windows 10/11 x64 | Alpha unsigned preview | Users who want the desktop app |
-| macOS / Linux | Run from source | Developers and contributors |
+| Windows 10/11 x64 | Source available; public installer pending | Run or build from source today |
+| macOS / Linux | Source development; platform validation pending | Developers helping with validation |
 
-Download the Windows x64 preview package from [Releases](https://github.com/pigq/OpenH3/releases) and install it. The first public package will be marked Alpha; it is unsigned, so Windows may show a source warning. It is not a production release.
+No public installer has been uploaded yet. Use the source instructions below. Future [Releases](https://github.com/pigq/OpenH3/releases) will include packages, checksums, and installation notes. Existing local Windows Alpha builds are unsigned.
 
 After the first launch:
 
@@ -59,6 +61,8 @@ After the first launch:
 See [`docs/getting-started/`](docs/getting-started/) for system requirements and the first-task walkthrough.
 
 ### Run from source
+
+Follow the [development guide](docs/contributing/development.md) to prepare dependencies and the agent backend, then run these commands from the repository root:
 
 ```bash
 bun install

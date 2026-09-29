@@ -8,14 +8,13 @@ Documentation is organized by reader intent, not by document type.
 | [`getting-started/`](getting-started) | New users            | Installation, system requirements, first task, and local runtime setup.                                                        |
 | [`showcase/`](showcase)         | Evaluators & users      | Reproducible OpenH3 workflows and product demonstrations.                                                                       |
 | [`contributing/`](contributing) | Contributors             | Dev environment setup, file-structure conventions, PR automation workflow.                                                    |
-| [`architecture/`](architecture) | Engineers & architects   | System architecture overview, subsystem deep-dives (ACP, queue, team mode), and supporting research notes.                    |
-| [`specs/`](specs)               | Engineering-driven specs | Feature design docs, requirements, implementation plans (ACP rewrite, extension market, remote agent, wake prompt, PR notes). |
+| [`openh3/`](openh3)             | Users & contributors     | Product scope, implementation evidence, and release requirements.                                                            |
 | [`prds/`](prds)                 | Product team             | Formal Product Requirement Documents maintained by the product team. **Do not reorganize without their consent.**             |
 | [`readme/`](readme)             | Chinese-speaking users  | The maintained Chinese OpenH3 entry point.                                                                                |
 
 ## Quick pointers
 
-- New to the project? Start with [`../README.md`](../README.md), then read [`architecture/overview.md`](architecture/overview.md).
+- New to the project? Start with the [Chinese README](../readme.md) or [English README](../README.en.md), then follow [Getting started](getting-started/README.md).
 - Setting up a dev environment? See [`contributing/development.md`](contributing/development.md).
 - Writing code? The entry point for code-style, linting, formatting, and commit rules is [`AGENTS.md`](../AGENTS.md) at the repo root.
 - Deploying a server? [`guides/deploy-server.md`](guides/deploy-server.md).

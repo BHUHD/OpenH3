@@ -10,7 +10,7 @@ The current Windows preview package is unsigned. Verify the SHA256 checksum publ
 
 Please do not report security vulnerabilities in a public issue, discussion, or pull request.
 
-When GitHub private vulnerability reporting is enabled for this repository, use the [private security advisory form](https://github.com/pigq/OpenH3/security/advisories/new). Until then, contact the repository maintainer privately through [@pigq](https://github.com/pigq)'s GitHub profile and include `OpenH3 security report` in the subject.
+When GitHub private vulnerability reporting is enabled for this repository, use the [private security advisory form](https://github.com/pigq/OpenH3/security/advisories/new). If the form is unavailable, open an issue asking the maintainer to enable a private reporting channel, without disclosing vulnerability details. GitHub profiles do not provide private messaging.
 
 Include only the information needed to reproduce the issue:
 

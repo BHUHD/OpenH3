@@ -3,7 +3,7 @@
 OpenH3 is a local-first video agent. The shortest path to a first result is:
 
 1. Check the [system requirements](system-requirements.md).
-2. Install the Windows x64 Alpha package from [GitHub Releases](https://github.com/pigq/OpenH3/releases), or run from source.
+2. Follow the [source setup instructions](../contributing/development.md). Public installers have not been uploaded yet; future packages will appear in [GitHub Releases](https://github.com/pigq/OpenH3/releases).
 3. Configure your own Provider and model credentials.
 4. Prepare an authorized H3 / ComfyUI runtime when the workflow needs local generation.
 5. Attach a reference image or video and describe one small task in natural language.
