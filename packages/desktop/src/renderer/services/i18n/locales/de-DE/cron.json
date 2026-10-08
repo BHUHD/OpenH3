@@ -105,7 +105,7 @@
       "selectFolder": "Ordner auswählen",
       "clearFolder": "Leeren",
       "model": "Modell",
-      "aionrsModelRequired": "Bitte wähle ein Modell für Aion CLI",
+      "aionrsModelRequired": "Bitte wähle ein Modell für OpenH3 CLI",
       "aionrsNoProvider": "Keine verfügbaren Modelle",
       "assistantLockedExistingConversation": "Aufgaben mit laufendem Gespräch müssen den ursprünglichen Assistenten behalten. Erstelle eine neue Aufgabe, um einen anderen Assistenten zu verwenden.",
       "teamTaskExecutionModeLockedReason": "Geplante Team-Aufgaben müssen im zugehörigen Team-Gespräch weiterlaufen, deshalb kann der Ausführungsmodus nicht geändert werden.",

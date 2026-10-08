@@ -4,6 +4,7 @@
 - 用户确认新的 OpenH3 字标为正式品牌资源；已保存原始 `openh3-logo-source.png`，生成透明 `openh3-logo.png`、桌面 `app.png` 和 Windows `app.ico`，并将登录页、侧栏和安装包切换到新字标。
 - 已加入 OpenH3 QQ 群 790631169 及二维码 `docs/assets/openh3-qq-group.png`，同步中英文 README 和支持文档。
 - 已重新构建采用新字标的 Windows x64 未签名 Alpha 体验包：`out/OpenH3-2.2.2-win-x64.exe`（240,151,599 bytes，SHA256=`0504375D3DF9909F10F1C08CBC7E04AD69DC5B8CC87B152FF33FD852D4EAAA5C`）。
+- 客户端可见品牌继续迁移：About、更新入口、远程连接提示、诊断提示、频道描述和中英文设置/团队/定时任务中的 CLI 名称已统一为 OpenH3；旧 `appId`、协议、存储键和内置助手 ID 保留以确保升级兼容。
 
 - 修复快速构建跳过版本/图标编辑的问题：改为仅禁用签名，保留 OpenH3 产品信息；带签名凭据时拒绝禁用签名的回归测试同步覆盖。
 - 发布配置与签名策略回归 17 passed、1 skipped；TypeScript 和 i18n 通过。首次重建后的 ASAR 检查 40,566 个条目，未发现 Provider bootstrap、模型权重或匹配的 Provider Key/本机用户路径。

@@ -108,7 +108,7 @@
       "selectFolder": "Выбрать папку",
       "clearFolder": "Очистить",
       "model": "Модель",
-      "aionrsModelRequired": "Выберите модель для Aion CLI",
+      "aionrsModelRequired": "Выберите модель для OpenH3 CLI",
       "aionrsNoProvider": "Нет доступных моделей",
       "assistantLockedExistingConversation": "Задачи продолжающегося диалога должны сохранять исходного помощника. Чтобы использовать другого помощника, создайте новую задачу.",
       "teamTaskExecutionModeLockedReason": "Запланированные задачи Team должны продолжать выполняться в принадлежащем им диалоге Team, поэтому режим выполнения нельзя изменить."

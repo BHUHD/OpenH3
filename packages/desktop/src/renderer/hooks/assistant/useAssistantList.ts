@@ -6,6 +6,7 @@ import { selectableAssistants } from '@/renderer/utils/model/assistantSelection'
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAssistantOrder } from './useAssistantOrder';
+import { normalizeAssistantForDisplay } from '@/renderer/utils/model/assistantDisplay';
 
 /**
  * Manages the assistant list: loading from backend, sorting, and tracking the
@@ -23,10 +24,11 @@ export const useAssistantList = () => {
   const loadAssistants = useCallback(async () => {
     try {
       const list = await ipcBridge.assistants.list.invoke();
-      setAssistants(list);
+      const displayList = list.map(normalizeAssistantForDisplay);
+      setAssistants(displayList);
       setActiveAssistantId((prev) => {
-        if (prev && list.some((a) => a.id === prev)) return prev;
-        return list[0]?.id ?? null;
+        if (prev && displayList.some((a) => a.id === prev)) return prev;
+        return displayList[0]?.id ?? null;
       });
     } catch (error) {
       console.error('Failed to load assistants:', error);

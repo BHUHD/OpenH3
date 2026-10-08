@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { useEffect } from 'react';
 import useSWR, { mutate as swrMutate } from 'swr';
+import { normalizeAssistantForDisplay } from '@/renderer/utils/model/assistantDisplay';
 
 type UseCustomAgentsLoaderResult = {
   /**
@@ -28,7 +29,8 @@ export const useCustomAgentsLoader = (): UseCustomAgentsLoaderResult => {
   // all see the same list without duplicate HTTP calls.
   const { data: assistantList } = useSWR('assistants.list', async () => {
     try {
-      return await ipcBridge.assistants.list.invoke();
+      const list = await ipcBridge.assistants.list.invoke();
+      return list.map(normalizeAssistantForDisplay);
     } catch (error) {
       console.error('Failed to load assistants:', error);
       return [] as Assistant[];

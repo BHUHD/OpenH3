@@ -381,7 +381,7 @@
   "deleteInvalidKeys": "Eliminar claves inválidas",
   "testAllKeys": "Probar todas las claves",
   "addModelPlaceholder": "Seleccionar o ingresar ID de modelo",
-  "customModelSupportNote": "Nota: Solo Aion CLI admite actualmente modelos personalizados.",
+  "customModelSupportNote": "Nota: Solo OpenH3 CLI admite actualmente modelos personalizados.",
   "addModelHint": "Elige o escribe un ID de modelo y se agregará a este proveedor.",
   "addModelSelectedHint": "Listo para agregar el modelo: {{model}}",
   "currentModelsLabel": "Modelos actuales",
@@ -455,7 +455,7 @@
   "skills": "Habilidades",
   "tools": "Herramientas",
   "toolsDescription": "Configura servidores MCP y herramientas integradas como la generación de imágenes. La generación de imágenes solo se puede activar tras configurar un modelo compatible con imágenes en la página de Modelos.",
-  "modelDescription": "Configura proveedores de LLM y claves de API para usar en todos los asistentes. Solo Aion CLI admite modelos personalizados; los demás agentes usan sus modelos integrados.",
+  "modelDescription": "Configura proveedores de LLM y claves de API para usar en todos los asistentes. Solo OpenH3 CLI admite modelos personalizados; los demás agentes usan sus modelos integrados.",
   "capabilities": "Capacidades",
   "capabilitiesTab": {
     "skills": "Habilidades",
@@ -1157,7 +1157,7 @@
   "agentManagement": {
     "localAgents": "Agentes locales",
     "remoteAgents": "Agentes remotos",
-    "localAgentsDescription": "Gestiona los agentes de programación con IA disponibles en este dispositivo. Aion CLI está integrado y viene con la app, sin instalación; los demás agentes solo se detectan tras instalar su CLI localmente.",
+    "localAgentsDescription": "Gestiona los agentes de programación con IA disponibles en este dispositivo. OpenH3 CLI está integrado y viene con la app, sin instalación; los demás agentes solo se detectan tras instalar su CLI localmente.",
     "localAgentsSetupLink": "Guía de configuración",
     "goToChat": "Iniciar chat",
     "remoteAgentsDescription": "Solo se admiten conexiones remotas de OpenClaw por ahora. Otros agentes están en desarrollo.",

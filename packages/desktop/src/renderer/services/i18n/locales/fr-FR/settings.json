@@ -393,7 +393,7 @@
   "deleteInvalidKeys": "Supprimer les clés invalides",
   "testAllKeys": "Tester toutes les clés",
   "addModelPlaceholder": "Sélectionner ou entrer l'ID du modèle",
-  "customModelSupportNote": "Note : Aion CLI et Gemini CLI Agent supportent actuellement les modèles personnalisés.",
+  "customModelSupportNote": "Note : OpenH3 CLI et Gemini CLI Agent supportent actuellement les modèles personnalisés.",
   "addModelHint": "Choisissez ou tapez un ID de modèle et il sera ajouté à ce fournisseur.",
   "addModelSelectedHint": "Prêt à ajouter le modèle : {{model}}",
   "currentModelsLabel": "Modèles actuels",
@@ -467,7 +467,7 @@
   "skills": "Compétences",
   "tools": "Outils",
   "toolsDescription": "Configurez les serveurs MCP et les outils intégrés comme la génération d'images. La génération d'images doit être activée après avoir configuré un modèle compatible avec les images sur la page Modèle.",
-  "modelDescription": "Configurez les fournisseurs LLM et les clés API à utiliser dans tous les assistants. Seule Aion CLI prend en charge les modèles personnalisés ; d'autres agents utilisent leurs propres modèles intégrés.",
+  "modelDescription": "Configurez les fournisseurs LLM et les clés API à utiliser dans tous les assistants. Seule OpenH3 CLI prend en charge les modèles personnalisés ; d'autres agents utilisent leurs propres modèles intégrés.",
   "capabilities": "Capacités",
   "capabilitiesTab": {
     "skills": "Compétences",

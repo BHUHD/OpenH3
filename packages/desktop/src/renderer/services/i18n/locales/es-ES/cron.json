@@ -108,7 +108,7 @@
       "selectFolder": "Seleccionar carpeta",
       "clearFolder": "Limpiar",
       "model": "Modelo",
-      "aionrsModelRequired": "Por favor selecciona un modelo para Aion CLI",
+      "aionrsModelRequired": "Por favor selecciona un modelo para OpenH3 CLI",
       "aionrsNoProvider": "No hay modelos disponibles",
       "assistant": "Assistant",
       "assistantRequired": "Please select an assistant",

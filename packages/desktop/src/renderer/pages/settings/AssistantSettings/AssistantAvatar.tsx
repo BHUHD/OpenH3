@@ -7,6 +7,7 @@ import { Robot } from '@icon-park/react';
 import React from 'react';
 import { isEmoji, resolveAvatarImageSrc } from './assistantUtils';
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
+import openh3Logo from '@/renderer/assets/logos/brand/openh3-logo.png';
 
 type AssistantAvatarProps = {
   assistant: AssistantListItem;
@@ -23,7 +24,7 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
 }) => {
   const resolvedAvatar = assistant.avatar?.trim();
   const hasEmojiAvatar = Boolean(resolvedAvatar && isEmoji(resolvedAvatar));
-  const avatarImage = resolveAvatarImageSrc(resolvedAvatar);
+  const avatarImage = assistant.id === 'aionui-assistant' ? openh3Logo : resolveAvatarImageSrc(resolvedAvatar);
   const iconSize = Math.floor(size * 0.5);
   const emojiSize = Math.floor(size * 0.6);
 

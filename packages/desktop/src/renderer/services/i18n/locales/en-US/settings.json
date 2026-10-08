@@ -393,7 +393,7 @@
   "deleteInvalidKeys": "Delete Invalid Keys",
   "testAllKeys": "Test All Keys",
   "addModelPlaceholder": "Select or enter model ID",
-  "customModelSupportNote": "Note: Only Aion CLI currently supports custom models.",
+  "customModelSupportNote": "Note: Only OpenH3 CLI currently supports custom models.",
   "addModelHint": "Pick or type a model ID and it will be appended to this provider.",
   "addModelSelectedHint": "Ready to add model: {{model}}",
   "currentModelsLabel": "Current Models",
@@ -467,7 +467,7 @@
   "skills": "Skills",
   "tools": "Tools",
   "toolsDescription": "Configure MCP servers and built-in tools like image generation. Image generation must be enabled after configuring an image-capable model on the Model page.",
-  "modelDescription": "Configure LLM providers and API keys for use across all assistants. Only Aion CLI supports custom models; other agents use their own built-in models.",
+  "modelDescription": "Configure LLM providers and API keys for use across all assistants. Only OpenH3 CLI supports custom models; other agents use their own built-in models.",
   "capabilities": "Capabilities",
   "capabilitiesTab": {
     "skills": "Skills",
@@ -1169,7 +1169,7 @@
   "agentManagement": {
     "localAgents": "Local Agents",
     "remoteAgents": "Remote Agents",
-    "localAgentsDescription": "Manage the AI coding agents available on this device. Aion CLI is built in and ships with the app — no install needed; other agents are detected only after their CLI is installed locally.",
+  "localAgentsDescription": "Manage the AI coding agents available on this device. OpenH3 CLI is built in and ships with the app — no install needed; other agents are detected only after their CLI is installed locally.",
     "localAgentsSetupLink": "Setup guide",
     "goToChat": "Start Chat",
     "remoteAgentsDescription": "Only remote OpenClaw connections are supported for now. Other agents are in development.",

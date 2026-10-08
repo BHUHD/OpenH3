@@ -10,6 +10,7 @@ import { ipcBridge } from '@/common';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { useAssistantOrder } from '@/renderer/hooks/assistant/useAssistantOrder';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
+import { normalizeAssistantForDisplay } from '@/renderer/utils/model/assistantDisplay';
 
 export type UseConversationAssistantsResult = {
   presetAssistants: Assistant[];
@@ -21,7 +22,8 @@ export const useConversationAssistants = (): UseConversationAssistantsResult => 
   const { assistantOrder } = useAssistantOrder();
   const { data: assistants, isLoading } = useSWR('assistants.list', async () => {
     try {
-      return await ipcBridge.assistants.list.invoke();
+      const list = await ipcBridge.assistants.list.invoke();
+      return list.map(normalizeAssistantForDisplay);
     } catch (error) {
       console.error('Failed to load assistants for conversation flows:', error);
       return [] as Assistant[];
