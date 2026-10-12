@@ -15,4 +15,4 @@ Workflow definitions in [`.github/workflows/`](../../.github/workflows/) are the
 
 Release jobs are gated by `PUBLISH_RELEASE` and their event conditions. Do not enable optional publishing or API-backed review without configuring the required credentials and destinations. Keep secrets in repository/environment settings, never in YAML.
 
-Local checks are described in [Contributing](../../CONTRIBUTING.md). Oxfmt is the formatting source of truth (`.oxfmtrc.json`); `.codecov.yml` is the single coverage configuration. Coverage warnings and skipped jobs are not proof that all release checks passed.
+Local checks are described in [Contributing](../../CONTRIBUTING.md). Oxfmt is the formatting source of truth (`.oxfmtrc.json`); `.codecov.yml` is the single coverage configuration. The pre-existing mobile formatting exclusion is preserved in Oxfmt `ignorePatterns`, replacing the old `.prettierignore`. Coverage warnings and skipped jobs are not proof that all release checks passed.
