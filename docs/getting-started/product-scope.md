@@ -2,7 +2,7 @@
 
 ## Release Position
 
-OpenH3 is currently a technical preview Alpha. This repository does not yet bind a company identity, organization URL, trademark, or homepage. A future public repository may add the company homepage without changing the runtime compatibility identifiers.
+OpenH3 is currently a technical preview Alpha. The official source and feedback entry point is [BHUHD/OpenH3](https://github.com/BHUHD/OpenH3). Product-facing branding does not change legacy runtime compatibility identifiers.
 
 ## Users and Purpose
 
@@ -13,7 +13,7 @@ Video creators use a general-purpose agent to understand, generate and process m
 - The Windows package is unsigned and intended for evaluation, not formal production release.
 - H3 models, runtime archives, and optional acceleration dependencies are downloaded on demand after hash verification and license acknowledgement; they are not covered by the OpenH3 Apache-2.0 source license.
 - Users can configure their own provider credentials. The Alpha 2 installer defaults to an internet-connected trial gateway when no provider is configured; source builds can differ. No provider API key is included in source code, tests, or public builds.
-- Local H3 support is validated against the documented PC09 profile. Other GPUs, operating systems, and model revisions require separate validation.
+- Hardware validation is recipe-specific. The setup screen distinguishes a tested baseline from an experimental configuration; recognizing the hardware or model files is not proof that inference will succeed. Other GPUs, operating systems, and model revisions require separate validation.
 - Existing `com.aionui.app`, `aionui://`, `AIONUI_*`, and data-directory identifiers remain as legacy compatibility identifiers until a migration plan is approved.
 
 ## Known Release Gaps

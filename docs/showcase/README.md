@@ -1,6 +1,6 @@
 # OpenH3 Showcase
 
-This directory collects small, reproducible workflows that demonstrate the product without implying that model assets are bundled or redistributable.
+This page shows a recorded product demonstration. It is not a hardware benchmark or a fully pinned reproduction recipe; model revision, parameters and timing must be documented before making those claims. Follow [Getting started](../getting-started/README.md) to test your own environment.
 
 ## Reference image to video
 
