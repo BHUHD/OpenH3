@@ -513,6 +513,6 @@ export const FILE_TYPES_WITH_BUILTIN_OPEN = ['pdf', 'word', 'excel', 'ppt'];
 
 ## Related Links
 
-- [Workspace Module Documentation](../Workspace/README.en.md)
+- [Workspace Module Documentation](../explorer/)
 - [IPC Bridge Source](../../../../common/adapter/ipcBridge.ts)
 - [CodeMirror 6 Documentation](https://codemirror.net/)

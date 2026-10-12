@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** 22 or higher
+- **Node.js** 22–24 (`>=22 <25`)
 - **bun** — Package manager & runtime ([install](https://bun.sh))
 - **Rust stable + Cargo** — Required to build the local AionCore backend ([install](https://rustup.rs))
 - **Python** 3.11+ (for native module compilation)
@@ -15,7 +15,7 @@ On Windows, install the Rust MSVC toolchain. If Rust compilation fails because n
 OpenH3 development uses two repositories:
 
 - **AionCore** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binary: `aioncore` on macOS/Linux and `aioncore.exe` on Windows.
-- **OpenH3** (`https://github.com/pigq/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
+- **OpenH3** (`https://github.com/BHUHD/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
 
 Keep the repositories side by side when possible:
 
@@ -33,10 +33,10 @@ The desktop development server resolves the backend from the `PATH` inherited by
 
 ```bash
 git clone https://github.com/iOfficeAI/AionCore.git
-git clone https://github.com/pigq/OpenH3.git
+git clone https://github.com/BHUHD/OpenH3.git
 ```
 
-Use the `main` branch for both repositories unless a maintainer asks you to test another branch.
+Use OpenH3 `main` for development. Match AionCore to `aioncoreVersion` in the root `package.json` (currently `v0.2.2`): run `git checkout v0.2.2` in AionCore before building it. Do not assume the latest upstream backend is compatible.
 
 ### 2. Build and Install AionCore
 
@@ -170,18 +170,9 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 | `bun run build-deb`       | Build Linux (.deb) distributable                        |
 | `bun run build`           | Alias for `bun run build-mac`                           |
 
-### Standalone Server (non-Electron)
+### Optional WebUI
 
-| Command                            | Description                                                 |
-| ---------------------------------- | ----------------------------------------------------------- |
-| `bun run build:renderer:web`       | Build renderer for standalone web deployment                |
-| `bun run build:server`             | Build standalone server bundle to `dist-server/`            |
-| `bun run server:start`             | Run standalone server in development mode                   |
-| `bun run server:start:remote`      | Run standalone server with remote access                    |
-| `bun run server:start:prod`        | Run standalone server in production mode                    |
-| `bun run server:start:prod:remote` | Run standalone server in production mode with remote access |
-| `bun run server:resetpass`         | Reset password via standalone server CLI                    |
-| `bun run server:resetpass:prod`    | Reset password via standalone server CLI (production)       |
+Use the WebUI commands above. See [deployment status](../guides/deploy-server.md); the old standalone Docker build is not maintained.
 
 ### Code Quality
 
@@ -205,7 +196,6 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 | `bun run test:bun`           | Run Bun-specific database driver tests            |
 | `bun run test:e2e`           | Run end-to-end tests (Playwright)                 |
 | `bun run test:packaged:i18n` | Run i18n integration tests against packaged build |
-| `bun run test:packaged:bun`  | Run Bun packaged integration tests                |
 
 ### Debug
 

@@ -113,8 +113,8 @@ out/
 .gemini/
 .gemini/*/
 
-# Keep important project documentation
-!.specify/memory/constitution.md
+# Local Spec-Kit planning files
+.specify/
 
 # Temporary and backup files
 *.tmp
@@ -239,3 +239,8 @@ graphify-out/
 .analysis/
 temp/
 .playwright-mcp/
+
+# Local configuration variants; publish only explicit templates.
+.env.*
+!.env.example
+!.env.*.example

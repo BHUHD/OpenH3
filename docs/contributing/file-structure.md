@@ -6,48 +6,26 @@ Rules for organizing files and directories across the entire Electron project.
 
 ### Root Directory Rules
 
-- **README translations** belong in `docs/readme/`, not at root. Only the main `readme.md` stays at root (GitHub convention)
+- **README translations** belong in `docs/readme/`, not at root. Only the main `README.md` stays at root (GitHub convention)
 - **Guide documents** (deployment, testing, WebUI, CDP, etc.) belong in `docs/guides/`
 - **Contributor documentation** (dev setup, code style, file structure, PR workflow) belongs in `docs/contributing/`
 - **Architecture documentation** belongs in `docs/architecture/` (research notes under `docs/architecture/research/`)
-- **Feature specs / PRDs / design drafts** belong in `docs/specs/` (or `docs/prds/` for formal PRDs maintained by the product team)
+- **Maintained feature specifications** belong in `docs/prds/`; local design drafts and process logs stay in ignored working directories
 - **Config files** (`tsconfig.json`, `package.json`, etc.) stay at root — Node.js/Electron ecosystem convention
 - **New documentation** should be placed under the appropriate `docs/` subdirectory, not at project root
 
-### Current Root Cleanup Targets
+### Naming and ownership
 
-| Action                                     | Files                              |
-| ------------------------------------------ | ---------------------------------- |
-| Move readme translations to `docs/readme/` | `readme_{ch,es,jp,ko,pt,tr,tw}.md` |
+- Keep one product README at root (`README.md`); translations live in `docs/readme/`.
+- Topic documents use lowercase kebab-case names and optional `.zh-CN.md` / `.en.md` suffixes.
+- Keep platform-discovered files at their conventional locations. Community policies live in `.github/`.
+- Keep tool-discovered configuration at root unless all callers support an explicit path. Do not move package.json, bun.lock or tsconfig.json merely to hide them.
+- Keep reusable tests and fixtures in the repository; local transcripts, temporary plans and generated reports stay ignored.
+- Packaging entitlements live beside the Electron builder configuration in `packages/desktop/`.
 
-## Project Layout (`src/`)
+## Source layout
 
-AionUi is a multi-process Electron app with three core layers: **renderer**, **main process**, and **preload/shared**.
-
-### Target Structure
-
-```
-src/
-├── renderer/          # Renderer layer — React UI, no Node.js APIs
-├── process/           # Main process layer — all Node.js / Electron business
-│   ├── bridge/        #   IPC handlers
-│   ├── services/      #   Business logic
-│   ├── database/      #   SQLite
-│   ├── task/          #   Agent/task management
-│   ├── agent/         #   AI platform connections
-│   ├── channels/      #   Multi-channel messaging
-│   ├── extensions/    #   Plugin system
-│   ├── webserver/     #   WebUI server
-│   ├── worker/        #   Background workers (fork)
-│   └── i18n/          #   Main-process i18n
-├── common/            # Shared layer — cross-process types, adapters, utilities
-├── preload.ts         # IPC bridge — contextBridge between main ↔ renderer
-└── index.ts           # Main process entry point
-```
-
-### Current Structure
-
-All main-process modules now live under `src/process/`. The `src/` root contains only the three core layers (`renderer/`, `process/`, `common/`), the entry files (`index.ts`, `preload.ts`), and the ambient type declaration (`types.d.ts`).
+The application lives in `packages/desktop/src/`, with `renderer/`, `process/`, `common/`, `index.ts` and `preload.ts`. See the [architecture overview](../architecture/overview.md) and [package map](../../packages/README.md) for responsibilities.
 
 ## Directory Naming — Two Conventions by Process
 

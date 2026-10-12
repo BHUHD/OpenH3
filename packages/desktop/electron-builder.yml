@@ -144,8 +144,8 @@ mac:
   category: public.app-category.productivity
   hardenedRuntime: true
   gatekeeperAssess: false
-  entitlements: entitlements.plist
-  entitlementsInherit: entitlements.plist
+  entitlements: packages/desktop/entitlements.plist
+  entitlementsInherit: packages/desktop/entitlements.plist
 
 dmg:
   # Use UDZO format which is more reliable on CI

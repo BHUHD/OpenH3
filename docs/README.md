@@ -1,42 +1,21 @@
-# OpenH3 Docs
+# OpenH3 文档 / Documentation
 
-Documentation is organized by reader intent, not by document type.
+按你要完成的任务选择入口。产品概览见[中文首页](../README.md)或 [English](readme/README.en.md)。
 
-| Directory                             | For whom               | What lives here                                                                                                   |
-| ------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [`guides/`](guides)                   | Users & operators      | How to deploy, test, and run the product. Server deployment, WebUI, Hub testing, CDP debugging.                   |
-| [`getting-started/`](getting-started) | New users              | Installation, system requirements, first task, and local runtime setup.                                           |
-| [`showcase/`](showcase)               | Evaluators & users     | Reproducible OpenH3 workflows and product demonstrations.                                                         |
-| [`contributing/`](contributing)       | Contributors           | Dev environment setup, file-structure conventions, PR automation workflow.                                        |
-| [`openh3/`](openh3)                   | Users & contributors   | Product scope, implementation evidence, and release requirements.                                                 |
-| [`prds/`](prds)                       | Product team           | Formal Product Requirement Documents maintained by the product team. **Do not reorganize without their consent.** |
-| [`readme/`](readme)                   | Chinese-speaking users | The maintained Chinese OpenH3 entry point.                                                                        |
+| 我想…… / Goal                           | 入口 / Start here                                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 安装并开始使用 / Get started            | [首次运行](getting-started/README.md)、[系统要求](getting-started/system-requirements.md)            |
+| 了解支持范围 / Check capabilities       | [产品范围](getting-started/product-scope.md)、[演示](showcase/README.md)                             |
+| 配置与排错 / Configure and troubleshoot | [操作指南](guides/README.md)、[支持](../.github/SUPPORT.md)                                          |
+| 运行源码 / Develop                      | [开发环境](contributing/development.md)、[贡献指南](../CONTRIBUTING.md)                              |
+| 理解实现 / Understand the code          | [架构](architecture/overview.md)、[模块](../packages/README.md)、[测试](../tests/README.md)          |
+| 了解计划与发布 / Follow the project     | [路线图](contributing/roadmap.md)、[发布流程](contributing/releases.md)、[变更记录](../CHANGELOG.md) |
 
-## Quick pointers
+## 维护规则 / Maintaining docs
 
-- New to the project? Start with the [Chinese README](../readme.md) or [English README](../README.en.md), then follow [Getting started](getting-started/README.md).
-- Setting up a dev environment? See [`contributing/development.md`](contributing/development.md).
-- Writing code? The entry point for code-style, linting, formatting, and commit rules is [`AGENTS.md`](../AGENTS.md) at the repo root.
-- Deploying a server? [`guides/deploy-server.md`](guides/deploy-server.md).
-- Looking for source boundaries? Read [`../packages/README.md`](../packages/README.md), [`../packages/desktop/src/README.md`](../packages/desktop/src/README.md), and [`../tests/README.md`](../tests/README.md).
-
-## OpenH3-specific entry points
-
-The repository still contains upstream-compatible application documentation because OpenH3 preserves the AionUi runtime identity for upgrade compatibility. OpenH3 product scope and release decisions live in these files:
-
-- [`openh3/PRODUCT.md`](openh3/PRODUCT.md): user-facing Alpha scope and limitations.
-- [`openh3/implementation-status.md`](openh3/implementation-status.md): verified implementation evidence and remaining gates.
-- [`../resources/third-party-licenses/NOTICE.OpenH3.txt`](../resources/third-party-licenses/NOTICE.OpenH3.txt): third-party release boundary.
-- [`../scripts/open-source-release-audit.js`](../scripts/open-source-release-audit.js): source and artifact audit.
-
-## Where to put new docs
-
-| Content type                                               | Destination                |
-| ---------------------------------------------------------- | -------------------------- |
-| User/ops-facing how-to                                     | `guides/`                  |
-| Contributor convention, workflow, or tooling rule          | `contributing/`            |
-| System or subsystem design, technical analysis             | `architecture/`            |
-| Exploratory research, analysis reports                     | `architecture/research/`   |
-| Feature requirements / design drafts driven by engineering | `specs/<feature-name>/`    |
-| Formal PRD owned by product team                           | `prds/` (coordinate first) |
-| README translation                                         | `readme/readme_ch.md`      |
+- 功能文档使用英文小写 `kebab-case.md`；语言后缀使用 `.zh-CN.md` 或 `.en.md`。
+- `README.md` 是目录入口；`CONTRIBUTING.md`、`LICENSE` 等平台约定文件保留标准名称。
+- 用户指南放 `getting-started/` 或 `guides/`；贡献与发布说明放 `contributing/`；架构放 `architecture/`。
+- `prds/` 保留有效需求规格，属于开发参考，不作为用户入门指南；修改规格时同步相应实现与测试。
+- 私人商业草案、聊天转录、临时验收日志和生成报告留在本地忽略目录，不新增到公开文档树。
+- 修改文件位置时同时修正引用。产品范围已归入 `getting-started/`，路线图与发布说明归入 `contributing/`，不再维护平行的 `openh3/` 文档树。

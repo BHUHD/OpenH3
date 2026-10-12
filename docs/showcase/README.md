@@ -4,7 +4,7 @@ This directory collects small, reproducible workflows that demonstrate the produ
 
 ## Reference image to video
 
-The repository includes a UI recording and still previews in [`docs/assets/`](../assets/). The flow is:
+The repository includes a UI recording and still previews in [`docs/assets/`](../assets). The flow is:
 
 1. Attach a reference image.
 2. Describe camera movement, subject continuity, and duration.

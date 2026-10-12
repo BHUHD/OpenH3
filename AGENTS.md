@@ -1,6 +1,6 @@
 # OpenH3 - Project Guide
 
-All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](CONTRIBUTING.zh.md))
+All contributors (human and AI) must follow [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. ([Chinese version](docs/contributing/contributing.zh-CN.md))
 
 ## Code Conventions
 

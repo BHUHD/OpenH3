@@ -3,9 +3,9 @@
   "version": "2.2.2",
   "description": "OpenH3 local-first video Agent with image and video interaction.",
   "keywords": [],
-  "homepage": "https://github.com/pigq/OpenH3#readme",
+  "homepage": "https://github.com/BHUHD/OpenH3#readme",
   "bugs": {
-    "url": "https://github.com/pigq/OpenH3/issues"
+    "url": "https://github.com/BHUHD/OpenH3/issues"
   },
   "license": "Apache-2.0",
   "author": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pigq/OpenH3.git"
+    "url": "https://github.com/BHUHD/OpenH3.git"
   },
   "workspaces": [
     "packages/*"

@@ -196,8 +196,8 @@ as the base appearance, and save.
 }
 ```
 
-For a ready-made, high-contrast theme, see the Neo-Brutalism theme in
-[`docs/theming/examples/neo-brutalism.css`](../theming/examples/neo-brutalism.css).
+For supported color and layout variables, see
+[the maintained theme tokens](../theming/tokens.md).
 
 ---
 

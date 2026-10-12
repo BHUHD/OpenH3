@@ -5,15 +5,15 @@
 
 ## 模块文件
 
-| 模块文件                           | 功能点数 | 编号范围                            |
-| ---------------------------------- | -------- | ----------------------------------- |
-| [session.md](./session.md)         | 10       | F-SESSION-01 ~ 10                   |
-| [messaging.md](./messaging.md)     | 9        | F-MSG-01 ~ 08 + F-FILE-02           |
-| [config.md](./config.md)           | 10       | F-CONFIG-01 ~ 10                    |
-| [permissions.md](./permissions.md) | 5        | F-PERM-01 ~ 04, 06                  |
-| [display.md](./display.md)         | 10       | F-DISPLAY-01 ~ 04, 06 ~ 07, 10 ~ 13 |
-| [reliability.md](./reliability.md) | 6        | F-RELIABILITY-01 ~ 02, 04 ~ 07      |
-| [skills.md](./skills.md)           | 3        | F-SKILL-01 ~ 03                     |
+| 模块文件                         | 功能点数 | 编号范围                            |
+| -------------------------------- | -------- | ----------------------------------- |
+| [session.md](session.md)         | 10       | F-SESSION-01 ~ 10                   |
+| [messaging.md](messaging.md)     | 9        | F-MSG-01 ~ 08 + F-FILE-02           |
+| [config.md](config.md)           | 10       | F-CONFIG-01 ~ 10                    |
+| [permissions.md](permissions.md) | 5        | F-PERM-01 ~ 04, 06                  |
+| [display.md](display.md)         | 10       | F-DISPLAY-01 ~ 04, 06 ~ 07, 10 ~ 13 |
+| [reliability.md](reliability.md) | 6        | F-RELIABILITY-01 ~ 02, 04 ~ 07      |
+| [skills.md](skills.md)           | 3        | F-SKILL-01 ~ 03                     |
 
 **总计：51 个独立功能点**（F-PERM-05 已合并至 F-PERM-03；F-DISPLAY-05/08/09/14、F-RELIABILITY-03/08/09 已合并至其他功能点）
 
