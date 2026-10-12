@@ -350,17 +350,9 @@ test-watch:
 test-coverage:
     bun run test:coverage
 
-# Run contract tests
-test-contract:
-    bun run test:contract
-
 # Run integration tests
 test-integration:
     bun run test:integration
-
-# Verify packaged artifact contains complete renderer assets (i18n safety)
-test-packaged-i18n:
-    bun run test:packaged:i18n
 
 # Run E2E tests (Playwright + Electron — auto-launches app)
 # Builds main+preload+renderer into out/ first to ensure fresh artifacts.

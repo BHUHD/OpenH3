@@ -8,7 +8,7 @@ E2E tests launch Electron directly (`electron .`), loading pre-built files from 
 
 ```bash
 # Full build (main + preload + renderer)
-bunx electron-vite build
+bun run package
 ```
 
 > `bun run start` (`electron-vite dev`) uses Vite's HMR and hot-reloads automatically.
@@ -38,10 +38,10 @@ export PATH="$HOME/.cargo/bin:$PATH"
 bun run test:e2e
 
 # Specific test file
-npx playwright test --config playwright.config.ts tests/e2e/specs/team-workspace-migration.e2e.ts --reporter=list
+npx playwright test --config playwright.config.ts tests/e2e/cases/teams/team-workspace-migration.e2e.ts --reporter=list
 ```
 
-### 3. View Results
+### 4. View Results
 
 ```bash
 # Open HTML report
@@ -232,7 +232,7 @@ Variables set automatically during test launch:
 
 ```bash
 # Run all E2E locally (dev mode, requires build first)
-bunx electron-vite build && bun run test:e2e
+bun run package && bun run test:e2e
 
 # Run only team tests with list reporter
 bun run test:e2e:team
@@ -256,7 +256,7 @@ E2E_PACKAGED=1 bun run test:e2e
 **Cause:** Source changes not rebuilt.
 
 ```bash
-bunx electron-vite build
+bun run package
 ```
 
 ### `Bridge invoke timeout: xxx`
@@ -265,14 +265,14 @@ bunx electron-vite build
 
 - Check `src/common/adapter/ipcBridge.ts` for the endpoint definition
 - Check the corresponding bridge file (e.g., `src/process/bridge/teamBridge.ts`) for `.provider()` registration
-- Rebuild: `bunx electron-vite build`
+- Rebuild: `bun run package`
 
 ### App launches but page is blank
 
 **Cause:** Renderer build is missing or corrupted.
 
 ```bash
-bunx electron-vite build
+bun run package
 ```
 
 ### Tests are flaky with AI responses
