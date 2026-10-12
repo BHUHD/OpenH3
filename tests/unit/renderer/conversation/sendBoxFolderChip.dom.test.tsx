@@ -82,6 +82,11 @@ vi.mock('@/renderer/pages/conversation/Messages/hooks', () => ({
   useMessageList: () => [],
 }));
 
+// Folder chips use the real emitter, but do not need the backend search stream.
+vi.mock('@/renderer/pages/conversation/explorer/search/useProjectMentionSearch', () => ({
+  useProjectMentionSearch: () => ({ active: false, items: [], loading: false, peNames: {} }),
+}));
+
 vi.mock('@/renderer/hooks/file/useConversationExport', () => ({
   useConversationExport: () => ({
     isOpen: false,
