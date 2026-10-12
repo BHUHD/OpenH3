@@ -34,7 +34,11 @@ async function forward(request: Request, env: GatewayEnv, path: string): Promise
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Expected an object');
     payload = parsed as Record<string, unknown>;
   } catch {
-    return responseJson({ error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' } }, 400, corsHeaders);
+    return responseJson(
+      { error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' } },
+      400,
+      corsHeaders
+    );
   }
 
   payload.model = env.DEFAULT_MODEL || 'gpt-6-astra';
@@ -59,7 +63,11 @@ const worker = {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (url.pathname === '/health' && request.method === 'GET') return responseJson({ ok: true }, 200, corsHeaders);
     if (url.pathname === '/v1/models' && request.method === 'GET') {
-      return responseJson({ object: 'list', data: [{ id: env.DEFAULT_MODEL || 'gpt-6-astra', object: 'model' }] }, 200, corsHeaders);
+      return responseJson(
+        { object: 'list', data: [{ id: env.DEFAULT_MODEL || 'gpt-6-astra', object: 'model' }] },
+        200,
+        corsHeaders
+      );
     }
     if (url.pathname === '/v1/responses' && request.method === 'POST') {
       const response = await forward(request, env, 'responses');
