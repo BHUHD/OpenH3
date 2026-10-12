@@ -42,10 +42,14 @@ function findLocalTool(packageName, relativePath) {
   const bunPackagePrefix = packageName.replace('/', '+');
   const candidates = [
     path.join(rootDir, 'node_modules', packageName, relativePath),
-    ...(!fs.existsSync(path.join(rootDir, 'node_modules', packageName)) && fs.existsSync(path.join(rootDir, 'node_modules', '.bun'))
-      ? fs.readdirSync(path.join(rootDir, 'node_modules', '.bun'), { withFileTypes: true })
+    ...(!fs.existsSync(path.join(rootDir, 'node_modules', packageName)) &&
+    fs.existsSync(path.join(rootDir, 'node_modules', '.bun'))
+      ? fs
+          .readdirSync(path.join(rootDir, 'node_modules', '.bun'), { withFileTypes: true })
           .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${bunPackagePrefix}@`))
-          .map((entry) => path.join(rootDir, 'node_modules', '.bun', entry.name, 'node_modules', packageName, relativePath))
+          .map((entry) =>
+            path.join(rootDir, 'node_modules', '.bun', entry.name, 'node_modules', packageName, relativePath)
+          )
       : []),
   ];
   return candidates.find((candidate) => fs.existsSync(candidate));
@@ -317,13 +321,7 @@ function rebuildSingleModule(options) {
     env.npm_config_build_from_source = 'true';
     const localRebuild = getLocalElectronRebuild();
     const unpackedAppDir = path.resolve(projectRoot, 'out', 'win-unpacked', 'resources', 'app.asar.unpacked');
-    const rebuildArgs = [
-      '--only',
-      moduleName,
-      '--force',
-      `--arch=${targetArch}`,
-      '--sequential',
-    ];
+    const rebuildArgs = ['--only', moduleName, '--force', `--arch=${targetArch}`, '--sequential'];
 
     if (localRebuild) rebuildArgs.push('--module-dir', unpackedAppDir, '--version', electronVersion);
     const fullCmd = localRebuild

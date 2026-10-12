@@ -12,37 +12,68 @@ it('bundled download worker switches sources, receives bytes and preserves a pau
   const requests: string[] = [];
   const server = http.createServer((req, res) => {
     requests.push(req.url!);
-    if (req.url!.startsWith('/missing/')) { res.writeHead(404).end(); return; }
+    if (req.url!.startsWith('/missing/')) {
+      res.writeHead(404).end();
+      return;
+    }
     res.writeHead(200, { 'Content-Length': '20980178976' });
     res.write(Buffer.alloc(1024 * 1024));
     // Keep the response open until the worker receives the user's pause command.
   });
   let worker: Worker | undefined;
   try {
-    if (!process.env.H3_TEST_PACKAGED_WORKER) await build({ entryPoints: ['scripts/h3-install-worker.ts'], outfile: bundle, bundle: true, platform: 'node', format: 'cjs', tsconfig: 'tsconfig.json' });
-    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    if (!process.env.H3_TEST_PACKAGED_WORKER)
+      await build({
+        entryPoints: ['scripts/h3-install-worker.ts'],
+        outfile: bundle,
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        tsconfig: 'tsconfig.json',
+        // Exercise transfer/pause behavior independently of CI disk capacity.
+        // The packaged-worker smoke path still uses the real disk preflight.
+        banner: { js: "require('node:fs').statfsSync = () => ({ bavail: 1024 ** 3, bsize: 4096 });" },
+      });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const port = (server.address() as { port: number }).port;
-    fs.writeFileSync(path.join(root, 'download-sources.json'), JSON.stringify({ baseUrls: [`http://127.0.0.1:${port}/missing`, `http://127.0.0.1:${port}/available`], publicSources: false }));
+    fs.writeFileSync(
+      path.join(root, 'download-sources.json'),
+      JSON.stringify({
+        baseUrls: [`http://127.0.0.1:${port}/missing`, `http://127.0.0.1:${port}/available`],
+        publicSources: false,
+      })
+    );
     const messages: Array<{ error?: string; detail?: { bytes?: number; filename?: string } }> = [];
-    worker = new Worker(bundle, { workerData: { bundleRoot: root, download: true }, env: { ...process.env, HTTPS_PROXY: '', HTTP_PROXY: '', https_proxy: '', http_proxy: '' } });
+    worker = new Worker(bundle, {
+      workerData: { bundleRoot: root, download: true },
+      env: { ...process.env, HTTPS_PROXY: '', HTTP_PROXY: '', https_proxy: '', http_proxy: '' },
+    });
     const owned = worker;
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Worker did not finish pause')), 10000);
-      owned.on('message', message => {
+      owned.on('message', (message) => {
         messages.push(message);
         if (message.detail?.bytes > 0) owned.postMessage({ pause: true });
       });
       owned.on('error', reject);
-      owned.on('exit', () => { clearTimeout(timeout); resolve(); });
+      owned.on('exit', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
     });
-    expect(messages.map(m => m.error).filter(Boolean).join(' ')).not.toContain('is not defined');
-    expect(requests.some(url => url.startsWith('/available/'))).toBe(true);
-    const filename = messages.find(m => m.detail?.filename)?.detail?.filename;
+    expect(
+      messages
+        .map((m) => m.error)
+        .filter(Boolean)
+        .join(' ')
+    ).not.toContain('is not defined');
+    expect(requests.some((url) => url.startsWith('/available/'))).toBe(true);
+    const filename = messages.find((m) => m.detail?.filename)?.detail?.filename;
     expect(filename && fs.statSync(path.join(root, filename + '.part')).size).toBeGreaterThan(0);
   } finally {
     await worker?.terminate();
     server.closeAllConnections();
-    await new Promise<void>(resolve => server.close(() => resolve()));
+    await new Promise<void>((resolve) => server.close(() => resolve()));
     fs.rmSync(root, { recursive: true, force: true });
   }
 }, 20000);

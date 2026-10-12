@@ -25,14 +25,14 @@ describe('titleForPath', () => {
 
   it('uses the login title on the login route only', () => {
     expect(titleForPath('/login', t)).toBe('t(login.pageTitle)');
-    expect(titleForPath('/guid', t)).toBe('AionUi');
-    expect(titleForPath('/conversation/abc', t)).toBe('AionUi');
-    expect(titleForPath('/settings/agent', t)).toBe('AionUi');
+    expect(titleForPath('/guid', t)).toBe('OpenH3');
+    expect(titleForPath('/conversation/abc', t)).toBe('OpenH3');
+    expect(titleForPath('/settings/agent', t)).toBe('OpenH3');
   });
 });
 
 describe('DocumentTitle', () => {
-  it('resets the title to AionUi after leaving the login page', () => {
+  it('resets the title to OpenH3 after leaving the login page', () => {
     // The old behaviour set document.title once on the login page and never
     // updated it again, so post-login pages kept the login title.
     document.title = 'AionUi - stale login title';
@@ -41,7 +41,7 @@ describe('DocumentTitle', () => {
         <DocumentTitle />
       </MemoryRouter>
     );
-    expect(document.title).toBe('AionUi');
+    expect(document.title).toBe('OpenH3');
   });
 
   it('sets the localised login title on the login route', () => {

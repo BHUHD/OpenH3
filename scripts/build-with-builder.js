@@ -31,14 +31,35 @@ const DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV = 'AIONUI_DEBUG_AUTO_UPDATE_CURRENT_
 // Release signing must never silently degrade into an unsigned installer.
 function windowsSigningPolicy(builderArgs, env) {
   const windows = /--(?:win|all)\b/.test(builderArgs);
-  const credentials = Boolean(env.WIN_CSC_LINK || env.CSC_LINK || env.AIONUI_WINDOWS_CERT_SHA1 || /certificate(?:File|Sha1|SubjectName)|azureSignOptions/.test(builderArgs));
-  const required = windows && (env.AIONUI_REQUIRE_WINDOWS_SIGNING === '1' || credentials || /forceCodeSigning(?:=|\s+)true/.test(builderArgs));
+  const credentials = Boolean(
+    env.WIN_CSC_LINK ||
+    env.CSC_LINK ||
+    env.AIONUI_WINDOWS_CERT_SHA1 ||
+    /certificate(?:File|Sha1|SubjectName)|azureSignOptions/.test(builderArgs)
+  );
+  const required =
+    windows &&
+    (env.AIONUI_REQUIRE_WINDOWS_SIGNING === '1' || credentials || /forceCodeSigning(?:=|\s+)true/.test(builderArgs));
   if (!required) return { required: false, flags: '' };
-  if (/signAndEditExecutable(?:=|\s+)false|signExecutable(?:=|\s+)false|forceCodeSigning(?:=|\s+)false|win\.sign(?:=|\s+)false/.test(builderArgs)) throw new Error('Signed Windows builds cannot disable signing or executable editing.');
-  if (!credentials) throw new Error('Windows release signing requires WIN_CSC_LINK/CSC_LINK, AIONUI_WINDOWS_CERT_SHA1, or configured certificate/cloud signing options.');
+  if (
+    /signAndEditExecutable(?:=|\s+)false|signExecutable(?:=|\s+)false|forceCodeSigning(?:=|\s+)false|win\.sign(?:=|\s+)false/.test(
+      builderArgs
+    )
+  )
+    throw new Error('Signed Windows builds cannot disable signing or executable editing.');
+  if (!credentials)
+    throw new Error(
+      'Windows release signing requires WIN_CSC_LINK/CSC_LINK, AIONUI_WINDOWS_CERT_SHA1, or configured certificate/cloud signing options.'
+    );
   const thumbprint = env.AIONUI_WINDOWS_CERT_SHA1;
-  if (thumbprint && !/^[a-f0-9]{40}$/i.test(thumbprint)) throw new Error('AIONUI_WINDOWS_CERT_SHA1 must be a 40-character certificate thumbprint.');
-  return { required: true, flags: ' --config.forceCodeSigning=true --config.win.signAndEditExecutable=true' + (thumbprint ? ' --config.win.signtoolOptions.certificateSha1=' + thumbprint : '') };
+  if (thumbprint && !/^[a-f0-9]{40}$/i.test(thumbprint))
+    throw new Error('AIONUI_WINDOWS_CERT_SHA1 must be a 40-character certificate thumbprint.');
+  return {
+    required: true,
+    flags:
+      ' --config.forceCodeSigning=true --config.win.signAndEditExecutable=true' +
+      (thumbprint ? ' --config.win.signtoolOptions.certificateSha1=' + thumbprint : ''),
+  };
 }
 
 function resolveElectronBuilderCommand() {
@@ -47,7 +68,8 @@ function resolveElectronBuilderCommand() {
   if (fs.existsSync(direct)) return `node "${direct}"`;
   const bunDir = path.join(rootDir, 'node_modules', '.bun');
   if (fs.existsSync(bunDir)) {
-    const candidate = fs.readdirSync(bunDir, { withFileTypes: true })
+    const candidate = fs
+      .readdirSync(bunDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith('electron-builder@'))
       .map((entry) => path.join(bunDir, entry.name, 'node_modules', 'electron-builder', 'cli.js'))
       .find((file) => fs.existsSync(file));
@@ -62,7 +84,8 @@ function resolveElectronViteCommand() {
   if (fs.existsSync(direct)) return `node "${direct}"`;
   const bunDir = path.join(rootDir, 'node_modules', '.bun');
   if (fs.existsSync(bunDir)) {
-    const candidate = fs.readdirSync(bunDir, { withFileTypes: true })
+    const candidate = fs
+      .readdirSync(bunDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith('electron-vite@'))
       .map((entry) => path.join(bunDir, entry.name, 'node_modules', 'electron-vite', 'bin', 'electron-vite.js'))
       .find((file) => fs.existsSync(file));
@@ -677,7 +700,14 @@ const builderArgs = args
   .filter((arg) => {
     // Filter out 'auto', architecture flags, and special flags
     if (arg === 'auto') return false;
-    if (arg === '--skip-vite' || arg === '--skip-native' || arg === '--pack-only' || arg === '--force' || arg === '--portable') return false;
+    if (
+      arg === '--skip-vite' ||
+      arg === '--skip-native' ||
+      arg === '--pack-only' ||
+      arg === '--force' ||
+      arg === '--portable'
+    )
+      return false;
     if (archList.includes(arg)) return false;
     if (arg.startsWith('--') && archList.includes(arg.slice(2))) return false;
     return true;
@@ -750,7 +780,12 @@ if (archArgs.length > 1) {
 
 console.log(`🔨 Building for architecture: ${targetArch}`);
 console.log(`📋 Builder arguments: ${builderArgs || '(none)'}`);
-try { windowsSigningPolicy(builderArgs, process.env); } catch (error) { console.error(error.message); process.exit(1); }
+try {
+  windowsSigningPolicy(builderArgs, process.env);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 if (skipVite) console.log('⚡ --skip-vite: Will skip Vite compilation if output exists');
 if (skipNative) console.log('⚡ --skip-native: Will skip native module rebuilding');
 if (packOnly) console.log('⚡ --pack-only: Will skip electron-builder distributable creation');

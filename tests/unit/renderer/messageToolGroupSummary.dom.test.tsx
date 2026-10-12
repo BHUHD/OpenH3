@@ -20,32 +20,34 @@ describe('MessageToolGroupSummary', () => {
   it('collapses repeated H3 status calls and hides the legacy tool id', () => {
     render(
       <MessageToolGroupSummary
-        messages={[
-          {
-            id: 'h3-status-1',
-            conversation_id: 'conversation-1',
-            type: 'tool_call',
-            content: {
-              call_id: 'h3-status-1',
-              name: 'aionui_h3_job_status',
-              args: { jobId: 'job-1' },
-              status: 'completed',
-              output: '{}',
+        messages={
+          [
+            {
+              id: 'h3-status-1',
+              conversation_id: 'conversation-1',
+              type: 'tool_call',
+              content: {
+                call_id: 'h3-status-1',
+                name: 'aionui_h3_job_status',
+                args: { jobId: 'job-1' },
+                status: 'completed',
+                output: '{}',
+              },
             },
-          },
-          {
-            id: 'h3-status-2',
-            conversation_id: 'conversation-1',
-            type: 'tool_call',
-            content: {
-              call_id: 'h3-status-2',
-              name: 'aionui_h3_job_status',
-              args: { jobId: 'job-1' },
-              status: 'completed',
-              output: '{}',
+            {
+              id: 'h3-status-2',
+              conversation_id: 'conversation-1',
+              type: 'tool_call',
+              content: {
+                call_id: 'h3-status-2',
+                name: 'aionui_h3_job_status',
+                args: { jobId: 'job-1' },
+                status: 'completed',
+                output: '{}',
+              },
             },
-          },
-        ] as unknown as ToolMessage[]}
+          ] as unknown as ToolMessage[]
+        }
       />
     );
 

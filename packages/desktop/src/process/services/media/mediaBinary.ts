@@ -9,10 +9,7 @@ type MediaBinaryResolutionOptions = {
   cwd?: string;
 };
 
-export function resolveMediaBinary(
-  name: MediaBinaryName,
-  options: MediaBinaryResolutionOptions = {}
-): string {
+export function resolveMediaBinary(name: MediaBinaryName, options: MediaBinaryResolutionOptions = {}): string {
   const env = options.env ?? process.env;
   const override = env[`AIONUI_${name.toUpperCase()}_PATH`]?.trim();
   if (override) return override;

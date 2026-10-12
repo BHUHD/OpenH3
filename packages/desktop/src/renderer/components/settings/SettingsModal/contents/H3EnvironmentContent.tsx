@@ -426,11 +426,7 @@ export default function H3EnvironmentContent({
           <a href='https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE' target='_blank' rel='noreferrer'>
             {t('settings.h3Setup.modelSource')}
           </a>
-          <a
-            href='https://github.com/Comfy-Org/ComfyUI/blob/master/LICENSE'
-            target='_blank'
-            rel='noreferrer'
-          >
+          <a href='https://github.com/Comfy-Org/ComfyUI/blob/master/LICENSE' target='_blank' rel='noreferrer'>
             {t('settings.h3Setup.vaeSource')}
           </a>
         </p>

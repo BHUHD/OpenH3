@@ -1170,7 +1170,7 @@
   "agentManagement": {
     "localAgents": "本地 Agents",
     "remoteAgents": "远端 Agents",
-  "localAgentsDescription": "管理本机可用的 AI 编程 Agent。OpenH3 CLI 为内置，App 自带、无需安装；其它 Agent 需先在本地安装对应 CLI 才能被识别。",
+    "localAgentsDescription": "管理本机可用的 AI 编程 Agent。OpenH3 CLI 为内置，App 自带、无需安装；其它 Agent 需先在本地安装对应 CLI 才能被识别。",
     "localAgentsSetupLink": "查看安装指南",
     "goToChat": "开始对话",
     "remoteAgentsDescription": "目前只支持远程连接 OpenClaw，其他 Agent 正在开发中。",

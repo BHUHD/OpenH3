@@ -9,7 +9,9 @@ function readConfiguredRoot(dataDir?: string): string | undefined {
     const file = path.join(dataDir, 'h3-environment.json');
     const value = JSON.parse(fs.readFileSync(file, 'utf8')) as H3BundleConfig;
     return typeof value.bundleRoot === 'string' && value.bundleRoot.trim() ? value.bundleRoot.trim() : undefined;
-  } catch { return undefined; }
+  } catch {
+    return undefined;
+  }
 }
 
 export function resolveH3BundleRoot(dataDir = process.env.AIONUI_DATA_DIR): string {
@@ -23,7 +25,10 @@ export function resolveH3BundleRoot(dataDir = process.env.AIONUI_DATA_DIR): stri
     process.execPath ? path.join(path.dirname(process.execPath), 'h3-offline-bundle') : undefined,
     path.resolve(process.cwd(), path.basename(process.cwd()) === 'desktop' ? '..' : '.', '.runtime/h3-offline-bundle'),
   ].filter((candidate): candidate is string => Boolean(candidate));
-  return candidates.find((candidate) => fs.existsSync(candidate)) ?? (dataDir ? path.join(dataDir, 'h3-offline-bundle') : candidates[candidates.length - 1]);
+  return (
+    candidates.find((candidate) => fs.existsSync(candidate)) ??
+    (dataDir ? path.join(dataDir, 'h3-offline-bundle') : candidates[candidates.length - 1])
+  );
 }
 
 export function persistH3BundleRoot(dataDir: string, bundleRoot: string): string {
@@ -31,7 +36,11 @@ export function persistH3BundleRoot(dataDir: string, bundleRoot: string): string
   fs.mkdirSync(dataDir, { recursive: true });
   const file = path.join(dataDir, 'h3-environment.json');
   const temporary = `${file}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify({ bundleRoot: resolved, updatedAt: new Date().toISOString() }, null, 2), 'utf8');
+  fs.writeFileSync(
+    temporary,
+    JSON.stringify({ bundleRoot: resolved, updatedAt: new Date().toISOString() }, null, 2),
+    'utf8'
+  );
   fs.renameSync(temporary, file);
   return resolved;
 }

@@ -61,7 +61,8 @@ const transitions: Record<MediaJobStatus, readonly MediaJobStatus[]> = {
 };
 
 export function transitionMediaJob(job: MediaJob, status: MediaJobStatus, error?: string): MediaJob {
-  if (!transitions[job.status].includes(status)) throw new Error(`INVALID_MEDIA_JOB_TRANSITION:${job.status}->${status}`);
+  if (!transitions[job.status].includes(status))
+    throw new Error(`INVALID_MEDIA_JOB_TRANSITION:${job.status}->${status}`);
   return {
     ...job,
     status,

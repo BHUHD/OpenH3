@@ -34,7 +34,8 @@ const secretPatterns = [
   { name: 'OpenAI-style key', regex: /\bsk-[A-Za-z0-9_-]{32,}\b/g },
   { name: 'Google API key', regex: /\bAIza[0-9A-Za-z_-]{30,}\b/g },
 ];
-const literalAssignmentPattern = /(?:api[_-]?key|token|secret)\s*[:=]\s*["'`](?!test|dummy|example|placeholder|provider-key)[^"'`\s]{16,}["'`]/gi;
+const literalAssignmentPattern =
+  /(?:api[_-]?key|token|secret)\s*[:=]\s*["'`](?!test|dummy|example|placeholder|provider-key)[^"'`\s]{16,}["'`]/gi;
 
 function isTextFile(filePath) {
   return textExtensions.has(path.extname(filePath).toLowerCase());
@@ -81,7 +82,12 @@ function scanSource() {
       for (const match of content.matchAll(literalAssignmentPattern)) {
         if (/AIONUI_[A-Z0-9_]+/u.test(match[0])) continue;
         const line = content.slice(0, match.index).split('\n').length;
-        findings.push({ file: entry, line, kind: 'literal credential assignment', match: match[0].replace(/([:=]\s*["'`]?)[^\s"'`]+/u, '$1[REDACTED]') });
+        findings.push({
+          file: entry,
+          line,
+          kind: 'literal credential assignment',
+          match: match[0].replace(/([:=]\s*["'`]?)[^\s"'`]+/u, '$1[REDACTED]'),
+        });
       }
     }
   }
@@ -138,10 +144,19 @@ function collectLicenseFiles() {
 const licenseEvidenceGaps = [
   { component: 'ComfyUI v0.35.0', requirement: 'bundle fixed-revision LICENSE/NOTICE and GPL source offer' },
   { component: 'ComfyUI-MAINodes', requirement: 'bundle GPL-3.0-or-later text and corresponding-source plan' },
-  { component: 'ComfyUI-PlagueKind-Nodes-only-sparse', requirement: 'bundle MIT text and trace inherited upstream code notices' },
+  {
+    component: 'ComfyUI-PlagueKind-Nodes-only-sparse',
+    requirement: 'bundle MIT text and trace inherited upstream code notices',
+  },
   { component: 'ComfyUI-KJNodes', requirement: 'bundle GPL-3.0 text and corresponding-source plan' },
-  { component: 'H3 weights and derived LoRA/conversion files', requirement: 'obtain per-file redistribution authorization or keep user-provided' },
-  { component: '7-Zip, Node runtime, and npm/bun dependencies', requirement: 'produce release third-party NOTICE inventory' },
+  {
+    component: 'H3 weights and derived LoRA/conversion files',
+    requirement: 'obtain per-file redistribution authorization or keep user-provided',
+  },
+  {
+    component: '7-Zip, Node runtime, and npm/bun dependencies',
+    requirement: 'produce release third-party NOTICE inventory',
+  },
 ];
 const licenseEvidencePresent = [
   'resources/third-party-licenses/LICENSE.ComfyUI-v0.35.0-LICENSE',
@@ -175,6 +190,7 @@ console.log(`License files found: ${report.licenseFiles.length}`);
 console.log(`License evidence gaps: ${report.licenseEvidenceGaps.length}`);
 
 if (report.sourceSecretFindings.length || report.artifactFindings.length) {
-  for (const finding of [...report.sourceSecretFindings, ...report.artifactFindings]) console.error(JSON.stringify(finding));
+  for (const finding of [...report.sourceSecretFindings, ...report.artifactFindings])
+    console.error(JSON.stringify(finding));
   process.exitCode = 1;
 }

@@ -2,8 +2,8 @@
   "name": "@aionui/shared-scripts",
   "version": "0.0.0",
   "private": true,
-  "license": "Apache-2.0",
   "description": "Shared build scripts for AionUi packages",
+  "license": "Apache-2.0",
   "type": "commonjs",
   "exports": {
     "./prepare-aioncore": "./src/prepare-aioncore.js"

@@ -72,10 +72,8 @@ export class H3ReferencePreflight {
       if (!this.fileExists(reference.path)) throw new Error('H3_REFERENCE_FILE_NOT_FOUND');
       const duration = await this.probeDuration(reference.path);
       if (!Number.isFinite(duration) || duration <= 0) throw new Error('H3_REFERENCE_DURATION_UNAVAILABLE');
-      if (duration < MIN_DURATION_SECONDS - DURATION_EPSILON)
-        throw new Error('H3_REFERENCE_DURATION_TOO_SHORT');
-      if (duration > MAX_DURATION_SECONDS + DURATION_EPSILON)
-        throw new Error('H3_REFERENCE_DURATION_TOO_LONG');
+      if (duration < MIN_DURATION_SECONDS - DURATION_EPSILON) throw new Error('H3_REFERENCE_DURATION_TOO_SHORT');
+      if (duration > MAX_DURATION_SECONDS + DURATION_EPSILON) throw new Error('H3_REFERENCE_DURATION_TOO_LONG');
       totalDuration[reference.type] += duration;
       if (totalDuration[reference.type] > MAX_DURATION_SECONDS + DURATION_EPSILON)
         throw new Error(`H3_REFERENCE_TOTAL_DURATION_EXCEEDED:${reference.type}`);

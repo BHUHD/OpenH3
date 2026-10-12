@@ -19,9 +19,10 @@ describe('ffmpeg executor', () => {
     const child = fakeProcess();
     const progress: unknown[] = [];
     const promise = executeFfmpeg(spec, new AbortController().signal, (value) => progress.push(value), {
-      binary: 'ffmpeg-test', spawnProcess: vi.fn(() => child),
+      binary: 'ffmpeg-test',
+      spawnProcess: vi.fn(() => child),
     });
-    expect((executeFfmpeg as any)).toBeDefined();
+    expect(executeFfmpeg as any).toBeDefined();
     child.stdout.emit('data', 'out_time_us=1000000\nprogress=continue\n');
     child.stdout.emit('data', 'progress=end\n');
     child.emit('close', 0);

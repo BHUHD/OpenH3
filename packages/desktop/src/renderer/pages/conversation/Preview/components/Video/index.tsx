@@ -105,13 +105,24 @@ function VideoContent({ fileRef, conversationId, tabId, onAdded }: Props) {
     try {
       const sourcePath = fileRef.kind === 'upload' || fileRef.kind === 'local' ? fileRef.path : fileRef.relative_path;
       const outputPath = `${sourcePath}.${jobKind === 'extract-frame' ? 'frame.jpg' : 'transcoded.mp4'}`;
-      const created = await mediaJobApi.create({ kind: jobKind, sourcePath, outputPath, ...(jobKind === 'extract-frame' ? { startSeconds: range[0] } : {}) });
+      const created = await mediaJobApi.create({
+        kind: jobKind,
+        sourcePath,
+        outputPath,
+        ...(jobKind === 'extract-frame' ? { startSeconds: range[0] } : {}),
+      });
       setJob(created);
       if (created.status === 'succeeded') return;
       let settled = false;
       const finish = (next: typeof created): void => {
         setJob(next);
-        if (next.status === 'succeeded') previewContext?.openPreview('', jobKind === 'extract-frame' ? 'image' : 'video', { fileRef: { kind: 'local', path: outputPath }, title: outputPath.split(/[\\/]/).pop() ?? outputPath, file_name: outputPath.split(/[\\/]/).pop() ?? outputPath, editable: false });
+        if (next.status === 'succeeded')
+          previewContext?.openPreview('', jobKind === 'extract-frame' ? 'image' : 'video', {
+            fileRef: { kind: 'local', path: outputPath },
+            title: outputPath.split(/[\\/]/).pop() ?? outputPath,
+            file_name: outputPath.split(/[\\/]/).pop() ?? outputPath,
+            editable: false,
+          });
         settled = ['succeeded', 'failed', 'cancelled'].includes(next.status);
       };
       const source = mediaJobApi.events(created.id, finish);
@@ -173,13 +184,26 @@ function VideoContent({ fileRef, conversationId, tabId, onAdded }: Props) {
           </div>
         )}
         <div className={styles.processingRow}>
-          <Select value={jobKind} disabled={busy} onChange={(value) => setJobKind(value as 'extract-frame' | 'transcode')} aria-label={t('preview.video.processType', { defaultValue: '处理类型' })}>
-            <Select.Option value='extract-frame'>{t('preview.video.extractFrame', { defaultValue: '抽取画面' })}</Select.Option>
-            <Select.Option value='transcode'>{t('preview.video.transcode', { defaultValue: '转码副本' })}</Select.Option>
+          <Select
+            value={jobKind}
+            disabled={busy}
+            onChange={(value) => setJobKind(value as 'extract-frame' | 'transcode')}
+            aria-label={t('preview.video.processType', { defaultValue: '处理类型' })}
+          >
+            <Select.Option value='extract-frame'>
+              {t('preview.video.extractFrame', { defaultValue: '抽取画面' })}
+            </Select.Option>
+            <Select.Option value='transcode'>
+              {t('preview.video.transcode', { defaultValue: '转码副本' })}
+            </Select.Option>
           </Select>
-          <Button disabled={!fileRef || busy} onClick={() => void analyzeVideo()}>{t('preview.video.process', { defaultValue: '开始处理' })}</Button>
+          <Button disabled={!fileRef || busy} onClick={() => void analyzeVideo()}>
+            {t('preview.video.process', { defaultValue: '开始处理' })}
+          </Button>
           {busy && job && <Button onClick={() => void mediaJobApi.cancel(job.id)}>{t('common.cancel')}</Button>}
-          {!busy && job?.status === 'failed' && <Button onClick={() => void analyzeVideo()}>{t('common.retry', { defaultValue: '重试' })}</Button>}
+          {!busy && job?.status === 'failed' && (
+            <Button onClick={() => void analyzeVideo()}>{t('common.retry', { defaultValue: '重试' })}</Button>
+          )}
         </div>
         <Slider
           range
@@ -246,7 +270,9 @@ function VideoContent({ fileRef, conversationId, tabId, onAdded }: Props) {
             {t('preview.addToChat')}
           </Button>
         </div>
-        {job && <div role='status' className={styles.jobStatus}>{`${job.status} ${Math.round(job.progress * 100)}%`}</div>}
+        {job && (
+          <div role='status' className={styles.jobStatus}>{`${job.status} ${Math.round(job.progress * 100)}%`}</div>
+        )}
       </div>
     </section>
   );

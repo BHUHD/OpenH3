@@ -406,9 +406,12 @@ const Layout: React.FC<{
                 )}
               >
                 <div
-                  className={classNames('bg-white shrink-0 size-32px relative rd-0.5rem border border-solid border-color', {
-                    '!size-24px': collapsed,
-                  })}
+                  className={classNames(
+                    'bg-white shrink-0 size-32px relative rd-0.5rem border border-solid border-color',
+                    {
+                      '!size-24px': collapsed,
+                    }
+                  )}
                   onClick={onClick}
                 >
                   <img

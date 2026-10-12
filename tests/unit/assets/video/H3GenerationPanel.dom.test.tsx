@@ -12,28 +12,26 @@ const h3 = vi.hoisted(() => ({
   versions: vi.fn().mockResolvedValue([]),
   selectVersion: vi.fn(),
   deriveVersion: vi.fn(),
-      status: vi
-    .fn()
-    .mockResolvedValue({
-      ready: true,
-      install: {
-        bundleRoot: 'bundle',
-        runtimeRoot: 'runtime',
-        modelsDirectory: 'models',
-        bundleVerified: true,
-        runtimePresent: true,
-        missingAssets: [],
-        missingCustomNodes: [],
-      },
-      acceleration: {
-        mode: 'auto',
-        backend: 'dense',
-        available: false,
-        tritonPresent: false,
-        pythonDevPresent: false,
-        reason: 'ACCEL_ROOT_NOT_CONFIGURED',
-      },
-    }),
+  status: vi.fn().mockResolvedValue({
+    ready: true,
+    install: {
+      bundleRoot: 'bundle',
+      runtimeRoot: 'runtime',
+      modelsDirectory: 'models',
+      bundleVerified: true,
+      runtimePresent: true,
+      missingAssets: [],
+      missingCustomNodes: [],
+    },
+    acceleration: {
+      mode: 'auto',
+      backend: 'dense',
+      available: false,
+      tritonPresent: false,
+      pythonDevPresent: false,
+      reason: 'ACCEL_ROOT_NOT_CONFIGURED',
+    },
+  }),
   resourceUrl: vi.fn((resourcePath: string) => `http://127.0.0.1:33002${resourcePath}`),
 }));
 vi.mock('@/common/chat/document/h3JobApi', () => ({ h3JobApi: h3, H3ServiceError: h3.H3ServiceError }));

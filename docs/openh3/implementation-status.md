@@ -229,3 +229,44 @@
 - [x] 重新构建 Windows x64 未签名 Alpha 体验包：`out/OpenH3-2.2.2-win-x64.exe`（309,144,751 bytes，SHA256=`0A758938B56ED8F7FF496815A480E905C9A561E0EDF700DC3F6378606A80037D`）。
 - [x] afterPack 验证 `resources/app.asar`、OpenH3 `app.png`、FFmpeg/ffprobe、第三方许可证资源和 x64 native module；开源发布审计 Source findings 0、Artifact findings 0。
 - [ ] 安装包仍未签名，只能称为 Windows x64 Alpha 未签名体验包；干净机器安装/首启和真实 GPU 任务验收仍需单独执行。
+
+### 2026-10-12 H3 下载证书信任兼容
+
+- 已完成：媒体服务启动时默认设置 `NODE_USE_SYSTEM_CA=1`，下载 worker 继承系统证书信任；同时保留 Node 内置 CA、`NODE_EXTRA_CA_CERTS` 与用户显式的系统 CA 开关设置。未关闭 HTTPS 校验，未更改下载源、断点续传、文件哈希或升级兼容标识。
+- 已通过自动化验证：媒体服务、runtime 和发布配置共 29 个测试文件，197 passed、1 skipped；TypeScript 通过，修改文件 Oxfmt 通过、Oxlint 0 errors。首次 worker 测试因 C 盘剩余空间不足触发 `H3_DISK_SPACE_INSUFFICIENT`，改用 D 盘临时目录后通过，未放宽产品磁盘检测。
+- 已通过本机运行时探测：实际 Electron 的 Node 22.21.1 在启用前读取 146 个默认 CA，启用后 312 个（新增 166 个系统 CA）；worker 同样从 146 变为 312。此结果证明设置生效，不等于已复现或验证用户网络的完整下载。
+- 仍需用户环境验证：`curl.exe -I https://hf-mirror.com` 成功只说明首页可达；实际模型 URL 可能重定向到其他域名。用户完整下载与重定向证书链尚未实测，不将所有 `UNABLE_TO_VERIFY_LEAF_SIGNATURE` 情况宣称已解决。
+- 本机真实模型地址 HEAD 探测：hf-mirror.com 重定向至 cas-bridge.xethub.hf.co 后返回 200（开启/关闭系统 CA 均成功）；huggingface.co 直连为连接超时。本机未复现用户证书错误，不据此宣称用户侧下载已恢复。
+- 已完成构建：现有 build-win:x64:fast 脚本生成 Windows x64 Alpha 未签名体验包 `out/OpenH3-2.2.2-win-x64.exe`，309,147,269 bytes，SHA256=`98A012B380E4F49237B3713CFB1AA20CDBA7F13198383AC617C10B00943EA5DD`；构建显式保留公开的 Cloudflare 网关 URL，客户端不内置 Provider Key。
+- 已通过产物验证：afterPack 资源和 x64 native module 检查通过；app.asar 中 160 个应用构建文本文件包含系统 CA 修复与公开网关 URL，扫描未发现 Provider Key、开发机路径或私有 IP；OpenH3 图标、NOTICE、媒体服务和下载 worker 均存在。打包后的 Electron 与 worker 均读取到 312 个 CA。
+- 发布审计：Source findings 0、Artifact findings 0；审计脚本仍列出 6 项许可证证据缺口，本轮不声明已解决。签名状态 NotSigned；未上传新 GitHub Release，尚需用户在原失败环境覆盖安装、重启并继续下载验证。
+
+### 2026-10-12 OpenH3 用户可见品牌修复与默认对话网关复验
+
+- [x] 新建对话页的旧中文助手名称在展示边界统一归一化为 OpenH3 管家，不改动内部 assistant id、存储键或升级兼容标识。
+- [x] “喜欢我们？点个星吧”快捷入口已改为 https://github.com/BHUHD/OpenH3；旧 AionUi 仓库链接不再作为该用户可见入口。
+- [x] 新增中文品牌归一化回归测试；聚焦测试 5 passed、TypeScript 和 i18n 检查通过。
+- [x] 本轮新包已注入 OPENH3_GATEWAY_URL=https://openh3-gateway.qingh120.workers.dev；首次启动且没有 Provider 时自动创建 OpenH3 Responses Provider（gpt-6-astra、reasoning low），客户端不内置 Provider API Key，已有 Provider 配置不会被覆盖。
+- 适用边界：未注入网关地址的本地开发包或旧 Release 仍需用户自行配置 Provider；自动配置也仍依赖网关可达、上游额度和服务状态。本轮未进行用户机器首次对话实测。
+- [x] 已重新构建并检查 Windows x64 Alpha 未签名体验包：`out/OpenH3-2.2.2-win-x64.exe`，309,144,025 bytes，SHA256=`F3A07257A1A62FBBF5EFAA20DBECB613ABBC1AA6F010E8C4AAE55F0F244FC506`；包内包含公开网关 URL 和本轮品牌修复。
+- [x] 本轮复验：聚焦测试 5 passed，TypeScript、i18n 类型生成与校验通过；发布审计 Source findings 0、Artifact findings 0，许可证证据缺口仍为 6 项。
+- [ ] 签名状态 NotSigned，尚未上传 GitHub Release；新包在用户机器上的升级、首次对话与下载证书兼容仍需实测。
+
+### 2026-10-12 双仓库 Alpha 2 发布
+
+- 已完成：按用户要求公开发布 Windows x64 Alpha 2（未签名），保留 Alpha 1；本记录替代上文“尚未上传”的状态。
+- 发布页面：https://github.com/pigq/OpenH3/releases/tag/v2.2.2-alpha.2 与 https://github.com/BHUHD/OpenH3/releases/tag/v2.2.2-alpha.2。
+- 两仓库附件一致：OpenH3-2.2.2-win-x64.exe、OpenH3-2.2.2-alpha.2-source.zip、SHA256SUMS.txt；已核对 GitHub 返回的每个附件尺寸与 SHA256。
+- 安装包 SHA256：F3A07257A1A62FBBF5EFAA20DBECB613ABBC1AA6F010E8C4AAE55F0F244FC506；源码快照 SHA256：E595B2FEAB10A0103349161F382A7D885A94E06149A9A98A48034E2E862F8529。
+- 自动化复验：20 passed、1 skipped，TypeScript、i18n、diff 检查通过；审计 Source findings 0、Artifact findings 0，6 项许可证证据缺口仍未关闭。
+- 分支源码本轮未推送：全库格式检查存在 155 个文件问题；对应修复源码已通过显式 source.zip 附件提供，Release 说明已区分它与 GitHub 自动生成的标签源码。安装器仍为内部版本 2.2.2，不更改自动更新通道。
+- 仍需实机验证：升级、首次对话、原失败网络下载与真实 GPU 生成。Windows 签名尚未完成。
+
+### 2026-10-12 GitHub Actions 失败修复
+
+- 已定位：pigq/OpenH3 的运行 38209075903 与 BHUHD/OpenH3 的运行 38209076570 分别在 Oxfmt 检查发现 77、85 个文件格式问题；lint 不是失败原因。自动重试在运行尚未结束时调用自身 rerun API，返回 403 / This workflow is already running。
+- 已修复：按现有 Oxfmt 配置整理全库格式；移除无效自重试（保留构建步骤已有的下载重试）；主分支推送及手动触发可执行质量检查；自动发布遇到已公开 Release 时保留原附件。
+- 全量测试发现并修复：品牌迁移后的陈旧测试断言、误改的错误提示内部 i18n 键、构建命令测试适配，以及下载暂停时进度早于落盘的竞态。下载测试的模拟 worker 独立于 CI 磁盘容量，产品磁盘检查及实际打包 worker 验证路径保持不变。
+- 已通过本机验证：566 个测试文件通过、1 个跳过；5301 passed、7 skipped。TypeScript、i18n、Oxfmt、diff 检查通过，Oxlint 0 errors。发布保护脚本覆盖已公开、草稿、不存在与 API 错误分支；源码审计 Source findings 0、Artifact findings 0。
+- 发布边界：两个仓库均未设置 PUBLISH_RELEASE，自动多平台打包没有启用；Alpha 2 仍是此前手动发布的未签名包。其文件、标签及哈希不变，本轮额外修复尚未重新打入安装包。6 项许可证证据缺口与实机验收状态保持原记录。
+- 远端状态：准备通过仓库 just push 检查后同步两仓库 main；远端 CI 结果待推送后核实。

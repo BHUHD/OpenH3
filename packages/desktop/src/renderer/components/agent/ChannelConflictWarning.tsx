@@ -37,7 +37,7 @@ export const ChannelConflictWarning: React.FC<ChannelConflictWarningProps> = ({
       content={
         <Space direction='vertical' size='medium' style={{ width: '100%' }}>
           <Paragraph>
-        <Text bold>OpenClaw is handling {platformName} messages, not OpenH3.</Text>
+            <Text bold>OpenClaw is handling {platformName} messages, not OpenH3.</Text>
           </Paragraph>
 
           <Paragraph>

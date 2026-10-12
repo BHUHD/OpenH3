@@ -16,12 +16,12 @@ claim that a complete matching source bundle has been published for the
 earlier local preview installer. If a future OpenH3 release redistributes
 these components, its release must provide the corresponding materials.
 
-| Component | Fixed source | Action if redistributed by OpenH3 |
-| --- | --- | --- |
-| ComfyUI v0.35.0 | https://github.com/Comfy-Org/ComfyUI/tree/v0.35.0 | Publish matching source archive or stable source URL |
-| ComfyUI-MAINodes | https://github.com/matlowai/ComfyUI-MAINodes/tree/f4868b4a08e8a504ce86db54a17961d399ffa2bc | Publish matching source and modification notice |
-| ComfyUI-KJNodes | https://github.com/kijai/ComfyUI-KJNodes/tree/d3cfe21625e5170126ce06fbfcfe1d88108688c3 | Publish matching source and modification notice |
-| FFmpeg 7.1.1 | https://github.com/FFmpeg/FFmpeg/tree/db69d06eee | Publish source/configuration offer for the exact build |
+| Component        | Fixed source                                                                               | Action if redistributed by OpenH3                      |
+| ---------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| ComfyUI v0.35.0  | https://github.com/Comfy-Org/ComfyUI/tree/v0.35.0                                          | Publish matching source archive or stable source URL   |
+| ComfyUI-MAINodes | https://github.com/matlowai/ComfyUI-MAINodes/tree/f4868b4a08e8a504ce86db54a17961d399ffa2bc | Publish matching source and modification notice        |
+| ComfyUI-KJNodes  | https://github.com/kijai/ComfyUI-KJNodes/tree/d3cfe21625e5170126ce06fbfcfe1d88108688c3     | Publish matching source and modification notice        |
+| FFmpeg 7.1.1     | https://github.com/FFmpeg/FFmpeg/tree/db69d06eee                                           | Publish source/configuration offer for the exact build |
 
 ## Bundled FFmpeg binary evidence
 
@@ -30,9 +30,9 @@ The Windows preview package contains the static `ffmpeg.exe` and
 distribution. The files are GPLv3 builds (`--enable-gpl --enable-version3`) and
 are not OpenH3 binaries:
 
-| File | SHA-256 |
-| --- | --- |
-| `resources/ffmpeg/win32-x64/ffmpeg.exe` | `B90225987BDD042CCA09A1EFB5E34E9848F2D1DBF5FBCD388753A44145522997` |
+| File                                     | SHA-256                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------ |
+| `resources/ffmpeg/win32-x64/ffmpeg.exe`  | `B90225987BDD042CCA09A1EFB5E34E9848F2D1DBF5FBCD388753A44145522997` |
 | `resources/ffmpeg/win32-x64/ffprobe.exe` | `05E8FA639450F8191635192871AE37A3EC3E4638FA12F3B7D49C6522BA16A8ED` |
 
 The immutable FFmpeg source snapshot identified by the distributor is

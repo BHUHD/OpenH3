@@ -1,12 +1,30 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { matlowaiCompleteOfflineBundle, MATLOWAI_CUSTOM_NODE_ARCHIVES, MATLOWAI_MODEL_ASSETS, validateOfflineBundle } from './h3OfflineBundle';
+import {
+  matlowaiCompleteOfflineBundle,
+  MATLOWAI_CUSTOM_NODE_ARCHIVES,
+  MATLOWAI_MODEL_ASSETS,
+  validateOfflineBundle,
+} from './h3OfflineBundle';
 import { resolveH3BundleRoot } from './h3BundlePath';
 
 type ExecFileSync = (file: string, args: string[], options: { cwd: string; stdio: 'ignore' }) => unknown;
-export type H3PortableInstallerOptions = { bundleRoot?: string; execFileSync?: ExecFileSync; verifyBundle?: boolean; onPhase?: (phase: 'verifying' | 'extracting') => void };
-export type H3PortableInstallStatus = { bundleRoot: string; runtimeRoot: string; modelsDirectory: string; bundleVerified: boolean; runtimePresent: boolean; missingAssets: string[]; missingCustomNodes: string[] };
+export type H3PortableInstallerOptions = {
+  bundleRoot?: string;
+  execFileSync?: ExecFileSync;
+  verifyBundle?: boolean;
+  onPhase?: (phase: 'verifying' | 'extracting') => void;
+};
+export type H3PortableInstallStatus = {
+  bundleRoot: string;
+  runtimeRoot: string;
+  modelsDirectory: string;
+  bundleVerified: boolean;
+  runtimePresent: boolean;
+  missingAssets: string[];
+  missingCustomNodes: string[];
+};
 
 export class H3PortableInstaller {
   private readonly bundleRoot: string;
@@ -25,13 +43,23 @@ export class H3PortableInstaller {
     this.onPhase?.('verifying');
     this.verifyOfflineBundleOnce();
     this.onPhase?.('extracting');
-    if (!fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) || !fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py'))) {
+    if (
+      !fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) ||
+      !fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py'))
+    ) {
       const extractor = path.join(this.bundleRoot, 'runtime', '7zr.exe');
       const archive = path.join(this.bundleRoot, 'runtime', 'ComfyUI_windows_portable_nvidia.7z');
       if (!fs.existsSync(extractor) || !fs.existsSync(archive)) throw new Error('H3_PORTABLE_BUNDLE_INCOMPLETE');
-      this.run(extractor, ['x', archive, `-o${path.join(this.bundleRoot, 'runtime')}`, '-y'], { cwd: path.join(this.bundleRoot, 'runtime'), stdio: 'ignore' });
+      this.run(extractor, ['x', archive, `-o${path.join(this.bundleRoot, 'runtime')}`, '-y'], {
+        cwd: path.join(this.bundleRoot, 'runtime'),
+        stdio: 'ignore',
+      });
     }
-    if (!fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) || !fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py'))) throw new Error('H3_PORTABLE_EXTRACT_FAILED');
+    if (
+      !fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) ||
+      !fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py'))
+    )
+      throw new Error('H3_PORTABLE_EXTRACT_FAILED');
     this.prepareModels();
     this.prepareCustomNodes(runtimeRoot);
     return runtimeRoot;
@@ -50,24 +78,42 @@ export class H3PortableInstaller {
       runtimeRoot,
       modelsDirectory: path.join(this.bundleRoot, 'models'),
       bundleVerified: this.markerIsCurrent(),
-      runtimePresent: fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) && fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py')),
-      missingAssets: MATLOWAI_MODEL_ASSETS.filter((asset) => !fs.existsSync(path.join(this.bundleRoot, asset.relativePath))).map((asset) => asset.relativePath),
-      missingCustomNodes: MATLOWAI_CUSTOM_NODE_ARCHIVES.filter((archive) => !fs.existsSync(path.join(targetRoot, archive.targetDirectory))).map((archive) => archive.id),
+      runtimePresent:
+        fs.existsSync(path.join(runtimeRoot, 'python_embeded', 'python.exe')) &&
+        fs.existsSync(path.join(runtimeRoot, 'ComfyUI', 'main.py')),
+      missingAssets: MATLOWAI_MODEL_ASSETS.filter(
+        (asset) => !fs.existsSync(path.join(this.bundleRoot, asset.relativePath))
+      ).map((asset) => asset.relativePath),
+      missingCustomNodes: MATLOWAI_CUSTOM_NODE_ARCHIVES.filter(
+        (archive) => !fs.existsSync(path.join(targetRoot, archive.targetDirectory))
+      ).map((archive) => archive.id),
     };
   }
 
   /** Fast, user-facing summary used by the first-run setup screen. */
   readiness(): 'ready' | 'needs-download' | 'needs-extract' | 'incomplete' {
     const status = this.status();
-    if (status.bundleVerified && status.runtimePresent && status.missingAssets.length === 0 && status.missingCustomNodes.length === 0) return 'ready';
-    if (!status.runtimePresent && fs.existsSync(path.join(this.bundleRoot, 'runtime', 'ComfyUI_windows_portable_nvidia.7z'))) return 'needs-extract';
-    if (status.missingAssets.length || status.missingCustomNodes.length || !status.bundleVerified) return 'needs-download';
+    if (
+      status.bundleVerified &&
+      status.runtimePresent &&
+      status.missingAssets.length === 0 &&
+      status.missingCustomNodes.length === 0
+    )
+      return 'ready';
+    if (
+      !status.runtimePresent &&
+      fs.existsSync(path.join(this.bundleRoot, 'runtime', 'ComfyUI_windows_portable_nvidia.7z'))
+    )
+      return 'needs-extract';
+    if (status.missingAssets.length || status.missingCustomNodes.length || !status.bundleVerified)
+      return 'needs-download';
     return 'incomplete';
   }
 
   private prepareModels(): void {
     for (const asset of MATLOWAI_MODEL_ASSETS) {
-      if (!fs.existsSync(path.join(this.bundleRoot, asset.relativePath))) throw new Error(`H3_MODEL_ASSET_MISSING:${asset.relativePath}`);
+      if (!fs.existsSync(path.join(this.bundleRoot, asset.relativePath)))
+        throw new Error(`H3_MODEL_ASSET_MISSING:${asset.relativePath}`);
     }
   }
 
@@ -82,7 +128,16 @@ export class H3PortableInstaller {
       return { relativePath: file.relativePath, sizeBytes: stat.size, mtimeMs: stat.mtimeMs };
     });
     const marker = path.join(this.bundleRoot, 'runtime', '.h3-bundle-verified.json');
-    fs.writeFileSync(marker, JSON.stringify({ profileId: bundle.profileId, modelRevision: bundle.modelRevision, verifiedAt: new Date().toISOString(), files }), 'utf8');
+    fs.writeFileSync(
+      marker,
+      JSON.stringify({
+        profileId: bundle.profileId,
+        modelRevision: bundle.modelRevision,
+        verifiedAt: new Date().toISOString(),
+        files,
+      }),
+      'utf8'
+    );
   }
 
   private markerIsCurrent(): boolean {
@@ -90,9 +145,18 @@ export class H3PortableInstaller {
     const marker = path.join(this.bundleRoot, 'runtime', '.h3-bundle-verified.json');
     if (!fs.existsSync(marker)) return false;
     try {
-      const data = JSON.parse(fs.readFileSync(marker, 'utf8')) as { profileId?: string; modelRevision?: string; files?: Array<{ relativePath: string; sizeBytes: number; mtimeMs: number }> };
+      const data = JSON.parse(fs.readFileSync(marker, 'utf8')) as {
+        profileId?: string;
+        modelRevision?: string;
+        files?: Array<{ relativePath: string; sizeBytes: number; mtimeMs: number }>;
+      };
       const bundle = matlowaiCompleteOfflineBundle();
-      if (data.profileId !== bundle.profileId || data.modelRevision !== bundle.modelRevision || !Array.isArray(data.files)) return false;
+      if (
+        data.profileId !== bundle.profileId ||
+        data.modelRevision !== bundle.modelRevision ||
+        !Array.isArray(data.files)
+      )
+        return false;
       return bundle.files.every((file) => {
         const recorded = data.files!.find((item) => item.relativePath === file.relativePath);
         if (!recorded) return false;
@@ -101,12 +165,15 @@ export class H3PortableInstaller {
         const stat = fs.statSync(target);
         return stat.size === recorded.sizeBytes && stat.mtimeMs === recorded.mtimeMs;
       });
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
   private prepareCustomNodes(runtimeRoot: string): void {
     const extractor = path.join(this.bundleRoot, 'runtime', '7zr.exe');
-    const zipExtractor = process.platform === 'win32' ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
+    const zipExtractor =
+      process.platform === 'win32' ? path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar';
     const targetRoot = path.join(runtimeRoot, 'ComfyUI', 'custom_nodes');
     fs.mkdirSync(targetRoot, { recursive: true });
     for (const archive of MATLOWAI_CUSTOM_NODE_ARCHIVES) {

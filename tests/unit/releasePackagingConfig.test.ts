@@ -23,6 +23,25 @@ function yamlBlock(content: string, key: string): string {
 }
 
 describe('release packaging configuration', () => {
+  it('checks the default branch and supports manual quality verification', () => {
+    const workflow = readProjectFile('.github/workflows/build-and-release.yml');
+    expect(workflow).toContain('branches: [main, dev]');
+    expect(workflow).toContain('workflow_dispatch:');
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+  });
+
+  it('does not attempt to rerun a workflow from inside its own running jobs', () => {
+    const workflow = readProjectFile('.github/workflows/build-and-release.yml');
+    expect(workflow).not.toContain('auto-retry-workflow:');
+    expect(workflow).not.toContain('/actions/runs/${{ github.run_id }}/rerun');
+  });
+
+  it('preserves a release that was already published manually', () => {
+    const workflow = readProjectFile('.github/workflows/build-and-release.yml');
+    expect(workflow).toContain('repos.getReleaseByTag');
+    expect(workflow).toContain('steps.existing-release.outputs.published');
+  });
+
   it('keeps mac zip artifacts enabled', () => {
     const config = readProjectFile('packages/desktop/electron-builder.yml');
     const macBlock = yamlBlock(config, 'mac');

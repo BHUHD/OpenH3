@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { buildFfmpegArgs, createMediaJob, mediaJobIdempotencyKey, transitionMediaJob } from '@/common/chat/document/mediaJob';
+import {
+  buildFfmpegArgs,
+  createMediaJob,
+  mediaJobIdempotencyKey,
+  transitionMediaJob,
+} from '@/common/chat/document/mediaJob';
 
 describe('media jobs', () => {
-  const spec = { kind: 'transcode' as const, sourcePath: 'input.mp4', outputPath: 'output.mp4', startSeconds: 1, endSeconds: 3 };
+  const spec = {
+    kind: 'transcode' as const,
+    sourcePath: 'input.mp4',
+    outputPath: 'output.mp4',
+    startSeconds: 1,
+    endSeconds: 3,
+  };
 
   it('creates deterministic idempotency keys and starts queued', () => {
     expect(mediaJobIdempotencyKey(spec)).toBe(mediaJobIdempotencyKey({ ...spec }));
@@ -19,8 +30,21 @@ describe('media jobs', () => {
 
   it('builds argv without shell interpolation', () => {
     expect(buildFfmpegArgs(spec)).toEqual([
-      '-hide_banner', '-loglevel', 'error', '-y', '-ss', '1', '-i', 'input.mp4', '-t', '2',
-      '-vcodec', 'libx264', '-acodec', 'aac', 'output.mp4',
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-ss',
+      '1',
+      '-i',
+      'input.mp4',
+      '-t',
+      '2',
+      '-vcodec',
+      'libx264',
+      '-acodec',
+      'aac',
+      'output.mp4',
     ]);
   });
 

@@ -1169,7 +1169,7 @@
   "agentManagement": {
     "localAgents": "Local Agents",
     "remoteAgents": "Remote Agents",
-  "localAgentsDescription": "Manage the AI coding agents available on this device. OpenH3 CLI is built in and ships with the app — no install needed; other agents are detected only after their CLI is installed locally.",
+    "localAgentsDescription": "Manage the AI coding agents available on this device. OpenH3 CLI is built in and ships with the app — no install needed; other agents are detected only after their CLI is installed locally.",
     "localAgentsSetupLink": "Setup guide",
     "goToChat": "Start Chat",
     "remoteAgentsDescription": "Only remote OpenClaw connections are supported for now. Other agents are in development.",

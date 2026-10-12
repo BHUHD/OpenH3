@@ -1,11 +1,20 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MediaServiceProcess } from '@/process/services/media/MediaServiceProcess';
 
 describe('media service process', () => {
-  it('starts one controlled child with data and H3 bundle environment', async () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([
+    { configured: undefined, expected: '1' },
+    { configured: '0', expected: '0' },
+    { configured: '1', expected: '1' },
+  ])('starts a controlled child with system CA setting $configured → $expected', async ({ configured, expected }) => {
+    vi.stubEnv('NODE_USE_SYSTEM_CA', configured);
+    vi.stubEnv('NODE_EXTRA_CA_CERTS', 'custom-ca.pem');
+    vi.stubEnv('NODE_TLS_REJECT_UNAUTHORIZED', undefined);
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'media-service-process-'));
     const scriptPath = path.join(root, 'media-service.js');
     fs.writeFileSync(scriptPath, '');
@@ -15,14 +24,25 @@ describe('media service process', () => {
       dataDir: root,
       bundleRoot: path.join(root, 'h3-bundle'),
       sleep: async () => undefined,
-      spawnProcess: (command, args, options) => { started = { command, args, env: options.env, stdio: options.stdio }; return { once: () => undefined, kill: () => undefined } as never; },
+      spawnProcess: (command, args, options) => {
+        started = { command, args, env: options.env, stdio: options.stdio };
+        return { once: () => undefined, kill: () => undefined } as never;
+      },
       fetchImpl: async () => new Response(null, { status: 200 }),
     });
-    await manager.start();
-    expect(started?.args).toEqual([scriptPath]);
-    expect(started?.env.AIONUI_MEDIA_PORT).toBe('33002');
-    expect(started?.env.AIONUI_DATA_DIR).toBe(root);
-    expect(started?.env.AIONUI_H3_BUNDLE_ROOT).toBe(path.join(root, 'h3-bundle'));
-    expect(fs.existsSync(path.join(root, 'media-service.log'))).toBe(true);
+    try {
+      await manager.start();
+      expect(started?.args).toEqual([scriptPath]);
+      expect(started?.env.AIONUI_MEDIA_PORT).toBe('33002');
+      expect(started?.env.AIONUI_DATA_DIR).toBe(root);
+      expect(started?.env.AIONUI_H3_BUNDLE_ROOT).toBe(path.join(root, 'h3-bundle'));
+      expect(started?.env.NODE_USE_SYSTEM_CA).toBe(expected);
+      expect(started?.env.NODE_EXTRA_CA_CERTS).toBe('custom-ca.pem');
+      expect(started?.env.NODE_TLS_REJECT_UNAUTHORIZED).toBeUndefined();
+      expect(fs.existsSync(path.join(root, 'media-service.log'))).toBe(true);
+    } finally {
+      manager.stop();
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { Readable, Transform } from 'node:stream';
+import { Readable, Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pipeline } from 'node:stream/promises';
 
@@ -319,30 +319,40 @@ export async function downloadH3(
     if (!response.body) throw new Error('H3_DOWNLOAD_EMPTY_BODY');
     const start = response.status === 206 ? resumedBytes : 0;
     let bytes = start;
-    const meter = new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
+    const output = await fs.promises.open(partial, start > 0 ? 'a' : 'w');
+    const sink = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
         clearTimeout(timer);
         timer = setTimeout(() => idle.abort(new Error('H3_DOWNLOAD_IDLE_TIMEOUT')), idleMs);
-        bytes += chunk.length;
-        if (manifest.sizeBytes !== undefined && bytes > manifest.sizeBytes) {
+        if (manifest.sizeBytes !== undefined && bytes + chunk.length > manifest.sizeBytes) {
           callback(new Error('H3_DOWNLOAD_SIZE_EXCEEDED'));
           return;
         }
-        try {
+        // Report committed bytes so pausing on progress cannot discard that chunk.
+        const writeChunk = async () => {
+          let offset = 0;
+          while (offset < chunk.length) {
+            const { bytesWritten } = await output.write(chunk, offset, chunk.length - offset);
+            if (bytesWritten === 0) throw new Error('H3_DOWNLOAD_WRITE_STALLED');
+            offset += bytesWritten;
+          }
+          bytes += chunk.length;
           options.onProgress?.(bytes, manifest.sizeBytes);
-          callback(null, chunk);
-        } catch (error) {
-          callback(error instanceof Error ? error : new Error(String(error)));
-        }
+        };
+        void writeChunk().then(
+          () => callback(),
+          (error: unknown) => callback(error instanceof Error ? error : new Error(String(error)))
+        );
       },
     });
-    // Pipeline applies backpressure and closes every stream on error/cancellation.
-    await pipeline(
-      Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]),
-      meter,
-      fs.createWriteStream(partial, { flags: start > 0 ? 'a' : 'w' }),
-      { signal: transferSignal }
-    );
+    // Pipeline applies backpressure; close waits for pending writes on cancellation.
+    try {
+      await pipeline(Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]), sink, {
+        signal: transferSignal,
+      });
+    } finally {
+      await output.close();
+    }
     clearTimeout(timer);
     return promote(start);
   } catch (error) {

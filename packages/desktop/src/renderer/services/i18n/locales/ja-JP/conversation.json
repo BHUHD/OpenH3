@@ -142,29 +142,29 @@
       "send_feedback": "チームが調査できるよう、ログを添えてフィードバックを送信してください。"
     },
     "ownership": {
-      "OpenH3": "アプリ",
+      "aionui": "アプリ",
       "user_agent": "エージェント",
       "user_llm_provider": "モデルプロバイダー",
       "unknown_upstream": "上流"
     },
     "codes": {
-      "OpenH3_STREAM_BROKEN": {
+      "AIONUI_STREAM_BROKEN": {
         "title": "応答ストリームが中断されました",
         "body": "アプリはメッセージを受け付けましたが、応答ストリームが予期せず終了しました。再試行してください。繰り返し発生する場合はフィードバックを送信してください。"
       },
-      "OpenH3_STATE_INCONSISTENT": {
+      "AIONUI_STATE_INCONSISTENT": {
         "title": "会話状態が同期していません",
         "body": "会話の状態が同期していません。このチャットを再開するか、アプリを再読み込みしてから再試行してください。"
       },
-      "OpenH3_PERMISSION_ERROR": {
+      "AIONUI_PERMISSION_ERROR": {
         "title": "必要なリソースにアクセスできませんでした",
         "body": "ローカル権限またはファイルシステムの確認に失敗しました。プロジェクトパスとアプリの権限を確認してから再試行してください。"
       },
-      "OpenH3_INTERNAL_ERROR": {
+      "AIONUI_INTERNAL_ERROR": {
         "title": "アプリ内でリクエストに失敗しました",
         "body": "アプリが処理している間にリクエストが失敗しました。一度再試行してください。繰り返し発生する場合はフィードバックを送信してください。"
       },
-      "OpenH3_CONVERSATION_BUSY": {
+      "AIONUI_CONVERSATION_BUSY": {
         "title": "会話は処理中です",
         "body": "別の応答がまだ実行中です。完了してから新しいメッセージを送信してください。"
       },

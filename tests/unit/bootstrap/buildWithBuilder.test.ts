@@ -322,7 +322,7 @@ function ensurePlaceholder(relativePath) {
 
 childProcess.execSync = function mockedExecSync(command) {
   const commandText = String(command);
-  if (commandText.includes('electron-vite build')) {
+  if (commandText.includes('electron-vite') && commandText.includes(' build --config ')) {
     ensurePlaceholder('out/main/index.js');
     ensurePlaceholder('out/preload/index.js');
     ensurePlaceholder('out/renderer/assets/index-test.js');

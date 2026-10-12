@@ -275,24 +275,37 @@ it('downloads and verifies through a real LAN-style HTTP fallback without public
   const manifest = fixture('abc');
   const ranges: string[] = [];
   const server = http.createServer((req, res) => {
-    if (req.url === '/missing') { res.writeHead(404).end(); return; }
+    if (req.url === '/missing') {
+      res.writeHead(404).end();
+      return;
+    }
     ranges.push(req.headers.range ?? '');
     res.writeHead(206, { 'Content-Range': 'bytes 3-5/6', 'Content-Length': '3' });
     res.end('def');
   });
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
     const address = server.address() as { port: number };
     const base = 'http://127.0.0.1:' + address.port;
-    const result = await downloadH3FromSources({ ...manifest, urls: [base + '/missing', base + '/model'] }, { maxAttempts: 1 });
+    const result = await downloadH3FromSources(
+      { ...manifest, urls: [base + '/missing', base + '/model'] },
+      { maxAttempts: 1 }
+    );
     expect(result).toMatchObject({ status: 'verified', resumedBytes: 3 });
     expect(ranges).toEqual(['bytes=3-']);
-  } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });
 
 it('verifies official NuGet SHA512 and rejects corrupt developer archives', async () => {
   const manifest = { ...fixture(), sha256: undefined, sha512: createHash('sha512').update('abcdef').digest('base64') };
-  await expect(downloadH3(manifest, { fetchImpl: async () => new Response('xxxxxx') })).rejects.toThrow('SHA512_MISMATCH');
+  await expect(downloadH3(manifest, { fetchImpl: async () => new Response('xxxxxx') })).rejects.toThrow(
+    'SHA512_MISMATCH'
+  );
   expect(fs.existsSync(manifest.destination + '.part')).toBe(false);
-  await expect(downloadH3(manifest, { fetchImpl: async () => new Response('abcdef') })).resolves.toMatchObject({ status: 'verified' });
+  await expect(downloadH3(manifest, { fetchImpl: async () => new Response('abcdef') })).resolves.toMatchObject({
+    status: 'verified',
+  });
 });

@@ -197,6 +197,12 @@ it('honors a failed dependency setup even when partially installed files exist',
   const directory = root('h3-partial-');
   try {
     fs.writeFileSync(path.join(directory, '.h3-acceleration-fallback.json'), '{}');
-    expect(resolveH3Acceleration({ root: directory, env: {} })).toMatchObject({ backend: 'dense', available: false, reason: 'ACCELERATION_INSTALL_FAILED' });
-  } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+    expect(resolveH3Acceleration({ root: directory, env: {} })).toMatchObject({
+      backend: 'dense',
+      available: false,
+      reason: 'ACCELERATION_INSTALL_FAILED',
+    });
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });

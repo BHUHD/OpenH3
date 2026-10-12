@@ -101,9 +101,11 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           onClick={hasDetail ? toggleExpanded : undefined}
         >
           <span className='font-medium text-13px'>{displayName}</span>
-          {displayItem.description && displayItem.description !== displayItem.name && !displayItem.name.startsWith('aionui_') && (
-            <span className='m-l-4px opacity-80 text-13px'>{displayItem.description}</span>
-          )}
+          {displayItem.description &&
+            displayItem.description !== displayItem.name &&
+            !displayItem.name.startsWith('aionui_') && (
+              <span className='m-l-4px opacity-80 text-13px'>{displayItem.description}</span>
+            )}
         </span>
         {hasDetail && (
           <span className='flex-shrink-0 cursor-pointer hover:color-#4E5969 transition-colors' onClick={toggleExpanded}>

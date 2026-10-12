@@ -16,8 +16,8 @@ OpenH3 prioritizes local model execution, with providers and models configured b
 
 A real workflow: provide a reference image and a natural-language description, let OpenH3 run the local video workflow, follow its progress, and preview the result in the conversation.
 
-| Reference material | In-app result preview |
-| --- | --- |
+| Reference material                                          | In-app result preview                                           |
+| ----------------------------------------------------------- | --------------------------------------------------------------- |
 | ![OpenH3 reference image](docs/assets/openh3-reference.png) | ![OpenH3 result preview](docs/assets/openh3-result-preview.png) |
 
 ## Core capabilities
@@ -45,10 +45,10 @@ OpenH3 turns the request into an observable execution flow and uses the configur
 
 ### Download a preview package
 
-| Platform | Current status | Best for |
-| --- | --- | --- |
-| Windows 10/11 x64 | Source available; public installer pending | Run or build from source today |
-| macOS / Linux | Source development; platform validation pending | Developers helping with validation |
+| Platform          | Current status                                  | Best for                           |
+| ----------------- | ----------------------------------------------- | ---------------------------------- |
+| Windows 10/11 x64 | Source available; public installer pending      | Run or build from source today     |
+| macOS / Linux     | Source development; platform validation pending | Developers helping with validation |
 
 No public installer has been uploaded yet. Use the source instructions below. Future [Releases](https://github.com/pigq/OpenH3/releases) will include packages, checksums, and installation notes. Existing local Windows Alpha builds are unsigned.
 

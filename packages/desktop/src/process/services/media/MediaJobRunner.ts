@@ -1,4 +1,9 @@
-import { createMediaJob, mediaJobIdempotencyKey, type MediaJob, type MediaJobSpec } from '@/common/chat/document/mediaJob';
+import {
+  createMediaJob,
+  mediaJobIdempotencyKey,
+  type MediaJob,
+  type MediaJobSpec,
+} from '@/common/chat/document/mediaJob';
 import { executeFfmpeg, type FfmpegExecutorOptions, type FfmpegProgress } from './FfmpegExecutor';
 import type { MediaJobStore } from './MediaJobStore';
 import { removeMediaArtifact, validateMediaArtifact } from './mediaArtifact';
@@ -29,11 +34,19 @@ export class MediaJobRunner {
     let job = this.store.update(id, { status: 'running', progress: current.progress });
     onProgress?.(job);
     try {
-      await executeFfmpeg(current.spec, controller.signal, (progress) => {
-        const nextProgress = progress.percent ?? job.progress;
-        job = this.store.update(id, { status: 'running', progress: Math.max(job.progress, Math.min(1, nextProgress)) });
-        onProgress?.(job);
-      }, this.executorOptions);
+      await executeFfmpeg(
+        current.spec,
+        controller.signal,
+        (progress) => {
+          const nextProgress = progress.percent ?? job.progress;
+          job = this.store.update(id, {
+            status: 'running',
+            progress: Math.max(job.progress, Math.min(1, nextProgress)),
+          });
+          onProgress?.(job);
+        },
+        this.executorOptions
+      );
       validateMediaArtifact(current.spec);
       job = this.store.update(id, { status: 'succeeded', progress: 1 });
       onProgress?.(job);
@@ -54,11 +67,16 @@ export class MediaJobRunner {
     this.controllers.get(id)?.abort();
     const job = this.store.get(id);
     if (!job) throw new Error(`MEDIA_JOB_NOT_FOUND:${id}`);
-    if (job.status === 'queued') return this.store.update(id, { status: 'cancelled', progress: job.progress, error: 'MEDIA_JOB_CANCELLED' });
+    if (job.status === 'queued')
+      return this.store.update(id, { status: 'cancelled', progress: job.progress, error: 'MEDIA_JOB_CANCELLED' });
     return job;
   }
 
   recover(): MediaJob[] {
-    return this.store.listActive().map((job) => job.status === 'running' ? this.store.update(job.id, { status: 'queued', progress: job.progress }) : job);
+    return this.store
+      .listActive()
+      .map((job) =>
+        job.status === 'running' ? this.store.update(job.id, { status: 'queued', progress: job.progress }) : job
+      );
   }
 }

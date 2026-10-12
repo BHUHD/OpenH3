@@ -2,15 +2,15 @@
 
 Documentation is organized by reader intent, not by document type.
 
-| Directory                       | For whom                 | What lives here                                                                                                               |
-| ------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| [`guides/`](guides)             | Users & operators        | How to deploy, test, and run the product. Server deployment, WebUI, Hub testing, CDP debugging.                               |
-| [`getting-started/`](getting-started) | New users            | Installation, system requirements, first task, and local runtime setup.                                                        |
-| [`showcase/`](showcase)         | Evaluators & users      | Reproducible OpenH3 workflows and product demonstrations.                                                                       |
-| [`contributing/`](contributing) | Contributors             | Dev environment setup, file-structure conventions, PR automation workflow.                                                    |
-| [`openh3/`](openh3)             | Users & contributors     | Product scope, implementation evidence, and release requirements.                                                            |
-| [`prds/`](prds)                 | Product team             | Formal Product Requirement Documents maintained by the product team. **Do not reorganize without their consent.**             |
-| [`readme/`](readme)             | Chinese-speaking users  | The maintained Chinese OpenH3 entry point.                                                                                |
+| Directory                             | For whom               | What lives here                                                                                                   |
+| ------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [`guides/`](guides)                   | Users & operators      | How to deploy, test, and run the product. Server deployment, WebUI, Hub testing, CDP debugging.                   |
+| [`getting-started/`](getting-started) | New users              | Installation, system requirements, first task, and local runtime setup.                                           |
+| [`showcase/`](showcase)               | Evaluators & users     | Reproducible OpenH3 workflows and product demonstrations.                                                         |
+| [`contributing/`](contributing)       | Contributors           | Dev environment setup, file-structure conventions, PR automation workflow.                                        |
+| [`openh3/`](openh3)                   | Users & contributors   | Product scope, implementation evidence, and release requirements.                                                 |
+| [`prds/`](prds)                       | Product team           | Formal Product Requirement Documents maintained by the product team. **Do not reorganize without their consent.** |
+| [`readme/`](readme)                   | Chinese-speaking users | The maintained Chinese OpenH3 entry point.                                                                        |
 
 ## Quick pointers
 
@@ -31,12 +31,12 @@ The repository still contains upstream-compatible application documentation beca
 
 ## Where to put new docs
 
-| Content type                                               | Destination                 |
-| ---------------------------------------------------------- | --------------------------- |
-| User/ops-facing how-to                                     | `guides/`                   |
-| Contributor convention, workflow, or tooling rule          | `contributing/`             |
-| System or subsystem design, technical analysis             | `architecture/`             |
-| Exploratory research, analysis reports                     | `architecture/research/`    |
-| Feature requirements / design drafts driven by engineering | `specs/<feature-name>/`     |
-| Formal PRD owned by product team                           | `prds/` (coordinate first)  |
-| README translation                                         | `readme/readme_ch.md`       |
+| Content type                                               | Destination                |
+| ---------------------------------------------------------- | -------------------------- |
+| User/ops-facing how-to                                     | `guides/`                  |
+| Contributor convention, workflow, or tooling rule          | `contributing/`            |
+| System or subsystem design, technical analysis             | `architecture/`            |
+| Exploratory research, analysis reports                     | `architecture/research/`   |
+| Feature requirements / design drafts driven by engineering | `specs/<feature-name>/`    |
+| Formal PRD owned by product team                           | `prds/` (coordinate first) |
+| README translation                                         | `readme/readme_ch.md`      |
