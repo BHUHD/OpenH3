@@ -4,6 +4,9 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Unreleased
 
+- Removed inherited product PRDs and empty specification placeholders from public documentation; separated user guides from contributor debugging and architecture notes.
+- Removed the comment-only npm configuration and documented the active dependency patch.
+
 - Simplified the repository root and bilingual navigation; moved community policies into `.github/`.
 - Removed obsolete upstream marketing media, private planning drafts and agent discussion transcripts while preserving tests and third-party materials.
 - Consolidated documentation paths, formatting and coverage configuration; retired the stale Docker entry point.

@@ -10,7 +10,7 @@ Rules for organizing files and directories across the entire Electron project.
 - **Guide documents** (deployment, testing, WebUI, CDP, etc.) belong in `docs/guides/`
 - **Contributor documentation** (dev setup, code style, file structure, PR workflow) belongs in `docs/contributing/`
 - **Architecture documentation** belongs in `docs/architecture/` (research notes under `docs/architecture/research/`)
-- **Maintained feature specifications** belong in `docs/prds/`; local design drafts and process logs stay in ignored working directories
+- **Public documentation** describes current usage, architecture and contribution workflows. Proposals belong in Issues; inherited PRDs and local design drafts do not belong in the public docs tree.
 - **Config files** (`tsconfig.json`, `package.json`, etc.) stay at root — Node.js/Electron ecosystem convention
 - **New documentation** should be placed under the appropriate `docs/` subdirectory, not at project root
 
