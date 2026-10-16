@@ -102,7 +102,8 @@
       "adjusted": "Die Parameter wurden innerhalb der freigegebenen Grenzen dieses Profils angepasst.",
       "actualInput": "Tatsächliche Generierungsparameter",
       "submissionUncertain": "Die Übermittlung wurde nicht bestätigt. Prüfe die aktuelle ComfyUI-Warteschlange, bevor du erneut übermittelst."
-    }
+    },
+    "illustrativeCover": "Beispielbild"
   },
   "creation": {
     "states": {
@@ -116,7 +117,8 @@
       "configured": "Konfiguriert",
       "not-configured": "Nicht konfiguriert",
       "unavailable": "Status nicht verfügbar",
-      "checking": "Prüfung läuft"
+      "checking": "Prüfung läuft",
+      "unsupported": "Noch nicht unterstützt"
     },
     "kind": "Erstellungstyp",
     "source": "Modellquelle",
@@ -147,6 +149,18 @@
       "continueRequest": "Ich habe die Modelllizenz und die erforderlichen Hardwareoptionen im Installationsdialog bestätigt. Rufe aionui_h3_install_video_model mit action=start und operationId={{id}} auf, um die ursprüngliche Videoanfrage fortzusetzen, ohne sie erneut zu übermitteln oder Parameter zu ändern.",
       "continue": "Mit dem Assistenten fortfahren",
       "cancelRequest": "Erstellungsanfrage abbrechen"
+    },
+    "cloudVideoUnsupported": "Cloud-Video ist noch nicht angebunden. Verwenden Sie ein lokales Videomodell.",
+    "cloudSetup": {
+      "hint": "Das Verzeichnis bietet Modell- und API-Vorlagen. Verwenden Sie Ihren eigenen API Key oder einen eigenen Anbieter. Konfiguriert bedeutet gespeichert; die Verfügbarkeit zeigt sich bei der Generierung.",
+      "catalog": "Integrierter Modellkatalog",
+      "custom": "Eigener Anbieter",
+      "provider": "Anbietername",
+      "baseUrl": "API-URL",
+      "keyHint": "Eigener Schlüssel; leer lassen, um den vorhandenen zu behalten",
+      "advanced": "Alle Anbieter verwalten",
+      "invalid": "Name, gültige URL, Schlüssel und unterstütztes Bildmodell eingeben (z. B. gpt-image-2.5-all).",
+      "saveFailed": "Speichern fehlgeschlagen. Erneut versuchen."
     }
   },
   "aiCreation": "KI-Erstellung",

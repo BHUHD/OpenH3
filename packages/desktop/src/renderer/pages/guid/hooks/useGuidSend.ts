@@ -170,6 +170,16 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             intent: creationModel.intent ?? 'generate',
           }
         : undefined;
+    if (creationRequest?.source === 'cloud') {
+      if (creationRequest.kind === 'video') {
+        Message.error(t('guid.creation.cloudVideoUnsupported'));
+        return false;
+      }
+      if (!creationModel?.available || !creationModel.provider?.api_key?.trim()) {
+        Message.error(t('guid.creation.configureCloud'));
+        return false;
+      }
+    }
     const initialInput =
       creationRequest && input.trim()
         ? creationMessage(

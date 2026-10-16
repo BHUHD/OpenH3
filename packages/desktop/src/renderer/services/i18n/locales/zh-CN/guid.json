@@ -25,7 +25,8 @@
       "downloaded": "已下载",
       "loadable": "可加载",
       "verified": "已验证",
-      "invalid": "配置无效"
+      "invalid": "配置无效",
+      "unsupported": "暂未接入"
     },
     "install": {
       "states": {
@@ -44,7 +45,19 @@
       "continue": "让助手继续",
       "cancelRequest": "取消创作请求"
     },
-    "toolsUnavailable": "创作工具尚未就绪，请稍后重试。"
+    "toolsUnavailable": "创作工具尚未就绪，请稍后重试。",
+    "cloudVideoUnsupported": "云端视频暂未接入，请使用本地视频模型。",
+    "cloudSetup": {
+      "hint": "内置目录只提供模型与接口预设。使用自己的 API Key；也可添加自定义服务商。已配置表示已保存连接信息，实际可用性以生成结果为准。",
+      "catalog": "内置模型目录",
+      "custom": "自定义服务商",
+      "provider": "服务商名称",
+      "baseUrl": "API 地址",
+      "keyHint": "填写自己的 Key；已有配置留空则保留",
+      "advanced": "管理所有服务商",
+      "invalid": "请填写名称、有效地址、Key 和支持的图片模型（如 gpt-image-2.5-all）。",
+      "saveFailed": "保存失败，请重试。"
+    }
   },
   "templatePlay": "播放 {{title}}",
   "templatePause": "暂停 {{title}}",
@@ -357,7 +370,8 @@
       "adjusted": "已在此模型配置允许的范围内调整参数。",
       "actualInput": "实际生成参数",
       "submissionUncertain": "无法确认任务是否已提交，请先检查 ComfyUI 当前队列再决定是否重新提交。"
-    }
+    },
+    "illustrativeCover": "用途示意图"
   },
   "templateReferenceRequired": "需参考图",
   "templateReferenceHint": "先上传人物或原图参考，再发送生成请求。",

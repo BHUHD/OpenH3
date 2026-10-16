@@ -102,7 +102,8 @@
       "adjusted": "Los parámetros se han ajustado dentro de los límites aprobados de este perfil.",
       "actualInput": "Parámetros reales de generación",
       "submissionUncertain": "No se ha confirmado el envío. Comprueba la cola actual de ComfyUI antes de volver a enviar la solicitud."
-    }
+    },
+    "illustrativeCover": "Imagen ilustrativa"
   },
   "creation": {
     "states": {
@@ -116,7 +117,8 @@
       "configured": "Configurado",
       "not-configured": "Sin configurar",
       "unavailable": "Estado no disponible",
-      "checking": "Comprobando"
+      "checking": "Comprobando",
+      "unsupported": "Aún no compatible"
     },
     "kind": "Tipo de creación",
     "source": "Origen del modelo",
@@ -147,6 +149,18 @@
       "continueRequest": "He confirmado la licencia del modelo y las opciones de hardware necesarias en el diálogo de instalación. Llama a aionui_h3_install_video_model con action=start y operationId={{id}} para continuar la solicitud de vídeo original sin volver a enviarla ni cambiar sus parámetros.",
       "continue": "Continuar con el asistente",
       "cancelRequest": "Cancelar solicitud de creación"
+    },
+    "cloudVideoUnsupported": "El vídeo en la nube aún no está conectado. Usa un modelo de vídeo local.",
+    "cloudSetup": {
+      "hint": "El catálogo ofrece modelos y direcciones predefinidos. Usa tu propia API Key o añade un proveedor personalizado. Configurado indica que se guardó la conexión; la generación confirma su disponibilidad.",
+      "catalog": "Catálogo de modelos integrado",
+      "custom": "Proveedor personalizado",
+      "provider": "Nombre del proveedor",
+      "baseUrl": "URL de API",
+      "keyHint": "Tu clave; deja vacío para conservar la existente",
+      "advanced": "Gestionar todos los proveedores",
+      "invalid": "Introduce un nombre, URL válida, clave y modelo de imagen compatible (p. ej. gpt-image-2.5-all).",
+      "saveFailed": "No se pudo guardar. Inténtalo de nuevo."
     }
   },
   "aiCreation": "Creación con IA",

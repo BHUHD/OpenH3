@@ -25,7 +25,8 @@
       "downloaded": "Downloaded",
       "loadable": "Loadable",
       "verified": "Verified",
-      "invalid": "Invalid"
+      "invalid": "Invalid",
+      "unsupported": "Not supported yet"
     },
     "install": {
       "states": {
@@ -44,7 +45,19 @@
       "continue": "Continue with assistant",
       "cancelRequest": "Cancel creation request"
     },
-    "toolsUnavailable": "Creation tools are not ready yet. Please try again shortly."
+    "toolsUnavailable": "Creation tools are not ready yet. Please try again shortly.",
+    "cloudVideoUnsupported": "Cloud video is not connected yet. Use a local video model.",
+    "cloudSetup": {
+      "hint": "The directory provides model and endpoint presets. Supply your own API Key, or add a custom provider. Configured means the connection is saved; generation confirms availability.",
+      "catalog": "Built-in model directory",
+      "custom": "Custom provider",
+      "provider": "Provider name",
+      "baseUrl": "API URL",
+      "keyHint": "Your own key; leave blank to keep an existing key",
+      "advanced": "Manage all providers",
+      "invalid": "Enter a name, valid URL, key and supported image model (e.g. gpt-image-2.5-all).",
+      "saveFailed": "Could not save. Try again."
+    }
   },
   "templatePlay": "Play {{title}}",
   "templatePause": "Pause {{title}}",
@@ -357,7 +370,8 @@
       "adjusted": "Parameters adjusted within this profile’s approved limits.",
       "actualInput": "Actual generation parameters",
       "submissionUncertain": "Submission was not confirmed. Check the current ComfyUI queue before submitting again."
-    }
+    },
+    "illustrativeCover": "Illustrative cover"
   },
   "templateReferenceRequired": "Reference needed",
   "templateReferenceHint": "Upload a portrait or source image before sending the generation request.",

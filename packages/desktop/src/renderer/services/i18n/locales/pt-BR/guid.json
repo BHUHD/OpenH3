@@ -84,7 +84,8 @@
       "adjusted": "Os parâmetros foram ajustados dentro dos limites aprovados deste perfil.",
       "actualInput": "Parâmetros reais de geração",
       "submissionUncertain": "O envio não foi confirmado. Verifique a fila atual do ComfyUI antes de enviar novamente."
-    }
+    },
+    "illustrativeCover": "Imagem ilustrativa"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "Configurado",
       "not-configured": "Não configurado",
       "unavailable": "Estado indisponível",
-      "checking": "Verificando"
+      "checking": "Verificando",
+      "unsupported": "Ainda não compatível"
     },
     "kind": "Tipo de criação",
     "source": "Origem do modelo",
@@ -129,6 +131,18 @@
       "continueRequest": "Confirmei a licença do modelo e as opções de hardware necessárias na janela de instalação. Chame aionui_h3_install_video_model com action=start e operationId={{id}} para continuar a solicitação de vídeo original sem reenviá-la nem alterar seus parâmetros.",
       "continue": "Continuar com o assistente",
       "cancelRequest": "Cancelar solicitação de criação"
+    },
+    "cloudVideoUnsupported": "O vídeo na nuvem ainda não está conectado. Use um modelo de vídeo local.",
+    "cloudSetup": {
+      "hint": "O catálogo fornece modelos e endereços predefinidos. Use sua própria API Key ou um provedor personalizado. Configurado indica conexão salva; a geração confirma a disponibilidade.",
+      "catalog": "Catálogo integrado",
+      "custom": "Provedor personalizado",
+      "provider": "Nome do provedor",
+      "baseUrl": "URL da API",
+      "keyHint": "Sua chave; deixe vazio para manter a existente",
+      "advanced": "Gerenciar todos os provedores",
+      "invalid": "Informe nome, URL válida, chave e modelo de imagem compatível (ex.: gpt-image-2.5-all).",
+      "saveFailed": "Não foi possível salvar. Tente novamente."
     }
   },
   "aiCreation": "Criação com IA",

@@ -8,6 +8,7 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMcpServer } from '@/common/config/storage';
 import { useGuidSend, type GuidSendDeps } from '@/renderer/pages/guid/hooks/useGuidSend';
+import { Message } from '@arco-design/web-react';
 
 const createConversationInvokeMock = vi.fn();
 const swrMutateMock = vi.fn();
@@ -183,6 +184,15 @@ describe('useGuidSend', () => {
       source: 'cloud',
       state: 'configured',
       available: true,
+      provider: {
+        id: 'selected-provider',
+        name: 'Selected account',
+        platform: 'openai',
+        base_url: 'https://selected.example/v1',
+        api_key: 'selected-test-key',
+        models: ['gpt-image-2.5-all'],
+        use_model: 'gpt-image-2.5-all',
+      },
     };
     deps.availableMcpServers.push({
       id: 'images',
@@ -199,7 +209,45 @@ describe('useGuidSend', () => {
     expect(initial.creationRequestId).toBe(payload.extra.creation_request.requestId);
     expect(initial.creationRequest.source).toBe('cloud');
     expect(payload.assistant.conversation_overrides.skill_ids ?? []).not.toContain('comfyui-local');
+    expect(payload.extra.selected_session_mcp_servers[0].transport.env).toMatchObject({
+      AIONUI_IMG_PROVIDER_ID: 'selected-provider',
+      AIONUI_IMG_API_KEY: 'selected-test-key',
+      AIONUI_IMG_MODEL: 'gpt-image-2.5-all',
+    });
+    expect(JSON.stringify(initial)).not.toContain('selected-test-key');
   });
+
+  it.each(['not-configured', 'unavailable', 'missing-provider', 'unsupported'] as const)(
+    'blocks a %s cloud selection instead of inheriting global image credentials',
+    async (state) => {
+      const deps = createDeps();
+      deps.creationModel = {
+        id: 'preset::apiyi',
+        name: 'gpt-image-2.5-all',
+        kind: state === 'unsupported' ? 'video' : 'image',
+        source: 'cloud',
+        state: state === 'missing-provider' ? 'configured' : state,
+        available: state === 'missing-provider',
+      };
+      deps.availableMcpServers.push({
+        id: 'global-images',
+        name: 'aionui-image-generation',
+        builtin: true,
+        transport: { type: 'stdio', command: 'node', env: { AIONUI_IMG_API_KEY: 'other-account-key' } },
+      } as IMcpServer);
+      const { result } = renderHook(() => useGuidSend(deps));
+      let sent: boolean | undefined;
+      await act(async () => {
+        sent = await result.current.handleSend();
+      });
+      expect(sent).toBe(false);
+      expect(createConversationInvokeMock).not.toHaveBeenCalled();
+      expect(deps.navigate).not.toHaveBeenCalled();
+      expect(Message.error).toHaveBeenCalledWith(
+        state === 'unsupported' ? 'guid.creation.cloudVideoUnsupported' : 'guid.creation.configureCloud'
+      );
+    }
+  );
 
   it('keeps the explicit image installation intent when the generation selector is still H3', async () => {
     const deps = createDeps();

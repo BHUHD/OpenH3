@@ -9,7 +9,16 @@ import { useCreationModels } from '@/renderer/pages/guid/Creation/useCreationMod
 
 vi.mock('@/renderer/hooks/agent/useModelProviderList', () => ({
   useProvidersQuery: () => ({
-    data: [{ id: 'gemini-images', name: 'Gemini', platform: 'gemini', base_url: '', models: ['gemini-2.5-flash'] }],
+    data: [
+      {
+        id: 'gemini-images',
+        name: 'Gemini',
+        platform: 'gemini',
+        base_url: '',
+        api_key: 'test-key',
+        models: ['gemini-2.5-flash'],
+      },
+    ],
   }),
 }));
 
@@ -31,7 +40,7 @@ describe('CreationTemplates', () => {
     act(() => hook.result.current.setSelection({ kind: 'image', source: 'cloud', modelIds: {} }));
     expect(hook.result.current.models).toContainEqual(
       expect.objectContaining({
-        id: 'gemini-images::gemini-2.5-flash-image-preview',
+        id: 'gemini-images::gemini-2.5-flash-image',
         available: true,
       })
     );

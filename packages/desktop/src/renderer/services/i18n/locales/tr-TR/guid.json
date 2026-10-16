@@ -84,7 +84,8 @@
       "adjusted": "Parametreler bu profilin onaylanmış sınırları içinde ayarlandı.",
       "actualInput": "Gerçek üretim parametreleri",
       "submissionUncertain": "Gönderim doğrulanmadı. Yeniden göndermeden önce mevcut ComfyUI kuyruğunu kontrol et."
-    }
+    },
+    "illustrativeCover": "Örnek kapak"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "Yapılandırılmış",
       "not-configured": "Yapılandırılmamış",
       "unavailable": "Durum kullanılamıyor",
-      "checking": "Kontrol ediliyor"
+      "checking": "Kontrol ediliyor",
+      "unsupported": "Henüz desteklenmiyor"
     },
     "kind": "Oluşturma türü",
     "source": "Model kaynağı",
@@ -129,6 +131,18 @@
       "continueRequest": "Yükleme penceresinde model lisansını ve gerekli donanım seçeneklerini onayladım. Orijinal video isteğini yeniden göndermeden veya parametreleri değiştirmeden sürdürmek için aionui_h3_install_video_model aracını action=start ve operationId={{id}} ile çağır.",
       "continue": "Asistanla devam et",
       "cancelRequest": "Oluşturma isteğini iptal et"
+    },
+    "cloudVideoUnsupported": "Bulut video henüz bağlı değil. Yerel bir video modeli kullanın.",
+    "cloudSetup": {
+      "hint": "Katalog, model ve API adresi ön ayarlarını sunar. Kendi API Key anahtarınızı kullanın veya özel sağlayıcı ekleyin. Yapılandırıldı, bağlantının kaydedildiğini belirtir; kullanılabilirlik üretimde doğrulanır.",
+      "catalog": "Yerleşik model kataloğu",
+      "custom": "Özel sağlayıcı",
+      "provider": "Sağlayıcı adı",
+      "baseUrl": "API URL",
+      "keyHint": "Kendi anahtarınız; mevcut anahtarı korumak için boş bırakın",
+      "advanced": "Tüm sağlayıcıları yönet",
+      "invalid": "Ad, geçerli URL, anahtar ve desteklenen görsel modelini girin (ör. gpt-image-2.5-all).",
+      "saveFailed": "Kaydedilemedi. Tekrar deneyin."
     }
   },
   "aiCreation": "Yapay zekâ ile oluştur",

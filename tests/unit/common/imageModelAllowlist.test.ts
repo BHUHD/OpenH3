@@ -34,9 +34,12 @@ describe('isImageGenSupported', () => {
     expect(isImageGenSupported(provider, 'gemini-2.5-pro')).toBe(false);
   });
 
-  it('rejects providers that look like image-capable but are not on the allowlist', () => {
+  it('accepts GPT images APIs on OpenAI-compatible custom providers', () => {
     const provider = { platform: 'custom', base_url: 'https://api.openai.com/v1', name: 'OpenAI' };
-    expect(isImageGenSupported(provider, 'gpt-image-1')).toBe(false);
+    expect(isImageGenSupported(provider, 'gpt-image-1')).toBe(true);
+    expect(isImageGenSupported({ platform: 'custom', base_url: 'https://api.apiyi.com/v1' }, 'gpt-image-2.5-all')).toBe(
+      true
+    );
     expect(isImageGenSupported(provider, 'dall-e-3')).toBe(false);
   });
 

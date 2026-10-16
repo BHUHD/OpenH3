@@ -84,7 +84,8 @@
       "adjusted": "이 프로필의 승인된 범위 내에서 매개변수를 조정했습니다.",
       "actualInput": "실제 생성 매개변수",
       "submissionUncertain": "제출이 확인되지 않았습니다. 다시 제출하기 전에 현재 ComfyUI 대기열을 확인하세요."
-    }
+    },
+    "illustrativeCover": "용도 예시 이미지"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "설정됨",
       "not-configured": "설정되지 않음",
       "unavailable": "상태 확인 불가",
-      "checking": "확인 중"
+      "checking": "확인 중",
+      "unsupported": "아직 미지원"
     },
     "kind": "생성 유형",
     "source": "모델 소스",
@@ -129,6 +131,18 @@
       "continueRequest": "설치 창에서 모델 라이선스와 필요한 하드웨어 옵션을 확인했습니다. aionui_h3_install_video_model을 action=start, operationId={{id}}로 호출하여 재제출하거나 매개변수를 변경하지 않고 원래 동영상 요청을 계속하세요.",
       "continue": "어시스턴트와 계속",
       "cancelRequest": "창작 요청 취소"
+    },
+    "cloudVideoUnsupported": "클라우드 동영상은 아직 연결되지 않았습니다. 로컬 동영상 모델을 사용하세요.",
+    "cloudSetup": {
+      "hint": "모델과 API 주소 프리셋입니다. 본인의 API Key를 입력하거나 사용자 지정 공급자를 추가하세요. 구성됨은 연결 정보가 저장되었음을 의미하며, 실제 사용 가능 여부는 생성 시 확인됩니다.",
+      "catalog": "내장 모델 목록",
+      "custom": "사용자 지정 공급자",
+      "provider": "공급자 이름",
+      "baseUrl": "API URL",
+      "keyHint": "본인 키 입력. 기존 키를 유지하려면 비워 두세요",
+      "advanced": "모든 공급자 관리",
+      "invalid": "이름, 유효한 URL, 키와 지원 이미지 모델(예: gpt-image-2.5-all)을 입력하세요.",
+      "saveFailed": "저장하지 못했습니다. 다시 시도하세요."
     }
   },
   "aiCreation": "AI 창작",

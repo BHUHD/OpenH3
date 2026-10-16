@@ -7,6 +7,10 @@ additional image examples and prompts were selected from the user-provided
 requests at runtime. Selecting a template copies its prompt only, without
 submitting a job or attaching the preview as a reference.
 
+The local model installation cards reuse the coast poster, hairstyle grid and
+landscape image as illustrative covers. These covers describe intended uses;
+they are not benchmarks or output samples attributed to H3, Qwen-Edit or Z-Image.
+
 The imported examples are grouped under `art/`, `style/`, `portraits/`, `film/`,
 and `fantasy/`. Their previews are 560-pixel-wide WebP files. These templates
 require the user to upload their own reference image; the prompt asks for it

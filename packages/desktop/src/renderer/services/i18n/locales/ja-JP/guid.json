@@ -84,7 +84,8 @@
       "adjusted": "このプロファイルの承認済み範囲内でパラメーターを調整しました。",
       "actualInput": "実際の生成パラメーター",
       "submissionUncertain": "送信を確認できませんでした。再送信する前に現在の ComfyUI キューを確認してください。"
-    }
+    },
+    "illustrativeCover": "用途イメージ"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "設定済み",
       "not-configured": "未設定",
       "unavailable": "状態を取得できません",
-      "checking": "確認中"
+      "checking": "確認中",
+      "unsupported": "未対応"
     },
     "kind": "作成の種類",
     "source": "モデルの提供元",
@@ -129,6 +131,18 @@
       "continueRequest": "インストール画面でモデルのライセンスと必要なハードウェア設定を確認しました。aionui_h3_install_video_model を action=start、operationId={{id}} で呼び出し、再送信やパラメーター変更をせずに元の動画生成リクエストを続行してください。",
       "continue": "アシスタントで続行",
       "cancelRequest": "作成リクエストをキャンセル"
+    },
+    "cloudVideoUnsupported": "クラウド動画は未対応です。ローカル動画モデルをご利用ください。",
+    "cloudSetup": {
+      "hint": "モデルと接続先のプリセットです。ご自身の API Key を入力するか、カスタムプロバイダーを追加できます。設定済みは接続情報の保存を意味し、利用可否は生成時に確認されます。",
+      "catalog": "内蔵モデル一覧",
+      "custom": "カスタムプロバイダー",
+      "provider": "プロバイダー名",
+      "baseUrl": "API URL",
+      "keyHint": "ご自身のキー。既存のキーを保持するには空欄",
+      "advanced": "すべてのプロバイダーを管理",
+      "invalid": "名前、有効な URL、キーと対応画像モデル（例：gpt-image-2.5-all）を入力してください。",
+      "saveFailed": "保存できませんでした。再試行してください。"
     }
   },
   "aiCreation": "AIクリエーション",

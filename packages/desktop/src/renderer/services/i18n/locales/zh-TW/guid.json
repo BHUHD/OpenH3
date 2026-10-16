@@ -84,7 +84,8 @@
       "adjusted": "已在此模型配置核准的範圍內調整參數。",
       "actualInput": "實際生成參數",
       "submissionUncertain": "尚未確認請求已提交。重新提交前，請先檢查目前的 ComfyUI 佇列。"
-    }
+    },
+    "illustrativeCover": "用途示意圖"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "已設定",
       "not-configured": "待設定",
       "unavailable": "狀態無法取得",
-      "checking": "檢查中"
+      "checking": "檢查中",
+      "unsupported": "尚未接入"
     },
     "kind": "創作類型",
     "source": "模型來源",
@@ -129,6 +131,18 @@
       "continueRequest": "我已在安裝視窗確認模型授權及所需硬體選項。請呼叫 aionui_h3_install_video_model，action=start，operationId={{id}}，繼續原始影片生成請求，不要重新提交或變更參數。",
       "continue": "讓助手繼續",
       "cancelRequest": "取消創作請求"
+    },
+    "cloudVideoUnsupported": "雲端影片尚未接入，請使用本機影片模型。",
+    "cloudSetup": {
+      "hint": "內建目錄提供模型與介面預設。請使用自己的 API Key，亦可新增自訂服務商。已設定代表連線資訊已儲存，實際可用性以生成結果為準。",
+      "catalog": "內建模型目錄",
+      "custom": "自訂服務商",
+      "provider": "服務商名稱",
+      "baseUrl": "API 位址",
+      "keyHint": "輸入自己的 Key；已有設定留空則保留",
+      "advanced": "管理所有服務商",
+      "invalid": "請填寫名稱、有效位址、Key 與支援的圖片模型（如 gpt-image-2.5-all）。",
+      "saveFailed": "儲存失敗，請重試。"
     }
   },
   "aiCreation": "AI 創作",

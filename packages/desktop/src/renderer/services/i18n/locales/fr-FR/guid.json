@@ -84,7 +84,8 @@
       "adjusted": "Les paramètres ont été ajustés dans les limites approuvées de ce profil.",
       "actualInput": "Paramètres réels de génération",
       "submissionUncertain": "La soumission n’a pas été confirmée. Vérifie la file d’attente actuelle de ComfyUI avant de soumettre à nouveau."
-    }
+    },
+    "illustrativeCover": "Image illustrative"
   },
   "creation": {
     "states": {
@@ -98,7 +99,8 @@
       "configured": "Configuré",
       "not-configured": "Non configuré",
       "unavailable": "Statut indisponible",
-      "checking": "Vérification"
+      "checking": "Vérification",
+      "unsupported": "Pas encore pris en charge"
     },
     "kind": "Type de création",
     "source": "Source du modèle",
@@ -129,6 +131,18 @@
       "continueRequest": "J’ai confirmé la licence du modèle et les options matérielles nécessaires dans la fenêtre d’installation. Appelle aionui_h3_install_video_model avec action=start et operationId={{id}} pour poursuivre la demande vidéo d’origine sans la soumettre à nouveau ni modifier ses paramètres.",
       "continue": "Continuer avec l’assistant",
       "cancelRequest": "Annuler la demande de création"
+    },
+    "cloudVideoUnsupported": "La vidéo cloud n’est pas encore connectée. Utilisez un modèle vidéo local.",
+    "cloudSetup": {
+      "hint": "Le catalogue fournit des modèles et adresses prédéfinis. Utilisez votre propre API Key ou un fournisseur personnalisé. Configuré signifie que la connexion est enregistrée ; la génération confirme sa disponibilité.",
+      "catalog": "Catalogue intégré",
+      "custom": "Fournisseur personnalisé",
+      "provider": "Nom du fournisseur",
+      "baseUrl": "URL de l’API",
+      "keyHint": "Votre clé ; laisser vide pour conserver la clé existante",
+      "advanced": "Gérer tous les fournisseurs",
+      "invalid": "Saisissez un nom, une URL valide, une clé et un modèle image compatible (ex. gpt-image-2.5-all).",
+      "saveFailed": "Échec de l’enregistrement. Réessayez."
     }
   },
   "aiCreation": "Création par IA",

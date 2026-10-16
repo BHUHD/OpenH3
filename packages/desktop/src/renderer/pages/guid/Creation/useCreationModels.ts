@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import type { CreationModel, CreationSelection } from '@/common/chat/document/creation/creation';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
-import { isImageGenSupported } from '@/common/utils/imageModelAllowlist';
+import { cloudCreationModels } from '@/common/chat/document/creation/cloudModels';
 import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSettings';
 import useConfigModelListWithImage from '@/renderer/hooks/agent/useConfigModelListWithImage';
 import { COMFY_FAMILIES } from './comfyDraft';
@@ -115,28 +115,7 @@ export function useCreationModels(enabled: boolean) {
         ),
       ];
     }
-    if (kind === 'video')
-      return [{ id: 'cloud-video', name: '', kind, source, state: 'not-configured', available: false }];
-    const cloud = providers
-      .filter((provider) => provider.enabled !== false)
-      .flatMap((provider) =>
-        provider.models
-          .filter((model) => provider.model_enabled?.[model] !== false && isImageGenSupported(provider, model))
-          .map(
-            (model): CreationModel => ({
-              id: `${provider.id}::${model}`,
-              name: model,
-              kind,
-              source,
-              state: 'configured',
-              available: true,
-              provider: { ...provider, use_model: model },
-            })
-          )
-      );
-    return cloud.length
-      ? cloud
-      : [{ id: 'cloud-image', name: '', kind, source, state: 'not-configured', available: false }];
+    return cloudCreationModels(providers, kind);
   }, [selection.kind, selection.source, providers, profiles, error, isLoading]);
   const slot = `${selection.source}-${selection.kind}` as const;
   const savedModelId = selection.modelIds[slot];

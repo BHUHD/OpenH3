@@ -5,6 +5,11 @@ import { Movie, Picture } from '@icon-park/react';
 import type { ComfyFamily, ComfyProfile } from '@/common/chat/document/creation/comfy';
 import { COMFY_FAMILIES, type ComfyDraftIntent } from '../Creation/comfyDraft';
 import styles from '../Creation/creation.module.css';
+import h3Cover from '@/renderer/assets/creation/previews/coast.webp?url';
+import qwenCover from '@/renderer/assets/creation/style/women-hair-grid.webp?url';
+import zImageCover from '@/renderer/assets/creation/images/landscape.webp?url';
+
+const covers = { h3: h3Cover, 'qwen-edit': qwenCover, 'z-image': zImageCover };
 
 type Props = {
   profiles: ComfyProfile[];
@@ -39,6 +44,10 @@ export default function ComfyModelCards({
           const state = loading ? 'checking' : unavailable ? 'unavailable' : (profile?.state ?? 'not-installed');
           return (
             <section key={family} role='region' aria-label={name} className={styles.familyCard}>
+              <div className={styles.familyCover}>
+                <img src={covers[family]} alt='' loading='lazy' />
+                <span>{t('guid.comfy.illustrativeCover')}</span>
+              </div>
               <div className={styles.familyTop}>
                 <span className={styles.familyIcon}>
                   {kind === 'video' ? <Movie size={20} /> : <Picture size={20} />}

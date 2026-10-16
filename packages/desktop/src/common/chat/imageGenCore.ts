@@ -15,6 +15,9 @@ import * as path from 'path';
 import { jsonrepair } from 'jsonrepair';
 import type OpenAI from 'openai';
 import { ClientFactory, type RotatingClient } from '@/common/api/ClientFactory';
+import { OpenAIRotatingClient } from '@/common/api/OpenAIRotatingClient';
+import { imagesApiDataUrl } from './document/creation/imagesApi';
+import { isImagesApiProvider } from '@/common/utils/imageModelAllowlist';
 import type { TProviderWithModel } from '@/common/config/storage';
 import type { UnifiedChatCompletionResponse } from '@/common/api/RotatingApiClient';
 import { IMAGE_EXTENSIONS, MIME_TYPE_MAP, MIME_TO_EXT_MAP, DEFAULT_IMAGE_EXTENSION } from '@/common/config/constants';
@@ -285,7 +288,7 @@ export async function executeImageGeneration(
 
       successful.forEach((imageContent) => contentParts.push(imageContent));
 
-      if (successful.length === 0) {
+      if (successful.length === 0 || (errors.length > 0 && isImagesApiProvider(provider, provider.use_model))) {
         return {
           success: false,
           text: `Error: Failed to process any images. Errors:\n${errors.join('\n')}`,
@@ -294,13 +297,29 @@ export async function executeImageGeneration(
       }
     }
 
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user', content: contentParts }];
-
     // Create client and call API
     const rotatingClient: RotatingClient = await ClientFactory.createRotatingClient(provider, {
       proxy,
       rotatingOptions: { maxRetries: 3, retryDelay: 1000 },
     });
+
+    if (isImagesApiProvider(provider, provider.use_model)) {
+      if (!(rotatingClient instanceof OpenAIRotatingClient))
+        throw new Error('Images API requires an OpenAI-compatible provider.');
+      const references = contentParts
+        .filter((part): part is ImageContent => part.type === 'image_url')
+        .map((part, index) => ({ uri: imageUris[index], url: part.image_url.url }));
+      const dataUrl = await imagesApiDataUrl(rotatingClient, params.prompt, provider.use_model, references, signal);
+      const imagePath = await saveGeneratedImage(dataUrl, resolvedWorkspaceDir);
+      return {
+        success: true,
+        text: `Generated image saved to: ${imagePath}`,
+        imagePath,
+        relativeImagePath: path.relative(resolvedWorkspaceDir, imagePath),
+      };
+    }
+
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user', content: contentParts }];
 
     const completion: UnifiedChatCompletionResponse = await rotatingClient.createChatCompletion(
       { model: provider.use_model, messages: messages as any },

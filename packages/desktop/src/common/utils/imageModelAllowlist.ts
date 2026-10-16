@@ -7,18 +7,15 @@
 /**
  * Allowlist for built-in image generation tool.
  *
- * The tool currently only supports "form B" — OpenAI chat completions multimodal
- * output (model returns images via `message.images` or markdown). It does NOT
- * support "form A" (`/v1/images/generations` endpoint) or async/polling APIs.
+ * The built-in image tool supports chat-completions image responses and the
+ * synchronous OpenAI-compatible images API used by APIYi.
  *
  * Model selection therefore must be a platform+model allowlist of providers
  * known to work, rather than a coarse name-substring match. Otherwise users
- * see options like `gpt-image-1` / `dall-e-3` / `sd-3.5` in the dropdown that
+ * see options like `dall-e-3` / `sd-3.5` in the dropdown that
  * are guaranteed to fail at runtime.
  *
- * Rules below mirror `useConfigModelListWithImage.ts` — the same providers we
- * auto-supplement with default image models. When #6 lands a form-A adapter,
- * extend this list accordingly.
+ * Chat rules mirror the providers supplemented in `useConfigModelListWithImage.ts`.
  */
 
 type ProviderShape = {
@@ -48,6 +45,11 @@ const RULES: Array<{
 ];
 
 export const isImageGenSupported = (provider: ProviderShape, modelName: string): boolean => {
+  if (isImagesApiProvider(provider, modelName)) return true;
   if (!IMAGE_NAME_PATTERN.test(modelName)) return false;
   return RULES.some((rule) => rule.match(provider));
 };
+
+/** Providers whose image model is exposed through `/images/generations`/`edits`. */
+export const isImagesApiProvider = (provider: ProviderShape, modelName: string): boolean =>
+  !['gemini', 'gemini-vertex-ai', 'anthropic'].includes(provider.platform ?? '') && /^gpt-image-/i.test(modelName);

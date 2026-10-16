@@ -14,7 +14,8 @@ export type CreationModelState =
   | 'configured'
   | 'not-configured'
   | 'unavailable'
-  | 'checking';
+  | 'checking'
+  | 'unsupported';
 export type CreationSelection = {
   kind: CreationKind;
   source: CreationSource;
@@ -28,6 +29,7 @@ export type CreationModel = {
   state: CreationModelState;
   available: boolean;
   provider?: TProviderWithModel;
+  presetId?: string;
   profileId?: string;
   family?: ComfyFamily;
   intent?: ComfyIntent;
