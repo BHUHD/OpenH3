@@ -1,29 +1,30 @@
 ---
-name: aionui-config
-description: Configure AionUi itself with the bundled aioncore CLI. Use when asked to set up or change assistants, assistant rules, skills, MCP servers, model providers, agents, scheduled tasks, or settings.
+name: openh3-config
+description: Configure OpenH3 with the bundled aioncore CLI. This is a Skill, not an MCP tool. Use when asked to set up or change assistants, assistant rules, skills, MCP servers, model providers, agents, scheduled tasks, or settings.
 ---
 
-# AionUi Config
+# OpenH3 Configuration
 
-Configure AionUi with the bundled agent-facing CLI. Do not discover ports, do
+Configure OpenH3 with the bundled agent-facing CLI. Do not discover ports, do
 not call raw backend paths, and do not depend on tools outside the bundled
 `aioncore` binary.
 
 ## Rules
 
-1. Use only `"$AIONUI_HELPER_BIN" config ...`.
+1. First run `"$AIONUI_HELPER_BIN" config capabilities` and `config context`; this Skill is not a same-named MCP tool.
+2. Use only `"$AIONUI_HELPER_BIN" config ...`.
 2. Never pass, inline, export, echo, or set any `AIONUI_...` environment variable.
 3. Put all command input in stdin JSON.
 4. Do not use flags for business fields.
-5. Use `"$AIONUI_HELPER_BIN" config capabilities` when unsure which config command or stdin fields are supported.
 6. Read context before changing the current assistant.
 7. Read before writing, then read back after writing.
 8. Use `"assistant_id": "current"` when the user asks to change the assistant used by this conversation.
 9. Use `"conversation_id": "current"` when a command accepts a conversation selector.
 10. Do not show internal ids unless the user needs them for a follow-up operation.
 11. Never reveal provider keys, MCP headers, environment values, or other secrets.
-12. If the CLI fails, report the stable `CONFIG_...` error from stderr in normal prose and do not claim the change was made.
-13. After assistant changes, explain both persistence and effect timing. Saving and read-back do not mean the current running conversation has reloaded the changed runtime behavior.
+12. If the user explicitly provides an API key for configuration, pass it only in the protected JSON input; do not echo or log it, and do not demand revocation merely because it was supplied in this conversation.
+13. If the CLI fails, report the stable `CONFIG_...` error from stderr in normal prose and do not claim the change was made.
+14. After assistant changes, explain both persistence and effect timing. Saving and read-back do not mean the current running conversation has reloaded the changed runtime behavior.
 
 ## Output
 
@@ -68,7 +69,7 @@ rules or defaults.
 
 ## Assistant Change Timing
 
-AionUi persists assistant configuration immediately, but running conversations
+OpenH3 persists assistant configuration immediately, but running conversations
 may keep the assistant snapshot created when the conversation started. Use this
 timing model when reporting successful assistant changes:
 
@@ -120,7 +121,7 @@ Create an assistant:
     "Turn this feature idea into a PRD",
     "Review this PRD and identify confusing parts for new users"
   ],
-  "enabled_skills": ["aionui-config"]
+  "enabled_skills": ["openh3-config"]
 }
 JSON
 ```
@@ -230,7 +231,7 @@ Attach skills to an assistant by updating the assistant's full skill list:
 "$AIONUI_HELPER_BIN" config assistants update <<'JSON'
 {
   "assistant_id": "current",
-  "enabled_skills": ["aionui-config", "cron"]
+  "enabled_skills": ["openh3-config", "cron"]
 }
 JSON
 ```

@@ -42,6 +42,13 @@ pub trait SkillResolver: Send + Sync {
         self.resolve_skills(names).await
     }
 
+    /// Refresh the effective names for a conversation. Implementations may
+    /// add currently installed custom skills owned by this user; the default
+    /// keeps lightweight test resolvers snapshot-only.
+    async fn live_skill_names_for_user(&self, _user_id: &str, names: &[String]) -> Vec<String> {
+        names.to_vec()
+    }
+
     /// Load full skill bodies for prompt-protocol agents that request
     /// `[LOAD_SKILL: name]` in their response.
     async fn load_skill_bodies(&self, names: &[String]) -> Vec<LoadedAgentSkill> {
@@ -169,6 +176,21 @@ impl SkillResolver for ExtensionSkillResolver {
                 Vec::new()
             }
         }
+    }
+
+    async fn live_skill_names_for_user(&self, user_id: &str, names: &[String]) -> Vec<String> {
+        let mut effective = names.to_vec();
+        if let Ok(rows) = self.skill_repo.list_for_user(user_id).await {
+            for row in rows {
+                if row.user_id.as_deref() == Some(user_id)
+                    && row.source == "user"
+                    && !effective.iter().any(|name| name == &row.name)
+                {
+                    effective.push(row.name);
+                }
+            }
+        }
+        effective
     }
 
     async fn sync_skill_view(&self, user_id: &str, conversation_id: &str, skills: &[ResolvedAgentSkill]) -> usize {

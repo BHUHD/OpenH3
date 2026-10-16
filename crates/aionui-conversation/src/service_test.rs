@@ -69,6 +69,7 @@ struct RecordedViewSync {
 
 struct RecordingSkillResolver {
     names: Vec<String>,
+    live_names: Vec<String>,
     views: Arc<Mutex<Vec<RecordedViewSync>>>,
     view_removals: Arc<Mutex<Vec<(String, String)>>>,
 }
@@ -119,7 +120,8 @@ impl AssistantRuleDispatcher for StaticAssistantDispatcher {
 impl RecordingSkillResolver {
     fn new(names: Vec<String>) -> Self {
         Self {
-            names,
+            names: names.clone(),
+            live_names: names,
             views: Arc::new(Mutex::new(Vec::new())),
             view_removals: Arc::new(Mutex::new(Vec::new())),
         }
@@ -140,6 +142,16 @@ impl SkillResolver for RecordingSkillResolver {
                 source_path: std::env::temp_dir().join(format!("skill-source-{name}")),
             })
             .collect()
+    }
+
+    async fn live_skill_names_for_user(&self, _user_id: &str, names: &[String]) -> Vec<String> {
+        let mut result = names.to_vec();
+        for name in &self.live_names {
+            if !result.contains(name) {
+                result.push(name.clone());
+            }
+        }
+        result
     }
 
     async fn sync_skill_view(&self, user_id: &str, conversation_id: &str, skills: &[ResolvedAgentSkill]) -> usize {
@@ -2030,6 +2042,14 @@ async fn create_rejects_unavailable_workspace_with_trailing_whitespace_in_reques
     let workspace = dir.join("workspace");
     std::fs::create_dir(&workspace).unwrap();
     let workspace_with_trailing_space = format!("{} ", workspace.to_string_lossy());
+
+    // Win32 normalizes trailing spaces in path components before metadata
+    // lookup, so this spelling resolves to the existing directory there. The
+    // POSIX behavior is the contract this test covers.
+    if cfg!(windows) {
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    }
 
     let req: CreateConversationRequest = serde_json::from_value(json!({
         "type": "acp",
@@ -4307,6 +4327,24 @@ async fn send_message_injects_conversation_runtime_context() {
     let options = task_mgr.captured_options();
     assert_eq!(options.len(), 1);
     assert_conversation_runtime_context(&options[0], "user_1", &conv.id);
+}
+
+#[tokio::test]
+async fn imported_skill_is_resolved_for_existing_conversation_on_next_turn() {
+    let resolver = Arc::new(RecordingSkillResolver::new(vec!["cron".into()]));
+    let (svc, _broadcaster, _repo, _default_task_mgr) = make_service_with_resolver(resolver);
+    let conv = svc.create("user_1", make_create_req()).await.unwrap();
+    let task_mgr = Arc::new(RebuildingScriptedTaskManager::new(vec![AgentInstance::Mock(Arc::new(
+        MockAgent::new(&conv.id),
+    ))]));
+    let task_mgr_dyn: Arc<dyn IWorkerTaskManager> = task_mgr.clone();
+    svc.send_message("user_1", &conv.id, make_send_req(), &task_mgr_dyn)
+        .await
+        .unwrap();
+    wait_for_turn_released(&svc, &conv.id).await;
+    let options = task_mgr.captured_options();
+    assert_eq!(options.len(), 1);
+    assert!(options[0].context.skills.contains(&"cron".to_string()));
 }
 
 #[tokio::test]

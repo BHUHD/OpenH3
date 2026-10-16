@@ -19,6 +19,7 @@ pub fn conversation_ops_routes(state: ConversationRouterState) -> Router {
         .route("/api/conversations/{id}/side-question", post(side_question))
         .route("/api/conversations/{id}/slash-commands", get(get_slash_commands))
         .route("/api/conversations/{id}/usage", get(get_usage))
+        .route("/api/conversations/{id}/mcp-statuses", get(get_mcp_statuses))
         .route(
             "/api/conversations/{id}/config-options/{option_id}",
             put(set_config_option),
@@ -52,6 +53,20 @@ async fn get_usage(
 ) -> Result<Json<ApiResponse<Option<serde_json::Value>>>, ApiError> {
     Ok(Json(ApiResponse::ok(
         state.service.get_usage(&user.id, &id).await.map_err(ApiError::from)?,
+    )))
+}
+
+async fn get_mcp_statuses(
+    State(state): State<ConversationRouterState>,
+    Extension(user): Extension<CurrentUser>,
+    Path(id): Path<String>,
+) -> Result<Json<ApiResponse<Vec<aionui_api_types::ConversationMcpRuntimeStatus>>>, ApiError> {
+    Ok(Json(ApiResponse::ok(
+        state
+            .service
+            .get_mcp_runtime_statuses(&user.id, &id)
+            .await
+            .map_err(ApiError::from)?,
     )))
 }
 

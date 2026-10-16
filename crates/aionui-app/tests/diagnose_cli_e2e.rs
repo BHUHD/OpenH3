@@ -486,13 +486,13 @@ async fn diagnose_logs_tail_reads_latest_aioncore_log_and_filters_errors() {
 
 #[test]
 fn builtin_troubleshooting_skill_uses_diagnose_cli_not_python_helper() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/builtin-skills/aionui-troubleshooting");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/builtin-skills/openh3-troubleshooting");
     let skill = std::fs::read_to_string(root.join("SKILL.md")).unwrap();
 
     for forbidden in ["python3", "aion_diag.py", "lsof", "ps -", "curl"] {
         assert!(
             !skill.contains(forbidden),
-            "aionui-troubleshooting skill must not mention {forbidden}"
+            "openh3-troubleshooting skill must not mention {forbidden}"
         );
     }
     assert!(skill.contains("\"$AIONUI_HELPER_BIN\" diagnose capabilities"));

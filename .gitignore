@@ -577,3 +577,6 @@ graphify-out/
 
 .tmp/
 .playwright-mcp/
+
+# Local packaged backend bundle generated for desktop smoke tests.
+/local-bundle/

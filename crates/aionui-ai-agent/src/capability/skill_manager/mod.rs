@@ -113,6 +113,21 @@ impl AcpSkillManager {
         let mut cache = self.cache.write().await;
         cache.clear();
 
+        // Built-in skill directories were renamed to the OpenH3 product
+        // names. Keep old conversation/assistant snapshots loadable while
+        // preserving exact matching for user-owned skills with the same
+        // legacy name.
+        let canonical_enabled: std::collections::HashSet<String> = enabled_skills
+            .unwrap_or_default()
+            .iter()
+            .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+            .collect();
+        let canonical_excluded: std::collections::HashSet<String> = exclude_builtin_skills
+            .unwrap_or_default()
+            .iter()
+            .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+            .collect();
+
         for item in items {
             let is_auto_inject = item
                 .relative_location
@@ -122,9 +137,9 @@ impl AcpSkillManager {
             let keep = match item.source {
                 aionui_extension::SkillSource::Builtin => {
                     if is_auto_inject {
-                        !exclude_builtin_skills.is_some_and(|ex| ex.iter().any(|n| n == &item.name))
+                        !canonical_excluded.contains(&item.name)
                     } else {
-                        enabled_skills.is_some_and(|en| en.iter().any(|n| n == &item.name))
+                        canonical_enabled.contains(&item.name)
                     }
                 }
                 aionui_extension::SkillSource::Custom
@@ -189,11 +204,19 @@ impl AcpSkillManager {
             }
         };
 
-        let wanted: std::collections::HashSet<&String> = names.iter().collect();
+        let wanted_exact: std::collections::HashSet<&String> = names.iter().collect();
+        let wanted_builtin: std::collections::HashSet<String> = names
+            .iter()
+            .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+            .collect();
         let mut cache = self.cache.write().await;
         cache.clear();
         for item in items {
-            if !wanted.contains(&item.name) {
+            let wanted = match item.source {
+                aionui_extension::SkillSource::Builtin => wanted_builtin.contains(&item.name),
+                _ => wanted_exact.contains(&item.name),
+            };
+            if !wanted {
                 continue;
             }
             cache.insert(

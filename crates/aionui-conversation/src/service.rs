@@ -1281,14 +1281,25 @@ impl ConversationService {
         let (preset_enabled, exclude_auto_inject) = match extra.as_object_mut() {
             Some(obj) => {
                 let extra_preset = take_string_array(obj, &["preset_enabled_skills", "enabled_skills"]);
-                let extra_exclude = take_string_array(obj, &["exclude_auto_inject_skills", "exclude_builtin_skills"]);
+                let extra_exclude = take_string_array(obj, &["exclude_auto_inject_skills", "exclude_builtin_skills"])
+                    .into_iter()
+                    .map(|name| aionui_extension::canonical_builtin_skill_name(&name).to_owned())
+                    .collect::<Vec<_>>();
                 // Strip the stale cache field if a clone copied it in.
                 obj.remove("loaded_skills");
 
                 match assistant_snapshot.as_ref() {
                     Some(snapshot) => (
                         merge_string_lists(&snapshot.resolved_defaults.skill_ids, &extra_preset),
-                        merge_string_lists(&snapshot.resolved_defaults.disabled_builtin_skill_ids, &extra_exclude),
+                        merge_string_lists(
+                            &snapshot
+                                .resolved_defaults
+                                .disabled_builtin_skill_ids
+                                .iter()
+                                .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+                                .collect::<Vec<_>>(),
+                            &extra_exclude,
+                        ),
                     ),
                     None => (extra_preset, extra_exclude),
                 }
@@ -1326,6 +1337,12 @@ impl ConversationService {
                 "skills".to_owned(),
                 serde_json::Value::Array(initial_skills.into_iter().map(serde_json::Value::String).collect()),
             );
+            if !exclude_auto_inject.is_empty() {
+                obj.insert(
+                    "disabled_skill_ids".to_owned(),
+                    serde_json::Value::Array(exclude_auto_inject.into_iter().map(serde_json::Value::String).collect()),
+                );
+            }
         }
 
         let is_team_conversation = extra.get("teamId").is_some();
@@ -4808,9 +4825,12 @@ impl ConversationService {
     ) -> Result<BuildTaskOptions, ConversationError> {
         reject_deprecated_runtime_row(row)?;
         let seed = self.load_aionrs_permission_seed(row).await?;
-        SessionContextBuilder::new(&self.workspace_root, &self.agent_metadata_repo, &self.acp_session_repo)
-            .build_options(row, seed)
-            .await
+        let mut options =
+            SessionContextBuilder::new(&self.workspace_root, &self.agent_metadata_repo, &self.acp_session_repo)
+                .build_options(row, seed)
+                .await?;
+        self.refresh_live_skill_context(row, &mut options).await;
+        Ok(options)
     }
 
     pub async fn build_task_options_for_runtime(
@@ -4820,9 +4840,35 @@ impl ConversationService {
     ) -> Result<BuildTaskOptions, ConversationError> {
         reject_deprecated_runtime_row(row)?;
         let seed = self.load_aionrs_permission_seed(row).await?;
-        SessionContextBuilder::new(&self.workspace_root, &self.agent_metadata_repo, &self.acp_session_repo)
-            .build_options_with_workspace_override(row, workspace_override, seed)
-            .await
+        let mut options =
+            SessionContextBuilder::new(&self.workspace_root, &self.agent_metadata_repo, &self.acp_session_repo)
+                .build_options_with_workspace_override(row, workspace_override, seed)
+                .await?;
+        self.refresh_live_skill_context(row, &mut options).await;
+        Ok(options)
+    }
+
+    async fn refresh_live_skill_context(
+        &self,
+        row: &aionui_db::models::ConversationRow,
+        options: &mut BuildTaskOptions,
+    ) {
+        let names = self
+            .skill_resolver
+            .live_skill_names_for_user(&row.user_id, &options.context.skills)
+            .await;
+        let excluded: std::collections::HashSet<String> = serde_json::from_str::<serde_json::Value>(&row.extra)
+            .ok()
+            .and_then(|v| v.get("disabled_skill_ids").cloned())
+            .and_then(|v| serde_json::from_value(v).ok())
+            .unwrap_or_default();
+        let names: Vec<String> = names.into_iter().filter(|name| !excluded.contains(name)).collect();
+        options.context.skills = names.clone();
+        match &mut options.context.kind {
+            aionui_ai_agent::session_context::AgentSessionKind::Acp(ctx) => ctx.config.skills = names.clone(),
+            aionui_ai_agent::session_context::AgentSessionKind::Aionrs(ctx) => ctx.config.skills = names.clone(),
+            aionui_ai_agent::session_context::AgentSessionKind::Antigravity(ctx) => ctx.config.skills = names,
+        }
     }
 
     /// Re-read the persisted resume anchor into a turn's `BuildTaskOptions`
@@ -4883,16 +4929,10 @@ impl ConversationService {
     /// vendor's declared delivery mode.
     pub(crate) async fn ensure_session_skill_view(&self, context: &AgentSessionContext) {
         let skill_names = context_skill_names(context);
-        if skill_names.is_empty() {
-            return;
-        }
         let resolved = self
             .skill_resolver
             .resolve_skills_for_user(&context.conversation.user_id, &skill_names)
             .await;
-        if resolved.is_empty() {
-            return;
-        }
         self.skill_resolver
             .sync_skill_view(&context.conversation.user_id, context.conversation_id(), &resolved)
             .await;

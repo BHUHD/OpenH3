@@ -301,6 +301,21 @@ mod tests {
     }
 
     #[test]
+    fn openh3_butler_assets_use_public_branding() {
+        let reg = BuiltinAssistantRegistry::load_embedded();
+        let butler = reg.get("aionui-assistant").expect("butler should be embedded");
+        assert_eq!(butler.name, "OpenH3 Butler");
+        assert!(butler.enabled_skills.iter().all(|name| !name.starts_with("aionui-")));
+        for locale in ["en-US", "zh-CN", "ru-RU"] {
+            let bytes = reg
+                .rule_bytes("aionui-assistant", locale)
+                .expect("butler rule should be embedded");
+            let text = std::str::from_utf8(&bytes).unwrap();
+            assert!(!text.contains("AionUi"), "legacy product name in {locale} rule");
+        }
+    }
+
+    #[test]
     fn load_embedded_rule_bytes_available_for_shipped_preset() {
         let reg = BuiltinAssistantRegistry::load_embedded();
         let bytes = reg

@@ -31,6 +31,19 @@ const MAX_SKILL_IMPORT_TOTAL_BYTES: u64 = 200 * 1024 * 1024;
 const IMPORT_STAGING_PREFIX: &str = ".import-staging-";
 const DEFAULT_USER_ID: &str = "system_default_user";
 
+/// Canonical OpenH3 names for built-in skills that historically shipped under
+/// the AionUI product name. Keep accepting the legacy names so persisted
+/// assistant/session snapshots remain loadable after the rename.
+pub fn canonical_builtin_skill_name(name: &str) -> &str {
+    match name {
+        "aionui-config" => "openh3-config",
+        "aionui-troubleshooting" => "openh3-troubleshooting",
+        "aionui-webui-setup" => "openh3-webui-setup",
+        "aionui-webui-public" => "openh3-webui-public",
+        _ => name,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SkillImportLimits {
     pub max_file_bytes: u64,
@@ -1396,17 +1409,24 @@ pub fn extract_skill_body(content: &str) -> String {
 /// search order as [`materialize_skills_for_agent`]. Returns `None` if
 /// no matching directory exists in any known source.
 async fn resolve_skill_source_path(paths: &SkillPaths, name: &str) -> Result<Option<PathBuf>, ExtensionError> {
-    let top = paths.builtin_skills_dir.join(name);
-    if top.is_dir() {
-        return Ok(Some(top));
-    }
-    let auto = paths.builtin_skills_dir.join(BUILTIN_AUTO_SKILLS_SUBDIR).join(name);
-    if auto.is_dir() {
-        return Ok(Some(auto));
-    }
+    // User content wins over built-ins, including when a legacy alias is
+    // requested. This prevents a built-in rename from shadowing a user's
+    // deliberately named skill.
     let user = paths.user_skills_dir.join(name);
     if user.is_dir() {
         return Ok(Some(user));
+    }
+    let canonical = canonical_builtin_skill_name(name);
+    let top = paths.builtin_skills_dir.join(canonical);
+    if top.is_dir() {
+        return Ok(Some(top));
+    }
+    let auto = paths
+        .builtin_skills_dir
+        .join(BUILTIN_AUTO_SKILLS_SUBDIR)
+        .join(canonical);
+    if auto.is_dir() {
+        return Ok(Some(auto));
     }
     // Per-job cron skill dirs are intentionally NOT probed: they hold
     // user content and resolve only through an owned repo row.
@@ -1434,11 +1454,15 @@ async fn resolve_skill_source_path_with_repo_for_user(
             return Ok(None);
         }
     }
-    let top = paths.builtin_skills_dir.join(name);
+    let canonical = canonical_builtin_skill_name(name);
+    let top = paths.builtin_skills_dir.join(canonical);
     if top.is_dir() {
         return Ok(Some(top));
     }
-    let auto = paths.builtin_skills_dir.join(BUILTIN_AUTO_SKILLS_SUBDIR).join(name);
+    let auto = paths
+        .builtin_skills_dir
+        .join(BUILTIN_AUTO_SKILLS_SUBDIR)
+        .join(canonical);
     if auto.is_dir() {
         return Ok(Some(auto));
     }
@@ -1571,11 +1595,24 @@ async fn list_skills_from_repo(
     user_id: &str,
 ) -> Result<Vec<SkillListItem>, ExtensionError> {
     let mut items = Vec::new();
-    for row in dedupe_user_visible_skill_rows(repo.list_for_user(user_id).await?) {
+    let rows = repo
+        .list_for_user(user_id)
+        .await?
+        .into_iter()
+        .map(canonicalize_builtin_row)
+        .collect();
+    for row in dedupe_user_visible_skill_rows(rows) {
         let description = row.description.clone().unwrap_or_default();
         items.push(skill_row_to_list_item(paths, row, description));
     }
     Ok(items)
+}
+
+fn canonicalize_builtin_row(mut row: SkillRow) -> SkillRow {
+    if row.user_id.is_none() && row.source == "builtin" {
+        row.name = canonical_builtin_skill_name(&row.name).to_owned();
+    }
+    row
 }
 
 fn dedupe_user_visible_skill_rows(rows: Vec<SkillRow>) -> Vec<SkillRow> {
@@ -3207,6 +3244,26 @@ mod tests {
             "invalid embedded builtin SKILL.md frontmatter:\n{}",
             failures.join("\n")
         );
+    }
+
+    #[test]
+    fn openh3_product_skills_do_not_expose_legacy_product_brand() {
+        let product_skills = [
+            "auto-inject/openh3-config/SKILL.md",
+            "openh3-troubleshooting/SKILL.md",
+            "openh3-webui-public/SKILL.md",
+            "openh3-webui-setup/SKILL.md",
+            "openh3-webui-setup/references/openh3-webui.md",
+        ];
+
+        for relative in product_skills {
+            let file = BUILTIN_SKILLS
+                .get_file(relative)
+                .unwrap_or_else(|| panic!("missing product skill asset: {relative}"));
+            let content = std::str::from_utf8(file.contents()).unwrap();
+            assert!(!content.contains("AionUi"), "legacy product brand in {relative}");
+            assert!(!content.contains(".aionui"), "legacy product path in {relative}");
+        }
     }
 
     fn assert_embedded_skill_frontmatter(dir: &Dir<'static>, checked: &mut usize, failures: &mut Vec<String>) {

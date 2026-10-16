@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use aion_config::config::{McpServerConfig, TransportType};
@@ -11,6 +12,8 @@ use tokio::time::timeout;
 use super::*;
 use crate::agent_task::IAgentTask;
 use crate::protocol::events::FinishEventData;
+
+static NEXT_TEST_SESSION_DIR: AtomicU64 = AtomicU64::new(0);
 
 async fn assert_no_stop_signal(agent: &AionrsAgentManager) {
     let notified = agent.cancel_notify.notified();
@@ -23,6 +26,7 @@ async fn assert_no_stop_signal(agent: &AionrsAgentManager) {
 }
 
 fn make_test_config() -> AionrsResolvedConfig {
+    let test_session_id = NEXT_TEST_SESSION_DIR.fetch_add(1, Ordering::Relaxed);
     AionrsResolvedConfig {
         provider: "anthropic".into(),
         api_key: "sk-test-key".into(),
@@ -34,7 +38,8 @@ fn make_test_config() -> AionrsResolvedConfig {
         max_tool_call_malformed_turns: None,
         max_tool_call_failure_turns: None,
         compat_overrides: Default::default(),
-        session_directory: env::temp_dir().join("aionrs-test-sessions"),
+        session_directory: env::temp_dir()
+            .join(format!("aionrs-test-sessions-{}-{test_session_id}", std::process::id())),
         session_mode: None,
         skills: Vec::new(),
         extra_mcp_servers: HashMap::new(),
@@ -42,6 +47,72 @@ fn make_test_config() -> AionrsResolvedConfig {
         runtime_env: Vec::new(),
         prompt_dump_dir: None,
     }
+}
+
+#[tokio::test]
+async fn native_skill_tool_loads_materialized_session_skills_and_preserves_resume() {
+    use aion_agent::session::SessionManager;
+    use aion_types::message::{ContentBlock, Message, Role};
+    let root = tempfile::tempdir().unwrap();
+    let workspace = root.path().join("workspace");
+    fs::create_dir_all(&workspace).unwrap();
+    let skill_dir = root.path().join("imported/apiyi-image-generation");
+    fs::create_dir_all(&skill_dir).unwrap();
+    fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: apiyi-image-generation\ndescription: Generate a test image\n---\nNATIVE_SKILL_CONTENT\n",
+    )
+    .unwrap();
+    aionui_extension::skill_view::rebuild_view(
+        root.path(),
+        "user",
+        "old-conversation",
+        &[aionui_extension::skill_service::ResolvedAgentSkill {
+            name: "apiyi-image-generation".into(),
+            source_path: skill_dir,
+        }],
+    )
+    .await
+    .unwrap();
+    let view = aionui_extension::skill_view::view_dir(root.path(), "user", "old-conversation").unwrap();
+    let mut config = make_test_config();
+    config.session_directory = root.path().join("sessions");
+    let sessions = SessionManager::new(config.session_directory.clone(), 100);
+    let mut session = sessions
+        .create(
+            "anthropic",
+            "test-model",
+            workspace.to_str().unwrap(),
+            Some("old-conversation"),
+        )
+        .unwrap();
+    session.messages.push(Message::new(
+        Role::User,
+        vec![ContentBlock::Text {
+            text: "Earlier user message".into(),
+        }],
+    ));
+    sessions.save(&session).unwrap();
+    let manager = AionrsAgentManager::new_with_skill_dirs(
+        "old-conversation".into(),
+        workspace.to_string_lossy().into_owned(),
+        config,
+        Some(session),
+        vec![view],
+    )
+    .await
+    .unwrap();
+    let mut engine = manager.engine.lock().await;
+    assert_eq!(engine.current_session_id().as_deref(), Some("old-conversation"));
+    let result = engine
+        .registry_mut()
+        .get("Skill")
+        .expect("native Skill tool registered")
+        .execute(serde_json::json!({"skill": "apiyi-image-generation"}))
+        .await;
+    assert!(!result.is_error, "{}", result.content);
+    assert!(result.content.contains("NATIVE_SKILL_CONTENT"));
+    assert_eq!(sessions.load("old-conversation").unwrap().messages.len(), 1);
 }
 
 fn make_cli_args(project_dir: PathBuf, provider: &str, model: &str) -> CliArgs {
@@ -184,6 +255,25 @@ async fn aionrs_agent_returns_correct_type() {
     assert_eq!(agent.agent_type(), AgentType::Aionrs);
     assert_eq!(agent.workspace(), "/project");
     assert_eq!(agent.conversation_id(), "conv-1");
+}
+
+#[tokio::test]
+async fn aionrs_agent_rejects_session_initialization_failure() {
+    let root = tempfile::tempdir().unwrap();
+    let session_path = root.path().join("session-path-file");
+    fs::write(&session_path, "not a directory").unwrap();
+    let mut config = make_test_config();
+    config.session_directory = session_path;
+
+    let error = match AionrsAgentManager::new("conv-init-failure".into(), "/project".into(), config, None).await {
+        Ok(_) => panic!("session initialization failure must prevent a non-persistent agent"),
+        Err(error) => error,
+    };
+
+    assert!(
+        error.to_string().contains("session initialization failed"),
+        "unexpected error: {error}"
+    );
 }
 
 #[tokio::test]

@@ -1,12 +1,12 @@
 ---
-name: aionui-troubleshooting
+name: openh3-troubleshooting
 description: >-
-  Diagnose a running AionUi installation: inspect stuck or errored conversations, read provider health, scheduled task state, MCP server health, team member state, backend health, and aioncore logs. Use when the user reports AionUi is misbehaving, a conversation is stuck, an LLM/provider call is failing, a scheduled task did not run, an MCP server has no tools, a team member is hung, or they ask to troubleshoot AionUi.
+  Diagnose a running OpenH3 installation: inspect stuck or errored conversations, read provider health, scheduled task state, MCP server health, team member state, backend health, and aioncore logs. Use when the user reports OpenH3 is misbehaving, a conversation is stuck, an LLM/provider call is failing, a scheduled task did not run, an MCP server has no tools, a team member is hung, or they ask to troubleshoot OpenH3.
 ---
 
-# AionUi Troubleshooting
+# OpenH3 Troubleshooting
 
-Use the bundled `aioncore diagnose` CLI for read-only troubleshooting. It uses
+Use the bundled `aioncore diagnose` CLI for read-only troubleshooting. This is a Skill, not an MCP tool. It uses
 the runtime context injected into the current agent conversation, so do not
 discover ports or call backend endpoints by hand.
 
@@ -15,12 +15,12 @@ content, use the user's language.
 
 ## Rules
 
-1. Use only `"$AIONUI_HELPER_BIN" diagnose ...`.
+1. First run `"$AIONUI_HELPER_BIN" diagnose capabilities`; use only `"$AIONUI_HELPER_BIN" diagnose ...` thereafter.
 2. Start with `diagnose overview` for broad "what is wrong" requests.
 3. Use named diagnose commands first. Use `diagnose http get` only when no named
    command covers the diagnostic need.
-4. Treat every command as read-only. To change AionUi configuration, use the
-   separate `aionui-config` skill.
+4. Treat every command as read-only. To change OpenH3 configuration, use the
+   separate `openh3-config` skill.
 5. Never print raw provider, MCP header, token, password, or secret values. The
    CLI redacts known secret fields by default, but summarize sensitive findings
    carefully.
@@ -55,7 +55,7 @@ runtime context.
 
 ## Start Wide
 
-For a vague "AionUi is broken" report, run:
+For a vague "OpenH3 is broken" report, run:
 
 ```bash
 "$AIONUI_HELPER_BIN" diagnose overview
@@ -189,7 +189,7 @@ explicitly:
 ```bash
 "$AIONUI_HELPER_BIN" diagnose logs tail <<'JSON'
 {
-  "log_dir": "/Users/alex/Library/Logs/AionUi",
+  "log_dir": "/Users/alex/Library/Logs/OpenH3",
   "lines": 100,
   "errors_only": true,
   "conversation_id": "conv_123"
@@ -238,8 +238,8 @@ Constraints:
 ## Safety Notes
 
 - This skill diagnoses; it does not repair.
-- For configuration changes, switch to `aionui-config`.
+- For configuration changes, switch to `openh3-config`.
 - For scheduled task creation or updates, use the `cron` skill or
-  `aionui-config` cron commands.
+  `openh3-config` cron commands.
 - When reporting results, explain evidence and uncertainty: "suspected stuck"
   after one snapshot, "confirmed stuck" only after repeated unchanged snapshots.

@@ -12,11 +12,13 @@ use aion_agent::session::Session;
 use aion_config::compat::ProviderCompat;
 use aion_config::config::{CliArgs, Config, McpServerConfig, ProviderType};
 use aion_mcp::manager::McpManager;
+use aion_mcp::manager::{McpConnectionState, McpServerStatus};
 use aion_protocol::commands::{ApprovalScope, SessionMode};
 use aion_protocol::{ToolApprovalManager, ToolApprovalResult};
 use aionui_api_types::{
     AcpConfigOptionDto, AcpConfigSelectOptionDto, AgentModeResponse, ConfigOptionConfirmation,
-    GetConfigOptionsResponse, SetConfigOptionResponse, SlashCommandItem,
+    ConversationMcpRuntimeState, ConversationMcpRuntimeStatus, GetConfigOptionsResponse, SetConfigOptionResponse,
+    SlashCommandItem,
 };
 use aionui_common::{
     AgentKillReason, AgentType, Confirmation, ConversationStatus, ErrorChain, TimestampMs, generate_short_id, now_ms,
@@ -116,6 +118,10 @@ pub struct AionrsAgentManager {
     /// and `runtime` are dropped. See the explicit `Drop` impl below.
     #[allow(dead_code)] // intentional: lifetime-extension only; see Drop impl
     mcp_managers: Vec<Arc<McpManager>>,
+    /// Safe runtime connection diagnostics for the MCP servers used by this
+    /// agent. This is a bootstrap snapshot; querying it never reconnects or
+    /// creates a task.
+    mcp_statuses: Vec<ConversationMcpRuntimeStatus>,
     approval_manager: Arc<ToolApprovalManager>,
     confirmations: Arc<RwLock<Vec<Confirmation>>>,
     final_input_dump: Option<AionrsFinalInputDumpContext>,
@@ -142,6 +148,16 @@ impl AionrsAgentManager {
         workspace: String,
         config_extra: AionrsResolvedConfig,
         resume_session: Option<Session>,
+    ) -> Result<Self, AgentError> {
+        Self::new_with_skill_dirs(conversation_id, workspace, config_extra, resume_session, Vec::new()).await
+    }
+
+    pub(crate) async fn new_with_skill_dirs(
+        conversation_id: String,
+        workspace: String,
+        config_extra: AionrsResolvedConfig,
+        resume_session: Option<Session>,
+        _skill_dirs: Vec<PathBuf>,
     ) -> Result<Self, AgentError> {
         let runtime = AgentRuntime::new(conversation_id.clone(), workspace.clone(), 128);
         let sink: Arc<dyn OutputSink> = Arc::new(BackendOutputSink::new(runtime.event_sender()));
@@ -219,7 +235,9 @@ impl AionrsAgentManager {
         let is_resume = resume_session.is_some();
         let provider_label = config.provider_label.clone();
 
-        let mut bootstrap = AgentBootstrap::new(config, &workspace, sink).runtime_env(runtime_env);
+        let mut bootstrap = AgentBootstrap::new(config, &workspace, sink)
+            .runtime_env(runtime_env)
+            .extra_skill_dirs(_skill_dirs);
         if let Some(session) = resume_session {
             info!(
                 conversation_id = %conversation_id,
@@ -235,13 +253,45 @@ impl AionrsAgentManager {
             .await
             .map_err(|e| AgentError::internal(format!("Agent bootstrap failed: {e}")))?;
 
+        let mcp_statuses = result
+            .mcp_managers
+            .iter()
+            .flat_map(|manager| manager.server_statuses())
+            .map(map_mcp_status)
+            .collect();
+
         let mut engine = result.engine;
-        if !is_resume && let Err(e) = engine.init_session(&provider_label, &workspace, Some(&conversation_id)) {
-            error!(
-                conversation_id = %conversation_id,
-                error = %ErrorChain(&*e),
-                "Failed to init session, continuing without persistence"
-            );
+        if !is_resume {
+            if let Err(e) = engine.init_session(&provider_label, &workspace, Some(&conversation_id)) {
+                // A concurrent/repeated builder may have initialized this
+                // conversation between load and init. Reusing that persisted
+                // session is safe; genuine storage failures still reject the
+                // agent so we never run while claiming persistence exists.
+                if e.to_string().contains("already exists") {
+                    // The engine has no current_session after init_session
+                    // fails. Continuing here would make the first turn appear
+                    // healthy while every later save silently has nothing to
+                    // persist. Let the factory reload the session and build a
+                    // resumed engine instead.
+                    warn!(
+                        conversation_id = %conversation_id,
+                        error = %ErrorChain(&*e),
+                        "Aionrs session initialization raced with another builder"
+                    );
+                    return Err(AgentError::internal(format!(
+                        "Aionrs session initialization raced: session already exists: {e}"
+                    )));
+                } else {
+                    error!(
+                        conversation_id = %conversation_id,
+                        error = %ErrorChain(&*e),
+                        "Failed to initialize Aionrs session"
+                    );
+                    return Err(AgentError::internal(format!(
+                        "Aionrs session initialization failed: {e}"
+                    )));
+                }
+            }
         }
 
         let approval_manager = Arc::new(ToolApprovalManager::new());
@@ -279,6 +329,7 @@ impl AionrsAgentManager {
             engine: Mutex::new(engine),
             slash_commands,
             mcp_managers: result.mcp_managers,
+            mcp_statuses,
             approval_manager,
             confirmations,
             final_input_dump,
@@ -495,6 +546,12 @@ impl IAgentTask for AionrsAgentManager {
 }
 
 impl AionrsAgentManager {
+    /// Return the safe MCP bootstrap snapshot. The method is intentionally
+    /// read-only: it never reconnects a server or starts a conversation task.
+    pub fn mcp_statuses(&self) -> Vec<ConversationMcpRuntimeStatus> {
+        self.mcp_statuses.clone()
+    }
+
     pub fn kill_and_wait(&self, reason: Option<AgentKillReason>) -> Pin<Box<dyn Future<Output = ()> + Send>> {
         let was_running = self.request_stop(reason, "kill");
         let turn_finished_notify = Arc::clone(&self.turn_finished_notify);
@@ -517,6 +574,20 @@ impl AionrsAgentManager {
                 );
             }
         })
+    }
+}
+
+fn map_mcp_status(status: McpServerStatus) -> ConversationMcpRuntimeStatus {
+    let state = match status.state {
+        McpConnectionState::Connected => ConversationMcpRuntimeState::Connected,
+        McpConnectionState::Failed => ConversationMcpRuntimeState::Failed,
+        McpConnectionState::TimedOut => ConversationMcpRuntimeState::TimedOut,
+    };
+    ConversationMcpRuntimeStatus {
+        name: status.name,
+        state,
+        tool_count: status.tool_count,
+        reason: status.reason,
     }
 }
 

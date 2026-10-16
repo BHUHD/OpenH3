@@ -12,8 +12,9 @@ use std::path::Component;
 
 use aionui_ai_agent::{AcpError, AgentError};
 use aionui_api_types::{
-    ConfigOptionConfirmation, GetConfigOptionsResponse, SetConfigOptionRequest, SetConfigOptionResponse,
-    SideQuestionRequest, SideQuestionResponse, SlashCommandItem, WorkspaceBrowseQuery, WorkspaceEntry,
+    ConfigOptionConfirmation, ConversationMcpRuntimeStatus, GetConfigOptionsResponse, SetConfigOptionRequest,
+    SetConfigOptionResponse, SideQuestionRequest, SideQuestionResponse, SlashCommandItem, WorkspaceBrowseQuery,
+    WorkspaceEntry,
 };
 use aionui_common::{AgentKillReason, ErrorChain};
 use aionui_db::SaveRuntimeStateParams;
@@ -25,6 +26,22 @@ use crate::service::{AssistantRuntimePreferenceUpdate, ConversationService};
 const MAX_DIR_DEPTH: usize = 10;
 
 impl ConversationService {
+    /// Return the active runtime's MCP connection snapshot without creating a
+    /// task or attempting a connection. An empty list means no live Aionrs
+    /// runtime is attached, not that the conversation has no MCP selection.
+    pub async fn get_mcp_runtime_statuses(
+        &self,
+        user_id: &str,
+        conversation_id: &str,
+    ) -> Result<Vec<ConversationMcpRuntimeStatus>, ConversationError> {
+        self.ensure_owned_conversation(user_id, conversation_id).await?;
+        Ok(self
+            .task_manager()
+            .get_task(conversation_id)
+            .map(|task| task.mcp_statuses())
+            .unwrap_or_default())
+    }
+
     // ── Config Options ──────────────────────────────────────────────
 
     pub async fn get_config_options(

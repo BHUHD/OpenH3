@@ -82,6 +82,7 @@ pub trait IWorkerTaskManager: Send + Sync {
 struct ManagedAgentTask {
     agent: AgentInstance,
     runtime_capabilities: RuntimeCapabilities,
+    skills: Vec<String>,
 }
 
 /// Per-conversation slot: an [`OnceCell`] that the first concurrent caller
@@ -172,8 +173,14 @@ impl IWorkerTaskManager for WorkerTaskManagerImpl {
         mut options: BuildTaskOptions,
     ) -> Result<AgentInstance, AgentError> {
         if let Some(existing) = self.initialised_managed_task(conversation_id)
-            && !existing.runtime_capabilities.satisfies(&options.runtime_capabilities)
+            && (!existing.runtime_capabilities.satisfies(&options.runtime_capabilities)
+                || existing.skills != options.context.skills)
         {
+            if existing.agent.status() == Some(ConversationStatus::Running) {
+                // A skill snapshot is applied at the next idle turn. Never
+                // cancel an in-flight request merely because settings changed.
+                return Ok(existing.agent);
+            }
             info!(
                 conversation_id,
                 "Rebuilding agent task because runtime capabilities changed"
@@ -198,12 +205,14 @@ impl IWorkerTaskManager for WorkerTaskManagerImpl {
         // failure the cell stays empty so a later caller can retry.
         let factory = self.factory.clone();
         let runtime_capabilities = options.runtime_capabilities.clone();
+        let skills = options.context.skills.clone();
         let managed = slot
             .get_or_try_init(|| async move {
                 let agent = factory(options).await?;
                 Ok::<ManagedAgentTask, AgentError>(ManagedAgentTask {
                     agent,
                     runtime_capabilities,
+                    skills,
                 })
             })
             .await?;
@@ -549,6 +558,7 @@ mod tests {
         ManagedAgentTask {
             agent,
             runtime_capabilities: RuntimeCapabilities::default(),
+            skills: Vec::new(),
         }
     }
 
@@ -637,6 +647,42 @@ mod tests {
         let h2 = mgr.get_or_build_task("conv-1", make_options("conv-1")).await.unwrap();
         assert!(same_mock(&h1, &h2));
         assert_eq!(mgr.active_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn changed_skills_rebuild_idle_runtime_but_unchanged_skills_reuse_it() {
+        let mgr = make_manager();
+        let first = mgr.get_or_build_task("conv-1", make_options("conv-1")).await.unwrap();
+        let mut options = make_options("conv-1");
+        options.context.skills = vec!["apiyi-image-generation".into()];
+        let refreshed = mgr.get_or_build_task("conv-1", options.clone()).await.unwrap();
+        assert!(!same_mock(&first, &refreshed), "new skill must reach a fresh runtime");
+        let reused = mgr.get_or_build_task("conv-1", options).await.unwrap();
+        assert!(same_mock(&refreshed, &reused));
+        let removed = mgr.get_or_build_task("conv-1", make_options("conv-1")).await.unwrap();
+        assert!(
+            !same_mock(&refreshed, &removed),
+            "removed skills must not remain cached"
+        );
+    }
+
+    #[tokio::test]
+    async fn changed_skills_do_not_interrupt_running_runtime() {
+        let factory: AgentFactory = Arc::new(|opts: BuildTaskOptions| {
+            async move {
+                Ok(mock_instance(MockAgent::new(
+                    opts.conversation_id(),
+                    Some(ConversationStatus::Running),
+                )))
+            }
+            .boxed()
+        });
+        let mgr = WorkerTaskManagerImpl::new(factory);
+        let first = mgr.get_or_build_task("conv-1", make_options("conv-1")).await.unwrap();
+        let mut options = make_options("conv-1");
+        options.context.skills = vec!["apiyi-image-generation".into()];
+        let still_running = mgr.get_or_build_task("conv-1", options).await.unwrap();
+        assert!(same_mock(&first, &still_running));
     }
 
     #[tokio::test]

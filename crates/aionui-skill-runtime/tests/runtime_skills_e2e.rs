@@ -9,6 +9,53 @@ mod common;
 use axum::http::StatusCode;
 use common::TestHarness;
 
+#[tokio::test]
+async fn imported_skill_is_available_to_existing_conversation_without_assistant_binding() {
+    let h = TestHarness::new().await;
+    let conv = h.create_conversation("user_a", &[]).await;
+    assert!(
+        h.get_json("user_a", &conv, "/api/runtime/skills").await["data"]["skills"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    h.import_owned_skill("user_a", "apiyi-image-generation").await;
+    let listed = h.get_json("user_a", &conv, "/api/runtime/skills").await;
+    assert_eq!(listed["data"]["skills"][0]["name"], "apiyi-image-generation");
+    let shown = h
+        .get_json("user_a", &conv, "/api/runtime/skills/apiyi-image-generation")
+        .await;
+    assert!(
+        shown["data"]["body"]
+            .as_str()
+            .unwrap()
+            .contains("Imported body for user_a")
+    );
+}
+
+#[tokio::test]
+async fn live_discovery_never_imports_another_users_skill() {
+    let h = TestHarness::new().await;
+    let conv = h.create_conversation("user_a", &[]).await;
+    h.import_owned_skill("user_b", "private-image").await;
+    let (status, _) = h.get_raw("user_a", &conv, "/api/runtime/skills/private-image").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn live_discovery_honors_exclusion_and_removal() {
+    let h = TestHarness::new().await;
+    let conv = h.create_conversation("user_a", &[]).await;
+    h.import_owned_skill("user_a", "disabled-image").await;
+    h.import_owned_skill("user_a", "removed-image").await;
+    h.exclude_skill(&conv, "disabled-image").await;
+    h.remove_owned_skill("user_a", "removed-image").await;
+    for name in ["disabled-image", "removed-image"] {
+        let (status, _) = h.get_raw("user_a", &conv, &format!("/api/runtime/skills/{name}")).await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+}
+
 // ── Security ────────────────────────────────────────────────────────
 
 #[tokio::test]

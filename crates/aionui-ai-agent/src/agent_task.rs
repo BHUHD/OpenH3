@@ -24,8 +24,8 @@ use crate::protocol::send_error::AgentSendError;
 use crate::types::{PromptMediaCaps, SendMessageData};
 
 use aionui_api_types::{
-    GetConfigOptionsResponse, GetModelInfoResponse, ModelInfoEntry, ModelInfoPayload, SetConfigOptionResponse,
-    SideQuestionRequest, SideQuestionResponse, SlashCommandItem,
+    ConversationMcpRuntimeStatus, GetConfigOptionsResponse, GetModelInfoResponse, ModelInfoEntry, ModelInfoPayload,
+    SetConfigOptionResponse, SideQuestionRequest, SideQuestionResponse, SlashCommandItem,
 };
 
 #[cfg(any(test, feature = "test-support"))]
@@ -212,6 +212,16 @@ pub enum AgentInstance {
 }
 
 impl AgentInstance {
+    /// Read-only runtime MCP diagnostics. This never builds or reconnects an
+    /// agent; a cold conversation therefore returns an empty list.
+    pub fn mcp_statuses(&self) -> Vec<ConversationMcpRuntimeStatus> {
+        match self {
+            Self::Aionrs(m) => m.mcp_statuses(),
+            Self::Acp(_) | Self::Session(_) => Vec::new(),
+            #[cfg(any(test, feature = "test-support"))]
+            Self::Mock(_) => Vec::new(),
+        }
+    }
     /// Common `IAgentTask` view, regardless of variant.
     pub fn as_task(&self) -> &dyn IAgentTask {
         match self {
@@ -657,7 +667,13 @@ mod aionrs_config_option_tests {
             max_tool_call_malformed_turns: None,
             max_tool_call_failure_turns: None,
             compat_overrides: Default::default(),
-            session_directory: std::env::temp_dir().join("aionrs-agent-task-test-sessions"),
+            // Every test gets an isolated store. `init_session` deliberately
+            // fails when the conversation id already exists, so a shared
+            // temp path makes parallel tests depend on execution order.
+            session_directory: tempfile::tempdir()
+                .expect("create isolated aionrs session directory")
+                .path()
+                .to_path_buf(),
             session_mode: None,
             skills: Vec::new(),
             extra_mcp_servers: std::collections::HashMap::new(),

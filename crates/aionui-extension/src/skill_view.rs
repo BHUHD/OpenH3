@@ -51,7 +51,7 @@ const PLUGIN_MANIFEST_FILE: &str = "plugin.json";
 /// Consequence for callers: `extra.skills` stores the BARE name (`cron`) while
 /// the agent side is prefixed. Any logic that matches, counts, or correlates by
 /// skill name must not assume the two sides are equal.
-pub const PLUGIN_NAME: &str = "aionui";
+pub const PLUGIN_NAME: &str = "openh3";
 
 pub fn view_root(data_dir: &Path) -> PathBuf {
     data_dir.join(VIEW_ROOT_DIR_NAME)
@@ -84,7 +84,7 @@ fn plugin_manifest_body() -> String {
     serde_json::json!({
         "name": PLUGIN_NAME,
         "version": "0.0.1",
-        "description": "AionUi session skills",
+        "description": "OpenH3 session skills",
     })
     .to_string()
 }
@@ -164,6 +164,18 @@ pub async fn rebuild_view(
     let previously_linked = existing_link_names(&skills_dir).await;
 
     tokio::fs::create_dir_all(view.join(PLUGIN_MANIFEST_DIR)).await?;
+    // Native aionrs resolves additional roots as `<root>/.aionrs/skills`.
+    // Keep a compatibility landing site inside the owned view so it reads the
+    // same links as the plugin-shaped `skills/` directory.
+    let native_root = view.join(".aionrs");
+    tokio::fs::create_dir_all(&native_root).await?;
+    tokio::fs::create_dir_all(&skills_dir).await?;
+    let native_skills = native_root.join(SKILLS_SUBDIR);
+    if !tokio::fs::try_exists(&native_skills).await.unwrap_or(false) {
+        if let Err(error) = create_symlink(&skills_dir, &native_skills).await {
+            warn!(conversation_id = %conversation_id, error = %error, "skill_view: native compatibility link failed");
+        }
+    }
     tokio::fs::write(
         view.join(PLUGIN_MANIFEST_DIR).join(PLUGIN_MANIFEST_FILE),
         plugin_manifest_body(),
@@ -319,6 +331,25 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
+    #[tokio::test]
+    async fn native_runtime_view_tracks_imports_and_removals() {
+        let data = tempfile::tempdir().unwrap();
+        let source = tempfile::tempdir().unwrap();
+        let skill = write_source_skill(source.path(), "apiyi-image-generation");
+        rebuild_view(data.path(), "user", "old-conversation", &[skill])
+            .await
+            .unwrap();
+        let native = view_dir(data.path(), "user", "old-conversation")
+            .unwrap()
+            .join(".aionrs/skills/apiyi-image-generation/SKILL.md");
+        assert!(native.is_file(), "native Skill loader must see the imported skill");
+        rebuild_view(data.path(), "user", "old-conversation", &[])
+            .await
+            .unwrap();
+        assert!(!native.exists(), "removed skills must disappear from the native view");
+        assert!(source.path().join("apiyi-image-generation/SKILL.md").is_file());
+    }
+
     fn write_source_skill(root: &Path, name: &str) -> ResolvedAgentSkill {
         let dir = root.join(name);
         std::fs::create_dir_all(dir.join("references")).unwrap();
@@ -380,7 +411,8 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap();
         // This name becomes the agent-visible skill-name PREFIX (`aionui:cron`),
         // so it is user-visible text, not an internal id.
-        assert_eq!(parsed["name"], PLUGIN_NAME);
+        assert_eq!(parsed["name"], "openh3");
+        assert_eq!(parsed["description"], "OpenH3 session skills");
 
         // The supplementary file must be reachable THROUGH the link, which is
         // what makes a symlinked skill dir usable at all.

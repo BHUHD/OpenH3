@@ -1263,10 +1263,13 @@ mod tests {
         let root = std::path::Path::new("/w");
         let user = "user_019f8de8-3537-7c73-8d92-3bfde17eb1ee";
         let new_path = expected_auto_workspace_path(root, user, "conv-1", &AgentType::Acp, None);
+        let components: Vec<_> = new_path.components().collect();
         assert!(
-            new_path
-                .to_string_lossy()
-                .contains("/conversations/users/019f8de8-3537-7c73-8d92-3bfde17eb1ee/"),
+            components.windows(3).any(|window| {
+                window[0].as_os_str() == "conversations"
+                    && window[1].as_os_str() == "users"
+                    && window[2].as_os_str() == "019f8de8-3537-7c73-8d92-3bfde17eb1ee"
+            }),
             "new workspace must be under conversations/users/{{dir}}/: {}",
             new_path.display()
         );

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use aion_agent::session::{ForkBoundary, Session, SessionManager};
@@ -234,7 +234,40 @@ pub(super) async fn build(
         }
     }
 
-    let agent = AionrsAgentManager::new(ctx.conversation_id, ctx.workspace, config, resume_session).await?;
+    // The native loader treats each entry as a view root and resolves its
+    // conventional `.aionrs/skills` directory beneath it.  Pass the
+    // conversation view root; passing `{view}/skills` makes it probe the
+    // non-existent `{view}/skills/.aionrs/skills` path and hides imported
+    // skills from the Skill tool.
+    let skill_dirs: Vec<PathBuf> =
+        aionui_extension::skill_view::view_dir(&deps.data_dir, &ctx.user_id, &ctx.conversation_id)
+            .ok()
+            .into_iter()
+            .collect();
+    let conversation_id = ctx.conversation_id;
+    let workspace = ctx.workspace;
+    let had_resume_session = resume_session.is_some();
+    let agent = match AionrsAgentManager::new_with_skill_dirs(
+        conversation_id.clone(),
+        workspace.clone(),
+        config.clone(),
+        resume_session,
+        skill_dirs.clone(),
+    )
+    .await
+    {
+        Ok(agent) => agent,
+        Err(error) if !had_resume_session && error.to_string().contains("session already exists") => {
+            // Another builder won the create race. Reload the persisted state
+            // and construct a resumed engine so the successful retry retains
+            // the same session id and future turns remain durable.
+            let persisted = resolve_build_session(&config.session_directory, &workspace, &conversation_id, None)?
+                .ok_or_else(|| AgentError::internal("Aionrs session disappeared after a create race"))?;
+            AionrsAgentManager::new_with_skill_dirs(conversation_id, workspace, config, Some(persisted), skill_dirs)
+                .await?
+        }
+        Err(error) => return Err(error),
+    };
     Ok(AgentInstance::Aionrs(Arc::new(agent)))
 }
 
@@ -256,31 +289,53 @@ fn resolve_build_session(
     fork: Option<&ForkSpec>,
 ) -> Result<Option<Session>, AgentError> {
     let session_mgr = SessionManager::new(session_directory.to_path_buf(), 100);
-    if let Ok(mut session) = session_mgr.load(conversation_id) {
-        let dropped = sanitize_session_messages(&mut session.messages);
-        info!(
-            conversation_id = %conversation_id,
-            session_id = %session.id,
-            message_count = session.messages.len(),
-            sanitized_dropped = dropped,
-            "Loaded existing aionrs session for resume"
-        );
-        return Ok(Some(session));
+    match session_mgr.load(conversation_id) {
+        Ok(mut session) => {
+            let dropped = sanitize_session_messages(&mut session.messages);
+            info!(
+                conversation_id = %conversation_id,
+                session_id = %session.id,
+                message_count = session.messages.len(),
+                sanitized_dropped = dropped,
+                "Loaded existing aionrs session for resume"
+            );
+            return Ok(Some(session));
+        }
+        Err(error) => match current_session_artifact_exists(session_directory, conversation_id) {
+            Ok(true) => {
+                return Err(AgentError::internal(format!(
+                    "Failed to load Aionrs session '{conversation_id}': {error}"
+                )));
+            }
+            Ok(false) => {}
+            Err(inspect_error) => return Err(inspect_error),
+        },
     }
 
     // Fallback: old architecture stored sessions inside the workspace.
     let legacy_dir = Path::new(workspace).join(".aionrs/sessions");
-    let legacy_mgr = SessionManager::new(legacy_dir, 100);
-    if let Ok(mut session) = legacy_mgr.load(conversation_id) {
-        let dropped = sanitize_session_messages(&mut session.messages);
-        info!(
-            conversation_id = %conversation_id,
-            session_id = %session.id,
-            message_count = session.messages.len(),
-            sanitized_dropped = dropped,
-            "Loaded legacy aionrs session from workspace"
-        );
-        return Ok(Some(session));
+    let legacy_mgr = SessionManager::new(legacy_dir.clone(), 100);
+    match legacy_mgr.load(conversation_id) {
+        Ok(mut session) => {
+            let dropped = sanitize_session_messages(&mut session.messages);
+            info!(
+                conversation_id = %conversation_id,
+                session_id = %session.id,
+                message_count = session.messages.len(),
+                sanitized_dropped = dropped,
+                "Loaded legacy aionrs session from workspace"
+            );
+            return Ok(Some(session));
+        }
+        Err(error) => match legacy_session_artifact_exists(&legacy_dir, conversation_id) {
+            Ok(true) => {
+                return Err(AgentError::internal(format!(
+                    "Failed to load legacy Aionrs session '{conversation_id}': {error}"
+                )));
+            }
+            Ok(false) => {}
+            Err(inspect_error) => return Err(inspect_error),
+        },
     }
 
     // First open of a forked conversation: copy the parent's session (keyed
@@ -343,6 +398,95 @@ fn resolve_build_session(
         "No existing aionrs session found, starting fresh"
     );
     Ok(None)
+}
+
+fn current_session_state_path(session_directory: &Path, conversation_id: &str) -> PathBuf {
+    let mut encoded = String::with_capacity(conversation_id.len());
+    for byte in conversation_id.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push('%');
+            encoded.push_str(&format!("{byte:02X}"));
+        }
+    }
+    session_directory.join("sessions").join(encoded).join("state.json")
+}
+
+fn current_session_artifact_exists(session_directory: &Path, conversation_id: &str) -> Result<bool, AgentError> {
+    match std::fs::metadata(current_session_state_path(session_directory, conversation_id)) {
+        Ok(metadata) => Ok(metadata.is_file()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(AgentError::internal(format!(
+            "Failed to inspect Aionrs session '{conversation_id}': {error}"
+        ))),
+    }
+}
+
+fn legacy_session_artifact_exists(directory: &Path, conversation_id: &str) -> Result<bool, AgentError> {
+    let entries = match std::fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => {
+            return Err(AgentError::internal(format!(
+                "Failed to inspect legacy Aionrs sessions: {error}"
+            )));
+        }
+    };
+    for entry in entries {
+        let entry = entry
+            .map_err(|error| AgentError::internal(format!("Failed to inspect legacy Aionrs sessions: {error}")))?;
+        let path = entry.path();
+        if path.file_name().and_then(|name| name.to_str()) == Some("index.json") {
+            let content = std::fs::read_to_string(path).map_err(|error| {
+                AgentError::internal(format!("Failed to inspect legacy Aionrs session index: {error}"))
+            })?;
+            let value = serde_json::from_str::<serde_json::Value>(&content).map_err(|error| {
+                AgentError::internal(format!("Failed to inspect legacy Aionrs session index: {error}"))
+            })?;
+            if json_contains_session_id(&value, conversation_id) {
+                return Ok(true);
+            }
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+            continue;
+        }
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.contains(conversation_id))
+        {
+            return Ok(true);
+        }
+        let content = std::fs::read_to_string(path)
+            .map_err(|error| AgentError::internal(format!("Failed to inspect legacy Aionrs session: {error}")))?;
+        if serde_json::from_str::<serde_json::Value>(&content)
+            .ok()
+            .is_some_and(|value| json_contains_session_id(&value, conversation_id))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn json_contains_session_id(value: &serde_json::Value, conversation_id: &str) -> bool {
+    match value {
+        serde_json::Value::Object(object) => {
+            object
+                .get("id")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|id| id == conversation_id)
+                || object
+                    .values()
+                    .any(|value| json_contains_session_id(value, conversation_id))
+        }
+        serde_json::Value::Array(values) => values
+            .iter()
+            .any(|value| json_contains_session_id(value, conversation_id)),
+        _ => false,
+    }
 }
 
 /// Map AionUi DB platform/protocol settings to the aionrs provider identifier.
@@ -2264,6 +2408,67 @@ mod tests {
         let resolved = resolve_build_session(dir.path(), "/nonexistent-workspace", "conv", None)
             .expect("fresh path must not error");
         assert!(resolved.is_none());
+    }
+
+    #[test]
+    fn resolve_build_session_rejects_corrupt_current_session_instead_of_starting_fresh() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = dir.path().join("sessions").join("corrupt-conv").join("state.json");
+        std::fs::create_dir_all(state.parent().unwrap()).unwrap();
+        std::fs::write(&state, "{ invalid session json").unwrap();
+
+        let error = resolve_build_session(dir.path(), "/nonexistent-workspace", "corrupt-conv", None)
+            .expect_err("a corrupt persisted session must not be replaced by a fresh session");
+        assert!(error.to_string().contains("Failed to load Aionrs session"));
+    }
+
+    #[test]
+    fn resolve_build_session_rejects_corrupt_legacy_session_listed_in_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let legacy_dir = dir.path().join(".aionrs/sessions");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+        std::fs::write(
+            legacy_dir.join("index.json"),
+            serde_json::json!({
+                "sessions": [{
+                    "id": "legacy-corrupt",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                    "model": "test",
+                    "summary": "",
+                    "message_count": 0
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        std::fs::write(legacy_dir.join("2026-01-01_legacy-corrupt.json"), "{ broken").unwrap();
+
+        let error = resolve_build_session(
+            dir.path().join("sessions").as_path(),
+            dir.path().to_str().unwrap(),
+            "legacy-corrupt",
+            None,
+        )
+        .expect_err("a corrupt indexed legacy session must not become a fresh session");
+        assert!(error.to_string().contains("Failed to load legacy Aionrs session"));
+    }
+
+    #[test]
+    fn resolve_build_session_rejects_an_unreadable_legacy_index_instead_of_starting_fresh() {
+        let dir = tempfile::tempdir().unwrap();
+        let legacy_dir = dir.path().join(".aionrs/sessions");
+        std::fs::create_dir_all(&legacy_dir).unwrap();
+        std::fs::write(legacy_dir.join("index.json"), "{ invalid index").unwrap();
+
+        let error = resolve_build_session(
+            dir.path().join("sessions").as_path(),
+            dir.path().to_str().unwrap(),
+            "legacy-index-corrupt",
+            None,
+        )
+        .expect_err("an unreadable legacy index must not be treated as an empty session store");
+        assert!(error.to_string().contains("legacy Aionrs session index"));
     }
 
     #[test]

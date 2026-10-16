@@ -15,9 +15,15 @@ pub fn compute_initial_skills(
     preset_enabled: &[String],
     exclude_auto_inject: &[String],
 ) -> Vec<String> {
-    let excluded: std::collections::HashSet<&String> = exclude_auto_inject.iter().collect();
-    let mut out: std::collections::BTreeSet<String> =
-        auto_inject.iter().filter(|n| !excluded.contains(n)).cloned().collect();
+    let excluded: std::collections::HashSet<String> = exclude_auto_inject
+        .iter()
+        .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+        .collect();
+    let mut out: std::collections::BTreeSet<String> = auto_inject
+        .iter()
+        .map(|name| aionui_extension::canonical_builtin_skill_name(name).to_owned())
+        .filter(|name| !excluded.contains(name))
+        .collect();
     for name in preset_enabled {
         out.insert(name.clone());
     }
@@ -86,6 +92,16 @@ mod tests {
         // explicitly — preset wins.
         let skills = compute_initial_skills(&["cron".into()], &["cron".into()], &["cron".into()]);
         assert_eq!(skills, vec!["cron"]);
+    }
+
+    #[test]
+    fn compute_initial_accepts_legacy_builtin_exclusion_aliases() {
+        let skills = compute_initial_skills(
+            &["openh3-config".into(), "todo-tracker".into()],
+            &[],
+            &["aionui-config".into()],
+        );
+        assert_eq!(skills, vec!["todo-tracker"]);
     }
 
     #[test]

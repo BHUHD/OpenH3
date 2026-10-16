@@ -1,9 +1,9 @@
 //! Business logic for the runtime skills domain. No axum here.
 //!
-//! Every read starts from the conversation's own `extra.skills` snapshot. That
-//! filter is the security boundary of this crate, not a convenience: without it
-//! a conversation-scoped runtime token could read any skill on the installation,
-//! including another assistant's and — on a multi-user Core — another user's.
+//! Reads retain the conversation snapshot for explicit/builtin skills and add
+//! currently installed custom skills owned by the authenticated user. This
+//! lets an imported skill become available to an existing conversation without
+//! widening the cross-user security boundary.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -36,7 +36,8 @@ impl SkillRuntimeService {
         }
     }
 
-    /// The allow-list: names in this conversation's `extra.skills` snapshot.
+    /// The effective allow-list: the conversation snapshot plus active custom
+    /// Skills owned by this same user.
     async fn enabled_skill_names(
         &self,
         user_id: &str,
@@ -48,13 +49,32 @@ impl SkillRuntimeService {
             .await?
             .ok_or(SkillRuntimeError::ConversationNotFound)?;
         let extra: serde_json::Value = serde_json::from_str(&row.extra).unwrap_or(serde_json::Value::Null);
-        Ok(extra
+        let mut names = extra
             .get("skills")
             .and_then(|value| serde_json::from_value::<Vec<String>>(value.clone()).ok())
-            .unwrap_or_default())
+            .unwrap_or_default();
+        let excluded: std::collections::HashSet<String> = extra
+            .get("disabled_skill_ids")
+            .and_then(|value| serde_json::from_value::<Vec<String>>(value.clone()).ok())
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+        if let Ok(rows) = self.skill_repo.list_for_user(user_id).await {
+            for row in rows {
+                if row.user_id.as_deref() == Some(user_id)
+                    && row.source == "user"
+                    && !excluded.contains(&row.name)
+                    && !names.iter().any(|name| name == &row.name)
+                {
+                    names.push(row.name);
+                }
+            }
+        }
+        names.retain(|name| !excluded.contains(name));
+        Ok(names)
     }
 
-    /// `skills list` — only what this conversation enabled.
+    /// `skills list` — only what this conversation can access.
     ///
     /// Descriptions are read from the same on-disk `SKILL.md` that `show` reads,
     /// NOT from the DB catalog. That keeps the two commands consistent by

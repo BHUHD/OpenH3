@@ -101,6 +101,41 @@ impl TestHarness {
         &self.paths.data_dir
     }
 
+    pub async fn import_owned_skill(&self, user_id: &str, name: &str) {
+        self.ensure_user(user_id).await;
+        let source = self.data_dir().join(format!("source-{user_id}-{name}"));
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::write(
+            source.join("SKILL.md"),
+            format!("---\nname: {name}\ndescription: imported\n---\nImported body for {user_id}"),
+        )
+        .unwrap();
+        let repo = SqliteSkillRepository::new(self.pool.clone());
+        aionui_extension::skill_service::import_skills_with_repo_for_user(&self.paths, &repo, user_id, &source)
+            .await
+            .unwrap();
+    }
+
+    pub async fn exclude_skill(&self, conversation_id: &str, name: &str) {
+        sqlx::query(
+            "UPDATE conversations SET extra = json_set(extra, '$.disabled_skill_ids', json_array(?)) WHERE id = ?",
+        )
+        .bind(name)
+        .bind(conversation_id)
+        .execute(&self.pool)
+        .await
+        .unwrap();
+    }
+
+    pub async fn remove_owned_skill(&self, user_id: &str, name: &str) {
+        sqlx::query("UPDATE skills SET deleted_at = 2 WHERE user_id = ? AND name = ?")
+            .bind(user_id)
+            .bind(name)
+            .execute(&self.pool)
+            .await
+            .unwrap();
+    }
+
     /// Write a builtin skill so the catalog can discover it for any user.
     pub fn seed_skill(&self, name: &str) -> std::path::PathBuf {
         self.seed_skill_with_description(name, &format!("{name} description"))

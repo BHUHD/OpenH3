@@ -27,6 +27,28 @@ pub struct ConversationMcpStatus {
     pub reason: Option<String>,
 }
 
+/// Runtime connection state reported by an active Aionrs bootstrap.
+///
+/// This is separate from [`ConversationMcpStatus`], which is a persisted
+/// configuration snapshot. A configured server can fail during one bootstrap
+/// while the conversation remains usable with the other servers.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ConversationMcpRuntimeState {
+    Connected,
+    Failed,
+    TimedOut,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ConversationMcpRuntimeStatus {
+    pub name: String,
+    pub state: ConversationMcpRuntimeState,
+    pub tool_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
 /// Typed runtime MCP snapshot for a conversation, persisted in
 /// `conversation.extra` as the four fields `mcp_server_ids` /
 /// `session_mcp_servers` / `mcp_servers` / `mcp_statuses`.

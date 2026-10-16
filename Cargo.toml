@@ -224,3 +224,8 @@ debug = "line-tables-only"
 split-debuginfo = "unpacked"
 incremental = false
 
+# Keep the MCP transport fix in version control. The upstream v0.2.11
+# implementation uses a fixed JSON-RPC id for tools/call, which is unsafe for
+# concurrent Streamable HTTP/SSE requests.
+[patch."https://github.com/iOfficeAI/aionrs.git"]
+aion-mcp = { path = "vendor/aion-mcp" }

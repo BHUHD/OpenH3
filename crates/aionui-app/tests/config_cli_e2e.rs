@@ -1085,18 +1085,18 @@ async fn config_context_fails_with_stable_error_when_conversation_env_missing() 
 #[test]
 fn builtin_config_skills_use_config_cli_not_python_or_cron_helper() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/builtin-skills/auto-inject");
-    let aionui_config = std::fs::read_to_string(root.join("aionui-config/SKILL.md")).unwrap();
+    let openh3_config = std::fs::read_to_string(root.join("openh3-config/SKILL.md")).unwrap();
     let cron = std::fs::read_to_string(root.join("cron/SKILL.md")).unwrap();
 
     for forbidden in ["python3", "aionui_api.py", "lsof", "netstat", "curl"] {
         assert!(
-            !aionui_config.contains(forbidden),
-            "aionui-config skill must not mention {forbidden}"
+            !openh3_config.contains(forbidden),
+            "openh3-config skill must not mention {forbidden}"
         );
     }
-    assert!(aionui_config.contains("\"$AIONUI_HELPER_BIN\" config context"));
-    assert!(aionui_config.contains("\"$AIONUI_HELPER_BIN\" config capabilities"));
-    assert!(aionui_config.contains("assistant_id\": \"current"));
+    assert!(openh3_config.contains("\"$AIONUI_HELPER_BIN\" config context"));
+    assert!(openh3_config.contains("\"$AIONUI_HELPER_BIN\" config capabilities"));
+    assert!(openh3_config.contains("assistant_id\": \"current"));
     for command in [
         "\"$AIONUI_HELPER_BIN\" config mcp servers",
         "\"$AIONUI_HELPER_BIN\" config providers",
@@ -1106,8 +1106,8 @@ fn builtin_config_skills_use_config_cli_not_python_or_cron_helper() {
         "\"$AIONUI_HELPER_BIN\" config skills external-paths",
     ] {
         assert!(
-            aionui_config.contains(command),
-            "aionui-config skill must document {command}"
+            openh3_config.contains(command),
+            "openh3-config skill must document {command}"
         );
     }
 
