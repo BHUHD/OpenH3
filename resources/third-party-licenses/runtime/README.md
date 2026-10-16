@@ -28,8 +28,15 @@ OpenH3 does not ship a separate `bun.exe` or `7z.exe` in the Windows x64
 runtime directory. AionCore v0.2.2 is built with Rust, not Bun: its tagged
 [release workflow](https://github.com/iOfficeAI/AionCore/blob/v0.2.2/.github/workflows/release.yml)
 uses Rust 1.95.0 and `cargo build --release -p aionui-app`.
-Its download URL is recorded in the adjacent AionCore manifest. The NSIS
-installer uses electron-builder's build-time tooling and
+The current OpenH3 backend is built from upstream commit
+`503a87199eb978790ca77675b39c84b241535bf3` with the complete
+[`openh3-core.patch`](../../../patches/openh3-core.patch) in the OpenH3 source
+repository. The resulting source tree is
+`d53609d6280ac937b9900c053b00e84f6fcae0e8`; the patch includes the native
+skill runtime and existing-conversation discovery changes. Its local-bundle
+origin is recorded in the adjacent runtime manifest. This build is not the
+unmodified upstream release download. The NSIS installer uses
+electron-builder's build-time tooling and
 does not expose a standalone 7-Zip executable to end users.
 
 The complete source and corresponding-source obligations for GPL components

@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "마지막 선택 취소",
+    "h3RejectedVersion": "거부됨",
+    "h3RemoveCompare": "비교에서 제외",
+    "h3CompareVersion": "비교에 추가",
+    "h3UndoReject": "거부 취소",
+    "h3RejectVersion": "거부",
+    "h3CompareTitle": "후보 비교",
     "title": "동영상",
     "h3Title": "MiniMax H3 generation",
     "h3RuntimeReady": "H3 local runtime is ready",

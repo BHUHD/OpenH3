@@ -604,7 +604,7 @@ describe('AutoUpdaterService', () => {
   it('moves the process cwd to temp before the Windows updater handoff', async () => {
     setPlatform('win32');
     const tempRoot = path.join(process.env.TEMP || process.cwd(), `aionui-updater-cwd-test-${process.pid}`);
-      const expectedCwd = path.join(tempRoot, 'openh3-updater-cwd');
+    const expectedCwd = path.join(tempRoot, 'openh3-updater-cwd');
     const chdir = vi.spyOn(process, 'chdir').mockImplementation(() => undefined);
     appMock.getPath.mockImplementation((name: string) => (name === 'temp' ? tempRoot : '/tmp/aionui-test'));
 

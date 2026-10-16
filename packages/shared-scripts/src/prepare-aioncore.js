@@ -2,9 +2,9 @@
  * Prepare aioncore binary for packaging.
  *
  * Resolution order:
- *  1. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
- *  2. GitHub release download (requires version or defaults to "latest")
- *  3. Complete local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR
+ *  1. Explicit local bundle from AIONUI_BACKEND_LOCAL_BUNDLE_DIR (no fallback)
+ *  2. GitHub Actions artifact download when AIONUI_BACKEND_RUN_ID is set
+ *  3. GitHub release download (requires version or defaults to "latest")
  *  4. Local binary fallback from AIONUI_BACKEND_LOCAL_BINARY
  *
  * Output: {projectRoot}/resources/bundled-aioncore/{platform}-{arch}/
@@ -444,18 +444,19 @@ function prepareAioncore(options) {
   const { projectRoot, platform, arch, version = 'latest' } = options;
   const runtimeKey = `${platform}-${arch}`;
   const actionsRunId = (process.env.AIONUI_BACKEND_RUN_ID || '').trim();
+  const localBundleDir = (process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR || '').trim();
 
   let tag = null;
   if (!actionsRunId) {
     // Resolve the actual version tag — release asset filenames include the tag.
-    if (version === 'latest') {
+    if (version === 'latest' && !localBundleDir) {
       const resolved = resolveLatestTag();
       if (!resolved) {
         throw new Error('Failed to resolve latest aioncore release tag from GitHub API');
       }
       tag = resolved;
       console.log(`Resolved aioncore "latest" → ${tag}`);
-    } else {
+    } else if (version !== 'latest') {
       tag = version.startsWith('v') ? version : `v${version}`;
     }
   }
@@ -468,10 +469,6 @@ function prepareAioncore(options) {
     `Preparing aioncore for ${runtimeKey} (${actionsRunId ? `actions run: ${actionsRunId}` : `version: ${tag}`})`
   );
 
-  removeDirectorySafe(targetDir);
-  ensureDirectory(targetDir);
-
-  const localBundleDir = (process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR || '').trim();
   if (localBundleDir) {
     const resolvedLocalBundleDir = path.resolve(localBundleDir);
     const localBinaryPath = path.join(resolvedLocalBundleDir, binaryName);
@@ -480,14 +477,31 @@ function prepareAioncore(options) {
       fs.existsSync(resolvedLocalBundleDir) &&
       fs.statSync(resolvedLocalBundleDir).isDirectory() &&
       fs.existsSync(localBinaryPath) &&
-      fs.existsSync(localManagedResourcesDir)
+      fs.statSync(localBinaryPath).isFile() &&
+      fs.existsSync(localManagedResourcesDir) &&
+      fs.statSync(localManagedResourcesDir).isDirectory()
     ) {
-      copyDirectorySafe(resolvedLocalBundleDir, targetDir);
+      // The source may already be the packaging output. Never remove it first.
+      const sourceRoot = fs.realpathSync(resolvedLocalBundleDir);
+      const outputRoot = fs.existsSync(targetDir) ? fs.realpathSync(targetDir) : path.resolve(targetDir);
+      if (path.relative(sourceRoot, outputRoot) !== '') {
+        const isNested = (parent, child) => {
+          const relative = path.relative(parent, child);
+          return (
+            relative !== '' && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)
+          );
+        };
+        if (isNested(sourceRoot, outputRoot) || isNested(outputRoot, sourceRoot)) {
+          throw new Error('Local backend bundle and packaging output must not contain one another.');
+        }
+        removeDirectorySafe(targetDir);
+        copyDirectorySafe(sourceRoot, targetDir);
+      }
       ensureExecutableMode(targetBinaryPath);
       const manifest = {
         platform,
         arch,
-        version: tag || `actions-run-${actionsRunId}` || 'local-bundle',
+        version: tag || (actionsRunId ? `actions-run-${actionsRunId}` : 'local-bundle'),
         generatedAt: new Date().toISOString(),
         sourceType: 'local-bundle',
         source: { path: resolvedLocalBundleDir },
@@ -498,8 +512,11 @@ function prepareAioncore(options) {
       console.log(`  Using local aioncore bundle: ${resolvedLocalBundleDir}`);
       return { prepared: true, dir: targetDir, sourceType: 'local-bundle' };
     }
-    console.warn(`  Local aioncore bundle is incomplete or missing: ${resolvedLocalBundleDir}`);
+    throw new Error(`Local backend bundle is incomplete or missing: ${resolvedLocalBundleDir}`);
   }
+
+  removeDirectorySafe(targetDir);
+  ensureDirectory(targetDir);
 
   let sourcePath = null;
   let sourceType = 'none';

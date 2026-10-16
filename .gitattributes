@@ -12,7 +12,8 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.html text eol=lf
-*.patch text eol=lf
+# Unified diff context lines contain required trailing spaces.
+*.patch text eol=lf -whitespace
 
 # Binary files
 *.png binary

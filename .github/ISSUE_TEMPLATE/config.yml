@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📖 Documentation
-    url: https://github.com/pigq/OpenH3/tree/main/docs
+    url: https://github.com/BHUHD/OpenH3/tree/main/docs
     about: Read OpenH3 setup guides, configuration notes, and troubleshooting documentation
   - name: 🔒 Security Issues
-    url: https://github.com/pigq/OpenH3/blob/main/SECURITY.md
+    url: https://github.com/BHUHD/OpenH3/blob/main/.github/SECURITY.md
     about: Read how to report a security vulnerability privately; do not create a public issue

@@ -512,6 +512,6 @@ export const FILE_TYPES_WITH_BUILTIN_OPEN = ['pdf', 'word', 'excel', 'ppt'];
 
 ## 相关链接
 
-- [Workspace 模块文档](../Workspace/README.cn.md)
+- [Workspace 模块文档](../explorer/)
 - [IPC Bridge 源码](../../../../common/adapter/ipcBridge.ts)
 - [CodeMirror 6 文档](https://codemirror.net/)

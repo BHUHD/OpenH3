@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "Undo last selection",
+    "h3RejectedVersion": "Rejected",
+    "h3RemoveCompare": "Remove from comparison",
+    "h3CompareVersion": "Add to comparison",
+    "h3UndoReject": "Undo rejection",
+    "h3RejectVersion": "Reject",
+    "h3CompareTitle": "Candidate comparison",
     "title": "Video",
     "h3Title": "MiniMax H3 generation",
     "h3RuntimeReady": "H3 local runtime is ready",

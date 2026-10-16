@@ -4,6 +4,13 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Unreleased
 
+- Removed inherited product PRDs and empty specification placeholders from public documentation; separated user guides from contributor debugging and architecture notes.
+- Removed the comment-only npm configuration and documented the active dependency patch.
+
+- Simplified the repository root and bilingual navigation; moved community policies into `.github/`.
+- Removed obsolete upstream marketing media, private planning drafts and agent discussion transcripts while preserving tests and third-party materials.
+- Consolidated documentation paths, formatting and coverage configuration; retired the stale Docker entry point.
+
 - Organized OpenH3 product, release, plan, package, and test documentation.
 - Removed upstream-only AI collaboration files and stale multilingual marketing pages.
 - Added local H3/ComfyUI runtime integration, media jobs, video previews, and progress reporting.
@@ -17,4 +24,4 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Release notes
 
-See [`docs/openh3/releases/`](docs/openh3/releases/) for release-specific notes. Provider credentials, model weights, LoRAs, converted checkpoints, and workflow assets are not included in source or builds unless their release rights are documented.
+See [GitHub Releases](https://github.com/BHUHD/OpenH3/releases) for version-specific notes and the [release guide](docs/contributing/releases.md) for the publishing process. Provider credentials, model weights, LoRAs, converted checkpoints, and workflow assets are not included in source or builds unless their release rights are documented.

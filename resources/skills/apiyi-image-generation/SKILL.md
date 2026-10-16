@@ -67,8 +67,8 @@ node "<skill-dir>/bin/install.js" configure --stdin-json
 
 ## OpenH3 导入与发现
 
-此包通过 OpenH3 的 Skills 导入入口导入整个目录或 ZIP，而不是运行其他产品的安装器。导入后，在助手的技能设置中启用 `apiyi-image-generation`，再新建会话。仅复制到磁盘或在消息里提到名称，不代表会话已加载。
+此包通过 OpenH3 的 Skills 导入入口导入整个目录或 ZIP。成功导入后，OpenH3 原生 Agent 会在下一轮消息刷新可发现技能；已有会话也适用，无需绑定助手默认技能或重新建会话。助手的技能设置用于预选技能，不是导入技能的使用门槛。仅复制到磁盘或在消息里提到名称，不代表已完成导入。
 
 如果当前会话找不到 Skill，不要重复调用未知名称。可以先用已有文件读取/执行工具读取本文件并运行脚本；缺少执行工具时，应切换到有执行能力的 Agent。
 
-若需要让 Agent 管理 OpenH3 的导入/绑定，可使用应用内置配置 Skill 的 `aioncore config skills import` 和助手配置流程，保留原有 Skill 列表。它不是同名 MCP 工具；绑定后仍需新会话生效。配置本 Skill 并不会自动配置云端 H3 视频或 OpenH3 的全局模型设置。
+若需要让 Agent 管理 OpenH3 的技能导入，可读取应用内置 `openh3-config` Skill 的导入说明。它是配置 Skill，不是同名 MCP 工具。配置本 Skill 并不会自动配置云端 H3 视频或 OpenH3 的全局模型设置。

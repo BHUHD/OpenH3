@@ -3,9 +3,9 @@
   "version": "2.2.2",
   "description": "OpenH3 local-first video Agent with image and video interaction.",
   "keywords": [],
-  "homepage": "https://github.com/pigq/OpenH3#readme",
+  "homepage": "https://github.com/BHUHD/OpenH3#readme",
   "bugs": {
-    "url": "https://github.com/pigq/OpenH3/issues"
+    "url": "https://github.com/BHUHD/OpenH3/issues"
   },
   "license": "Apache-2.0",
   "author": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/pigq/OpenH3.git"
+    "url": "https://github.com/BHUHD/OpenH3.git"
   },
   "workspaces": [
     "packages/*"
@@ -60,20 +60,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:contract": "vitest run tests/contract --passWithNoTests",
     "test:integration": "vitest run tests/integration",
-    "test:packaged:i18n": "vitest run tests/integration/i18n-packaged.test.ts",
     "bench": "vitest bench",
-    "bench:db": "bun test ./tests/bench/database.bench.bun.ts",
     "bench:report": "bunx tsx scripts/run-benchmarks.ts",
     "bench:startup": "bunx tsx scripts/benchmark-startup.ts",
     "bench:full": "bunx tsx scripts/run-benchmarks.ts --startup",
     "debug:perf": "cross-env ACP_PERF=1 PERF_MONITOR=1 bun start",
-    "debug:perf:report": "bunx tsx scripts/debug-performance.ts --report",
-    "debug:mcp": "bunx tsx scripts/debug-mcp.ts",
-    "debug:mcp:list": "bunx tsx scripts/debug-mcp.ts list",
-    "debug:mcp:validate": "bunx tsx scripts/debug-mcp.ts validate",
-    "debug:custom-agent": "bunx tsx scripts/debug-custom-agent.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:e2e:team": "playwright test --config playwright.config.ts tests/e2e/cases/teams/*.e2e.ts --reporter=list",
     "test:e2e:team:create": "playwright test --config playwright.config.ts tests/e2e/cases/teams/team-create.e2e.ts --reporter=list",
@@ -85,8 +77,7 @@
     "test:smoke:installer:self-lock": "node scripts/smoke-installer-self-lock.js",
     "test:smoke:installer:rstrtmgr-ui": "node scripts/smoke-installer-rstrtmgr-ui.js",
     "prepare": "husky",
-    "postinstall": "node scripts/postinstall.js",
-    "test:bun": "bun test packages/desktop/src/process/services/database/drivers/*.bun.test.ts"
+    "postinstall": "node scripts/postinstall.js"
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.18.2",

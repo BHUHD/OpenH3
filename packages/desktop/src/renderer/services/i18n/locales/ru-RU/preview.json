@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "Отменить последний выбор",
+    "h3RejectedVersion": "Отклонено",
+    "h3RemoveCompare": "Убрать из сравнения",
+    "h3CompareVersion": "Добавить к сравнению",
+    "h3UndoReject": "Отменить отклонение",
+    "h3RejectVersion": "Отклонить",
+    "h3CompareTitle": "Сравнение вариантов",
     "title": "Видео",
     "h3Title": "MiniMax H3 generation",
     "h3RuntimeReady": "H3 local runtime is ready",

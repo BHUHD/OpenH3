@@ -11,7 +11,7 @@ The Alpha installer is unsigned. Windows may display a source warning until the 
 
 ## Run from source
 
-- Bun (preferred) or a compatible Node.js/npm installation;
+- Bun and Node.js 22–24 (`>=22 <25`); npm alone is not a replacement for this Bun workspace;
 - Git and a working shell;
 - a local Provider configuration for agent requests;
 - optional H3 / ComfyUI runtime and GPU according to the model's own requirements.

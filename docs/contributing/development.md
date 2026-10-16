@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **Node.js** 22 or higher
+- **Node.js** 22–24 (`>=22 <25`)
 - **bun** — Package manager & runtime ([install](https://bun.sh))
 - **Rust stable + Cargo** — Required to build the local AionCore backend ([install](https://rustup.rs))
 - **Python** 3.11+ (for native module compilation)
@@ -12,10 +12,12 @@ On Windows, install the Rust MSVC toolchain. If Rust compilation fails because n
 
 ## Repository Layout
 
-OpenH3 development uses two repositories:
+OpenH3 is maintained in one product repository, mirrored at `pigq/OpenH3` and `BHUHD/OpenH3`. The complete OpenH3 Core changes are stored in [`patches/openh3-core.patch`](../../patches/openh3-core.patch), against the fixed upstream commit recorded in the [patch notes](../../patches/README.md#openh3-core-source).
+
+Building the backend uses an upstream source checkout as a build dependency:
 
 - **AionCore** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binary: `aioncore` on macOS/Linux and `aioncore.exe` on Windows.
-- **OpenH3** (`https://github.com/pigq/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
+- **OpenH3** (`https://github.com/BHUHD/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
 
 Keep the repositories side by side when possible:
 
@@ -29,14 +31,17 @@ The desktop development server resolves the backend from the `PATH` inherited by
 
 ## Quick Start
 
-### 1. Clone Both Repositories
+### 1. Clone OpenH3 and Prepare the Backend Source
 
 ```bash
+git clone https://github.com/BHUHD/OpenH3.git
 git clone https://github.com/iOfficeAI/AionCore.git
-git clone https://github.com/pigq/OpenH3.git
+git -C AionCore checkout --detach 503a87199eb978790ca77675b39c84b241535bf3
+git -C AionCore apply --check ../OpenH3/patches/openh3-core.patch
+git -C AionCore apply ../OpenH3/patches/openh3-core.patch
 ```
 
-Use the `main` branch for both repositories unless a maintainer asks you to test another branch.
+Use OpenH3 `main` for development. Apply the tracked patch to its exact base, rather than checking out an unmodified release tag. `aioncoreVersion` remains the upstream package version; it does not identify the OpenH3 modifications. Keep the patched checkout intact when updating OpenH3, and apply a newer patch only to a fresh checkout of its recorded base.
 
 ### 2. Build and Install AionCore
 
@@ -94,7 +99,7 @@ During startup, OpenH3 launches `aioncore` automatically and passes the backend 
 
 ## Updating the Local Backend
 
-When you pull or change AionCore, reinstall the backend binary and restart OpenH3:
+When you update OpenH3, check whether its backend patch or base changed. Prepare a fresh backend checkout with the commands above if needed, reinstall the backend binary, and restart OpenH3:
 
 ```bash
 cd ../AionCore
@@ -105,6 +110,24 @@ bun run start
 ```
 
 Use `--force` when rebuilding local changes with the same AionCore package version; otherwise Cargo may keep the already installed binary.
+
+### Package the Patched Windows Backend
+
+From the patched backend checkout, build the release binary and prepare its managed Node resources into the ignored OpenH3 runtime directory:
+
+```powershell
+cargo build --release -p aionui-app --locked
+if ($LASTEXITCODE -ne 0) { throw 'Backend build failed' }
+$bundle = New-Item -ItemType Directory -Force ../OpenH3/.runtime/backend-bundle
+Copy-Item target/release/aioncore.exe $bundle.FullName -Force
+& target/release/aioncore.exe --data-dir ../OpenH3/.runtime/backend-prepare prepare-managed-resources --bundle-out "$($bundle.FullName)/managed-resources"
+if ($LASTEXITCODE -ne 0) { throw 'Managed resource preparation failed' }
+$env:AIONUI_BACKEND_LOCAL_BUNDLE_DIR = $bundle.FullName
+cd ../OpenH3
+npm run build-win:x64
+```
+
+The explicit local bundle is required for a package containing these backend fixes. The builder validates it and stops on invalid input; it does not silently substitute an upstream download. Keep the bundle outside generated packaging output, or use the exact output directory in place. Overlapping parent/child source and output directories are rejected.
 
 ## Backend Startup Troubleshooting
 
@@ -170,18 +193,9 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 | `bun run build-deb`       | Build Linux (.deb) distributable                        |
 | `bun run build`           | Alias for `bun run build-mac`                           |
 
-### Standalone Server (non-Electron)
+### Optional WebUI
 
-| Command                            | Description                                                 |
-| ---------------------------------- | ----------------------------------------------------------- |
-| `bun run build:renderer:web`       | Build renderer for standalone web deployment                |
-| `bun run build:server`             | Build standalone server bundle to `dist-server/`            |
-| `bun run server:start`             | Run standalone server in development mode                   |
-| `bun run server:start:remote`      | Run standalone server with remote access                    |
-| `bun run server:start:prod`        | Run standalone server in production mode                    |
-| `bun run server:start:prod:remote` | Run standalone server in production mode with remote access |
-| `bun run server:resetpass`         | Reset password via standalone server CLI                    |
-| `bun run server:resetpass:prod`    | Reset password via standalone server CLI (production)       |
+Use the WebUI commands above. See [deployment status](../guides/deploy-server.md); the old standalone Docker build is not maintained.
 
 ### Code Quality
 
@@ -195,28 +209,19 @@ Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After install
 
 ### Testing
 
-| Command                      | Description                                       |
-| ---------------------------- | ------------------------------------------------- |
-| `bun run test`               | Run all unit tests (vitest)                       |
-| `bun run test:watch`         | Run tests in watch mode                           |
-| `bun run test:coverage`      | Run tests with coverage report                    |
-| `bun run test:contract`      | Run contract tests                                |
-| `bun run test:integration`   | Run integration tests                             |
-| `bun run test:bun`           | Run Bun-specific database driver tests            |
-| `bun run test:e2e`           | Run end-to-end tests (Playwright)                 |
-| `bun run test:packaged:i18n` | Run i18n integration tests against packaged build |
-| `bun run test:packaged:bun`  | Run Bun packaged integration tests                |
+| Command                    | Description                       |
+| -------------------------- | --------------------------------- |
+| `bun run test`             | Run all unit tests (vitest)       |
+| `bun run test:watch`       | Run tests in watch mode           |
+| `bun run test:coverage`    | Run tests with coverage report    |
+| `bun run test:integration` | Run integration tests             |
+| `bun run test:e2e`         | Run end-to-end tests (Playwright) |
 
 ### Debug
 
-| Command                      | Description                                     |
-| ---------------------------- | ----------------------------------------------- |
-| `bun run debug:perf`         | Start app with performance monitoring enabled   |
-| `bun run debug:perf:report`  | Generate performance report from collected data |
-| `bun run debug:mcp`          | Debug MCP server connections                    |
-| `bun run debug:mcp:list`     | List configured MCP servers                     |
-| `bun run debug:mcp:validate` | Validate MCP server configurations              |
-| `bun run debug:custom-agent` | Debug custom agent connections                  |
+| Command              | Description                                   |
+| -------------------- | --------------------------------------------- |
+| `bun run debug:perf` | Start app with performance monitoring enabled |
 
 ## Multi-Instance Development
 

@@ -1,204 +1,36 @@
-# Build Scripts Documentation
+# Development and release scripts
 
-This directory contains scripts for building and packaging AionUi across different platforms and architectures.
+These scripts support OpenH3 development, runtime preparation and distribution. Run commands from the repository root after following the [development guide](../docs/contributing/development.md).
 
-## Scripts Overview
+## Common tasks
 
-| Script                    | Lines | Purpose                                         |
-| ------------------------- | ----- | ----------------------------------------------- |
-| `build-with-builder.js`   | 116   | Coordinates Electron Forge and electron-builder |
-| `rebuildNativeModules.js` | 219   | **Unified native module rebuild utility**       |
-| `beforeBuild.js`          | 38    | Pre-packaging native module rebuild hook        |
-| `afterPack.js`            | 67    | Post-packaging verification (Linux only)        |
-| `afterSign.js`            | 47    | macOS code signing and notarization             |
+| Task                                         | Command                                   |
+| -------------------------------------------- | ----------------------------------------- |
+| Start the desktop app                        | `bun run dev`                             |
+| Compile the app for local E2E tests          | `bun run package`                         |
+| Package a Windows installer                  | `bun run dist:win`                        |
+| Package for macOS or Linux                   | `bun run dist:mac` / `bun run dist:linux` |
+| Check video runtime prerequisites            | `bun run video:doctor`                    |
+| Inspect the H3 offline plan                  | `bun run h3:offline-plan`                 |
+| Audit source and available release artifacts | `bun run audit:open-source-release`       |
+| Regenerate third-party notices               | `bun run licenses:generate`               |
+| Run checks and push a commit                 | `just push`                               |
 
-**Total**: 487 lines (down from 711 lines before optimization)
+Packaging requires platform-specific build tools and runtime downloads. See the [release guide](../docs/contributing/releases.md) before publishing. Source audits do not certify binaries that were not supplied to the audit.
 
-## Architecture
+## Script map
 
-### Build Flow
+| Area                        | Entry points and purpose                                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop packaging           | `build-with-builder.js` coordinates electron-vite, MCP bundling, runtime preparation and electron-builder; `afterPack.js` and `afterSign.js` provide packaging hooks.     |
+| Dependencies                | `postinstall.js`, `rebuildNativeModules.js`, `prepareAioncore.js`, `resolveAioncoreVersion.js` and `prepareHubResources.js` prepare native modules and bundled resources. |
+| Runtime workers             | `media-service.ts` and `h3-install-worker.ts` are application build entrypoints, not disposable diagnostics.                                                              |
+| Web distribution            | `webui.ts`, `resetpass.ts`, `pack-web-cli.js`, `install-web.sh` and `install-ubuntu.sh` support WebUI and server installation.                                            |
+| Release verification        | `prepare-release-assets.sh`, `verify-release-assets.sh`, `open-source-release-audit.js` and the license scripts prepare and inspect release materials.                    |
+| Installer checks            | `smoke-installer-*`, `smoke-test-*` and `verify-installer-jsonl.ps1` exercise installer and distribution behavior; read their prerequisites before running.               |
+| Performance and diagnostics | `benchmark-startup.ts`, `benchmark-acp-startup.ts`, `run-benchmarks.ts`, `dev-bootstrap.mjs` and `packaged-launch.mjs` provide reusable development tools.                |
+| Assets and localization     | `generate-openh3-icons.mjs`, `generate-i18n-types.js` and `check-i18n.js` maintain generated application assets and translation types.                                    |
 
-```
-npm run dist:*
-    ↓
-build-with-builder.js
-    ↓
-    ├─→ Electron Forge (webpack compilation)
-    ↓
-electron-builder
-    ↓
-    ├─→ beforeBuild.js → rebuildNativeModules.js (all platforms)
-    ├─→ Package app
-    ├─→ afterPack.js → rebuildNativeModules.js (Linux only)
-    └─→ afterSign.js (macOS only)
-```
+`build-fast-debug-versions.ps1` and `build-fast-debug-worktrees.ps1` support local version-comparison builds. `create-mock-release-artifacts.sh` creates fixtures for release-script validation. Neither produces production release evidence.
 
-## Native Module Rebuild Strategy
-
-### `rebuildNativeModules.js` - Unified Rebuild Utility
-
-This is the core module that handles all native module rebuilding. It provides:
-
-#### Functions
-
-1. **`rebuildWithElectronRebuild(options)`**
-   - Used by: `beforeBuild.js`
-   - Rebuilds all native modules in source directory
-   - Modules: `better-sqlite3`
-
-2. **`rebuildSingleModule(options)`**
-   - Used by: `afterPack.js`
-   - Rebuilds a single module in packaged app
-   - Strategy: Try prebuild-install first, fall back to electron-rebuild
-
-3. **`verifyModuleBinary(moduleRoot, moduleName)`**
-   - Verifies native binary exists after rebuild
-
-4. **Helper utilities**:
-   - `normalizeArch()`: Normalize architecture names
-   - `getModulesToRebuild()`: Get platform-specific module list
-   - `buildEnvironment()`: Create rebuild environment variables
-
-### Platform-Specific Behavior
-
-#### Windows
-
-- **Modules rebuilt**: `better-sqlite3`
-- **Skipped**: `node-pty` (uses prebuilt binaries)
-- **Environment**: MSVS 2022, Windows SDK 10.0.19041.0
-
-#### macOS
-
-- **Modules rebuilt**: `better-sqlite3`
-- **When**: `beforeBuild` hook only
-- **Post-build**: Code signing and notarization
-
-#### Linux
-
-- **Modules rebuilt**: `better-sqlite3`
-- **When**:
-  - `beforeBuild`: Rebuild in source directory
-  - `afterPack`: Rebuild `better-sqlite3` in packaged app
-- **Strategy**: Download prebuilt binary first, compile if unavailable
-
-## Usage Examples
-
-### Building for specific platform
-
-```bash
-# Build for macOS
-npm run dist:mac
-
-# Build for Windows
-npm run dist:win
-
-# Build for Linux
-npm run dist:linux
-```
-
-### Manual native module rebuild
-
-```javascript
-const { rebuildWithElectronRebuild } = require('./scripts/rebuildNativeModules');
-
-rebuildWithElectronRebuild({
-  platform: 'linux',
-  arch: 'arm64',
-  electronVersion: '37.3.1',
-});
-```
-
-### Rebuild single module in packaged app
-
-```javascript
-const { rebuildSingleModule } = require('./scripts/rebuildNativeModules');
-
-rebuildSingleModule({
-  moduleName: 'better-sqlite3',
-  moduleRoot: '/path/to/app.asar.unpacked/node_modules/better-sqlite3',
-  platform: 'linux',
-  arch: 'arm64',
-  electronVersion: '37.3.1',
-});
-```
-
-## Why Two Rebuild Stages?
-
-### beforeBuild (All Platforms)
-
-- Rebuilds modules in **source directory** (`node_modules/`)
-- Ensures correct binaries are packaged
-- Uses `electron-rebuild` for all modules
-
-### afterPack (Linux Only)
-
-- Rebuilds `better-sqlite3` in **packaged app** (`app.asar.unpacked/`)
-- Handles cross-compilation issues
-- Uses `prebuild-install` for faster builds (downloads prebuilt binary)
-
-## Troubleshooting
-
-### Module not found after packaging
-
-**Symptom**: `Error: Cannot find module 'better-sqlite3'`
-
-**Solution**: Check that:
-
-1. Module is in `packages/desktop/electron-builder.yml` → `files` section
-2. Module is in `packages/desktop/electron-builder.yml` → `asarUnpack` section
-3. `beforeBuild.js` ran successfully during build
-4. For Linux: `afterPack.js` ran successfully
-
-### Native module crashes on launch
-
-**Symptom**: App crashes with segfault or binary incompatibility error
-
-**Solution**:
-
-1. Verify target architecture matches build architecture
-2. Check that `beforeBuild.js` rebuilt for correct architecture
-3. For Linux ARM64: Ensure `afterPack.js` rebuilt the module
-
-### Cross-compilation fails
-
-**Symptom**: Native module rebuild fails during cross-arch build
-
-**Solution**:
-
-- Windows: This is expected for `node-pty` (uses prebuilt binaries)
-- macOS/Linux: Ensure build tools for target architecture are installed
-- Consider building on native architecture instead
-
-## Optimization History
-
-### Version 1.0 (Before Optimization)
-
-- Total: 711 lines across 5 files
-- Duplication: Rebuild logic in both `beforeBuild` and `afterPack`
-
-### Version 2.0 (Current)
-
-- Total: 487 lines across 5 files
-- Savings: 224 lines (31% reduction)
-- Changes:
-  - ✅ Deleted `release.sh` (67 lines) - use `npm version` instead
-  - ✅ Created `rebuildNativeModules.js` (219 lines) - unified utility
-  - ✅ Simplified `build-with-builder.js`: 321 → 116 lines
-  - ✅ Simplified `beforeBuild.js`: 95 → 38 lines
-  - ✅ Simplified `afterPack.js`: 181 → 67 lines
-
-## Contributing
-
-When modifying build scripts:
-
-1. **Test on all platforms** before committing
-2. **Update this documentation** if behavior changes
-3. **Maintain the unified rebuild utility** - avoid duplicating logic
-4. **Keep error messages clear** - they help users troubleshoot
-
-## Related Files
-
-- `/packages/desktop/electron-builder.yml` - electron-builder configuration
-- `/forge.config.ts` - Electron Forge configuration
-- `/.github/workflows/build-and-release.yml` - CI/CD pipeline
-- `/package.json` - Build scripts and dependencies
+Keep reusable tools here. Machine-specific acceptance runs, generated reports and one-off source migrations belong in local ignored working directories; removed tools remain recoverable from Git history.

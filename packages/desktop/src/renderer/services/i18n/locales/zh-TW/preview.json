@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "復原上次接受",
+    "h3RejectedVersion": "已拒絕",
+    "h3RemoveCompare": "移出比較",
+    "h3CompareVersion": "加入比較",
+    "h3UndoReject": "復原拒絕",
+    "h3RejectVersion": "拒絕",
+    "h3CompareTitle": "候選比較",
     "title": "影片",
     "h3Title": "MiniMax H3 生成",
     "h3RuntimeReady": "H3 本機執行環境已就緒",

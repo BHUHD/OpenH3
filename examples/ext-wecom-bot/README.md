@@ -9,7 +9,7 @@ Enterprise WeCom AI Bot channel extension example for AionUI.
 - Stream-style polling response (`msgtype=stream`)
 - `response_url` single-use fallback when stream context is unavailable
 - Bridging inbound message to AionUI unified channel pipeline
-- Dist-first extension entrypoints (`dist/*`) with source wrappers for development
+- Direct source entrypoints declared in `aion-extension.json`; no build step is required
 
 ## How to run
 

@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "لغو آخرین انتخاب",
+    "h3RejectedVersion": "رد شده",
+    "h3RemoveCompare": "حذف از مقایسه",
+    "h3CompareVersion": "افزودن به مقایسه",
+    "h3UndoReject": "لغو رد",
+    "h3RejectVersion": "رد کردن",
+    "h3CompareTitle": "مقایسه گزینه‌ها",
     "title": "ویدیو",
     "h3Title": "MiniMax H3 generation",
     "h3RuntimeReady": "H3 local runtime is ready",

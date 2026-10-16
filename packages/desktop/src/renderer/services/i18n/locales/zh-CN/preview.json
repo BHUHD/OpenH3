@@ -1,5 +1,12 @@
 {
   "video": {
+    "h3UndoSelection": "撤销上次接受",
+    "h3RejectedVersion": "已拒绝",
+    "h3RemoveCompare": "移出比较",
+    "h3CompareVersion": "加入比较",
+    "h3UndoReject": "撤销拒绝",
+    "h3RejectVersion": "拒绝",
+    "h3CompareTitle": "候选比较",
     "title": "视频",
     "h3Title": "MiniMax H3 生成",
     "h3RuntimeReady": "H3 本地运行时已就绪",
