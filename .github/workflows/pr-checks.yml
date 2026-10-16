@@ -130,6 +130,9 @@ jobs:
       - name: Run postinstall
         run: npm run postinstall || true
 
+      - name: Setup media test tools
+        uses: ./.github/actions/setup-media-tools
+
       - name: Run extension system tests
         run: bunx vitest run
 
@@ -165,6 +168,9 @@ jobs:
 
       - name: Run postinstall
         run: npm run postinstall || true
+
+      - name: Setup media test tools
+        uses: ./.github/actions/setup-media-tools
 
       - name: Run coverage tests
         id: coverage

@@ -6,6 +6,7 @@
 - **bun** — Package manager & runtime ([install](https://bun.sh))
 - **Rust stable + Cargo** — Required to build the local AionCore backend ([install](https://rustup.rs))
 - **Python** 3.11+ (for native module compilation)
+- **FFmpeg and ffprobe** on `PATH` — Required for image and video validation tests (`sudo apt-get install ffmpeg` on Ubuntu, `brew install ffmpeg` on macOS, or `choco install ffmpeg` on Windows).
 - **prek** — PR code checker (`npm install -g @j178/prek`)
 
 On Windows, install the Rust MSVC toolchain. If Rust compilation fails because native build tools are missing, install **Microsoft C++ Build Tools** from the Visual Studio installer, then reopen your terminal.
