@@ -459,20 +459,18 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   console.log('[OpenH3] Creating main window...');
   const { x: windowX, y: windowY, width: windowWidth, height: windowHeight } = resolveInitialBounds();
 
-  // Get app icon for development mode (Windows/Linux need icon in BrowserWindow)
-  // In production, icons are set via forge.config.ts packagerConfig
-  let devIcon: Electron.NativeImage | undefined;
-  if (!app.isPackaged) {
+  // Windows uses the window icon independently of the executable resource.
+  let windowIcon: Electron.NativeImage | undefined;
+  if (process.platform !== 'darwin') {
     try {
-      // Use the same circular product icon in development and packaged builds.
-      const iconFile = process.platform === 'win32' ? 'app.ico' : 'app.png';
-      const iconPath = path.join(process.cwd(), 'resources', iconFile);
+      const resourcesDir = app.isPackaged ? process.resourcesPath : path.join(process.cwd(), 'resources');
+      const iconPath = path.join(resourcesDir, 'app.png');
       if (fs.existsSync(iconPath)) {
-        devIcon = nativeImage.createFromPath(iconPath);
-        if (devIcon.isEmpty()) devIcon = undefined;
+        windowIcon = nativeImage.createFromPath(iconPath);
+        if (windowIcon.isEmpty()) windowIcon = undefined;
       }
     } catch {
-      // Ignore icon loading errors in development
+      // An unavailable icon must not prevent startup.
     }
   }
 
@@ -486,8 +484,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
     show: false, // Hide until CSS is loaded to prevent FOUC
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
-    // Set icon for Windows/Linux in development mode
-    ...(devIcon && process.platform !== 'darwin' ? { icon: devIcon } : {}),
+    ...(windowIcon ? { icon: windowIcon } : {}),
     // Custom titlebar configuration / 自定义标题栏配置
     ...(process.platform === 'darwin'
       ? {

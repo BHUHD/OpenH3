@@ -41,4 +41,10 @@ describe('registerWindowsAppUserModelId', () => {
     const match = yml.match(/^appId:\s*(\S+)\s*$/m);
     expect(match?.[1]).toBe(WINDOWS_APP_USER_MODEL_ID);
   });
+
+  it('uses the OpenH3 taskbar identity while preserving the existing NSIS upgrade identity', () => {
+    const yml = fs.readFileSync(path.resolve(__dirname, '../../../../packages/desktop/electron-builder.yml'), 'utf8');
+    expect(WINDOWS_APP_USER_MODEL_ID).toBe('com.openh3.app');
+    expect(yml).toMatch(/^  guid: f3bfde38-8429-545c-a4e9-a078d87dee6c$/m);
+  });
 });
