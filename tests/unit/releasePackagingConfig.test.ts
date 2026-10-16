@@ -87,7 +87,7 @@ describe('release packaging configuration', () => {
     );
   });
 
-  it('uses OpenH3 as the display identity without changing legacy runtime packaging ids', () => {
+  it('uses OpenH3 as the display and desktop packaging identity while retaining legacy migration metadata', () => {
     const html = readProjectFile('packages/desktop/src/renderer/index.html');
     const manifest = readProjectFile('public/manifest.webmanifest');
     const identity = readProjectFile('packages/desktop/src/common/config/productIdentity.ts');
@@ -97,7 +97,7 @@ describe('release packaging configuration', () => {
     expect(manifest).toContain('"name": "OpenH3"');
     expect(manifest).toContain('"short_name": "OpenH3"');
     expect(identity).toContain("LEGACY_PRODUCT_NAME = 'AionUi'");
-    expect(builder).toContain('appId: com.aionui.app');
+    expect(builder).toContain('appId: com.openh3.app');
   });
 
   it('ships the user-approved OpenH3 logo source and transparent wordmark', () => {
