@@ -32,7 +32,14 @@ const CreationTemplateCard: React.FC<CreationTemplateCardProps> = ({ template, o
     return () => observer.disconnect();
   }, []);
   const title = t(`guid.templates.${template.key}.title`);
-  const prompt = t(`guid.templates.${template.key}.prompt`);
+  const authoredPrompt = t(`guid.templates.${template.key}.prompt`);
+  const prompt = template.requiresReference
+    ? t('guid.templateReferencePrompt', {
+        ratio: template.ratio,
+        prompt: authoredPrompt,
+        interpolation: { escapeValue: false },
+      })
+    : authoredPrompt;
 
   return (
     <article
@@ -76,6 +83,11 @@ const CreationTemplateCard: React.FC<CreationTemplateCardProps> = ({ template, o
         <span className={styles.creationTemplateBadge}>
           {template.kind === 'video' ? <Video theme='outline' size='12' /> : <Picture theme='outline' size='12' />}
           {t(`guid.templateFilters.${template.kind}`)}
+          {template.requiresReference && (
+            <>
+              · <span title={t('guid.templateReferenceHint')}>{t('guid.templateReferenceRequired')}</span>
+            </>
+          )}
           {template.kind === 'video' && <span>0:{String(template.duration).padStart(2, '0')}</span>}
         </span>
         {template.kind === 'video' && !previewFailed && (

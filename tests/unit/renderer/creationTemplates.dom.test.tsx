@@ -41,8 +41,8 @@ describe('CreationTemplates', () => {
   it('shows image examples and playable videos with local posters without preloading every clip', async () => {
     const { container } = await renderTemplates();
 
-    expect(screen.getAllByRole('article')).toHaveLength(12);
-    expect(screen.getAllByRole('img')).toHaveLength(8);
+    expect(screen.getAllByRole('article')).toHaveLength(52);
+    expect(screen.getAllByRole('img')).toHaveLength(48);
     const videos = Array.from(container.querySelectorAll('video'));
     expect(videos).toHaveLength(4);
     for (const video of videos) {
@@ -62,15 +62,15 @@ describe('CreationTemplates', () => {
     expect(screen.getByRole('button', { name: '视频' })).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: '图片' }));
-    expect(screen.getAllByRole('article')).toHaveLength(8);
+    expect(screen.getAllByRole('article')).toHaveLength(48);
 
     fireEvent.click(screen.getByRole('button', { name: '全部' }));
-    expect(screen.getAllByRole('article')).toHaveLength(12);
+    expect(screen.getAllByRole('article')).toHaveLength(52);
   });
 
   it('fills the complete image or video prompt when using the corresponding template', async () => {
     const { onUseTemplate } = await renderTemplates();
-    const firstImage = screen.getAllByRole('article')[0];
+    const firstImage = screen.getByRole('article', { name: guid.templates.poster.title });
     fireEvent.click(within(firstImage).getByRole('button', { name: '做同款' }));
     expect(onUseTemplate).toHaveBeenLastCalledWith(
       guid.templates.poster.prompt,
@@ -86,7 +86,7 @@ describe('CreationTemplates', () => {
 
   it('keeps the template usable when its image preview fails', async () => {
     const { onUseTemplate } = await renderTemplates();
-    const card = screen.getAllByRole('article')[0];
+    const card = screen.getByRole('article', { name: guid.templates.poster.title });
     fireEvent.error(within(card).getByRole('img'));
     expect(within(card).getByText('预览暂不可用')).toBeInTheDocument();
     fireEvent.click(within(card).getByRole('button', { name: '做同款' }));
@@ -104,5 +104,31 @@ describe('CreationTemplates', () => {
     expect(within(card).getByText('预览暂不可用')).toBeInTheDocument();
     fireEvent.click(within(card).getByRole('button', { name: '做同款' }));
     expect(onUseTemplate).toHaveBeenCalledWith(guid.templates.coast.prompt, expect.objectContaining({ kind: 'video' }));
+  });
+
+  it('identifies portrait references and fills the complete curated prompt without generating on selection', async () => {
+    const { onUseTemplate } = await renderTemplates();
+    const card = screen.getByRole('article', { name: 'AI 衣品升级改造报告' });
+    expect(within(card).getByText('需参考图')).toBeInTheDocument();
+    expect(within(card).getByRole('img').getAttribute('src')).not.toMatch(/^(https?:|data:)/);
+    fireEvent.click(within(card).getByRole('button', { name: '做同款' }));
+    expect(onUseTemplate).toHaveBeenCalledTimes(1);
+    const [prompt, template] = onUseTemplate.mock.calls[0];
+    expect(template).toMatchObject({ kind: 'image', ratio: '4:3', requiresReference: true });
+    expect(prompt).toContain('若未上传参考图，请先提示我上传');
+    expect(prompt).toContain('Before vs After');
+    expect(prompt).toContain('9) 总结 / Summary');
+    expect(prompt.length).toBeGreaterThan(2000);
+  });
+
+  it('keeps the authored 6:7 fantasy composition consistent with the template card', async () => {
+    const { onUseTemplate } = await renderTemplates();
+    const card = screen.getByRole('article', { name: '月亮邮局' });
+    fireEvent.click(within(card).getByRole('button', { name: '做同款' }));
+    const [prompt, template] = onUseTemplate.mock.calls[0];
+    expect(template.ratio).toBe('6:7');
+    expect(prompt).toContain('6:7');
+    expect(prompt).toContain('收件人：星河');
+    expect(prompt).not.toContain('2:3');
   });
 });

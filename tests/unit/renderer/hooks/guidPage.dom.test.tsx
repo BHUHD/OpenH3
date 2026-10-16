@@ -480,8 +480,12 @@ describe('GuidPage', () => {
     render(<GuidPage />);
 
     expect(screen.getByText('guid.aiCreation')).toBeInTheDocument();
-    expect(screen.getAllByRole('article')).toHaveLength(12);
-    fireEvent.click(screen.getAllByRole('button', { name: 'guid.templateUse' })[0]);
+    expect(screen.getAllByRole('article')).toHaveLength(52);
+    fireEvent.click(
+      within(screen.getByRole('article', { name: 'guid.templates.poster.title' })).getByRole('button', {
+        name: 'guid.templateUse',
+      })
+    );
     expect(guidInputMock.setInput).toHaveBeenCalledWith('guid.templates.poster.prompt');
   });
 
@@ -500,7 +504,7 @@ describe('GuidPage', () => {
       profileId: undefined,
     });
     expect(capturedGuidInputCardProps.at(-1)?.focusRequestKey).toBeTruthy();
-    expect(screen.getAllByRole('article')).toHaveLength(12);
+    expect(screen.getAllByRole('article')).toHaveLength(52);
     unmount();
     guidInputMock.input = 'guid.comfy.prompts.install';
     render(<GuidPage />);

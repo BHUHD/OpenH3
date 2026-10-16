@@ -197,6 +197,169 @@
     "forestFilm": {
       "title": "Отдых у лесного водопада",
       "prompt": "Сгенерируй горизонтальное природное видео 16:9 длительностью 6 секунд: водопад впадает в прозрачный водоём густого леса, камни покрыты мхом, листья мягко качаются. Почти неподвижная камера медленно приближается, мягкое солнце проходит сквозь кроны. Естественное непрерывное движение воды, ряби и растений, без людей и субтитров."
+    },
+    "oilGallery": {
+      "title": "Галерея прошлых жизней",
+      "prompt": "Cinematic over-the-shoulder shot: Build a sophisticated art gallery scene. Bottom right corner (right foreground): Only reveal the back, right shoulder and head silhouette of a viewer (the person from reference image). Their hairstyle must match the reference image exactly, the back figure is in foreground, serving only as spatial foreground to guide the line of sight. Center of frame (focus): A massive solid wood museum frame hangs centrally on the wall. The oil painting inside features a stunning half-length portrait (showing from the waist up). It perfectly replicates the facial features, face shape and expression of the person in the reference image, while depicting their upper body with an elegant posture and classical attire, instantly recognizable as the same person. Texture and environment: The oil painting has heavy impasto brushstrokes and rough canvas texture. The background is a white gallery wall. The foreground is framed by another ornate dark frame element."
+    },
+    "styleUpgrade": {
+      "title": "Обновление личного стиля",
+      "prompt": "请基于用户上传的形象照片（Image A 是本次核心人物参考），生成一张横向 4:3 的高设计感个人潮流形象重塑提案板：AI 衣品升级改造报告 / Before & After Style Upgrade Report。必须满足身份一致性：在不改变这个人是谁的前提下，保留用户本人的基础身份特征、脸部辨识度、五官特征、年龄感、发型特征、身材比例和整体气质，让人一眼能认出是同一个人。生成不是普通换装，不是简单穿搭建议，也不是基础电商搭配图，而是一张高设计感、高反差、高信息量的个人潮流形象重塑提案板。改造后必须更帅、更潮、更有型、更会穿；第一眼差异明显，第二眼专业、精致、逻辑清晰、细节丰富。核心审美方向：韩系轻潮、Clean Fit、City Boy、Urban Casual、日系简约街头、港风松弛有型、主流潮牌感、清爽高级、日常可穿、上镜好看。严格避免：After 古板、成熟过头、商务感太强、老气沉闷；After 不能只是更干净；不要像中年通勤、普通夹克西裤套装；不要过度暗黑/过度机能/过度先锋；不要过度 logo 堆叠/过度荧光色/过度花哨；不要像 Excel、PPT、电商拼图；信息模块太满或字太小导致混乱；Before/After 不同一个人。Before / After 主视觉：整张图核心为双人像强对比，Before vs After 对比区占整张图约 55%—60% 视觉权重。Before：呈现用户原始形象或接近原始状态的穿着基线，风格普通、真实、基础、略显单调；姿势更平直、更普通；服装保持原图基础单品逻辑。After：呈现同一个人潮流升级后的新形象，明显更帅更潮更有型；姿态更自然自信，气质更松弛上镜，人物可略大于 Before。After 穿搭与造型逻辑（必须体现轮廓结构与层次完成度）：短款夹克/飞行员夹克/工装夹克/干净衬衫外套/轻机能外套；高质感白色或米白色内搭、针织内搭或干净圆领 T 恤；直筒/微阔/垂顺西裤/宽松牛仔裤或卡其裤；复古运动鞋/德训鞋/板鞋/乐福鞋或简洁皮鞋（不要普通黑鞋）；小体量斜挎包；可加入银色项链、手表、戒指、眼镜等精致配饰但不要过度堆叠。避免商务套装风。版式设计：像潮流杂志内页 + 专业形象顾问提案板。使用大胆但克制的大标题、清晰的 Before / After 标签、箭头/分割线/编号模块/半透明信息卡片；使用局部斜切块、错位网格、轻微层叠卡片、杂志式留白。背景以白色、浅灰、米白为主，可少量强调色（炭黑、橄榄绿、钴蓝、金属银）。整体高级干净、时髦、有呼吸感，不拥挤不杂乱。文字质量：所有文字必须清晰易读、中文为主，字体端正无错别字，无乱码，无水印；模块标题要大而明确，正文不要太小。内容模块（必须组织且主次清楚）：1) 风格主题 / Style Direction：根据用户照片自动判断升级方向，给出一句风格化主题 + 简洁说明。2) 核心变化点 / Key Upgrades：5—6 个短标签总结亮点：轮廓更利落、比例更优化、层次更完整、配饰更精致、鞋型更有风格、整体更上镜等。3) 色系选择 / Color Palette：After 的色彩系统：主色 3 个、辅助色 2 个、点缀色 1 个；用小色卡或圆形色块呈现，包含高级潮流男装色（炭灰/黑/米白/燕麦色/橄榄绿/军绿/牛仔蓝/卡其灰/烟灰/深棕/藏蓝/金属银）。4) 材质构成 / Materials：4—5 种关键材质 + 简短说明（纯棉、尼龙、牛仔、针织、皮革或西装面料），有真实纹理感但不抢主视觉。5) 廓形 / 比例策略 / Silhouette Strategy：3—5 条策略让 After 更帅：上短下长优化比例；外松内合松弛但不拖沓；肩线更精神轮廓更利落；裤型垂顺拉长腿部；鞋裤关系更干净更上镜。6) 推荐 Look / Outfit Ideas：生成 3 套完整穿搭 Look 作为小缩略图模块展示：Look 01 日常通勤、Look 02 周末出街、Look 03 约会漫步。每套都更潮、更完整、更有设计感。7) 关键单品升级 / Key Pieces：展示 5—6 个单品并各配一句作用说明：短款夹克、质感基础 T 恤、直筒/微阔裤、复古运动鞋、小体量斜挎包、银色项链或手表或眼镜或乐福鞋（任选 5—6 个，但必须解释作用）。8) 细节说明 / Detail Notes：围绕 After 人物加入细节箭头或局部放大注释，说明领口更干净、衣长关系更合理、层次叠穿更完整、包袋提升完成度、裤脚更利落、鞋型更有风格、配饰更精致。9) 总结 / Summary：底部或右下角一句清晰总结，强调保留本人辨识度，通过更潮流版型、更完整层次与更明确鞋包配饰系统，让整体从普通日常升级为更帅、更时髦、更有型、更具潮牌感。最终输出：单张横向 4:3、潮流杂志感、高级提案板感、主视觉清晰、Before/After 同一人强一致、After 更帅更潮更上镜、文字可读、信息丰富但不拥挤。"
+    },
+    "brickWorld": {
+      "title": "Мир из кубиков",
+      "prompt": "将参考图转换为乐高积木搭建的写实风格场景，所有物体由乐高颗粒与乐高零件构成，保留原图构图和主体，色彩鲜艳饱和，光影自然柔和，画面清晰无噪点，景深适中，3D立体乐高质感，8K细节。"
+    },
+    "womenHairGrid": {
+      "title": "Девять женских причёсок",
+      "prompt": "生成九宫格竖版图片，保持人物五官一致，展示齐耳微卷、法式辫子、内扣波波头、法式低发髻、黑长直、大波浪、一刀切短发、齐肩直发、脏辫马尾等发型，背景纯白，比例3:4，风格写实清晰。"
+    },
+    "menHairGrid": {
+      "title": "Девять мужских причёсок",
+      "prompt": "生成九宫格竖版发型图，保持同一人物五官一致，展示板寸、美式前刺、锡纸烫、飞机头、碎发、港式三七开、背头、港式中分、光头等发型，背景纯白，右下角标注发型名称，比例3:4。"
+    },
+    "galleryPortrait": {
+      "title": "Автопортрет в галерее",
+      "prompt": "简约白色艺术展厅里，人物背对镜头站立，旁边墙上挂写实油画，画中人物与本人呼应但比例更小。射灯营造艺术氛围，整体写实自然，强调人物与自画像的创意关系。"
+    },
+    "seasideTriptych": {
+      "title": "Морской триптих",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Triple grid collage,the three photos are arranged from top to bottom, replace background with seaside beach, sky presents pale purple to gray gradient, sea surface calm. First image: character standing on sand from back view, add Chinese-English subtitle '山的后面是什么 - What's on the other hand of mountain'; Second image: character standing sideways by seaside, add subtitle '你不用告诉我 - you don't have to tell me'; Third image: close-up, add subtitle '我自己会去看 - I will go and see it myself'. Overall tones cool and fresh, creating literary and self-exploring emotional atmosphere, three images combined into triple grid"
+    },
+    "outfitAnalysis": {
+      "title": "Анализ гардероба",
+      "prompt": "穿搭分析：請根據我上傳的人像照片，製作一張高質感個人穿搭分析圖卡，穿搭風格例如韓系、街頭、茶系、時髦、小香、溫柔、辣妹、小眾、復古、學院、運動風。保留主角原本五官、膚色、臉型與真實特徵，透過左右或並排對比方式，展示不同服裝穿在主角身上的效果，清楚區分「風格」，讓人一眼看出哪些造型提升氣色與整體質感。版面設計需乾淨時尚、像專業形象顧問報告，整體以視覺呈現為主，只使用簡短標籤（例如：推薦、普通、避免），不要加入長段文字。高解析度，資訊清楚，適合社群分享。禁止水印、禁止亂碼。"
+    },
+    "hairAnalysis": {
+      "title": "Сравнение причёсок",
+      "prompt": "请以这张人像图片为基础素材，设计一张具备高级排版质感的【发型分析图】。请严格遵循以下视觉排版逻辑：1. 脸型五官分析（左侧排版）：保留原人物头像作为主图，使用极简的指示线和简短的关键词标签（如“瓜子脸”、“轮廓流畅”、“五官立体”等），直接在图上精准标注人物的脸型与五官特征。2. 多款发型对比（右侧排版）：采用左右并列的对比布局，为该人物生成并展示 4 款不同风格的发型（如：时尚波波头、慵懒法式卷、优雅复古盘发、气质侧分长发）。3. 直观凸显最优解：在展示的多款发型中，挑选出最贴合该人物五官与气质的一款，并使用醒目的视觉元素（如金色高亮边框、皇冠图标或“最优选择”加粗标签）进行着重强调。4. 视觉风格限制：视觉呈现绝对优先，整体画面保持干净、专业、高级的信息图（Infographic）风格。所有配文仅限简短的词组或标签，无需且绝不能出现大段的文字描述。"
+    },
+    "womenBusiness": {
+      "title": "Женский деловой стиль",
+      "prompt": "请基于用户上传的人像照片，生成一张高完成度的“女生商务着装建议”写真风格提案图。保留用户本人身份特征与脸部辨识度，不改变是谁；在此基础上优化整体职业形象与上镜效果。整体风格：专业、干练、清爽、有亲和力，避免老气、刻板、过度成熟。建议以现代商务通勤风为主，包含合理的西装外套/衬衫/针织内搭/半身裙或西裤/简洁鞋履与轻配饰搭配。画面可采用“主视觉人像 + 信息模块”的杂志式排版，信息包含：适合的商务风格关键词、推荐配色、3 套可执行通勤搭配、配饰建议与避雷点。文字必须为简体中文，字体清晰可读，无错别字、无乱码、无水印。确保人物自然真实、质感高级、构图干净，输出为可直接用于分享的专业形象建议图。"
+    },
+    "giantFigure": {
+      "title": "Моя гигантская фигурка",
+      "prompt": "明亮简洁展厅中，主体人物身旁站立一个超大型Q版人偶，人偶与人物穿搭、配饰、发型一致，强调巨大体积差和互动感。保持人物五官不变形，画面清晰精致，光影融合，时尚可爱。"
+    },
+    "menBusiness": {
+      "title": "Мужской деловой стиль",
+      "prompt": "请基于用户上传的人像照片，生成一张高完成度的“男生商务着装建议”写真风格提案图。必须满足身份一致性：在不改变这个人是谁的前提下，保留用户本人的基础身份特征、脸部辨识度、五官特征、年龄感、发型特征、身材比例和整体气质，让人一眼能认出是同一个人。生成不是普通换装，不是简单穿搭建议，也不是基础电商搭配图，而是一张高设计感、高反差、高信息量的个人潮流形象重塑提案板。改造后必须更帅、更潮、更有型、更会穿；第一眼差异明显，第二眼专业、精致、逻辑清晰、细节丰富。整体风格：专业、利落、年轻、清爽，有质感但不过度正式，避免老气、刻板、过度成熟。建议以现代商务通勤风为主，包含合理的西装外套/衬衫/针织内搭/直筒西裤或卡其裤/简洁鞋履与轻配饰搭配。画面可采用“主视觉人像 + 信息模块”的杂志式排版，信息包含：适合的商务风格关键词、推荐配色、3 套可执行通勤搭配、配饰建议与避雷点。文字必须为简体中文，字体清晰可读，无错别字、无乱码、无水印。确保人物自然真实、质感高级、构图干净，输出为可直接用于分享的专业形象建议图。"
+    },
+    "paintMural": {
+      "title": "Рисую свою фреску",
+      "prompt": "人物手持画笔，专注为壁画中与自己着装一致的人物描绘细节。画面下方有颜料盘、颜料罐和画笔桶，地面保留颜料痕迹体现创作过程，背景为白墙灰瓦建筑，真实纪实风格。"
+    },
+    "executivePortrait": {
+      "title": "Деловой студийный портрет",
+      "prompt": "Transform the reference into a high-end studio portrait in Apple executive headshot style. Keep facial identity unchanged. Half-body composition, minimalist professional attire, natural and confident expression, clean backdrop, soft directional studio lighting, premium commercial portrait quality."
+    },
+    "touristCleanup": {
+      "title": "Удаление туристов с фото",
+      "prompt": "8K 超高清，写实摄影风格，专业旅拍质感；严格保留人物原有五官、面部特征与样貌一致性，不修改脸型、姿态、姿势与身形；人物主体清晰锐利，五官精致，皮肤细腻自然；柔和自然光，浅景深效果，背景适度虚化；画面干净整洁，智能移除多余游客、路人及杂乱物体；背景风景优美，构图平衡协调，色彩自然通透，高级氛围感；无水印、无文字，细节丰富饱满，质感高级细腻，最大程度保留原图信息与人物原貌。"
+    },
+    "treeLinedPortrait": {
+      "title": "Портрет на солнечной аллее",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。Street portrait full of life and healing vibes. Scene is a tree-lined avenue with dappled sunlight, tall trees casting scattered shadows, background walls, parked bicycles and distant vehicles add urban daily atmosphere. Outfit is simple and gentle, off-white camisole maxi dress paired with light blue knitted cardigan, showing fresh elegance; side braid adds girlish liveliness, brown vintage bag with small bear pendant looks cute and playful. Overall scene under bright sunlight, conveying a leisurely comfortable afternoon atmosphere, as if recording a spontaneous and beautiful city wandering moment"
+    },
+    "seagullMoment": {
+      "title": "Мгновение с чайками",
+      "prompt": "蓝天白云，长发美女趴在昆明海埂大坝护栏边，头上戴着墨镜，眼睛望着镜头，张开双臂，手中拿着食物。高清拍照，长发飘飘欲仙，身穿时尚秋装，远处有海鸥人群。重点突出海鸥手中抢食场景，身旁是波光粼粼、有很多海鸥翱翔的海面。Professional photography, blue sky with white clouds, beautiful woman with long hair leaning on the guardrail of Kunming Haigeng Dam, wearing sunglasses on head, looking at camera, arms open wide, holding food in hands. HD photo quality, flowing fairy-like long hair, fashionable autumn outfit, seagulls in distance. Focus on dramatic scene of seagulls snatching food from hands, beside is shimmering water surface with many seagulls soaring. Natural lighting, healing atmosphere, wind-blown hair, dynamic interaction with nature, outdoor portrait photography."
+    },
+    "londonRain": {
+      "title": "Дождливый Лондон",
+      "prompt": "以大本钟为真实背景，人物靠在河岸桥边护栏，眼神伤感，天空有雨滴，整体黑暗忧郁色调，突出人物内心情绪，电影感构图，比例3:4。"
+    },
+    "weddingBlur": {
+      "title": "Мечтательный свадебный портрет",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Exaggerated lens feel, out of focus blur, wedding dress beauty, hazy dreamy effect, ultra-high beauty score, avant-garde, fashionable, famous scene, live performance feel, emotional atmospheric, INS style, vintage, dark hazy, shaky blur, diagonal lens, motion blur, avant-garde art aesthetics, rich details, premium sense, masterpiece, early CCD filter style"
+    },
+    "coastalPortrait": {
+      "title": "Портрет на морском ветру",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。20岁东亚年轻女性，侧身放松姿态，身体微倾，发丝随海风轻扬，肢体舒展带有静谧的张力；神情清冷疏离，双唇轻闭，眼神平静注视镜头，情绪克制且充满故事感。妆造细节：清透伪素颜妆，轻薄底妆保留皮肤质感，淡粉裸色唇妆，无明显修容痕迹。身着浅灰色毛绒大衣 + 白色毛绒围巾，面料呈现柔软温暖的冬日质感。核心环境（布鲁威斯号）：背景为威海布鲁威斯号（BLUEWAYS）搁浅沉船，巨大的铁锈色船体倾斜伫立在海面，带有强烈的孤独感与宿命感；海面波浪起伏，群鸥在沉船与人物周围盘旋。光影与色调：柔和侧逆光（黄昏自然光），在发丝和肩颈处形成渐变轮廓光，面部受光均匀。色调以低饱和度暖棕与冷灰结合：浅灰（衣物）、白（围巾/海鸥）、铁锈红（沉船）、灰蓝（海面），整体色彩统一，氛围寂静。构图与风格：中景构图，人物位于画面右侧（留白构图），背景沉船与海鸥形成层次。复古胶片滤镜风格，高光微晕（halation），呈现8K高精度细节（毛绒纹理、生锈金属质感），静谧文艺纪实风。"
+    },
+    "lakesideStory": {
+      "title": "История у озера",
+      "prompt": "以参考图人物为原型，面部特征保持不变。湖畔清冷气质东方女性，发丝微乱挽起，灰绿色肌理围巾或披肩。背景为静谧湖水、枝桠古树与树林，柔和自然光穿过树叶形成斑驳光影，局部逆光轮廓。镜头可特写与半身切换，神态为闭眼仰头或回头侧望，低饱和莫兰迪色调，柔和暗调光影，胶片颗粒质感，写实细腻无AI痕迹。"
+    },
+    "chineseWedding": {
+      "title": "Китайская свадьба крупным планом",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。This is a realistic and delicate high-definition portrait, shooting a close-up of a meticulously made-up East Asian bride's upper body正面 with a smile. Bride wears gorgeous golden headpiece adorned with pearls, flowers, and tassels, wearing rice-white thin-style wedding dress embroidered with golden and blue patterns, covered with pearls and sequins, cuffs have pearl tassels, hands holding large red '囍' character paper cutting. Background is Chinese wedding atmosphere-filled bridal chamber, walls have red paper fans, '囍' characters, red couplets '新婚快乐' and '佳偶天成', and paper flower decorations, bed spread with red bedsheet, red embroidered throw pillows on bed, right wall lamp brings warm lighting, overall scene colors festive, details exquisite, filled with lively Chinese wedding atmosphere"
+    },
+    "vintageOriental": {
+      "title": "Винтажный китайский портрет",
+      "prompt": "以上传人物为原型并保留原生五官，生成顶级复古电影感新中式写真。背景是极度虚化的中式木质室内，暗调深邃，隐约雕花木窗与家具轮廓。服装为深黑无袖高领改良旗袍，珠扣与暗纹刺绣。发型为服帖中分低盘发，无碎发，珍珠金簪与复古耳坠。暖调哑光妆，砖红唇，手持半透真丝苏绣团扇，单一主光，温暖金棕侧光，皮肤真实通透。"
+    },
+    "beijingHutong": {
+      "title": "Пекинский хутун",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Background is old Beijing hutong, visible gray brick structure traditional dwellings, roof with Chinese tile style, street has parked black motorcycle, ground has cover, sunlight scattering creates warm market atmosphere. Wearing black long horn-button coat,大气版型, white fur trim on cuffs, adding cuteness and warmth. Pairing blue knitted scarf, black side braids, left hand holding string of candied haws, adding life atmosphere and fun. Right hand making peace sign, close-up, backlight"
+    },
+    "koreanHeadshot": {
+      "title": "Корейский студийный портрет",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。Deep brown hair, bun hairstyle, Asian female, Korean ID photo style, black hair, neat hair bun, scattered hair strands, white collared shirt, outer dark gray long-sleeve cardigan, large bow tie, patterned bow tie, gray and white alternating bow tie, plaid pattern, fair skin, individual portrait, formal attire, neat hairstyle, defined facial contours, high bun, pure white background"
+    },
+    "campusCcd": {
+      "title": "Ретро-портрет CCD в кампусе",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。场景与动作： 早期校园风，女孩穿着白衬衫，背着运动包，正在回眸看镜头。视觉风格： CCD老旧数码相机质感，柔光颗粒感，日系回忆滤镜，轻微过曝（High key），逆光模糊。氛围感： 极度真实的抓拍（Candid shot），不刻意摆拍，还原生活的原生感，随手拍的松弛瞬间，光影不均匀的室内场景，模糊的边缘，怀旧且真实的日常。"
+    },
+    "instantPortrait": {
+      "title": "Моментальный портрет",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Generate a Polaroid instant photo style portrait with highly infectious atmosphere, slight grain texture, retro warm tones, Instagram-style cute daily photo"
+    },
+    "winterTriptych": {
+      "title": "Зимний триптих",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Triple grid winter cinematic narrative portrait, split into upper-middle-lower 3 equal panels, maintaining similar facial features and hairstyle. Scene is snowy winter ground, wearing soft, fluffy thick white angora wool or cashmere knit sweater, scarf of same material, color is very low saturation mint green or pale cyan. Eyes with storytelling quality, soft lighting, overall scene filled with dreamy glowing aura, hazy blur. Overall style: Japanese pure desire aesthetic, emotional portrait, film texture, soft natural light, overexposed highlights, cool tones but warm skin, grainy, clean composition. Overall is sunny cool lonely snowy winter scene, fine snowflakes falling, cinematic texture, skin translucent bright white and flawless, frozen with pink undertones, cheeks with faint pink rosy, girlish feeling, snowflakes accenting, eyelashes clearly defined, skin clear, near-nude lip color. Upper grid: medium shot, character standing sideways in vast snow, hair gently blown by wind, head looking up at sky, expression cool and quiet, background is pure sky and snow ground. Middle grid: extreme close-up, showing only girl's face, focus on girl's cheeks and hair with snowflakes, eyes clear and bright, looking directly at camera, lips slightly parted, showing fragility and intimacy. Lower grid: close shot, girl crouching in snow, hands wearing white gloves cupping cheeks, facing camera revealing sweet shy smile"
+    },
+    "snowDrawing": {
+      "title": "Автопортрет на снегу",
+      "prompt": "主体控制：人物完美复刻参考图，保持原图人物五官、脸型与神态一致。雪地手绘风，冬日公园的雪地地面（铺满厚积雪），以雪地为画布，绘制占据80%地面面积的超大幅二次元自画像（画中主体人物戴白绒球帽+灰围巾，长发微卷，与真人长相一致，完全呈现在雪面之上）；主体人物真人（戴白绒球帽子+穿白毛衣+红格裙+红围巾、背绿雪人挎包）以小比例（占画面10%）蹲在雪面自画像的下方区域，面部看向镜头，手部接触雪面正在绘制这幅画像；自画像左侧雪面写“2026”“第一场雪”书法字，周围雪面散落小熊猫图案。画面主体是雪面上的超大自画像，主体人物真人为雪面旁的小尺寸互动者，比例明确（雪面自画像占80%地面、真人占10%画面），风格为雪面手绘素描+现实人物结合，细节真实。必须保证生成画面中所有角色身体完整出镜，画面完整，无裁切。"
+    },
+    "snowRose": {
+      "title": "Розы под снегом",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。【重点修改这里→】（强制去除面部所有瑕疵、雀斑），重塑为皮肤细腻光滑，清透无瑕肌理，面部柔和漫射光。Long-haired woman in snowy weather holding a bunch of Elsa roses, snowflakes on some roses, hair flying in wind, presenting film photography style, ultra high definition"
+    },
+    "animalFriends": {
+      "title": "Животные хотят подружиться",
+      "prompt": "请根据用户上传的人物照片，创作一张创意动物园打卡海报，\n巨大手机界面悬浮在画面中，游客站在中央，周围围绕熊猫、长颈鹿、狐猴、火烈鸟，朋友圈动态界面设计，点赞图标、评论气泡、聊天框元素，\n巨型艺术字体：\n【动物们申请加你好友】\n\n字体采用卡通立体字，动物与字体互动，火烈鸟站在文字顶部，熊猫抱着字体，色彩明快，\n年轻潮流，ins风，小红书爆款视觉，\n商业海报设计，必须保留人物本人特征与辨识度，但是要做适当的形象优化，发型服装要和背景更搭配，皮肤适当美颜。"
+    },
+    "orientalAesthetics": {
+      "title": "Современная восточная элегантность",
+      "prompt": "主体控制： （人物完美复刻参考图），保持原图人物的五官、脸型和神态完全一致。New Chinese Oriental aesthetic portrait, subject is 20-year-old East Asian gentle young female, medium close-up chest-up composition, straight camera angle, character occupies 50% of frame. Posture naturally relaxed: body slightly turned 15°, head gently turning to face camera, right hand naturally holding bamboo oil-paper umbrella handle (umbrella half-opened, off-white base with bamboo leaf print), no deliberate posing痕迹. Expression showing relaxed shallow smile, lips slightly parted revealing natural smile, eyes soft and bright, facial muscles relaxed. Makeup is bare-skin translucent look: matte foundation keeping natural skin texture, pale bean sand color lip makeup enhancing complexion, no obvious eye makeup; hairstyle is low bun (with stray hair texture), paired with emerald hairpin and pearl drop ear accessories, details exquisite and fitting temperament. Outfit chooses bean green dark texture sleeveless stand-collar cheongsam (qipao), matte fabric paired with red agate buttons, combining traditional charm with lightweight quality. Background set as Jiangnan garden scene, with blurred bamboo forest and gray walls as base, using shallow depth of field blur to highlight subject. Lighting uses soft scattered side front natural light, ensuring even facial illumination, natural light-dark transition without harsh shadows. Color system is low saturation Morandi palette, with bean green, off-white as main colors, dark green, gray tones as base colors, unified and elegant tones. Post-processing adds cold cream color grading, reduces sharpness to enhance soft atmosphere, adds slight vignette and film-level fine grain, finally presenting translucent and soft portrait combining Oriental elegance with modern aesthetic balance"
+    },
+    "hanfuCourt": {
+      "title": "Портрет при дворе Мин",
+      "prompt": "年轻女性身着绣金龙纹的白色明制汉服，头戴金色凤冠含红珠与流苏。背景为红墙黄瓦的古代宫殿庭院，石栏、古树与晴朗蓝天。高清写真风格，光线明亮柔和，色彩饱满精致，氛围典雅华贵。"
+    },
+    "robotCompanion": {
+      "title": "Мой робот-компаньон",
+      "prompt": "请根据用户上传的人物照片，创作一张未来机器人街区，游客与专属机器人伙伴并肩而立，机器人具有可爱拟人设计，两人一起向镜头挥手，背景为龙岗未来街区，顶部艺术字体：我的机器人搭子\n下方小字：未来已经来到身边\n温暖科技感，治愈系，高端商业海报，\n保留人物真实面部特征和身份辨识度，\n自动优化皮肤质感和精神状态，发型更加精致，根据未来科技主题自动生成高级时尚穿搭，服装融合：未来科技、轻机能、\n赛博时尚、智能城市元素，\n增加科技配饰：智能腕表、AR眼镜、发光胸章、人物形象像未来城市居民，时尚而自然，符合国际科技大片人物审美，高级商业摄影，人物成为画面视觉焦点"
+    },
+    "superpower": {
+      "title": "Пробуждение сверхспособностей",
+      "prompt": "电影级超现实幻想写真，上下双人物构图，现实人物位于画面下半部分，人物保留真实身份特征和面部辨识度，一眼能够认出是本人，人物占画面40%，人物正在森林木桥缓缓前行，\n低头看着手机，动作自然，穿着现代都市休闲服装，真实摄影质感，人物上方出现巨大能量化身，化身占画面60%，化身与现实人物拥有相同面容，但更加神圣、强大、充满力量，人物长发飘动，双手缓缓张开，双手释放耀眼金色能量，大量闪电、能量粒子、光流、神圣光环、围绕身体旋转，化身双眼坚定，俯视现实中的自己，现实人物与化身之间由金色能量连接，形成巨大的能量场，整个森林被金色圣光照亮，树林、木桥、薄雾、体积光、电影级环境光，背景深绿色森林，自然与超现实融合，人物成为画面绝对视觉中心，史诗级电影海报，\n幻想电影宣传海报，高级商业摄影，超高细节，超真实。"
+    },
+    "parallelWorld": {
+      "title": "Встреча параллельных миров",
+      "prompt": "按实际输入张数决定人数。只有 Image A 时：单人照只出单人，双人合照出这两人（左右与合照一致）。同时有 Image A 和 Image B 时：两张都是单人身份照，必须同时生成这两人，A 在左、B 在右；不要把 Image B 当成风格或场景。禁止换脸、混合五官、复制同一张脸、增删人物或生成陌生人。分别保留每位人物的真实五官、脸型、发型、眼镜、肤色、年龄感和个人气质。\n\n人物面部清晰自然，不要过度美化。表情、服装和姿态可根据画面自然调整，身体比例与手部结构必须真实自然。\n\n画面禁止出现任何日期、年号或农历。生成竖版 6:7、2K 高清七夕海报《平行宇宙的相遇》。构图必须是电影海报式的左右分屏，不是合照站在分色背景前。\n\n画面正中立着一道通高的透明发光门/水晶玻璃隔断，把画面分成两个世界。门左侧是温暖日落、少量漂浮花瓣；门右侧是深蓝夜空与星光。两种空间只在门心、两人指尖即将相触处融成一点柔和星芒。\n\n双人时（一张合照里有两人或同时有 Image A 与 Image B）：两人必须分别站在门的两侧，侧身朝向彼此，隔着玻璃伸出手，指尖在门心即将相触。Image A 对应左侧日落，Image B 对应右侧星空；若只有一张合照，按合照左右对应。禁止两人并排站在同一侧、禁止一起正面看镜头、禁止把日月只当背景墙纸。\n单人时（只有 Image A 且为单人）：人物站在门的一侧，侧身伸手触碰玻璃；门另一侧只保留对应的日落或星空，不要凭空生成第二个人。\n\n人物是画面绝对主体，合计约占 65%，面部清晰可认，允许四分之三侧脸。光门有真实玻璃、金属细边和折射。整体像浪漫电影关键一幕。禁止飞船、战斗、复杂机械、满屏爱心、卡通风格，以及门把手装饰、两人同框合影构图。\n\n画面可有电影海报式中文标题、副标题和一句短诗，例如「不同的世界 同一份心动」。不要写日期。"
+    },
+    "moonPost": {
+      "title": "Лунная почта",
+      "prompt": "Image A 是用户上传的人像。按实际输入张数决定人数。只有 Image A 时：单人照只出单人，双人合照出这两人（左右与合照一致）。同时有 Image A 和 Image B 时：两张都是单人身份照，必须同时生成这两人，A 在左、B 在右；不要把 Image B 当成风格或场景。保留真实五官，禁止换脸。\n\n画面禁止出现任何日期、年号或农历。生成竖版 6:7 的梦幻优雅七夕海报《月亮邮局》。\n\n人物半身立在一座发光的月亮邮局窗口前。窗口里漂浮未拆的银色信封，心形封蜡克制精致；月光如绸缎铺在肩头。乳白、珍珠白与淡金色，整体像高级香水广告。人脸清晰柔和。\n\n画面文字仅允许：\n标题：“月亮邮局”\n副标题：“收件人：星河”\n\n禁止水印和额外人脸。"
+    },
+    "paperCrane": {
+      "title": "Мост бумажных журавлей",
+      "prompt": "Image A 是用户上传的人像。按实际输入张数决定人数。只有 Image A 时：单人照只出单人，双人合照出这两人（左右与合照一致）。同时有 Image A 和 Image B 时：两张都是单人身份照，必须同时生成这两人，A 在左、B 在右；不要把 Image B 当成风格或场景。禁止换脸、增删人物或生成陌生人。\n\n画面禁止出现任何日期、年号或农历。生成竖版 6:7 的诗意七夕海报《纸鹤桥》。\n\n人物半身，手中飞出一群千纸鹤；半空中纸鹤彼此咬合，拼成一座细巧的粉色纸桥，通向夜空中的淡淡星河。柔和樱花光、浅景深。人脸是画面最清晰的部分。\n\n画面文字仅允许：\n标题：“纸鹤桥”\n副标题：“折向星河”\n\n禁止水印和额外人脸。"
+    },
+    "gardenTrain": {
+      "title": "Садовый поезд",
+      "prompt": "Image A 是用户上传的人像。按实际输入张数决定人数。只有 Image A 时：单人照只出单人，双人合照出这两人（左右与合照一致）。同时有 Image A 和 Image B 时：两张都是单人身份照，必须同时生成这两人，A 在左、B 在右；不要把 Image B 当成风格或场景。禁止换脸。\n\n画面禁止出现任何日期、年号或农历。生成竖版 6:7 的旅行浪漫七夕海报《花园列车》。\n\n人物半身坐在复古列车靠窗位。窗外不是站台，而是缓缓滑过的巨型花田；少量花瓣飘进车厢并停在肩头。暖窗光、木质内饰，运动模糊只存在于窗外。人脸清晰稳定，像一段正在发生的旅程。\n\n画面文字仅允许：\n标题：“花园列车”\n副标题：“下一站：相会”\n\n禁止真实铁路品牌、水印和额外人脸。"
+    },
+    "mistyFlowerHouse": {
+      "title": "Цветочный дом в тумане",
+      "prompt": "Image A 是用户上传的人像。按实际输入张数决定人数。只有 Image A 时：单人照只出单人，双人合照出这两人（左右与合照一致）。同时有 Image A 和 Image B 时：两张都是单人身份照，必须同时生成这两人，A 在左、B 在右；不要把 Image B 当成风格或场景。禁止换脸。\n\n画面禁止出现任何日期、年号或农历。生成竖版 6:7 的诗意唯美七夕海报《雾中花屋》。\n\n人物半身站在玻璃花屋中央。窗外是冷白晨雾，屋内玫瑰、洋桔梗与水汽凝成细珠。一束斜光穿过雾气，落在脸侧。画面湿润、通透、安静。人脸是最清晰的高光。\n\n画面文字仅允许：\n标题：“雾中花屋”\n副标题：“今夜为你开放”\n\n禁止水印和品牌 Logo。"
     }
-  }
+  },
+  "templateReferenceRequired": "Нужен референс",
+  "templateReferenceHint": "Загрузите портрет или исходное изображение до отправки запроса.",
+  "templateReferencePrompt": "Используй мои референсы, сохраняя личность или исходный объект согласно шаблону. Если референса нет, попроси загрузить его перед генерацией. Не выдумывай содержимое референса. Соотношение сторон: {{ratio}}.\n\n{{prompt}}"
 }

@@ -14,6 +14,7 @@ import coastVideo from '@/renderer/assets/creation/videos/coast.mp4?url';
 import coffeeVideo from '@/renderer/assets/creation/videos/coffee-film.mp4?url';
 import cityVideo from '@/renderer/assets/creation/videos/city-film.mp4?url';
 import forestVideo from '@/renderer/assets/creation/videos/forest-film.mp4?url';
+import { CURATED_CREATION_TEMPLATES } from './curatedCreationTemplates';
 
 export type CreationTemplateKey =
   | 'poster'
@@ -27,15 +28,18 @@ export type CreationTemplateKey =
   | 'coast'
   | 'coffeeFilm'
   | 'cityFilm'
-  | 'forestFilm';
+  | 'forestFilm'
+  | (typeof CURATED_CREATION_TEMPLATES)[number]['key'];
 
 export type CreationTemplate = {
   key: CreationTemplateKey;
   cover: string;
-  ratio: '3:4' | '4:3' | '16:9';
+  ratio: '3:4' | '4:3' | '16:9' | '2:3' | '6:7';
+  requiresReference?: boolean;
 } & ({ kind: 'image' } | { kind: 'video'; src: string; duration: number });
 
 export const CREATION_TEMPLATES: readonly CreationTemplate[] = [
+  ...CURATED_CREATION_TEMPLATES.slice(0, 6),
   { key: 'poster', kind: 'image', cover: poster, ratio: '3:4' },
   { key: 'coast', kind: 'video', cover: coastPoster, src: coastVideo, duration: 6, ratio: '16:9' },
   { key: 'product', kind: 'image', cover: product, ratio: '3:4' },
@@ -48,4 +52,5 @@ export const CREATION_TEMPLATES: readonly CreationTemplate[] = [
   { key: 'interior', kind: 'image', cover: interior, ratio: '16:9' },
   { key: 'forestFilm', kind: 'video', cover: forestPoster, src: forestVideo, duration: 6, ratio: '16:9' },
   { key: 'flowers', kind: 'image', cover: flowers, ratio: '3:4' },
+  ...CURATED_CREATION_TEMPLATES.slice(6),
 ];
