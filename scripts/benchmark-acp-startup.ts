@@ -86,10 +86,13 @@ function agentPillByBackend(backend: string) {
 
 function getLogFilePath(): string {
   const today = new Date().toISOString().slice(0, 10);
-  // Dev mode uses "AionUi-Dev", production uses "AionUi"
-  const devPath = path.join(os.homedir(), 'Library', 'Logs', 'AionUi-Dev', `${today}.log`);
-  const prodPath = path.join(os.homedir(), 'Library', 'Logs', 'AionUi', `${today}.log`);
-  return fs.existsSync(devPath) ? devPath : prodPath;
+  const candidates = [
+    path.join(os.homedir(), 'Library', 'Logs', 'OpenH3-Dev', `${today}.log`),
+    path.join(os.homedir(), 'Library', 'Logs', 'OpenH3', `${today}.log`),
+    path.join(os.homedir(), 'Library', 'Logs', 'AionUi-Dev', `${today}.log`),
+    path.join(os.homedir(), 'Library', 'Logs', 'AionUi', `${today}.log`),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0];
 }
 
 function getLogFileSize(logPath: string): number {

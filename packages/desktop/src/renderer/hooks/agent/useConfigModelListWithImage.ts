@@ -5,7 +5,7 @@ const useConfigModelListWithImage = () => {
   const { data } = useProvidersQuery();
 
   const modelListWithImage = useMemo(() => {
-    return (data || []).map((platform) => {
+    return (Array.isArray(data) ? data : []).map((platform) => {
       const nextPlatform = {
         ...platform,
         models: [...platform.models],

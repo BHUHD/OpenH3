@@ -20,6 +20,11 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('@arco-design/web-react', () => ({
+  Message: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+  Modal: { confirm: vi.fn() },
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
@@ -77,6 +82,9 @@ const renderActions = (onSessionClick?: () => void) =>
       setSelectedConversationIds: vi.fn(),
       toggleSelectedConversation: vi.fn(),
       markAsRead: vi.fn(),
+      markManualUnread: vi.fn(),
+      clearManualUnread: vi.fn(),
+      isManualUnread: vi.fn(() => false),
     })
   );
 
@@ -124,4 +132,19 @@ describe('create scheduled task conversation action', () => {
       });
     }
   );
+});
+
+describe('conversation deletion action', () => {
+  it('deletes a conversation through the existing remove bridge and navigates away when active', async () => {
+    const { ipcBridge } = await import('@/common');
+    vi.mocked(ipcBridge.conversation.remove.invoke).mockResolvedValue(true);
+    const { result } = renderActions();
+
+    await act(async () => {
+      await result.current.handleDelete(makeConversation('current-conversation', 'aionrs'));
+    });
+
+    expect(ipcBridge.conversation.remove.invoke).toHaveBeenCalledWith({ id: 'current-conversation' });
+    expect(navigateMock).toHaveBeenCalledWith('/');
+  });
 });

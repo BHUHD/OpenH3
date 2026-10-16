@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import type { TChatConversation } from '@/common/config/storage';
 import { requestConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { refreshConversationCache } from '@/renderer/pages/conversation/utils/conversationCache';
@@ -87,12 +88,36 @@ export const useConversationActions = ({
       }
 
       emitter.emit('conversation.deleted', conversation_id);
+      void h3JobApi
+        .cancelConversationCreation(conversation_id)
+        .catch((error) => console.error('[creation] cancellation failed', error));
       if (id === conversation_id) {
         void navigate('/');
       }
       return true;
     },
     [id, navigate]
+  );
+
+  const handleDelete = useCallback(
+    async (conversation: TChatConversation) => {
+      setDropdownVisibleId(null);
+      try {
+        const success = await removeConversation(conversation.id);
+        if (success) {
+          emitter.emit('chat.history.refresh');
+          Message.success(t('conversation.history.deleteSuccess'));
+        } else {
+          Message.error(t('conversation.history.deleteFailed'));
+        }
+        return success;
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+        Message.error(t('conversation.history.deleteFailed'));
+        return false;
+      }
+    },
+    [removeConversation, t]
   );
 
   const handleBatchArchive = useCallback(() => {
@@ -135,6 +160,32 @@ export const useConversationActions = ({
       getPopupContainer: () => document.body,
     });
   }, [onBatchModeChange, selectedConversationIds, t, setSelectedConversationIds]);
+
+  const handleBatchDelete = useCallback(() => {
+    if (selectedConversationIds.size === 0) {
+      Message.warning(t('conversation.history.batchNoSelection'));
+      return;
+    }
+    Modal.confirm({
+      title: t('conversation.history.batchDelete'),
+      content: t('conversation.history.batchDeleteConfirm', { count: selectedConversationIds.size }),
+      okText: t('conversation.history.confirmDelete'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { status: 'danger' },
+      onOk: async () => {
+        const results = await Promise.allSettled(Array.from(selectedConversationIds).map(removeConversation));
+        const successCount = results.filter((result) => result.status === 'fulfilled' && result.value).length;
+        if (successCount > 0) {
+          emitter.emit('chat.history.refresh');
+          Message.success(t('conversation.history.batchDeleteSuccess', { count: successCount }));
+        } else {
+          Message.error(t('conversation.history.deleteFailed'));
+        }
+        setSelectedConversationIds(new Set());
+        onBatchModeChange?.(false);
+      },
+    });
+  }, [onBatchModeChange, removeConversation, selectedConversationIds, setSelectedConversationIds, t]);
 
   const handleEditStart = useCallback((conversation: TChatConversation) => {
     setRenameModalId(conversation.id);
@@ -324,7 +375,9 @@ export const useConversationActions = ({
     dropdownVisibleId,
     handleConversationClick,
     handleBatchArchive,
+    handleBatchDelete,
     handleArchive,
+    handleDelete,
     handleEditStart,
     handleRenameConfirm,
     handleRenameCancel,

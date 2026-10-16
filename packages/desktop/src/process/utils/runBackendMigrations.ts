@@ -7,7 +7,9 @@
 import { execFile } from 'node:child_process';
 import { migrateConfigStorage, migrateLegacyMcpConfigToDb, migrateProviders } from '@/common/config/configMigration';
 import { httpRequest } from '@/common/adapter/httpBridge';
+import { ipcBridge } from '@/common';
 import { mcpService } from '@/common/adapter/ipcBridge';
+import { shouldEnableAssistantByDefault } from '@/common/types/agent/assistantDefaults';
 import type { ImageGenerationModelSetting } from '@/common/config/clientSettings';
 import { BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
 import {
@@ -20,6 +22,7 @@ import { BUILTIN_VIDEO_MEDIA_NAME } from '../resources/builtinMcp/constants';
 import { getBuiltinMcpScriptPath, type ProcessConfig as ProcessConfigType } from './initStorage';
 import { migrateAssistantsToBackend } from './migrateAssistants';
 import { provisionVideoProvider, DEFAULT_VIDEO_GATEWAY_URL } from './videoProviderPreset';
+import { provisionComfySkill } from '../services/skills/provisionComfySkill';
 
 type ConfigFile = typeof ProcessConfigType;
 type MigrationStepResult = boolean;
@@ -50,6 +53,8 @@ const LEGACY_BACKEND_CLIENT_PREFERENCE_KEYS = [
   'migration.assistantsSplitCustom',
 ] as const;
 
+const OPENH3_ASSISTANT_DEFAULT_FLAG = 'migration.openH3AssistantDefault_v1';
+
 async function cleanupLegacyClientPreferences(): Promise<void> {
   const payloadEntries = LEGACY_BACKEND_CLIENT_PREFERENCE_KEYS.map((key): [string, null] => [key, null]);
   const payload = Object.fromEntries(payloadEntries);
@@ -67,6 +72,32 @@ async function fetchBackendClientPreferences(): Promise<BackendClientPreferences
   } catch {
     return {};
   }
+}
+
+/** Apply the OpenH3-only first-run assistant default once, without touching user assistants. */
+export async function enforceOpenH3AssistantDefault(): Promise<boolean> {
+  const preferences = (await httpRequest<BackendClientPreferences>('GET', '/api/settings/client')) || {};
+  if (preferences[OPENH3_ASSISTANT_DEFAULT_FLAG] === true) return true;
+
+  const assistants = await ipcBridge.assistants.list.invoke();
+  const managed = assistants.filter((assistant) => assistant.source === 'builtin' || assistant.source === 'generated');
+  if (!managed.some((assistant) => shouldEnableAssistantByDefault(assistant))) return false;
+
+  const results = await Promise.allSettled(
+    managed.map((assistant) =>
+      ipcBridge.assistants.setState.invoke({
+        id: assistant.id,
+        enabled: shouldEnableAssistantByDefault(assistant),
+      })
+    )
+  );
+  const failed = results.filter((result) => result.status === 'rejected');
+  if (failed.length > 0) {
+    throw new Error(`OpenH3 assistant default migration failed for ${failed.length} assistant(s)`);
+  }
+
+  await httpRequest<void>('PUT', '/api/settings/client', { [OPENH3_ASSISTANT_DEFAULT_FLAG]: true });
+  return true;
 }
 
 async function fetchProviders(): Promise<IProvider[]> {
@@ -477,6 +508,8 @@ const MIGRATION_STEPS: Array<{
     run: async (configFile) => (await ensureBootstrapMcpServersInDb(configFile), true),
   },
   { name: 'migrateAssistantsToBackend', run: async (configFile) => migrateAssistantsToBackend(configFile) },
+  { name: 'enforceOpenH3AssistantDefault', run: async () => enforceOpenH3AssistantDefault() },
+  { name: 'provisionComfySkill', run: async () => (await provisionComfySkill(httpRequest), true) },
 ];
 
 async function syncBuiltinMcpConfig(configFile: ConfigFile): Promise<void> {
@@ -500,7 +533,7 @@ async function syncBuiltinMcpConfig(configFile: ConfigFile): Promise<void> {
 
   await httpRequest<void>('PUT', '/api/settings/client', { 'mcp.config': mergedMcpConfig });
   console.info(
-    '[AionUi] Synced builtin MCP config to backend settings (%d builtin servers)',
+    '[OpenH3] Synced builtin MCP config to backend settings (%d builtin servers)',
     localBuiltinServers.length
   );
 }
@@ -511,9 +544,9 @@ export async function runBackendMigrations(configFile: ConfigFile): Promise<void
     const start = Date.now();
     try {
       await step.run();
-      console.info(`[AionUi] Backend migration step completed: ${step.name} (${Date.now() - start}ms)`);
+      console.info(`[OpenH3] Backend migration step completed: ${step.name} (${Date.now() - start}ms)`);
     } catch (error) {
-      console.error(`[AionUi] Backend migration step failed: ${step.name} (${Date.now() - start}ms)`, error);
+      console.error(`[OpenH3] Backend migration step failed: ${step.name} (${Date.now() - start}ms)`, error);
     }
   }, Promise.resolve());
 
@@ -524,13 +557,13 @@ export async function runBackendMigrations(configFile: ConfigFile): Promise<void
       const completed = await step.run(configFile);
       const elapsed = Date.now() - start;
       if (!completed) {
-        console.warn(`[AionUi] Backend migration step incomplete: ${step.name} (${elapsed}ms)`);
+        console.warn(`[OpenH3] Backend migration step incomplete: ${step.name} (${elapsed}ms)`);
         return;
       }
-      console.info(`[AionUi] Backend migration step completed: ${step.name} (${elapsed}ms)`);
+      console.info(`[OpenH3] Backend migration step completed: ${step.name} (${elapsed}ms)`);
     } catch (error) {
       const elapsed = Date.now() - start;
-      console.error(`[AionUi] Backend migration step failed: ${step.name} (${elapsed}ms)`, error);
+      console.error(`[OpenH3] Backend migration step failed: ${step.name} (${elapsed}ms)`, error);
     }
   }, Promise.resolve());
 
@@ -539,12 +572,12 @@ export async function runBackendMigrations(configFile: ConfigFile): Promise<void
     await provisionVideoProvider(httpRequest, DEFAULT_VIDEO_GATEWAY_URL);
   } catch {
     // Do not log provider payloads or credential-bearing HTTP errors.
-    console.warn('[AionUi] Video provider initialization incomplete');
+    console.warn('[OpenH3] Video provider initialization incomplete');
   }
   try {
     await syncBuiltinMcpConfig(configFile);
-    console.info(`[AionUi] Backend migration step completed: syncBuiltinMcpConfig (${Date.now() - syncStart}ms)`);
+    console.info(`[OpenH3] Backend migration step completed: syncBuiltinMcpConfig (${Date.now() - syncStart}ms)`);
   } catch (error) {
-    console.error(`[AionUi] Backend migration step failed: syncBuiltinMcpConfig (${Date.now() - syncStart}ms)`, error);
+    console.error(`[OpenH3] Backend migration step failed: syncBuiltinMcpConfig (${Date.now() - syncStart}ms)`, error);
   }
 }

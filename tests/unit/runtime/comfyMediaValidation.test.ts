@@ -1,0 +1,92 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { verifyComfySmokeArtifact, type ComfySmokeContext } from '@/process/services/media/comfy/mediaValidation';
+import { resolveMediaBinary } from '@/process/services/media/mediaBinary';
+
+let root: string;
+beforeEach(() => {
+  root = fs.mkdtempSync(path.join(os.tmpdir(), 'comfy-media-'));
+});
+afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+function video(name: string, source: string, audio = false): string {
+  const target = path.join(root, name);
+  execFileSync(
+    resolveMediaBinary('ffmpeg'),
+    [
+      '-v',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      source,
+      ...(audio ? ['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=8000:duration=1'] : []),
+      '-t',
+      '1',
+      '-c:v',
+      'mpeg4',
+      '-q:v',
+      '3',
+      '-pix_fmt',
+      'yuv420p',
+      ...(audio ? ['-c:a', 'aac', '-shortest'] : []),
+      target,
+    ],
+    { windowsHide: true, timeout: 30_000, stdio: 'pipe' }
+  );
+  return target;
+}
+function context(overrides: Partial<ComfySmokeContext['input']> = {}, audio = false): ComfySmokeContext {
+  return {
+    profile: {
+      id: 'media',
+      family: 'h3',
+      name: 'H3 media fixture',
+      kind: 'video',
+      version: '1',
+      quantization: 'fixture',
+      capabilities: ['text-to-video', ...(audio ? ['native-audio'] : [])],
+      state: 'downloaded',
+      environment: { root, python: path.join(root, 'python'), baseUrl: 'http://127.0.0.1:8188' },
+      components: [],
+      nodes: [],
+      workflowPath: path.join(root, 'workflow.json'),
+      defaults: {},
+      bindings: {
+        width: [{ nodeId: '1', input: 'width' }],
+        height: [{ nodeId: '1', input: 'height' }],
+        durationSeconds: [{ nodeId: '1', input: 'duration' }],
+      },
+    },
+    input: { prompt: 'a moving test pattern', width: 96, height: 64, durationSeconds: 1, ...overrides },
+  };
+}
+const validate = (file: string, evidence = context()) =>
+  verifyComfySmokeArtifact({ path: file, mimeType: 'video/mp4' }, 'video', new AbortController().signal, evidence);
+
+describe('representative Comfy smoke media validation', () => {
+  it('decodes distributed video frames and the promised native audio against submitted dimensions and duration', async () => {
+    const file = video('moving.mp4', 'testsrc2=size=96x64:rate=12:duration=1', true);
+    await expect(validate(file, context({}, true))).resolves.toBeUndefined();
+  });
+  it('rejects a playable frozen clip and a black clip', async () => {
+    const frozen = video('frozen.mp4', 'smptebars=size=96x64:rate=12:duration=1');
+    const blank = video('blank.mp4', 'color=black:size=96x64:rate=12:duration=1');
+    await expect(validate(frozen)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+    await expect(validate(blank)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('rejects missing promised audio or mismatched bound dimensions/duration', async () => {
+    const file = video('moving.mp4', 'testsrc2=size=96x64:rate=12:duration=1');
+    await expect(validate(file, context({}, true))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+    await expect(validate(file, context({ width: 128 }))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+    await expect(validate(file, context({ durationSeconds: 3 }))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('does not invent dimensions for a workflow whose canvas is selected from its input image', async () => {
+    const file = video('moving.mp4', 'testsrc2=size=96x64:rate=12:duration=1');
+    const evidence = context({ width: 1024, height: 1024 });
+    evidence.profile.bindings = {};
+    await expect(validate(file, evidence)).resolves.toBeUndefined();
+  });
+});

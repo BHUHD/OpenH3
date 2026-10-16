@@ -20,10 +20,10 @@ import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSetti
 
 // Mock resolveExtensionAssetUrl
 vi.mock('@/renderer/utils/platform', () => ({
-  resolveExtensionAssetUrl: vi.fn((url: string) => {
-    if (url.startsWith('ext://')) return `resolved-${url}`;
+  resolveExtensionAssetUrl: vi.fn((url: string) => url),
+  resolveBackendAssetUrl: vi.fn((url: string) => {
     if (url.startsWith('/api/assistants/')) return `http://127.0.0.1:13400${url}`;
-    return null;
+    return url;
   }),
 }));
 
@@ -54,7 +54,7 @@ describe('assistantUtils', () => {
     });
 
     it('resolves extension asset URLs', () => {
-      expect(resolveAvatarImageSrc('ext://my-extension/icon.svg')).toBe('resolved-ext://my-extension/icon.svg');
+      expect(resolveAvatarImageSrc('ext://my-extension/icon.svg')).toBe('ext://my-extension/icon.svg');
     });
 
     it('returns valid image URLs', () => {

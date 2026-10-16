@@ -1,4 +1,117 @@
 {
+  "aiCreation": "AI Creation",
+  "aiCreationSubtitle": "Make something with your imagination",
+  "creation": {
+    "kind": "Creation type",
+    "source": "Model source",
+    "model": "Creation model",
+    "local": "Local",
+    "cloud": "Cloud",
+    "localImage": "Local image model",
+    "localVideo": "Local video model",
+    "cloudImage": "Cloud image model",
+    "cloudVideo": "Cloud video model",
+    "manageLocal": "Manage local models",
+    "configureCloud": "Configure cloud API",
+    "requestSummary": "Creation settings: {{kind}} · {{source}} · {{model}} ({{state}}). Use the selected model; if unavailable, ask me to install, configure, or change it first.",
+    "states": {
+      "installed": "Installed",
+      "not-installed": "Not installed",
+      "no-workflow": "No workflow",
+      "configured": "Configured",
+      "not-configured": "Not configured",
+      "unavailable": "Status unavailable",
+      "checking": "Checking",
+      "downloaded": "Downloaded",
+      "loadable": "Loadable",
+      "verified": "Verified",
+      "invalid": "Invalid"
+    },
+    "install": {
+      "states": {
+        "awaiting-consent": "Awaiting confirmation",
+        "cancelled": "Cancelled",
+        "cancelling": "Cancelling",
+        "failed": "Incomplete",
+        "paused": "Paused",
+        "authorized": "Confirmed, awaiting assistant",
+        "submitted": "Generation submitted",
+        "installing": "Installing"
+      },
+      "title": "Install MiniMax H3 and continue",
+      "open": "Review installation",
+      "continueRequest": "I confirmed the model license and any required hardware options in the installation dialog. Call aionui_h3_install_video_model with action=start and operationId={{id}} to continue the original video request without resubmission or parameter changes.",
+      "continue": "Continue with assistant",
+      "cancelRequest": "Cancel creation request"
+    },
+    "toolsUnavailable": "Creation tools are not ready yet. Please try again shortly."
+  },
+  "templatePlay": "Play {{title}}",
+  "templatePause": "Pause {{title}}",
+  "templateUse": "Use template",
+  "templateTitle": "Inspiration templates",
+  "templateHint": "Explore image and video ideas. Pick one to start creating.",
+  "templateFilterLabel": "Template type",
+  "templatePreviewUnavailable": "Preview unavailable",
+  "templateFilters": {
+    "all": "All",
+    "image": "Images",
+    "video": "Videos"
+  },
+  "templates": {
+    "poster": {
+      "title": "Amethyst mood poster",
+      "prompt": "Create a vertical 3:4 mood poster featuring a macro photograph of amethyst crystals reflecting soft violet and rose light. Show fine mineral textures and shallow depth of field. Add the clear Chinese headline ‘允许自己慢下来’, small serif type and generous whitespace for a calm, soothing magazine cover."
+    },
+    "product": {
+      "title": "Fragrance campaign",
+      "prompt": "Create a vertical 3:4 fragrance campaign photograph: a transparent glass perfume bottle resting among cream linen and dried flowers, warm window light from the side, refined glass reflections, a metal cap and soft fabric textures. Keep the product sharp and background clean, leave room for copy and avoid brand marks."
+    },
+    "illustration": {
+      "title": "Story illustration",
+      "prompt": "Create a detailed narrative illustration with charming characters, a complete composition, and a cover-ready finish."
+    },
+    "architecture": {
+      "title": "Venice travel postcard",
+      "prompt": "Create a vertical 3:4 Venice travel postcard with a turquoise canal, warm pink historic buildings and boats along the bank. Afternoon sunlight reflects on the water, detailed facades lead the eye through the canal, soft film colors and realistic photography. Leave space at the top for a travel headline."
+    },
+    "landscape": {
+      "title": "Iceland dreamscape",
+      "prompt": "Create a horizontal 16:9 Iceland landscape photograph with green hills, a dramatic waterfall and open plains under a pink and violet sunset. Include delicate mist and distinct foreground, middle ground and distance. Wide-angle framing, cinematic light, natural textures, no people or text."
+    },
+    "pet": {
+      "title": "Cat by the window",
+      "prompt": "Create a vertical 3:4 portrait of a fluffy ginger cat sitting on a wooden windowsill and looking outside. Soft morning light illuminates its whiskers and eyes. Detailed fur, blurred pale curtains, warm film colors and a quiet, natural candid mood."
+    },
+    "food": {
+      "title": "Fresh menu photography",
+      "prompt": "Create a horizontal 4:3 overhead food photograph of quinoa, avocado and colorful vegetables in a white ceramic bowl, with fresh ingredients scattered nearby. Pale stone tabletop, soft daylight, vibrant colors and realistic textures. Leave space for menu copy."
+    },
+    "interior": {
+      "title": "A warm minimalist home",
+      "prompt": "Create a horizontal 16:9 interior design photograph of a warm minimalist living room with a cream sofa, pale wood coffee table, soft rug and simple pendant lights. Large windows bring in warm daylight. Airy space, clear depth, realistic materials and architectural perspective, no people or clutter."
+    },
+    "flowers": {
+      "title": "Spring flower cover",
+      "prompt": "Create a vertical 3:4 spring florist cover photograph with pale pink flowers in close-up, layered petals, a soft cream background and gentle diffused light. Romantic, fresh lifestyle photography with space at the top for a headline, no branding or watermark."
+    },
+    "coast": {
+      "title": "Sunset by the sea",
+      "prompt": "Generate a 6-second horizontal 16:9 cinematic video of the sun sinking toward the horizon, orange and gold light across the sea and gentle waves rolling toward shore. A stable camera slowly moves forward. Natural colors, continuous light and a calm mood, no text or watermark."
+    },
+    "coffeeFilm": {
+      "title": "Coffee campaign film",
+      "prompt": "Generate a 6-second horizontal 16:9 coffee campaign video, looking down at a cup surrounded by coffee beans and cinnamon. Milk pours slowly into the coffee and forms natural, delicate swirls. Warm brown colors, soft studio light, shallow depth of field and continuous realistic liquid motion. No brand marks or subtitles."
+    },
+    "cityFilm": {
+      "title": "City at dusk",
+      "prompt": "Generate a 6-second horizontal 16:9 aerial city video at dusk. Buildings light up beneath the fading sunset while traffic creates ribbons of light. The camera glides forward smoothly, realistic perspective and cinematic grading. No flicker or text."
+    },
+    "forestFilm": {
+      "title": "Forest waterfall retreat",
+      "prompt": "Generate a 6-second horizontal 16:9 nature video of a waterfall flowing into a clear pool in a dense forest. Moss covers rocks and leaves sway gently. A nearly fixed camera slowly pushes in as soft sunlight filters through the canopy. Natural continuous water, ripples and foliage motion, no people or subtitles."
+    }
+  },
   "promptExamplesHint": "Try these instructions",
   "defaultPrompts": {
     "understand": "Get to know this project and explain in plain words what it does and where to start",
@@ -13,5 +126,77 @@
     "specifyWorkspace": "Select project folder",
     "searchPlaceholder": "Search projects…",
     "noProject": "No Project"
+  },
+  "comfy": {
+    "diagnosticLog": "Diagnostic log",
+    "title": "Local models",
+    "noProfile": "No installed profile",
+    "use": "Use",
+    "selected": "Selected",
+    "version": "{{family}} version",
+    "draftHint": "Installation actions fill an editable request. Send it when ready.",
+    "families": {
+      "h3": "Video generation",
+      "qwen-edit": "Image editing",
+      "z-image": "Image generation"
+    },
+    "actions": {
+      "install": "Install",
+      "repair": "Check / repair",
+      "install-other": "Other version",
+      "generate": "Generate"
+    },
+    "intentSummary": "Local model task: {{model}} · {{intent}}. Target profile: {{profile}}. Keep this family and intent. Prepare a concrete ComfyUI plan and request my confirmation before starting installation; no generation prompt is required for installation.",
+    "prompts": {
+      "install": "Install {{family}} locally with ComfyUI. First inspect my GPU, memory, disk, network and existing environment; recommend a suitable fixed model version and quantization, and select the matching ComfyUI workflow for this model family and task, including required nodes, models, encoders and VAE. Prefer a ModelScope or reputable domestic mirror copy only when it is proven identical to the pinned upstream artifact; pin the source, revision and SHA-256, explain download size, storage location, resume behavior and validation steps, then ask for my confirmation before installation. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "Check and repair my local {{family}} profile {{profile}}. Inspect its environment, model components, custom nodes and workflow. Explain the repair plan and ask for my confirmation before changes. Verify the profile with a small generation test. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "Install another version or quantization of {{family}} locally. Inspect my hardware and existing profiles; propose a separate profile with fixed sources and a validation plan. Ask for my confirmation before installing and keep my current working profile available. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI model plan",
+      "authorize": "Confirm and ask assistant to continue",
+      "continue": "Ask assistant to continue",
+      "cancel": "Cancel",
+      "target": "Install location",
+      "download": "Download size",
+      "disk": "Required free space",
+      "details": "Models, nodes and commands",
+      "source": "Source",
+      "unavailable": "The local model service is unavailable.",
+      "completedHint": "Validation passed. This model is available in the local model selector.",
+      "continueRequest": "I confirm the ComfyUI model plan. Call aionui_comfy_install with action=start and operationId={{id}} to continue this authorized operation using its saved family, version, quantization and parameters. Do not create another installation operation.",
+      "states": {
+        "awaiting-consent": "Awaiting confirmation",
+        "authorized": "Confirmed, awaiting assistant",
+        "running": "Running",
+        "paused": "Paused",
+        "failed": "Failed",
+        "completed": "Verified and ready",
+        "cancelled": "Cancelled"
+      },
+      "snapshotDirectory": "Recovery snapshot"
+    },
+    "profileSummary": "Selected local profile: {{profile}}. Use this exact profile.",
+    "session": {
+      "title": "Local generation profile",
+      "hint": "Applies to the next generation. Submitted jobs keep their saved profile.",
+      "saveFailed": "Could not save the profile selection. Try again."
+    },
+    "generation": {
+      "title": "Local generation",
+      "unavailable": "The local generation service is unavailable.",
+      "cancel": "Cancel generation",
+      "artifact": "Generated artifact {{index}}",
+      "states": {
+        "queued": "Queued",
+        "running": "Generating",
+        "succeeded": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "adjusted": "Parameters adjusted within this profile’s approved limits.",
+      "actualInput": "Actual generation parameters",
+      "submissionUncertain": "Submission was not confirmed. Check the current ComfyUI queue before submitting again."
+    }
   }
 }

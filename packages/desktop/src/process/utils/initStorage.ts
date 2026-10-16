@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync } from 'fs';
+import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, renameSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { getPlatformServices } from '@/common/platform';
@@ -23,6 +23,7 @@ import {
   ensureDirectory,
   getConfigPath,
   getDataPath,
+  getLegacyTempPath,
   getTempPath,
   hasElectronAppPath,
   verifyDirectoryFiles,
@@ -59,7 +60,8 @@ const mkdirSync = (path: string) => {
  * 迁移老版本数据从temp目录到userData/config目录
  */
 const migrateLegacyData = async () => {
-  const oldDir = getTempPath(); // 老的temp目录
+  const currentTempDir = getTempPath();
+  const legacyTempDir = getLegacyTempPath();
   const newDir = getConfigPath(); // 新的userData/config目录
 
   try {
@@ -70,12 +72,13 @@ const migrateLegacyData = async () => {
         try {
           return existsSync(newDir) && readdirSync(newDir).length === 0;
         } catch (error) {
-          console.warn('[AionUi] Warning: Could not read new directory during migration check:', error);
+          console.warn('[OpenH3] Warning: Could not read new directory during migration check:', error);
           return false; // 假设非空以避免迁移覆盖
         }
       })();
 
     // 检查迁移条件：老目录存在且新目录为空
+    const oldDir = existsSync(currentTempDir) ? currentTempDir : legacyTempDir;
     if (existsSync(oldDir) && isNewDirEmpty) {
       // 创建目标目录
       mkdirSync(newDir);
@@ -86,20 +89,13 @@ const migrateLegacyData = async () => {
       // 验证迁移是否成功
       const isVerified = await verifyDirectoryFiles(oldDir, newDir);
       if (isVerified) {
-        // 确保不会删除相同的目录
-        if (path.resolve(oldDir) !== path.resolve(newDir)) {
-          try {
-            await fs.rm(oldDir, { recursive: true });
-          } catch (cleanupError) {
-            console.warn('[AionUi] 原目录清理失败，请手动删除:', oldDir, cleanupError);
-          }
-        }
+        // Keep the legacy source until users have had a chance to confirm the move.
       }
 
       return true;
     }
   } catch (error) {
-    console.error('[AionUi] 数据迁移失败:', error);
+    console.error('[OpenH3] 数据迁移失败:', error);
   }
 
   return false;
@@ -249,11 +245,22 @@ const _chatFile = JsonFileBuilder<IChatConversationRefer>(path.join(cacheDir, ST
 const chatFile = _chatFile;
 
 const buildMessageListStorage = (conversation_id: string, dir: string) => {
-  const fullName = path.join(dir, 'aionui-chat-history', conversation_id + '.txt');
-  if (!existsSync(fullName)) {
-    mkdirSync(path.join(dir, 'aionui-chat-history'));
+  const historyDir = path.join(dir, 'openh3-chat-history');
+  const legacyHistoryDir = path.join(dir, 'aionui-chat-history');
+  let activeHistoryDir = historyDir;
+  if (!existsSync(historyDir) && existsSync(legacyHistoryDir)) {
+    try {
+      renameSync(legacyHistoryDir, historyDir);
+    } catch {
+      // Keep reading the legacy history when another process still owns it.
+      activeHistoryDir = legacyHistoryDir;
+    }
   }
-  return JsonFileBuilder<TMessage[]>(path.join(dir, 'aionui-chat-history', conversation_id + '.txt'));
+  const fullName = path.join(activeHistoryDir, conversation_id + '.txt');
+  if (!existsSync(fullName)) {
+    mkdirSync(activeHistoryDir);
+  }
+  return JsonFileBuilder<TMessage[]>(path.join(activeHistoryDir, conversation_id + '.txt'));
 };
 
 const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string) => {
@@ -273,9 +280,9 @@ const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string)
     },
     backup(conversation_id: string) {
       const storage = buildMessageListStorage(conversation_id, dir);
-      return storage.backup(
-        path.join(dir, 'aionui-chat-history', 'backup', conversation_id + '_' + Date.now() + '.txt')
-      );
+      const historyDir = path.join(dir, 'openh3-chat-history');
+      const activeHistoryDir = existsSync(historyDir) ? historyDir : path.join(dir, 'aionui-chat-history');
+      return storage.backup(path.join(activeHistoryDir, 'backup', conversation_id + '_' + Date.now() + '.txt'));
     },
   };
 };
@@ -315,7 +322,7 @@ const cleanupLegacyBuiltinSkillsDir = () => {
   const legacyDir = path.join(cacheDir, LEGACY_BUILTIN_SKILLS_DIR);
   if (!existsSync(legacyDir)) return;
   fs.rm(legacyDir, { recursive: true, force: true })
-    .then(() => console.log('[AionUi] Cleaned up legacy builtin-skills cache'))
+    .then(() => console.log('[OpenH3] Cleaned up legacy builtin-skills cache'))
     .catch(() => {
       /* swallow — cleanup is not critical */
     });
@@ -365,7 +372,7 @@ const getBuiltinMcpScriptPath = (scriptName: string): string => {
 
 const initStorage = async () => {
   const t0 = performance.now();
-  const mark = (label: string) => console.log(`[AionUi:init] ${label} +${Math.round(performance.now() - t0)}ms`);
+  const mark = (label: string) => console.log(`[OpenH3:init] ${label} +${Math.round(performance.now() - t0)}ms`);
   mark('start');
 
   // 1. 先执行数据迁移（在任何目录创建之前）
@@ -393,7 +400,7 @@ const initStorage = async () => {
     await ensureAssistantDirs();
     mark('5. ensureAssistantDirs');
   } catch (error) {
-    console.error('[AionUi] Failed to ensure assistant dirs:', error);
+    console.error('[OpenH3] Failed to ensure assistant dirs:', error);
   }
 
   // 5b. Best-effort cleanup of the legacy builtin-skills cache left behind

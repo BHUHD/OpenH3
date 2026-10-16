@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath $input)) { throw 'FFMPEG_FIXTURE_CREATE_FAILED'
 $env:ELECTRON_RUN_AS_NODE = '1'; $env:AIONUI_MEDIA_PORT = '33004'; $env:AIONUI_DATA_DIR = $root
 $out = Join-Path $root 'service.out.log'; $err = Join-Path $root 'service.err.log'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$electron = Join-Path $repoRoot 'out\win-unpacked\AionUi.exe'
+$electron = Join-Path $repoRoot 'out\win-unpacked\OpenH3.exe'
 $serviceScript = Join-Path $repoRoot 'out\main\media-service.js'
 $p = Start-Process -FilePath $electron -ArgumentList @($serviceScript) -WorkingDirectory $root -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
 try {

@@ -40,6 +40,18 @@ const rendererPng = path.join(
 const resourcesDir = path.join(projectRoot, 'resources');
 const resourcePng = path.join(resourcesDir, 'app.png');
 const resourceIco = path.join(resourcesDir, 'app.ico');
+const roundLogo = path.join(
+  projectRoot,
+  'packages',
+  'desktop',
+  'src',
+  'renderer',
+  'assets',
+  'logos',
+  'brand',
+  'openh3-logo-round.png'
+);
+const pwaDir = path.join(projectRoot, 'public', 'pwa');
 
 function writeIco(images) {
   const header = Buffer.alloc(6);
@@ -93,28 +105,37 @@ async function main() {
   const logoMetadata = await sharp(transparentLogo).metadata();
   const logoWidth = Math.round((logoMetadata.width ?? 1024) * 0.82);
   const resizedLogo = await sharp(transparentLogo).resize({ width: logoWidth, fit: 'inside' }).png().toBuffer();
-  const rendererIcon = await sharp({
-    create: { width: 1024, height: 1024, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-  })
-    .composite([{ input: resizedLogo, gravity: 'center' }])
-    .png()
-    .toBuffer();
   const appLogo = await sharp({
     create: { width: 1024, height: 1024, channels: 4, background: '#ffffff' },
   })
     .composite([{ input: resizedLogo, gravity: 'center' }])
     .png()
     .toBuffer();
+  const circleMask = Buffer.from(
+    '<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg"><circle cx="512" cy="512" r="512" fill="white"/></svg>'
+  );
+  const circularAppLogo = await sharp(appLogo)
+    .composite([{ input: circleMask, blend: 'dest-in' }])
+    .png()
+    .toBuffer();
   const sizes = [16, 24, 32, 48, 64, 128, 256];
   const images = await Promise.all(
     sizes.map(async (size) => ({
       size,
-      data: await sharp(appLogo).resize(size, size).png().toBuffer(),
+      data: await sharp(circularAppLogo).resize(size, size).png().toBuffer(),
     }))
   );
 
-  await fs.promises.writeFile(rendererPng, rendererIcon);
-  await fs.promises.writeFile(resourcePng, appLogo);
+  await fs.promises.writeFile(rendererPng, circularAppLogo);
+  await fs.promises.writeFile(resourcePng, circularAppLogo);
+  await fs.promises.writeFile(roundLogo, circularAppLogo);
+  await fs.promises.mkdir(pwaDir, { recursive: true });
+  for (const size of [180, 192, 512]) {
+    await fs.promises.writeFile(
+      path.join(pwaDir, `icon-${size}.png`),
+      await sharp(circularAppLogo).resize(size, size).png().toBuffer()
+    );
+  }
   fs.writeFileSync(resourceIco, writeIco(images));
 
   console.log(`Generated OpenH3 PNG: ${rendererPng}`);

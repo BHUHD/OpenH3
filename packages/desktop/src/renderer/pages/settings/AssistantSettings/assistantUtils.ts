@@ -1,5 +1,8 @@
-import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
-import { isBackendRelativeAssetPath, isLikelyLocalFilePath } from '@/renderer/utils/model/assistantAvatar';
+import {
+  resolveAssistantAvatar,
+  isBackendRelativeAssetPath,
+  isLikelyLocalFilePath,
+} from '@/renderer/utils/model/assistantAvatar';
 import type { AssistantListItem, AvailableBackend } from './types';
 import type { ManagedAgent } from '@/renderer/utils/model/agentTypes';
 
@@ -39,7 +42,10 @@ export const resolveAvatarImageSrc = (avatar: string | undefined): string | unde
   if (isLikelyLocalFilePath(value)) return undefined;
   if (value.startsWith('/') && !isBackendRelativeAssetPath(value)) return undefined;
 
-  const resolved = resolveExtensionAssetUrl(value) || value;
+  const normalized = resolveAssistantAvatar(value);
+  if (normalized.kind === 'image') return normalized.value;
+
+  const resolved = value;
   const isImage = /\.(svg|png|jpe?g|webp|gif)$/i.test(resolved) || /^(https?:|file:\/\/|data:|\/)/i.test(resolved);
   return isImage ? resolved : undefined;
 };

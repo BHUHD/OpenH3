@@ -6,6 +6,7 @@
 
 export {
   getTempPath,
+  getLegacyTempPath,
   getDataPath,
   getConfigPath,
   generateHashWithFullName,

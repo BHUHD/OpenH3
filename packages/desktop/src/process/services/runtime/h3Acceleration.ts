@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { downloadH3FromSources, fetchH3Download } from './h3Downloader';
 import { buildH3DownloadPlan, type H3SourceConfig } from './h3DownloadPlan';
-import type { H3DownloadProgress } from '@/common/chat/document/h3Setup';
+import type { H3DownloadProgress } from '@/common/chat/document/creation/h3Setup';
 
 export type H3AccelerationMode = 'auto' | 'dense' | 'sla';
 export type H3AccelerationStatus = {

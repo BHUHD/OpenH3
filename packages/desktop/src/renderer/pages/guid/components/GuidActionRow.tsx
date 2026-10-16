@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { normalizeSkillDescription, normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { IMcpServer, IProvider, TProviderWithModel } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
@@ -72,6 +73,7 @@ const SubmenuSearchList: React.FC<{
 );
 
 type GuidActionRowProps = {
+  creationControls?: React.ReactNode;
   // File handling
   files: string[];
   /** Device uploads (browser input → managed dir): sent as `upload` refs. */
@@ -102,7 +104,12 @@ type GuidActionRowProps = {
   onModeSelect: (mode: string) => void;
 
   // Skills management
-  allSkills: Array<{ name: string; description: string; isAuto: boolean }>;
+  allSkills: Array<{
+    name: string;
+    description: string;
+    isAuto: boolean;
+    source: 'builtin' | 'custom' | 'cron' | 'extension';
+  }>;
   disabledBuiltinSkills: string[];
   enabledSkills: string[];
   onToggleSkill: (name: string, isAuto: boolean) => void;
@@ -118,6 +125,7 @@ type GuidActionRowProps = {
 };
 
 const GuidActionRow: React.FC<GuidActionRowProps> = ({
+  creationControls,
   files,
   onFilesPicked,
   onFilesUploaded,
@@ -163,7 +171,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
       setMcpQuery('');
     }
   }, []);
-  const showModeSwitch = dynamicModes.length > 0;
+  const showModeSwitch = dynamicModes.length > 0 || Boolean(creationControls);
   const configOptionCount = (modelSelectorNode ? 1 : 0) + (showModeSwitch ? 1 : 0);
 
   // Browser file picker ref (WebUI only)
@@ -204,7 +212,11 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
 
   const skillKeyword = skillQuery.trim().toLowerCase();
   const filteredSkills = skillKeyword
-    ? allSkills.filter((skill) => skill.name.toLowerCase().includes(skillKeyword))
+    ? allSkills.filter(
+        (skill) =>
+          skill.name.toLowerCase().includes(skillKeyword) ||
+          normalizeSkillDisplayName(skill.name, skill.source).toLowerCase().includes(skillKeyword)
+      )
     : allSkills;
   const mcpKeyword = mcpQuery.trim().toLowerCase();
   const filteredMcpServers = mcpKeyword
@@ -363,8 +375,8 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           multiSelect: true,
           options: allSkills.map((skill) => ({
             key: skill.name,
-            label: skill.name,
-            description: skill.description || undefined,
+            label: normalizeSkillDisplayName(skill.name, skill.source),
+            description: normalizeSkillDescription(skill.name, skill.description, skill.source) || undefined,
             active: isSkillChecked(skill),
           })),
           onSelect: (name) => {
@@ -507,7 +519,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
                   onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   onChange={() => onToggleSkill(skill.name, skill.isAuto)}
                 >
-                  <span className='text-13px'>{skill.name}</span>
+                  <span className='text-13px'>{normalizeSkillDisplayName(skill.name, skill.source)}</span>
                 </Checkbox>
               </Menu.Item>
             ))}
@@ -563,7 +575,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   );
 
   return (
-    <div className={styles.actionRow}>
+    <div className={`${styles.actionRow} ${creationControls ? styles.creationActionRow : ''}`}>
       <div className={styles.actionTools}>
         <div className={styles.actionEntry}>
           {isMobile ? (
@@ -572,7 +584,14 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
               <Button
                 type='secondary'
                 shape='circle'
-                icon={<Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />}
+                aria-label={t('common.fileAttach.addFiles')}
+                icon={
+                  creationControls ? (
+                    <Paperclip theme='outline' size='18' strokeWidth={4} />
+                  ) : (
+                    <Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />
+                  )
+                }
                 loading={uploading}
                 disabled={uploading}
                 data-testid='file-upload-btn'
@@ -588,13 +607,24 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
               )}
             </span>
           ) : (
-            <Dropdown trigger='hover' onVisibleChange={handlePlusDropdownVisibleChange} droplist={menuContent}>
+            <Dropdown
+              trigger={creationControls ? 'click' : 'hover'}
+              onVisibleChange={handlePlusDropdownVisibleChange}
+              droplist={menuContent}
+            >
               <span className='flex items-center gap-4px cursor-pointer lh-[1]'>
                 <Button
                   type='secondary'
                   shape='circle'
-                  className={isPlusDropdownOpen ? styles.plusButtonRotate : ''}
-                  icon={<Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />}
+                  className={!creationControls && isPlusDropdownOpen ? styles.plusButtonRotate : ''}
+                  aria-label={t('common.fileAttach.addFiles')}
+                  icon={
+                    creationControls ? (
+                      <Paperclip theme='outline' size='18' strokeWidth={4} />
+                    ) : (
+                      <Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />
+                    )
+                  }
                   loading={uploading}
                   disabled={uploading}
                   data-testid='file-upload-btn'
@@ -620,6 +650,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
             />
           )}
         </div>
+        {creationControls}
       </div>
       {isMobile && (
         <MobileActionSheet
@@ -631,7 +662,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
       )}
       <div className={styles.actionSubmit}>
         {/* Desktop keeps the inline model/permission selectors; on mobile they move into the sheet. */}
-        {!isMobile && configOptionCount > 0 && (
+        {(!isMobile || creationControls) && configOptionCount > 0 && (
           <div className={styles.actionConfigGroup} data-mobile={isMobile ? 'true' : undefined}>
             {modelSelectorNode}
 
@@ -643,6 +674,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
                 onModeSelect={onModeSelect}
                 dynamicModes={dynamicModes}
                 compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
+                compactLabelPrefix={creationControls ? `${t('agentMode.permission')} ·` : undefined}
                 modeLabelFormatter={getModeDisplayLabel}
               />
             )}
@@ -657,8 +689,8 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
           disabled={isButtonDisabled}
           className='send-button-custom'
           style={{
-            backgroundColor: isButtonDisabled ? undefined : '#000000',
-            borderColor: isButtonDisabled ? undefined : '#000000',
+            backgroundColor: isButtonDisabled ? undefined : creationControls ? 'rgb(var(--primary-6))' : '#000000',
+            borderColor: isButtonDisabled ? undefined : creationControls ? 'rgb(var(--primary-6))' : '#000000',
           }}
           icon={<ArrowUp theme='filled' size='14' fill='white' strokeWidth={5} />}
           onClick={onSend}

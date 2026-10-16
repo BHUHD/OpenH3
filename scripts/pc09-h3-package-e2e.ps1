@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptPath = Join-Path $PackageRoot 'resources\app.asar.unpacked\out\main\media-service.js'
-$electronPath = Join-Path $PackageRoot 'AionUi.exe'
+$electronPath = Join-Path $PackageRoot 'OpenH3.exe'
 $logPath = Join-Path $DataRoot 'media-service.out.log'
 $errorLogPath = Join-Path $DataRoot 'media-service.err.log'
 if (-not (Test-Path -LiteralPath $scriptPath)) { throw "MEDIA_SERVICE_SCRIPT_NOT_FOUND: $scriptPath" }

@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { resolveMediaBinary } from './mediaBinary';
 
 export type MediaServiceProcessOptions = {
   scriptPath: string;
@@ -20,6 +22,8 @@ export type MediaServiceProcessOptions = {
 export class MediaServiceProcess {
   private child?: ChildProcess;
   private readonly port: number;
+  /** Secret accepted only for consent actions initiated by the Electron UI. */
+  readonly uiToken = crypto.randomBytes(32).toString('hex');
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
 
@@ -44,6 +48,9 @@ export class MediaServiceProcess {
       NODE_USE_SYSTEM_CA: process.env.NODE_USE_SYSTEM_CA ?? '1',
       AIONUI_MEDIA_PORT: String(this.port),
       AIONUI_DATA_DIR: this.options.dataDir,
+      AIONUI_FFMPEG_PATH: resolveMediaBinary('ffmpeg'),
+      AIONUI_FFPROBE_PATH: resolveMediaBinary('ffprobe'),
+      AIONUI_MEDIA_UI_TOKEN: this.uiToken,
       ...(this.options.bundleRoot ? { AIONUI_H3_BUNDLE_ROOT: this.options.bundleRoot } : {}),
     };
     const start = this.options.spawnProcess ?? ((file, args, spawnOptions) => spawn(file, args, spawnOptions));

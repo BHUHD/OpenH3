@@ -18,6 +18,10 @@ type ConsumeOptions = {
 const isString = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0;
 
 export function getInstallerLastFailureMarkerPath(appDataDir: string): string {
+  return path.join(appDataDir, 'OpenH3', INSTALLER_LAST_FAILURE_FILE_NAME);
+}
+
+function getLegacyInstallerLastFailureMarkerPath(appDataDir: string): string {
   return path.join(appDataDir, 'AionUi', INSTALLER_LAST_FAILURE_FILE_NAME);
 }
 
@@ -53,17 +57,26 @@ export function parseInstallerLastFailureMarker(raw: unknown): InstallerLastFail
 const stripUtf8Bom = (text: string): string => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
 
 export async function consumeInstallerLastFailure(options: ConsumeOptions): Promise<InstallerLastFailureMarker | null> {
-  const markerPath =
-    options.markerPath ?? (options.appDataDir ? getInstallerLastFailureMarkerPath(options.appDataDir) : '');
-  if (!markerPath) return null;
-
-  let text: string;
-  try {
-    text = await fs.readFile(markerPath, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-    throw error;
+  const markerPaths = options.markerPath
+    ? [options.markerPath]
+    : options.appDataDir
+      ? [
+          getInstallerLastFailureMarkerPath(options.appDataDir),
+          getLegacyInstallerLastFailureMarkerPath(options.appDataDir),
+        ]
+      : [];
+  let markerPath: string | undefined;
+  let text: string | null = null;
+  for (const candidate of markerPaths) {
+    try {
+      text = await fs.readFile(candidate, 'utf8');
+      markerPath = candidate;
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
   }
+  if (!markerPath || text === null) return null;
 
   let parsed: unknown;
   try {

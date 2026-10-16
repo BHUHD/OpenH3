@@ -1,4 +1,11 @@
-import { h3AgentSnapshot, type H3Job } from '@/common/chat/document/h3Job';
+import { h3AgentSnapshot, h3GenerationSpecSchema, type H3Job } from '@/common/chat/document/h3Job';
+import {
+  comfyGenerationInputSchema,
+  comfyInstallPlanSchema,
+  comfyProfileSchema,
+  type ComfyGenerationJob,
+  type ComfyOperation,
+} from '@/common/chat/document/creation/comfy';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -22,6 +29,7 @@ async function call(path: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(`http://127.0.0.1:${port()}${path}`, { ...init, signal: AbortSignal.timeout(45_000) });
   const data = await response.json();
   if (!response.ok) {
+    if (path === '/api/h3/status' && response.status === 503 && data?.install) return data;
     const payload = data as { error?: string; diagnosis?: unknown };
     throw new MediaServiceError(payload.error ?? `MEDIA_SERVICE_HTTP_${response.status}`, {
       diagnosis: payload.diagnosis,
@@ -32,12 +40,42 @@ async function call(path: string, init?: RequestInit): Promise<unknown> {
   return data;
 }
 
+function creationRequestId(): string {
+  const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+  if (!requestId?.trim()) throw new Error('CREATION_REQUEST_CONTEXT_MISSING');
+  return requestId;
+}
+
+function jsonRequest(body: unknown): RequestInit {
+  return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
+}
+
+function toolResult(value: unknown) {
+  return { content: [{ type: 'text' as const, text: JSON.stringify(value) }] };
+}
+
+function toolError(prefix: string, error: unknown) {
+  return { isError: true, content: [{ type: 'text' as const, text: formatServiceError(prefix, error) }] };
+}
+
+async function guardLegacyH3Submission(): Promise<void> {
+  const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+  if (!requestId?.trim()) return;
+  const result = (await call(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as { selection?: unknown };
+  if (result.selection) {
+    throw new Error(
+      'COMFY_REGISTERED_PROFILE_REQUIRED: use comfyui-local and aionui_comfy_install/aionui_comfy_generate for the current selection; historical H3 tools are for earlier jobs'
+    );
+  }
+  throw new Error('COMFY_SELECTION_CONTEXT_MISSING: inspect the current creation selection before submitting');
+}
+
 async function main() {
   const server = new McpServer(
     { name: BUILTIN_VIDEO_MEDIA_NAME, version: '1.0.0' },
     {
       instructions:
-        'The client automatically displays completed H3 videos as a playable result card at the end of your reply. Summarize the result in plain language; do not output HTML video tags or duplicate playback links.',
+        'Use the comfyui-local skill for local H3, Qwen-Edit, and Z-Image environment selection, installation, repair, and generation. Respect the current registered profile and session selection. aionui_comfy_install request shows a complete pinned plan for UI consent; only start after the UI authorizes that operation. Never authorize on behalf of the user. Generate only with a verified registered profile through aionui_comfy_generate; generation needs no installation plan. The client displays operations and job outputs and monitors them independently. End your turn after submission; do not repeatedly poll or resubmit. Historical H3 tools remain available for existing jobs.',
     }
   );
   const spec = {
@@ -47,6 +85,186 @@ async function main() {
     startSeconds: z.number().nonnegative().optional(),
     endSeconds: z.number().positive().optional(),
   };
+  server.tool(
+    'aionui_comfy_environment',
+    'Inspect the actual local OS, hardware, Python, accelerator, kernels, network, and selected ComfyUI environment before planning installation or repair. Optional root/python/baseUrl select the runtime; pass exact immutable model or workflow URLs as sources to test reachability, HTTP Range support, and content length without downloading. Failed or incomplete probes require diagnosis; they do not prove unsupported hardware. This tool does not install or download anything.',
+    {
+      root: comfyProfileSchema.shape.environment.shape.root.optional(),
+      python: z.string().min(1).optional(),
+      baseUrl: comfyProfileSchema.shape.environment.shape.baseUrl.optional(),
+      sources: z.array(z.string().url()).max(12).optional(),
+    },
+    async (input) => {
+      try {
+        const query = new URLSearchParams({ requestId: creationRequestId() });
+        for (const [key, value] of Object.entries(input)) {
+          if (value === undefined) continue;
+          if (key === 'sources' && Array.isArray(value)) {
+            for (const source of value) query.append('source', source);
+          } else query.set(key, String(value));
+        }
+        return toolResult(await call(`/api/comfy/environment?${query}`));
+      } catch (error) {
+        return toolError('ComfyUI environment inspection failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_comfy_profiles',
+    'List registered local profiles and the authoritative current session selection; register a discovered pinned component set; or revalidate with a required representative smokeInput. Revalidation submits a background validation job and returns comfyJobId, job, and validation:true; the UI monitors it. Registration never proves verification. Prefer an existing compatible verified profile and keep a component set atomic. No repeated full scans on the normal generation path.',
+    {
+      action: z.enum(['list', 'register', 'revalidate']),
+      profile: comfyProfileSchema.optional(),
+      profileId: z.string().min(1).optional(),
+      smokeInput: comfyGenerationInputSchema.optional(),
+    },
+    async ({ action, profile, profileId, smokeInput }) => {
+      try {
+        if (action === 'list') {
+          const optionalRequestId = process.env.AIONUI_CREATION_REQUEST_ID?.trim();
+          const query = optionalRequestId ? `?${new URLSearchParams({ requestId: optionalRequestId })}` : '';
+          return toolResult(await call(`/api/comfy/profiles${query}`));
+        }
+        const requestId = creationRequestId();
+        if (action === 'register') {
+          if (!profile) throw new Error('COMFY_PROFILE_REQUIRED');
+          const { validation: _validation, ...candidate } = profile;
+          return toolResult(
+            await call(
+              '/api/comfy/profiles',
+              jsonRequest({ action, profile: { ...candidate, state: 'downloaded' }, requestId })
+            )
+          );
+        }
+        if (!profileId) throw new Error('COMFY_PROFILE_REQUIRED');
+        return toolResult(await call('/api/comfy/profiles', jsonRequest({ action, profileId, smokeInput, requestId })));
+      } catch (error) {
+        return toolError('ComfyUI profile operation failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_comfy_install',
+    'Prepare or manage a full pinned local ComfyUI installation/repair plan. request returns comfyOperationId and a reviewable UI card without installing. The user must authorize that exact plan in the application UI before start; the LLM cannot authorize. start/status/cancel require the same operationId and current request context. No original generation spec is required. The UI follows progress; end your turn after request/start.',
+    {
+      action: z.enum(['request', 'start', 'status', 'cancel']),
+      plan: comfyInstallPlanSchema.optional(),
+      operationId: z.string().min(1).optional(),
+    },
+    async ({ action, plan, operationId }) => {
+      try {
+        const requestId = creationRequestId();
+        let operation: ComfyOperation;
+        if (action === 'request') {
+          if (!plan) throw new Error('COMFY_INSTALL_PLAN_REQUIRED');
+          operation = (await call('/api/comfy/operations', jsonRequest({ plan, requestId }))) as ComfyOperation;
+        } else {
+          if (!operationId) throw new Error('COMFY_OPERATION_REQUIRED');
+          const endpoint = `/api/comfy/operations/${encodeURIComponent(operationId)}`;
+          operation = (await call(
+            action === 'status' ? `${endpoint}?${new URLSearchParams({ requestId })}` : `${endpoint}/${action}`,
+            action === 'status' ? undefined : jsonRequest({ requestId })
+          )) as ComfyOperation;
+        }
+        return toolResult({ comfyOperationId: operation.id, operation });
+      } catch (error) {
+        return toolError('ComfyUI installation operation failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_comfy_generate',
+    'Generate an image or video through the currently selected verified registered local ComfyUI profile. Pass profileId and input only; no install plan or repeated environment scan. The service checks the session selection, family, intent, profile state, and input bindings. Preserve the chosen model and source; never silently switch models or cloud. Returns comfyJobId for the client to monitor; end your turn after submission.',
+    { profileId: z.string().min(1), input: comfyGenerationInputSchema },
+    async ({ profileId, input }) => {
+      try {
+        const job = (await call(
+          '/api/comfy/jobs',
+          jsonRequest({ profileId, input, requestId: creationRequestId() })
+        )) as ComfyGenerationJob;
+        return toolResult({ comfyJobId: job.id, job });
+      } catch (error) {
+        return toolError('ComfyUI generation failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_comfy_job_status',
+    'Get one snapshot of an existing local ComfyUI image/video job and its output artifacts. Use the saved jobId; a disconnection does not imply the job stopped. The UI monitors ongoing jobs, so do not poll repeatedly or automatically submit a replacement.',
+    { jobId: z.string().min(1) },
+    async ({ jobId }) => {
+      try {
+        const job = (await call(
+          `/api/comfy/jobs/${encodeURIComponent(jobId)}?${new URLSearchParams({ requestId: creationRequestId() })}`
+        )) as ComfyGenerationJob;
+        return toolResult({ comfyJobId: job.id, job });
+      } catch (error) {
+        return toolError('ComfyUI job query failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_comfy_cancel_job',
+    'Cancel an existing local ComfyUI image/video job when the user requests cancellation. Do not resubmit it automatically or interrupt unrelated jobs.',
+    { jobId: z.string().min(1) },
+    async ({ jobId }) => {
+      try {
+        const job = (await call(
+          `/api/comfy/jobs/${encodeURIComponent(jobId)}/cancel`,
+          jsonRequest({ requestId: creationRequestId() })
+        )) as ComfyGenerationJob;
+        return toolResult({ comfyJobId: job.id, job });
+      } catch (error) {
+        return toolError('ComfyUI job cancellation failed', error);
+      }
+    }
+  );
+  server.tool(
+    'aionui_h3_install_video_model',
+    'Prepare an installation card after the user chooses to install local MiniMax H3. request preserves the generation spec and returns creationOperationId. The user accepts terms/hardware in the existing installer UI; never accept on their behalf. start requires that saved UI confirmation and the same operationId. The background service installs then continues this original request automatically. End your turn after either action.',
+    {
+      action: z.enum(['request', 'start']),
+      spec: h3GenerationSpecSchema.optional(),
+      operationId: z.string().uuid().optional(),
+    },
+    async ({ action, spec, operationId }) => {
+      try {
+        await guardLegacyH3Submission();
+        if (process.env.AIONUI_CREATION_SOURCE === 'cloud') throw new Error('CREATION_LOCAL_MODEL_NOT_SELECTED');
+        if (process.env.AIONUI_CREATION_KIND === 'image') throw new Error('CREATION_VIDEO_NOT_SELECTED');
+        const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+        if (!requestId) throw new Error('CREATION_REQUEST_CONTEXT_MISSING');
+        if (action === 'request' && !spec) throw new Error('CREATION_GENERATION_SPEC_REQUIRED');
+        if (action === 'start' && !operationId) throw new Error('CREATION_OPERATION_REQUIRED');
+        const operation = (await call(
+          action === 'request' ? '/api/creation/operations' : `/api/creation/operations/${operationId}/start`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(action === 'request' ? { requestId, spec } : { requestId }),
+          }
+        )) as { id: string; state: string; jobId?: string };
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                creationOperationId: operation.id,
+                state: operation.state,
+                jobId: operation.jobId,
+                stopPolling: true,
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: 'text' as const, text: formatServiceError('H3 installation request failed', error) }],
+        };
+      }
+    }
+  );
   server.tool(
     'aionui_video_process',
     'Process a local video according to the user request. Use probe to inspect/decode, extract-frame for a still image, extract-audio for an audio track, or transcode for a new video copy. Never overwrite the source file.',
@@ -122,6 +340,18 @@ async function main() {
     },
     async (input) => {
       try {
+        await guardLegacyH3Submission();
+        if (process.env.AIONUI_CREATION_SOURCE === 'cloud')
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: 'The user selected cloud video generation. No cloud video API is configured. Ask the user to configure one or explicitly select local MiniMax H3; do not silently use local generation.',
+              },
+            ],
+          };
+        if (process.env.AIONUI_CREATION_KIND === 'image') throw new Error('CREATION_VIDEO_NOT_SELECTED');
         const result = await call('/api/h3/jobs', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },

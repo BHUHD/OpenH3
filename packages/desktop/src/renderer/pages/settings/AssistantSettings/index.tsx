@@ -29,6 +29,7 @@ import type { AssistantEditorViewModel, AssistantListItem } from './types';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 
 type AssistantNavigationState = {
   openAssistantId?: string;
@@ -80,7 +81,7 @@ const AssistantSettings: React.FC = () => {
 
           return {
             id: assistant.id,
-            label: assistant.name_i18n?.[localeKey] || assistant.name,
+            label: normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name),
             src,
           };
         })

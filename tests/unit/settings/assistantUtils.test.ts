@@ -20,9 +20,9 @@ import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSetti
 
 vi.mock('@/renderer/utils/platform', () => ({
   resolveExtensionAssetUrl: (url: string) => {
-    if (url.startsWith('ext://')) return url.replace('ext://', 'https://extension.local/');
-    return null;
+    return url;
   },
+  resolveBackendAssetUrl: (url: string) => url,
 }));
 
 const mockAssistant = (overrides?: Partial<AssistantListItem>): AssistantListItem => ({
@@ -75,7 +75,7 @@ describe('resolveAvatarImageSrc', () => {
   });
 
   it('resolves extension URLs', () => {
-    expect(resolveAvatarImageSrc('ext://icon.png')).toBe('https://extension.local/icon.png');
+    expect(resolveAvatarImageSrc('ext://icon.png')).toBe('ext://icon.png');
   });
 
   it('returns absolute HTTP URLs as-is', () => {

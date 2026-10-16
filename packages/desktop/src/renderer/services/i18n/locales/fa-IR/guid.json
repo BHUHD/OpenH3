@@ -13,5 +13,190 @@
     "specifyWorkspace": "انتخاب پوشه پروژه",
     "searchPlaceholder": "جستجوی پروژه‌ها…",
     "noProject": "بدون پروژه"
+  },
+  "comfy": {
+    "diagnosticLog": "گزارش تشخیصی",
+    "title": "مدل‌های محلی",
+    "noProfile": "پروفایل نصب‌شده‌ای نیست",
+    "use": "استفاده",
+    "selected": "انتخاب‌شده",
+    "version": "نسخه {{family}}",
+    "draftHint": "عمل نصب یک درخواست قابل ویرایش ایجاد می‌کند. پس از آماده شدن آن را ارسال کنید.",
+    "families": {
+      "h3": "تولید ویدئو",
+      "qwen-edit": "ویرایش تصویر",
+      "z-image": "تولید تصویر"
+    },
+    "actions": {
+      "install": "نصب",
+      "repair": "بررسی / تعمیر",
+      "install-other": "نسخه دیگر",
+      "generate": "تولید"
+    },
+    "intentSummary": "وظیفه مدل محلی: {{model}} · {{intent}}. پروفایل: {{profile}}. خانواده و وظیفه را حفظ کن. طرح مشخص ComfyUI تهیه کن و منتظر تأیید من بمان. نصب به پارامترهای تولید نیاز ندارد.",
+    "prompts": {
+      "install": "{{family}} را با ComfyUI به‌صورت محلی نصب کن. ابتدا سخت‌افزار، شبکه و محیط موجود را بررسی کن. گردش‌کار مناسب ComfyUI برای خانواده و کار را با گره‌ها، مدل‌ها، encoderها و VAEهای لازم انتخاب کن. نسخه و کوانتیزه‌سازی ثابت پیشنهاد بده و فقط در صورت اثبات یکسان‌بودن با artifact ثابت upstream، کپی ModelScope یا آینه داخلی معتبر را ترجیح بده؛ منبع، revision و SHA-256 را ثابت کن و حجم، محل، ادامه دانلود و اعتبارسنجی را توضیح بده. پیش از نصب منتظر تأیید من بمان. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "پروفایل محلی {{family}} من با شناسه {{profile}} را بررسی و تعمیر کن. محیط، اجزا، گره‌ها و گردش کار را بررسی کن. طرح را توضیح بده، منتظر تأیید بمان و با یک آزمون کوچک اعتبارسنجی کن. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "نسخه یا کوانتیزه‌سازی دیگری از {{family}} را در پروفایلی جدا نصب کن. سخت‌افزار را بررسی و منابع ثابت و اعتبارسنجی پیشنهاد کن. منتظر تأیید بمان و پروفایل فعلی را حفظ کن. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "طرح مدل ComfyUI",
+      "authorize": "تأیید طرح و ادامه با دستیار",
+      "continue": "ادامه با دستیار",
+      "cancel": "لغو",
+      "target": "محل نصب",
+      "download": "حجم دانلود",
+      "disk": "فضای آزاد موردنیاز",
+      "details": "مدل‌ها، گره‌ها و فرمان‌ها",
+      "source": "منبع",
+      "unavailable": "سرویس مدل محلی در دسترس نیست.",
+      "completedHint": "اعتبارسنجی موفق بود. مدل در انتخاب‌گر محلی آماده است.",
+      "continueRequest": "تأیید طرح و ادامه با دستیار. aionui_comfy_install action=start operationId={{id}}. طرح مدل ComfyUI.",
+      "states": {
+        "awaiting-consent": "در انتظار تأیید",
+        "authorized": "تأیید شد، در انتظار دستیار",
+        "running": "در حال اجرا",
+        "paused": "متوقف‌شده",
+        "failed": "ناموفق",
+        "completed": "تأییدشده و آماده",
+        "cancelled": "لغوشده"
+      },
+      "snapshotDirectory": "نسخه بازیابی"
+    },
+    "profileSummary": "پروفایل محلی انتخاب‌شده: {{profile}}. دقیقاً از این پروفایل استفاده کن.",
+    "session": {
+      "title": "پروفایل تولید محلی",
+      "hint": "برای تولید بعدی اعمال می‌شود. کارهای ارسال‌شده پروفایل ذخیره‌شده خود را حفظ می‌کنند.",
+      "saveFailed": "انتخاب پروفایل ذخیره نشد. دوباره تلاش کنید."
+    },
+    "generation": {
+      "title": "تولید محلی",
+      "unavailable": "سرویس تولید محلی در دسترس نیست.",
+      "cancel": "لغو تولید",
+      "artifact": "خروجی تولیدشده {{index}}",
+      "states": {
+        "queued": "در صف",
+        "running": "در حال تولید",
+        "succeeded": "تکمیل‌شده",
+        "failed": "ناموفق",
+        "cancelled": "لغوشده"
+      },
+      "adjusted": "پارامترها در محدوده مجاز این پروفایل تنظیم شدند.",
+      "actualInput": "پارامترهای واقعی تولید",
+      "submissionUncertain": "ارسال درخواست تأیید نشد. پیش از ارسال دوباره، صف فعلی ComfyUI را بررسی کنید."
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "دانلودشده",
+      "loadable": "قابل بارگیری",
+      "verified": "اعتبارسنجی‌شده",
+      "invalid": "نامعتبر",
+      "installed": "نصب‌شده",
+      "not-installed": "نصب‌نشده",
+      "no-workflow": "بدون گردش کار",
+      "configured": "پیکربندی‌شده",
+      "not-configured": "پیکربندی‌نشده",
+      "unavailable": "وضعیت در دسترس نیست",
+      "checking": "در حال بررسی"
+    },
+    "kind": "نوع ایجاد",
+    "source": "منبع مدل",
+    "model": "مدل ایجاد",
+    "local": "محلی",
+    "cloud": "ابری",
+    "localImage": "مدل تصویر محلی",
+    "localVideo": "مدل ویدئوی محلی",
+    "cloudImage": "مدل تصویر ابری",
+    "cloudVideo": "مدل ویدئوی ابری",
+    "manageLocal": "مدیریت مدل‌های محلی",
+    "configureCloud": "پیکربندی API ابری",
+    "requestSummary": "تنظیمات تولید: {{kind}} · {{source}} · {{model}} ({{state}}). از مدل انتخاب‌شده استفاده کن؛ اگر در دسترس نیست، از من بخواه آن را نصب یا پیکربندی کنم. هرگز خودکار به مدل دیگر یا سرویس ابری تغییر نده.",
+    "toolsUnavailable": "ابزارهای تولید هنوز آماده نیستند. کمی بعد دوباره تلاش کنید.",
+    "install": {
+      "states": {
+        "awaiting-consent": "در انتظار تأیید",
+        "cancelled": "لغو شد",
+        "cancelling": "در حال لغو",
+        "failed": "ناتمام",
+        "paused": "متوقف شده",
+        "authorized": "تأیید شد، در انتظار دستیار",
+        "submitted": "درخواست تولید ارسال شد",
+        "installing": "در حال نصب"
+      },
+      "title": "نصب MiniMax H3 و ادامه",
+      "open": "بررسی نصب",
+      "continueRequest": "مجوز مدل و گزینه‌های سخت‌افزاری لازم را در پنجره نصب تأیید کرده‌ام. ابزار aionui_h3_install_video_model را با action=start و operationId={{id}} فراخوانی کن تا درخواست اصلی ویدیو بدون ارسال دوباره یا تغییر پارامترها ادامه یابد.",
+      "continue": "ادامه با دستیار",
+      "cancelRequest": "لغو درخواست ساخت"
+    }
+  },
+  "aiCreation": "خلق با هوش مصنوعی",
+  "aiCreationSubtitle": "با تخیل خود چیزی بسازید",
+  "templatePlay": "پخش {{title}}",
+  "templatePause": "توقف {{title}}",
+  "templateUse": "استفاده از الگو",
+  "templateTitle": "الگوهای الهام‌بخش",
+  "templateHint": "ایده‌های تصویر و ویدیو را مرور کنید و برای شروع یکی را انتخاب کنید.",
+  "templateFilterLabel": "نوع الگو",
+  "templatePreviewUnavailable": "پیش‌نمایش در دسترس نیست",
+  "templateFilters": {
+    "all": "همه",
+    "image": "تصویرها",
+    "video": "ویدیوها"
+  },
+  "templates": {
+    "poster": {
+      "title": "پوستر آرامش با آمتیست",
+      "prompt": "یک پوستر عمودی 3:4 بساز: عکس ماکرو از بلورهای آمتیست با بازتاب نور ملایم بنفش و صورتی، بافت ظریف معدنی و عمق میدان کم. عنوان چینی خوانا «允许自己慢下来»، حروف سریف کوچک و فضای خالی فراوان اضافه کن. سبک جلد مجله آرام و دلنشین باشد."
+    },
+    "product": {
+      "title": "تبلیغ عطر",
+      "prompt": "یک عکس تبلیغاتی عمودی 3:4 بساز: شیشه عطر شفاف میان پارچه کتان کرم و گل‌های خشک. نور گرم پنجره از کنار، بازتاب ظریف شیشه، درپوش فلزی و بافت نرم پارچه. محصول واضح، پس‌زمینه تمیز، جای متن و بدون نشان تجاری."
+    },
+    "illustration": {
+      "title": "تصویرسازی داستان",
+      "prompt": "یک تصویرسازی داستانی پرجزئیات با شخصیت‌های دوست‌داشتنی، رنگ‌های هماهنگ و محیط غنی بساز. ترکیب‌بندی کامل و مناسب جلد باشد."
+    },
+    "architecture": {
+      "title": "کارت‌پستال سفر به ونیز",
+      "prompt": "یک کارت‌پستال عمودی 3:4 از ونیز بساز: کانال فیروزه‌ای، ساختمان‌های تاریخی صورتی گرم و قایق‌های کنار ساحل. آفتاب عصر روی آب، نمای ساختمان‌ها با جزئیات و ترکیب‌بندی در امتداد کانال. عکاسی واقع‌گرایانه با رنگ‌های ملایم فیلم و فضای عنوان در بالا."
+    },
+    "landscape": {
+      "title": "منظره رؤیایی ایسلند",
+      "prompt": "یک عکس افقی 16:9 از ایسلند بساز: تپه‌های سبز، آبشار باشکوه و دشت‌های باز زیر غروب صورتی و بنفش. مه لطیف و پیش‌زمینه، میانه و دوردست مشخص. قاب عریض، نور سینمایی و بافت طبیعی، بدون انسان یا متن."
+    },
+    "pet": {
+      "title": "گربه کنار پنجره",
+      "prompt": "یک پرتره عمودی 3:4 از گربه نارنجی پشمالو بساز که روی لبه چوبی پنجره نشسته و بیرون را نگاه می‌کند. نور ملایم صبح روی سبیل و چشم‌ها، موهای پرجزئیات، پرده‌های روشن محو و رنگ‌های گرم فیلم. حال‌وهوای آرام و طبیعی."
+    },
+    "food": {
+      "title": "عکس تازه برای منو",
+      "prompt": "یک عکس غذا از بالا با قاب افقی 4:3 بساز: کینوا، آووکادو و سبزیجات رنگی در کاسه سرامیکی سفید، مواد تازه در اطراف. میز سنگی روشن، نور طبیعی نرم، رنگ‌های زنده و بافت واقعی. جای متن منو را خالی بگذار."
+    },
+    "interior": {
+      "title": "خانه گرم و مینیمال",
+      "prompt": "یک عکس داخلی افقی 16:9 از نشیمن گرم و مینیمال بساز: مبل کرم، میز چوب روشن، فرش نرم و چراغ‌های آویز ساده. پنجره‌های بزرگ با نور گرم، فضای باز، عمق واضح و مصالح واقعی. بدون انسان یا شلوغی."
+    },
+    "flowers": {
+      "title": "جلد گل‌های بهاری",
+      "prompt": "یک عکس جلد عمودی 3:4 برای گل‌فروشی بساز: نمای نزدیک گل‌های صورتی کم‌رنگ، گلبرگ‌های لایه‌لایه، پس‌زمینه کرم نرم و نور پراکنده لطیف. سبک رمانتیک و تازه، جای عنوان در بالا، بدون برند یا واترمارک."
+    },
+    "coast": {
+      "title": "غروب کنار دریا",
+      "prompt": "یک ویدیوی سینمایی افقی 16:9 به مدت 6 ثانیه تولید کن: خورشید به افق نزدیک شود، نور نارنجی و طلایی روی دریا و موج‌های آرام به ساحل برسند. دوربین پایدار آهسته جلو برود، رنگ‌ها طبیعی و نور پیوسته باشد. فضای آرام، بدون متن یا واترمارک."
+    },
+    "coffeeFilm": {
+      "title": "فیلم تبلیغاتی قهوه",
+      "prompt": "یک ویدیوی تبلیغاتی افقی 16:9 به مدت 6 ثانیه بساز: نمای بالا از فنجان میان دانه‌های قهوه و دارچین. شیر آهسته وارد قهوه شود و چرخش‌های ظریف و طبیعی بسازد. رنگ‌های قهوه‌ای گرم، نور نرم استودیو، عمق میدان کم و حرکت واقعی و پیوسته مایع. بدون برند یا زیرنویس."
+    },
+    "cityFilm": {
+      "title": "شهر هنگام غروب",
+      "prompt": "یک ویدیوی هوایی افقی 16:9 به مدت 6 ثانیه از شهر هنگام غروب بساز. ساختمان‌ها زیر آسمان رو به تاریکی روشن شوند و خودروها نوارهای نور بسازند. دوربین نرم به جلو حرکت کند، پرسپکتیو واقعی و رنگ‌بندی سینمایی. بدون سوسو زدن یا متن."
+    },
+    "forestFilm": {
+      "title": "آرامش کنار آبشار جنگل",
+      "prompt": "یک ویدیوی طبیعت افقی 16:9 به مدت 6 ثانیه تولید کن: آبشار در جنگل انبوه به حوضچه زلال بریزد، سنگ‌های پوشیده از خزه و برگ‌های آرام در حرکت. دوربین تقریباً ثابت اندکی جلو برود و آفتاب نرم از میان درختان بتابد. حرکت آب، موج‌ها و گیاهان طبیعی و پیوسته، بدون انسان یا زیرنویس."
+    }
   }
 }

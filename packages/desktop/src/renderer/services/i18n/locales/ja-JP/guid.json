@@ -13,5 +13,190 @@
     "specifyWorkspace": "プロジェクトフォルダを選択",
     "searchPlaceholder": "プロジェクトを検索…",
     "noProject": "プロジェクトなし"
+  },
+  "comfy": {
+    "diagnosticLog": "診断ログ",
+    "title": "ローカルモデル",
+    "noProfile": "インストール済みのプロファイルはありません",
+    "use": "使用",
+    "selected": "選択済み",
+    "version": "{{family}} のバージョン",
+    "draftHint": "インストール操作は編集可能な依頼を入力します。内容を確認して送信してください。",
+    "families": {
+      "h3": "動画生成",
+      "qwen-edit": "画像編集",
+      "z-image": "画像生成"
+    },
+    "actions": {
+      "install": "インストール",
+      "repair": "確認 / 修復",
+      "install-other": "別のバージョン",
+      "generate": "生成"
+    },
+    "intentSummary": "ローカルモデルの依頼: {{model}} · {{intent}}。対象: {{profile}}。このモデル系列と操作を維持し、具体的な ComfyUI 計画を作成して私の確認を待ってください。インストールに生成パラメータは不要です。",
+    "prompts": {
+      "install": "ComfyUI で {{family}} をローカルにインストールしてください。まずハードウェア、ネットワーク、既存環境を確認し、このモデル系列とタスクに合う ComfyUI ワークフロー、必要なノード、モデル、エンコーダー、VAE を選んでください。固定バージョンと量子化を提案し、固定した upstream 成果物と同一だと証明できる場合だけ ModelScope または信頼できる国内ミラーを優先してください。ソース、リビジョン、SHA-256 を固定し、容量、保存先、再開方法、検証手順を説明してください。インストール前に私の確認を待ってください。 Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "ローカルの {{family}} プロファイル {{profile}} を確認・修復してください。環境、モデル、ノード、ワークフローを調べ、修復計画を説明してください。私の確認後に変更し、小さな生成テストで検証してください。 Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "{{family}} の別バージョンまたは量子化を独立したプロファイルとしてインストールしてください。ハードウェアと既存設定を確認し、固定の入手元と検証計画を提案してください。私の確認を待ち、現在のプロファイルを保持してください。 Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI モデル計画",
+      "authorize": "計画を確認してアシスタントに続行を依頼",
+      "continue": "アシスタントに続行を依頼",
+      "cancel": "キャンセル",
+      "target": "インストール先",
+      "download": "ダウンロード容量",
+      "disk": "必要な空き容量",
+      "details": "モデル・ノード・コマンド",
+      "source": "入手元",
+      "unavailable": "ローカルモデルサービスを利用できません。",
+      "completedHint": "検証が完了しました。ローカルモデルの選択欄で使用できます。",
+      "continueRequest": "計画を確認してアシスタントに続行を依頼. aionui_comfy_install action=start operationId={{id}}. ComfyUI モデル計画.",
+      "states": {
+        "awaiting-consent": "確認待ち",
+        "authorized": "確認済み・アシスタント待ち",
+        "running": "実行中",
+        "paused": "一時停止",
+        "failed": "失敗",
+        "completed": "検証済み・使用可能",
+        "cancelled": "キャンセル済み"
+      },
+      "snapshotDirectory": "復旧用スナップショット"
+    },
+    "profileSummary": "選択したローカルプロファイル: {{profile}}。このプロファイルを使用してください。",
+    "session": {
+      "title": "ローカル生成プロファイル",
+      "hint": "次の生成に適用されます。送信済みのジョブは保存済みのプロファイルを使用します。",
+      "saveFailed": "プロファイルの選択を保存できませんでした。再試行してください。"
+    },
+    "generation": {
+      "title": "ローカル生成",
+      "unavailable": "ローカル生成サービスを利用できません。",
+      "cancel": "生成をキャンセル",
+      "artifact": "生成結果 {{index}}",
+      "states": {
+        "queued": "待機中",
+        "running": "生成中",
+        "succeeded": "完了",
+        "failed": "失敗",
+        "cancelled": "キャンセル済み"
+      },
+      "adjusted": "このプロファイルの承認済み範囲内でパラメーターを調整しました。",
+      "actualInput": "実際の生成パラメーター",
+      "submissionUncertain": "送信を確認できませんでした。再送信する前に現在の ComfyUI キューを確認してください。"
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "ダウンロード済み",
+      "loadable": "読み込み可能",
+      "verified": "検証済み",
+      "invalid": "無効",
+      "installed": "インストール済み",
+      "not-installed": "未インストール",
+      "no-workflow": "ワークフローなし",
+      "configured": "設定済み",
+      "not-configured": "未設定",
+      "unavailable": "状態を取得できません",
+      "checking": "確認中"
+    },
+    "kind": "作成の種類",
+    "source": "モデルの提供元",
+    "model": "作成モデル",
+    "local": "ローカル",
+    "cloud": "クラウド",
+    "localImage": "ローカル画像モデル",
+    "localVideo": "ローカル動画モデル",
+    "cloudImage": "クラウド画像モデル",
+    "cloudVideo": "クラウド動画モデル",
+    "manageLocal": "ローカルモデルを管理",
+    "configureCloud": "クラウド API を設定",
+    "requestSummary": "生成設定：{{kind}} · {{source}} · {{model}}（{{state}}）。選択したモデルを使用してください。利用できない場合は、インストールまたは設定を依頼してください。別のモデルやクラウドサービスに自動で切り替えないでください。",
+    "toolsUnavailable": "生成ツールはまだ準備できていません。少し待ってから再試行してください。",
+    "install": {
+      "states": {
+        "awaiting-consent": "確認待ち",
+        "cancelled": "キャンセル済み",
+        "cancelling": "キャンセル中",
+        "failed": "未完了",
+        "paused": "一時停止中",
+        "authorized": "確認済み、アシスタント待ち",
+        "submitted": "生成を送信済み",
+        "installing": "インストール中"
+      },
+      "title": "MiniMax H3 をインストールして続行",
+      "open": "インストール内容を確認",
+      "continueRequest": "インストール画面でモデルのライセンスと必要なハードウェア設定を確認しました。aionui_h3_install_video_model を action=start、operationId={{id}} で呼び出し、再送信やパラメーター変更をせずに元の動画生成リクエストを続行してください。",
+      "continue": "アシスタントで続行",
+      "cancelRequest": "作成リクエストをキャンセル"
+    }
+  },
+  "aiCreation": "AIクリエーション",
+  "aiCreationSubtitle": "想像力を形にしましょう",
+  "templatePlay": "{{title}}を再生",
+  "templatePause": "{{title}}を一時停止",
+  "templateUse": "テンプレートを使用",
+  "templateTitle": "アイデアのテンプレート",
+  "templateHint": "画像や動画のアイデアを探し、選んで作成を始めましょう。",
+  "templateFilterLabel": "テンプレートの種類",
+  "templatePreviewUnavailable": "プレビューを利用できません",
+  "templateFilters": {
+    "all": "すべて",
+    "image": "画像",
+    "video": "動画"
+  },
+  "templates": {
+    "poster": {
+      "title": "アメジストのムードポスター",
+      "prompt": "縦 3:4 のポスターを作成してください。アメジスト結晶のマクロ写真に柔らかな紫とローズ色の光、繊細な鉱物の質感、浅い被写界深度を表現。中国語の見出し「允许自己慢下来」を明瞭に入れ、小さなセリフ書体と広い余白で穏やかな雑誌表紙にしてください。"
+    },
+    "product": {
+      "title": "香水の広告写真",
+      "prompt": "縦 3:4 の香水広告写真を作成してください。クリーム色のリネンとドライフラワーの間に透明なガラス瓶を置き、暖かな窓光を横から当てます。精緻な反射、金属の蓋、柔らかな布の質感。商品は鮮明、背景はすっきりとし、文字用の余白を残してブランドロゴは入れないでください。"
+    },
+    "illustration": {
+      "title": "物語のイラスト",
+      "prompt": "魅力的な登場人物、調和の取れた色、細かな環境描写を備えた物語性のあるイラストを作成してください。構図を完成させ、表紙として使える仕上がりにしてください。"
+    },
+    "architecture": {
+      "title": "ベネチアの旅のポストカード",
+      "prompt": "縦 3:4 のベネチアのポストカードを作成してください。青緑の運河、暖かなピンクの歴史的建物、岸辺の小舟。午後の日差しが水面に反射し、細かな外壁と運河沿いの奥行きを表現。柔らかなフィルム色のリアルな写真にし、上部に見出しの余白を残してください。"
+    },
+    "landscape": {
+      "title": "アイスランドの夢の風景",
+      "prompt": "横 16:9 のアイスランドの風景写真を作成してください。緑の丘、壮大な滝、開けた平原、ピンクと紫の夕焼け。淡い霧と明確な前景・中景・遠景、広角構図、映画的な光、自然な質感。人物や文字は入れないでください。"
+    },
+    "pet": {
+      "title": "窓辺の猫",
+      "prompt": "縦 3:4 の猫のポートレートを作成してください。ふわふわの茶トラ猫が木の窓辺に座り外を眺めています。柔らかな朝日がひげと目を照らし、毛並みを細かく描写。明るいカーテンをぼかし、暖かなフィルム色で静かな自然の一瞬を表現してください。"
+    },
+    "food": {
+      "title": "爽やかなメニュー写真",
+      "prompt": "横 4:3 の料理写真を真上から撮影した構図で作成してください。白い陶器の器にキヌア、アボカド、色鮮やかな野菜、周囲に新鮮な食材。淡い石のテーブル、柔らかな自然光、鮮やかな色とリアルな質感。メニューの文字用の余白を残してください。"
+    },
+    "interior": {
+      "title": "暖かなミニマルな住まい",
+      "prompt": "横 16:9 の暖かなミニマルなリビングの室内写真を作成してください。クリーム色のソファ、明るい木のテーブル、柔らかなラグ、シンプルなペンダントライト。大きな窓からの暖かな光、開放感、明確な奥行き、リアルな素材と建築写真の透視。人物や散らかった物は入れないでください。"
+    },
+    "flowers": {
+      "title": "春の花のカバー",
+      "prompt": "縦 3:4 の花屋のカバー写真を作成してください。淡いピンクの花の接写、重なった花びら、柔らかなクリーム色の背景、穏やかな拡散光。ロマンチックで爽やかな雰囲気にし、上部に見出し用の余白を残してください。ブランドや透かしは不要です。"
+    },
+    "coast": {
+      "title": "海辺の夕日",
+      "prompt": "6 秒、横 16:9 の映画的な動画を生成してください。太陽が水平線へ沈み、橙と金色の光が海を照らし、穏やかな波が岸へ寄せます。安定したカメラがゆっくり前進し、自然な色と連続した光で静かな雰囲気を表現。文字や透かしは入れないでください。"
+    },
+    "coffeeFilm": {
+      "title": "コーヒーの広告動画",
+      "prompt": "6 秒、横 16:9 のコーヒー広告動画を生成してください。コーヒー豆とシナモンに囲まれたカップを俯瞰し、ミルクがゆっくり注がれて繊細で自然な渦を作ります。暖かな茶色、柔らかなスタジオ光、浅い被写界深度、リアルで連続した液体の動き。ブランドや字幕は不要です。"
+    },
+    "cityFilm": {
+      "title": "黄昏の街",
+      "prompt": "6 秒、横 16:9 の夕暮れの街の空撮動画を生成してください。夕焼けが薄れる中で建物に明かりがともり、車の光が帯を描きます。カメラは滑らかに前進し、リアルな透視と映画的な色調にしてください。ちらつきや文字は不要です。"
+    },
+    "forestFilm": {
+      "title": "森の滝でひと休み",
+      "prompt": "6 秒、横 16:9 の自然動画を生成してください。深い森の滝が澄んだ池へ流れ、岩に苔が生え、葉が静かに揺れます。ほぼ固定したカメラを少し前進させ、木々を通る柔らかな日差しと水・波紋・植物の自然で連続した動きを表現。人物や字幕は不要です。"
+    }
   }
 }

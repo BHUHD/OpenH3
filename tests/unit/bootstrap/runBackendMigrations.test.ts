@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { IMAGE_GEN_ENV_KEYS } from '@/common/config/imageGenerationMcpEnv';
 import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
-import { resolveImageGenerationMigrationConfig, runBackendMigrations } from '@/process/utils/runBackendMigrations';
+import {
+  enforceOpenH3AssistantDefault,
+  resolveImageGenerationMigrationConfig,
+  runBackendMigrations,
+} from '@/process/utils/runBackendMigrations';
 
 const {
   batchImportServersMock,
@@ -12,6 +16,8 @@ const {
   listServersMock,
   testMcpConnectionMock,
   updateServerMock,
+  assistantListMock,
+  assistantSetStateMock,
 } = vi.hoisted(() => ({
   batchImportServersMock: vi.fn(),
   configFileGetMock: vi.fn(),
@@ -20,6 +26,8 @@ const {
   listServersMock: vi.fn(),
   testMcpConnectionMock: vi.fn(),
   updateServerMock: vi.fn(),
+  assistantListMock: vi.fn(),
+  assistantSetStateMock: vi.fn(),
 }));
 
 vi.mock('@/common/adapter/httpBridge', () => ({
@@ -32,6 +40,15 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     batchImportServers: { invoke: batchImportServersMock },
     updateServer: { invoke: updateServerMock },
     testMcpConnection: { invoke: testMcpConnectionMock },
+  },
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    assistants: {
+      list: { invoke: assistantListMock },
+      setState: { invoke: assistantSetStateMock },
+    },
   },
 }));
 
@@ -112,6 +129,8 @@ beforeEach(() => {
     ...data,
   }));
   testMcpConnectionMock.mockResolvedValue({ success: false, error: 'Command not found: npx' });
+  assistantListMock.mockResolvedValue([]);
+  assistantSetStateMock.mockResolvedValue(undefined);
   httpRequestMock.mockImplementation(async (method: string, path: string) => {
     if (method === 'GET' && path === '/api/settings/client') {
       return {
@@ -148,6 +167,74 @@ describe('resolveImageGenerationMigrationConfig', () => {
 });
 
 describe('runBackendMigrations', () => {
+  it('continues startup migrations when the bundled ComfyUI skill cannot be provisioned', async () => {
+    listServersMock.mockResolvedValue([imageServer()]);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const existingRequest = httpRequestMock.getMockImplementation();
+    const skillFailure = new Error('skill inventory unavailable');
+    httpRequestMock.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] === 'GET' && args[1] === '/api/skills') throw skillFailure;
+      return existingRequest?.(...args);
+    });
+
+    await expect(runBackendMigrations(configFile as never)).resolves.toBeUndefined();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Backend migration step failed: provisionComfySkill'),
+      skillFailure
+    );
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Backend migration step completed: syncBuiltinMcpConfig')
+    );
+    expect(httpRequestMock).not.toHaveBeenCalledWith('POST', '/api/skills/import', expect.anything());
+  });
+
+  it('enables only the native OpenH3 assistant on first run', async () => {
+    assistantListMock.mockResolvedValue([
+      {
+        id: 'bare-aionrs',
+        source: 'generated',
+        agent: { type: 'aionrs' },
+      },
+      {
+        id: 'builtin-aionrs-template',
+        source: 'builtin',
+        agent: { type: 'aionrs' },
+      },
+      {
+        id: 'builtin-writer',
+        source: 'builtin',
+        agent: { type: 'acp', acp_backend: 'claude' },
+      },
+      {
+        id: 'user-research',
+        source: 'user',
+        agent: { type: 'acp', acp_backend: 'gemini' },
+      },
+    ]);
+
+    const completed = await enforceOpenH3AssistantDefault();
+
+    expect(completed).toBe(true);
+    expect(assistantSetStateMock).toHaveBeenCalledWith({ id: 'bare-aionrs', enabled: true });
+    expect(assistantSetStateMock).toHaveBeenCalledWith({ id: 'builtin-aionrs-template', enabled: false });
+    expect(assistantSetStateMock).toHaveBeenCalledWith({ id: 'builtin-writer', enabled: false });
+    expect(assistantSetStateMock).not.toHaveBeenCalledWith({ id: 'user-research', enabled: false });
+    expect(httpRequestMock).toHaveBeenCalledWith('PUT', '/api/settings/client', {
+      'migration.openH3AssistantDefault_v1': true,
+    });
+  });
+
+  it('does not change assistant state when client preferences cannot be read', async () => {
+    assistantListMock.mockResolvedValue([{ id: 'openh3', source: 'generated', agent: { type: 'aionrs' } }]);
+    httpRequestMock.mockRejectedValueOnce(new Error('backend unavailable'));
+
+    await expect(enforceOpenH3AssistantDefault()).rejects.toThrow('backend unavailable');
+
+    expect(assistantSetStateMock).not.toHaveBeenCalled();
+  });
+
   it('does not write image generation business config back to local config storage', async () => {
     listServersMock.mockResolvedValue([imageServer()]);
     configFileGetMock.mockImplementation(async (key: string) => {

@@ -19,6 +19,7 @@ import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { uuid } from '@/common/utils';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import EnvVarEditor, { type EnvVarRow } from './EnvVarEditor';
 
 /**
@@ -219,7 +220,7 @@ const InlineAgentEditor: React.FC<InlineAgentEditorProps> = ({ agent, onSave, on
           if (!src) return null;
           return {
             id: assistant.id,
-            label: assistant.name_i18n?.[localeKey] || assistant.name,
+            label: normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name),
             src,
           };
         })

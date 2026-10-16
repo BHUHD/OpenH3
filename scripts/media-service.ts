@@ -3,10 +3,21 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { H3SetupTask } from '../packages/desktop/src/process/services/runtime/H3SetupTask';
+import { inspectCreationInventory } from '../packages/desktop/src/process/services/media/creation/inventory';
+import { CreationOperations } from '../packages/desktop/src/process/services/media/creation/CreationOperations';
+import { ComfyService } from '../packages/desktop/src/process/services/media/comfy/ComfyService';
+import { ComfyWorkflowEngine } from '../packages/desktop/src/process/services/media/comfy/workflowEngine';
+import {
+  assertComfyInstallPlan,
+  executeComfyInstall,
+} from '../packages/desktop/src/process/services/media/comfy/installExecutor';
+import { handleComfyRoute } from '../packages/desktop/src/process/services/media/comfy/routes';
+import { importLegacyH3 } from '../packages/desktop/src/process/services/media/comfy/legacyH3';
+import type { CreationInstallConsent } from '../packages/desktop/src/common/chat/document/creation/operation';
 import { inspectH3DownloadSpace } from '../packages/desktop/src/process/services/runtime/h3DownloadPlan';
 import { probeSetupHardware } from '../packages/desktop/src/process/services/runtime/h3SetupHardware';
 import { inspectSetupCapabilities } from '../packages/desktop/src/process/services/runtime/h3SetupCapabilities';
-import type { H3DownloadProgress } from '../packages/desktop/src/common/chat/document/h3Setup';
+import type { H3DownloadProgress } from '../packages/desktop/src/common/chat/document/creation/h3Setup';
 import { BetterSqlite3Driver } from '../packages/desktop/src/process/services/database/drivers/BetterSqlite3Driver';
 import {
   initSchema,
@@ -77,6 +88,8 @@ const h3Runner = new H3JobRunner(
   {
     generate: async (spec, signal, onProgress, onSubmitted, context) => {
       if (h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
+      if (comfyService.runtimeBusy(path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI'), h3Client.getBaseUrl()))
+        throw new Error('COMFY_RUNTIME_BUSY');
       await h3Runtime.ensureStarted();
       return h3Client.generate(spec, signal, onProgress, onSubmitted, context);
     },
@@ -143,9 +156,80 @@ const h3Subscribers = new Map<string, Set<http.ServerResponse>>();
 const lastH3Event = new Map<string, string>();
 let runtimeStarting = false;
 let h3Dispatching = false;
+async function installH3(payload: Partial<CreationInstallConsent>) {
+  if (comfyService.runtimeBusy(path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI'), h3Client.getBaseUrl()))
+    throw new Error('COMFY_RUNTIME_BUSY');
+  if (process.platform !== 'win32') throw new Error('H3_SETUP_WINDOWS_ONLY');
+  if (h3Client.getBaseUrl() !== 'http://127.0.0.1:8188') throw new Error('H3_EXTERNAL_RUNTIME');
+  if (runtimeStarting || h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
+  if (h3Store.listActive().length || h3Runner.blocked()) throw new Error('H3_JOBS_ACTIVE');
+  if (payload.download && payload.acceptModelTerms !== true) throw new Error('H3_MODEL_TERMS_REQUIRED');
+  if (payload.download === true) {
+    const hardware = await probeSetupHardware();
+    if (hardware.status === 'blocked') throw new Error('H3_HARDWARE_UNSUPPORTED');
+    if (hardware.status === 'unverified' && payload.acceptExperimentalHardware !== true)
+      throw new Error('H3_HARDWARE_CONFIRMATION_REQUIRED');
+    if (h3Store.listActive().length || h3Runner.blocked()) throw new Error('H3_JOBS_ACTIVE');
+    if (runtimeStarting || h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
+  }
+  return h3Setup.start(h3Runtime.installStatus().bundleRoot, payload.download === true);
+}
+const creationOperations = new CreationOperations(path.join(dataDir, 'creation-operations.json'), {
+  setup: () => h3Setup.status(),
+  install: async (consent) => {
+    await installH3(consent);
+  },
+  installed: () => inspectCreationInventory(h3Runtime.installStatus(), false).h3.installed,
+  enqueue: async (spec, id) => {
+    if (h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
+    const job = await h3Runner.enqueue(spec, id);
+    startH3Job(job);
+    return job.id;
+  },
+  getJob: (id) => h3Store.get(id),
+  cancelJob: async (id) => {
+    const job = await h3Runner.cancel(id);
+    publishH3(job);
+    return job;
+  },
+});
+const creationTimer = setInterval(() => {
+  void creationOperations.pump().catch((error) => console.error('[creation]', error));
+  pumpH3Jobs();
+}, 1500);
+creationTimer.unref();
+const comfyManifest = path.join(dataDir, 'comfy-profiles.json');
+const comfyEngine = new ComfyWorkflowEngine({ outputRoot: path.join(dataDir, 'comfy-output') });
+const comfyService = new ComfyService({
+  filename: comfyManifest,
+  engine: comfyEngine,
+  checkPlan: assertComfyInstallPlan,
+  install: (plan, signal, progress) => {
+    const legacyRoot = path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI');
+    if (
+      (path.resolve(plan.environment.root).toLowerCase() === path.resolve(legacyRoot).toLowerCase() ||
+        plan.environment.baseUrl === h3Client.getBaseUrl()) &&
+      (h3Setup.busy() || runtimeStarting || h3Store.listActive().length || h3Runner.blocked())
+    )
+      throw new Error('H3_RUNTIME_BUSY');
+    return executeComfyInstall(plan, signal, progress, {
+      engine: comfyEngine,
+      snapshotRoot: path.join(dataDir, 'comfy-snapshots'),
+      snapshotFiles: [comfyManifest],
+      onProfile: (profile) => comfyService.recordProgressProfile(profile),
+    });
+  },
+});
+// Discovery preserves existing files; only an explicit validation request starts ComfyUI.
+for (const profile of importLegacyH3(h3Runtime.installStatus(), h3Client.getBaseUrl())) {
+  if (!comfyService.profiles().some((existing) => existing.id === profile.id)) comfyService.register(profile);
+}
+comfyService.recoverJobs();
 function pumpH3Jobs(): void {
   if (h3Dispatching || h3Runner.blocked()) return;
-  const queued = h3Store.listActive().filter((job) => job.status === 'queued');
+  if (comfyService.runtimeBusy(path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI'), h3Client.getBaseUrl()))
+    return;
+  const queued = h3Store.listActive().filter((job) => job.status === 'queued' && creationOperations.canRunJob(job.id));
   const next = queued.find((job) => job.promptId) ?? queued[0];
   if (!next) return;
   h3Dispatching = true;
@@ -196,18 +280,27 @@ function publishH3(job: H3Job): void {
   ) {
     const previous = job.parentVersionId
       ? versionStore.list().find((item) => item.id === job.parentVersionId)
-      : versionStore.list().at(-1);
+      : versionStore.list().find((item) => item.selected);
     const version: H3Version = {
       id: crypto.randomUUID(),
       parentId: previous?.id ?? null,
       label: `H3 ${versionStore.list().length + 1}`,
       jobId: job.id,
       createdAt: new Date().toISOString(),
-      selected: true,
+      // Keep the new artifact a candidate until the store atomically accepts
+      // it against the version that was current when this job was derived.
+      selected: false,
       artifactPath: job.artifacts[0].resourcePath,
     };
     versionStore.create(version);
-    versionStore.select(version.id);
+    try {
+      versionStore.accept(version.id, previous?.id ?? null);
+    } catch (error) {
+      // A different session may have accepted a newer version while this job
+      // was running. Keep the artifact as an explicit candidate for review;
+      // never replace the newer selected version implicitly.
+      console.warn('[h3] candidate acceptance conflicted', error instanceof Error ? error.message : String(error));
+    }
   }
   const serialized = JSON.stringify(job);
   if (lastH3Event.get(job.id) !== serialized) {
@@ -242,7 +335,74 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') return json(res, 204, null);
     if (req.method === 'POST' && url.pathname.startsWith('/api/h3/') && runtimeStarting)
       return json(res, 409, { error: 'H3_RUNTIME_STARTING' });
+    if (
+      req.method === 'POST' &&
+      [
+        '/api/h3/setup/start',
+        '/api/h3/setup/install',
+        '/api/h3/setup/configure',
+        '/api/h3/free-memory',
+        '/api/h3/jobs',
+      ].includes(url.pathname) &&
+      comfyService.runtimeBusy(path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI'), h3Client.getBaseUrl())
+    )
+      return json(res, 409, { error: 'COMFY_RUNTIME_BUSY' });
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { status: 'ok' });
+    if (
+      await handleComfyRoute(req, res, url, {
+        service: comfyService,
+        uiToken: process.env.AIONUI_MEDIA_UI_TOKEN ?? '',
+        body,
+        json,
+      })
+    )
+      return;
+    if (req.method === 'POST' && url.pathname === '/api/creation/bind') {
+      const payload = (await body(req)) as { requestId: string; conversationId: string };
+      creationOperations.bind(payload.requestId, payload.conversationId);
+      return json(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/creation/operations') {
+      const payload = (await body(req)) as { requestId: string; spec: unknown };
+      return json(res, 201, creationOperations.request(payload.requestId, payload.spec));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/creation/cancel-conversation') {
+      const payload = (await body(req)) as { conversationId: string };
+      if (typeof payload.conversationId !== 'string' || !payload.conversationId)
+        throw new Error('CREATION_CONVERSATION_REQUIRED');
+      await creationOperations.cancelConversation(payload.conversationId);
+      await comfyService.cancelConversation(payload.conversationId);
+      return json(res, 200, { ok: true });
+    }
+    const creationMatch = /^\/api\/creation\/operations\/([a-f0-9-]{36})(?:\/(authorize|start|cancel))?$/.exec(
+      url.pathname
+    );
+    if (creationMatch) {
+      const [, id, action] = creationMatch;
+      if (req.method === 'GET' && !action) return json(res, 200, creationOperations.get(id));
+      if (req.method === 'POST') {
+        if (action === 'cancel') return json(res, 200, await creationOperations.cancel(id));
+        const payload = (await body(req)) as {
+          requestId: string;
+          conversationId: string;
+          consent: CreationInstallConsent;
+        };
+        if (action === 'authorize')
+          return json(res, 200, creationOperations.authorize(id, payload.conversationId, payload.consent));
+        if (action === 'start') return json(res, 202, await creationOperations.start(id, payload.requestId));
+      }
+    }
+    if (req.method === 'GET' && url.pathname === '/api/h3/models') {
+      const inventory = inspectCreationInventory(h3Runtime.installStatus(), false);
+      inventory.profiles = comfyService.profiles();
+      try {
+        await h3Client.systemStats();
+        inventory.h3.runtimeRunning = true;
+      } catch {
+        /* Installed models remain selectable while ComfyUI is stopped. */
+      }
+      return json(res, 200, inventory);
+    }
     if (req.method === 'GET' && url.pathname === '/api/h3/setup') return json(res, 200, h3Setup.status());
     if (req.method === 'GET' && url.pathname === '/api/h3/setup/hardware')
       return json(res, 200, await probeSetupHardware());
@@ -275,25 +435,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/h3/setup/plan')
       return json(res, 200, inspectH3DownloadSpace(h3Runtime.installStatus().bundleRoot));
     if (req.method === 'POST' && url.pathname === '/api/h3/setup/install') {
-      if (process.platform !== 'win32') return json(res, 400, { error: 'H3_SETUP_WINDOWS_ONLY' });
-      if (h3Client.getBaseUrl() !== 'http://127.0.0.1:8188') return json(res, 409, { error: 'H3_EXTERNAL_RUNTIME' });
-      if (h3Store.listActive().length || h3Runner.blocked()) return json(res, 409, { error: 'H3_JOBS_ACTIVE' });
-      const payload = (await body(req)) as {
-        download?: boolean;
-        acceptModelTerms?: boolean;
-        acceptExperimentalHardware?: boolean;
-      };
-      if (payload.download && payload.acceptModelTerms !== true)
-        return json(res, 400, { error: 'H3_MODEL_TERMS_REQUIRED' });
-      if (payload.download === true) {
-        const hardware = await probeSetupHardware();
-        if (hardware.status === 'blocked') return json(res, 400, { error: 'H3_HARDWARE_UNSUPPORTED', hardware });
-        if (hardware.status === 'unverified' && payload.acceptExperimentalHardware !== true)
-          return json(res, 400, { error: 'H3_HARDWARE_CONFIRMATION_REQUIRED', hardware });
-        // Recheck after the asynchronous probe, before handing off to the worker.
-        if (h3Store.listActive().length || h3Runner.blocked()) return json(res, 409, { error: 'H3_JOBS_ACTIVE' });
-      }
-      return json(res, 202, h3Setup.start(h3Runtime.installStatus().bundleRoot, payload.download === true));
+      return json(res, 202, await installH3((await body(req)) as Partial<CreationInstallConsent>));
     }
     if (req.method === 'GET' && url.pathname === '/api/h3/status') {
       const install = h3Runtime.installStatus();
@@ -354,9 +496,27 @@ const server = http.createServer(async (req, res) => {
       return json(res, 201, job);
     }
     if (req.method === 'GET' && url.pathname === '/api/h3/versions') return json(res, 200, versionStore.list());
+    if (req.method === 'POST' && url.pathname === '/api/h3/versions/compare') {
+      const payload = (await body(req)) as { ids?: unknown };
+      if (!Array.isArray(payload.ids) || !payload.ids.every((id) => typeof id === 'string'))
+        throw new Error('H3_VERSION_COMPARE_INVALID');
+      return json(res, 200, versionStore.compare(payload.ids));
+    }
     if (req.method === 'POST' && url.pathname === '/api/h3/versions/select') {
+      const payload = (await body(req)) as { id?: string; expectedSelectedId?: unknown };
+      if (typeof payload.id !== 'string' || !('expectedSelectedId' in payload))
+        throw new Error('H3_VERSION_SOURCE_REQUIRED');
+      if (payload.expectedSelectedId !== null && typeof payload.expectedSelectedId !== 'string')
+        throw new Error('H3_VERSION_SOURCE_REQUIRED');
+      return json(res, 200, versionStore.accept(payload.id, payload.expectedSelectedId));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/h3/versions/reject') {
       const payload = (await body(req)) as { id?: string };
-      return json(res, 200, versionStore.select(payload.id ?? ''));
+      return json(res, 200, versionStore.reject(payload.id ?? ''));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/h3/versions/undo') {
+      const payload = (await body(req)) as { id?: string };
+      return json(res, 200, versionStore.undo(payload.id));
     }
     const deriveVersion = /^\/api\/h3\/versions\/([^/]+)\/derive$/.exec(url.pathname);
     if (deriveVersion && req.method === 'POST') {
@@ -492,10 +652,12 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(port, '127.0.0.1', () => console.log(`[media-service] listening on http://127.0.0.1:${port}`));
 process.on('SIGINT', () => {
+  void comfyService.close();
   db?.close();
   server.close();
 });
 process.on('SIGTERM', () => {
+  void comfyService.close();
   db?.close();
   server.close();
 });

@@ -13,5 +13,190 @@
     "specifyWorkspace": "프로젝트 폴더 선택",
     "searchPlaceholder": "프로젝트 검색…",
     "noProject": "프로젝트 없음"
+  },
+  "comfy": {
+    "diagnosticLog": "진단 로그",
+    "title": "로컬 모델",
+    "noProfile": "설치된 프로필 없음",
+    "use": "사용",
+    "selected": "선택됨",
+    "version": "{{family}} 버전",
+    "draftHint": "설치 작업은 편집 가능한 요청을 입력합니다. 확인 후 전송하세요.",
+    "families": {
+      "h3": "동영상 생성",
+      "qwen-edit": "이미지 편집",
+      "z-image": "이미지 생성"
+    },
+    "actions": {
+      "install": "설치",
+      "repair": "확인 / 복구",
+      "install-other": "다른 버전",
+      "generate": "생성"
+    },
+    "intentSummary": "로컬 모델 작업: {{model}} · {{intent}}. 프로필: {{profile}}. 모델 계열과 작업을 유지하고 구체적인 ComfyUI 계획을 준비한 후 제 승인을 기다리세요. 설치에는 생성 매개변수가 필요하지 않습니다.",
+    "prompts": {
+      "install": "ComfyUI로 {{family}}를 로컬에 설치해 주세요. 먼저 하드웨어, 네트워크와 기존 환경을 확인하고 이 모델 계열과 작업에 맞는 ComfyUI 워크플로, 필요한 노드, 모델, 인코더와 VAE를 선택하세요. 고정 버전과 양자화를 제안하고, 고정된 upstream 아티팩트와 동일함이 입증된 경우에만 ModelScope 또는 신뢰할 수 있는 국내 미러 사본을 우선하세요. 출처, 리비전과 SHA-256을 고정하고 다운로드 크기, 위치, 재개 방법과 검증을 설명하세요. 설치 전에 제 승인을 기다리세요. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "로컬 {{family}} 프로필 {{profile}}를 확인하고 복구해 주세요. 환경, 구성 요소, 노드와 워크플로를 검사하고 계획을 설명하세요. 제 승인 후 수정하고 작은 생성 테스트로 검증하세요. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "{{family}}의 다른 버전이나 양자화를 별도 프로필로 설치해 주세요. 하드웨어와 기존 프로필을 확인하고 고정 출처와 검증 계획을 제안하세요. 제 승인을 기다리고 기존 프로필을 유지하세요. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI 모델 계획",
+      "authorize": "계획 승인 후 어시스턴트 계속 진행",
+      "continue": "어시스턴트 계속 진행",
+      "cancel": "취소",
+      "target": "설치 위치",
+      "download": "다운로드 크기",
+      "disk": "필요한 여유 공간",
+      "details": "모델, 노드 및 명령",
+      "source": "출처",
+      "unavailable": "로컬 모델 서비스를 사용할 수 없습니다.",
+      "completedHint": "검증을 통과했습니다. 로컬 모델 선택기에서 사용할 수 있습니다.",
+      "continueRequest": "계획 승인 후 어시스턴트 계속 진행. aionui_comfy_install action=start operationId={{id}}. ComfyUI 모델 계획.",
+      "states": {
+        "awaiting-consent": "승인 대기",
+        "authorized": "승인됨, 어시스턴트 대기",
+        "running": "실행 중",
+        "paused": "일시 중지",
+        "failed": "실패",
+        "completed": "검증 완료, 사용 가능",
+        "cancelled": "취소됨"
+      },
+      "snapshotDirectory": "복구 스냅샷"
+    },
+    "profileSummary": "선택한 로컬 프로필: {{profile}}. 이 프로필을 사용하세요.",
+    "session": {
+      "title": "로컬 생성 프로필",
+      "hint": "다음 생성에 적용됩니다. 제출된 작업은 저장된 프로필을 유지합니다.",
+      "saveFailed": "프로필 선택을 저장하지 못했습니다. 다시 시도하세요."
+    },
+    "generation": {
+      "title": "로컬 생성",
+      "unavailable": "로컬 생성 서비스를 사용할 수 없습니다.",
+      "cancel": "생성 취소",
+      "artifact": "생성 결과 {{index}}",
+      "states": {
+        "queued": "대기 중",
+        "running": "생성 중",
+        "succeeded": "완료",
+        "failed": "실패",
+        "cancelled": "취소됨"
+      },
+      "adjusted": "이 프로필의 승인된 범위 내에서 매개변수를 조정했습니다.",
+      "actualInput": "실제 생성 매개변수",
+      "submissionUncertain": "제출이 확인되지 않았습니다. 다시 제출하기 전에 현재 ComfyUI 대기열을 확인하세요."
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "다운로드됨",
+      "loadable": "로드 가능",
+      "verified": "검증됨",
+      "invalid": "유효하지 않음",
+      "installed": "설치됨",
+      "not-installed": "설치되지 않음",
+      "no-workflow": "워크플로 없음",
+      "configured": "설정됨",
+      "not-configured": "설정되지 않음",
+      "unavailable": "상태 확인 불가",
+      "checking": "확인 중"
+    },
+    "kind": "생성 유형",
+    "source": "모델 소스",
+    "model": "생성 모델",
+    "local": "로컬",
+    "cloud": "클라우드",
+    "localImage": "로컬 이미지 모델",
+    "localVideo": "로컬 동영상 모델",
+    "cloudImage": "클라우드 이미지 모델",
+    "cloudVideo": "클라우드 동영상 모델",
+    "manageLocal": "로컬 모델 관리",
+    "configureCloud": "클라우드 API 설정",
+    "requestSummary": "창작 설정: {{kind}} · {{source}} · {{model}} ({{state}}). 선택한 모델을 사용하고, 사용할 수 없으면 설치나 설정을 요청하세요. 다른 모델이나 클라우드 서비스로 자동 전환하지 마세요.",
+    "toolsUnavailable": "창작 도구가 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.",
+    "install": {
+      "states": {
+        "awaiting-consent": "확인 대기 중",
+        "cancelled": "취소됨",
+        "cancelling": "취소 중",
+        "failed": "미완료",
+        "paused": "일시 중지됨",
+        "authorized": "확인됨, 어시스턴트 대기 중",
+        "submitted": "생성 요청 제출됨",
+        "installing": "설치 중"
+      },
+      "title": "MiniMax H3 설치 후 계속",
+      "open": "설치 내용 검토",
+      "continueRequest": "설치 창에서 모델 라이선스와 필요한 하드웨어 옵션을 확인했습니다. aionui_h3_install_video_model을 action=start, operationId={{id}}로 호출하여 재제출하거나 매개변수를 변경하지 않고 원래 동영상 요청을 계속하세요.",
+      "continue": "어시스턴트와 계속",
+      "cancelRequest": "창작 요청 취소"
+    }
+  },
+  "aiCreation": "AI 창작",
+  "aiCreationSubtitle": "상상력을 작품으로 만들어 보세요",
+  "templatePlay": "{{title}} 재생",
+  "templatePause": "{{title}} 일시 정지",
+  "templateUse": "템플릿 사용",
+  "templateTitle": "영감 템플릿",
+  "templateHint": "이미지와 영상 아이디어를 살펴보고 하나를 골라 시작하세요.",
+  "templateFilterLabel": "템플릿 유형",
+  "templatePreviewUnavailable": "미리보기를 사용할 수 없음",
+  "templateFilters": {
+    "all": "전체",
+    "image": "이미지",
+    "video": "영상"
+  },
+  "templates": {
+    "poster": {
+      "title": "자수정 감성 포스터",
+      "prompt": "세로 3:4 포스터를 만드세요. 자수정 결정의 접사, 부드러운 보라색과 장밋빛 반사, 섬세한 광물 질감과 얕은 피사계 심도. 선명한 중국어 제목 “允许自己慢下来”, 작은 세리프 글꼴과 넉넉한 여백으로 차분하고 편안한 잡지 표지를 표현하세요."
+    },
+    "product": {
+      "title": "향수 광고",
+      "prompt": "세로 3:4 향수 광고 사진을 만드세요. 크림색 리넨과 말린 꽃 사이의 투명 유리 향수병, 따뜻한 옆 창빛, 정교한 유리 반사, 금속 뚜껑과 부드러운 천 질감. 제품은 선명하고 배경은 깔끔하게, 문구 공간을 남기고 브랜드 로고는 제외하세요."
+    },
+    "illustration": {
+      "title": "이야기 일러스트",
+      "prompt": "매력적인 캐릭터, 조화로운 색상, 풍부한 환경 디테일을 담은 서사 일러스트를 만드세요. 완성된 구도로 표지에 바로 쓸 수 있게 표현하세요."
+    },
+    "architecture": {
+      "title": "베네치아 여행 엽서",
+      "prompt": "세로 3:4 베네치아 여행 엽서를 만드세요. 청록색 운하, 따뜻한 분홍색 역사 건물과 강가의 배, 물 위에 비치는 오후 햇살. 세밀한 외벽과 운하를 따라 이어지는 구도, 부드러운 필름 색감의 사실적인 사진. 위쪽에 제목 공간을 남기세요."
+    },
+    "landscape": {
+      "title": "아이슬란드의 꿈같은 풍경",
+      "prompt": "가로 16:9 아이슬란드 풍경 사진을 만드세요. 초록 언덕, 웅장한 폭포와 드넓은 평원, 분홍빛과 보랏빛 노을. 은은한 물안개, 뚜렷한 전경·중경·원경, 광각 구도와 영화 같은 빛, 자연스러운 질감. 사람과 글자는 제외하세요."
+    },
+    "pet": {
+      "title": "창가의 고양이",
+      "prompt": "세로 3:4 초상 사진을 만드세요. 복슬복슬한 주황색 고양이가 나무 창틀에 앉아 밖을 바라봅니다. 부드러운 아침빛이 수염과 눈을 비추고, 털은 세밀하게 표현하세요. 흐릿한 밝은 커튼, 따뜻한 필름 색감, 조용하고 자연스러운 분위기."
+    },
+    "food": {
+      "title": "신선한 메뉴 사진",
+      "prompt": "가로 4:3 음식 사진을 위에서 내려다본 구도로 만드세요. 흰 도자기 그릇의 퀴노아, 아보카도와 색색의 채소, 주변의 신선한 재료. 밝은 돌 테이블, 부드러운 자연광, 생생한 색상과 사실적인 질감. 메뉴 문구 공간을 남기세요."
+    },
+    "interior": {
+      "title": "따뜻한 미니멀 주거 공간",
+      "prompt": "가로 16:9 인테리어 사진을 만드세요. 크림색 소파, 밝은 원목 테이블, 부드러운 러그와 단정한 펜던트 조명이 있는 따뜻한 미니멀 거실. 큰 창의 따뜻한 햇살, 탁 트인 공간, 뚜렷한 깊이감, 사실적인 재료와 건축 원근감. 사람이나 잡동사니는 제외하세요."
+    },
+    "flowers": {
+      "title": "봄꽃 표지",
+      "prompt": "세로 3:4 꽃집 표지 사진을 만드세요. 연분홍 꽃의 접사, 겹겹의 꽃잎, 부드러운 크림색 배경과 은은한 확산광. 낭만적이고 산뜻한 분위기, 위쪽 제목 공간, 브랜드나 워터마크 없음."
+    },
+    "coast": {
+      "title": "바닷가의 노을",
+      "prompt": "6초 길이의 가로 16:9 영화 같은 동영상을 생성하세요. 해가 수평선으로 내려가고 주황빛과 금빛이 바다에 퍼지며 잔잔한 파도가 해안으로 밀려옵니다. 안정적인 카메라의 느린 전진, 자연스러운 색과 연속적인 빛, 차분한 분위기. 글자나 워터마크는 제외하세요."
+    },
+    "coffeeFilm": {
+      "title": "커피 광고 영상",
+      "prompt": "6초 길이의 가로 16:9 커피 광고 영상을 생성하세요. 커피 원두와 계피 사이의 잔을 위에서 촬영하고, 우유가 천천히 들어가 섬세하고 자연스러운 소용돌이를 만듭니다. 따뜻한 갈색, 부드러운 스튜디오 조명, 얕은 심도와 사실적이고 연속적인 액체 움직임. 브랜드나 자막은 제외하세요."
+    },
+    "cityFilm": {
+      "title": "황혼의 도시",
+      "prompt": "6초 길이의 가로 16:9 도시 항공 영상을 생성하세요. 저녁 하늘 아래 건물의 불이 켜지고 차량이 빛의 띠를 만듭니다. 카메라가 부드럽게 앞으로 이동하며 사실적인 원근감과 영화 같은 색감을 표현하세요. 깜빡임이나 글자는 제외하세요."
+    },
+    "forestFilm": {
+      "title": "숲속 폭포의 휴식",
+      "prompt": "6초 길이의 가로 16:9 자연 영상을 생성하세요. 울창한 숲의 폭포가 맑은 웅덩이로 흐르고, 바위에는 이끼가 덮여 있으며 나뭇잎이 살랑입니다. 거의 고정된 카메라의 미세한 전진, 나무 사이로 비치는 부드러운 햇살, 자연스럽고 연속적인 물·물결·식물 움직임. 사람이나 자막은 제외하세요."
+    }
   }
 }

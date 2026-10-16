@@ -79,12 +79,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Este sistema não é suportado pelo backend integrado",
-      "description": "O OpenH3 abriu, mas o backend local do AionCore não pode ser executado nesta versão do Linux. Por favor, atualize para uma distribuição Linux suportada e reinicie o OpenH3.",
+      "description": "O OpenH3 abriu, mas o backend local do OpenH3 Core não pode ser executado nesta versão do Linux. Por favor, atualize para uma distribuição Linux suportada e reinicie o OpenH3.",
       "requiredVersions": "Símbolos de runtime necessários: {{versions}}"
     },
     "incompleteInstallation": {
       "title": "A instalação do OpenH3 está incompleta",
-      "description": "Esta instalação está faltando recursos locais necessários, portanto o AionCore não pode ser iniciado. Por favor, baixe e reinstale a versão mais recente do OpenH3.",
+      "description": "Esta instalação está faltando recursos locais necessários, portanto o OpenH3 Core não pode ser iniciado. Por favor, baixe e reinstale a versão mais recente do OpenH3.",
       "downloadLatest": "Baixar mais recente",
       "sendDiagnostics": "Enviar diagnósticos",
       "diagnosticsSent": "Diagnósticos enviados",
@@ -98,7 +98,7 @@
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "OpenH3 opened, but AionCore stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "OpenH3 opened, but OpenH3 Core stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -111,7 +111,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "O OpenH3 abriu, mas o AionCore parou ao preparar dados locais de inicialização, como registros de assistants ou agentes. Reinstalar o OpenH3 pode não corrigir o problema. Envie um relatório de diagnóstico ou entre em contato com o suporte para que o banco de dados local possa ser inspecionado.",
+      "description": "O OpenH3 abriu, mas o OpenH3 Core parou ao preparar dados locais de inicialização, como registros de assistants ou agentes. Reinstalar o OpenH3 pode não corrigir o problema. Envie um relatório de diagnóstico ou entre em contato com o suporte para que o banco de dados local possa ser inspecionado.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -119,7 +119,7 @@
     },
     "startupDirectory": {
       "title": "Diretório de inicialização indisponível",
-      "description": "O OpenH3 abriu, mas o AionCore não pôde iniciar porque o diretório de trabalho ou de logs configurado não existe, está indisponível ou foi bloqueado por permissões. Verifique se os diretórios existem e permitem escrita, depois reinicie o OpenH3.",
+      "description": "O OpenH3 abriu, mas o OpenH3 Core não pôde iniciar porque o diretório de trabalho ou de logs configurado não existe, está indisponível ou foi bloqueado por permissões. Verifique se os diretórios existem e permitem escrita, depois reinicie o OpenH3.",
       "sendDiagnostics": "Enviar diagnóstico",
       "diagnosticsSent": "Diagnóstico enviado",
       "diagnosticsReportSuccess": "Relatório de diagnóstico enviado",
@@ -153,11 +153,11 @@
     },
     "pendingSlow": {
       "title": "Iniciando",
-      "description": "O AionCore está iniciando, aguarde. Se não responder após um tempo, você pode sair do aplicativo e abri-lo novamente."
+      "description": "O OpenH3 Core está iniciando, aguarde. Se não responder após um tempo, você pode sair do aplicativo e abri-lo novamente."
     },
     "exited": {
       "title": "A inicialização não foi concluída",
-      "description": "O AionCore não conseguiu concluir a inicialização e foi encerrado. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
+      "description": "O OpenH3 Core não conseguiu concluir a inicialização e foi encerrado. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
       "sendDiagnostics": "Enviar diagnóstico",
       "diagnosticsSent": "Diagnóstico enviado",
       "diagnosticsReportSuccess": "Diagnóstico enviado",
@@ -165,7 +165,7 @@
     },
     "portReportTimeout": {
       "title": "Tempo de inicialização esgotado",
-      "description": "O AionCore não concluiu a inicialização dentro do tempo esperado. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
+      "description": "O OpenH3 Core não concluiu a inicialização dentro do tempo esperado. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
       "sendDiagnostics": "Enviar diagnóstico",
       "diagnosticsSent": "Diagnóstico enviado",
       "diagnosticsReportSuccess": "Diagnóstico enviado",
@@ -173,7 +173,7 @@
     },
     "startupFailed": {
       "title": "Falha na inicialização",
-      "description": "O AionCore não conseguiu iniciar. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
+      "description": "O OpenH3 Core não conseguiu iniciar. Reinicie o aplicativo; se isso continuar acontecendo, envie o diagnóstico.",
       "sendDiagnostics": "Enviar diagnóstico",
       "diagnosticsSent": "Diagnóstico enviado",
       "diagnosticsReportSuccess": "Diagnóstico enviado",

@@ -26,6 +26,9 @@ export default function H3GenerationPanel() {
   const [mode, setMode] = useState<H3RequestedMode>('auto');
   const [references, setReferences] = useState<H3Reference[]>([]);
   const [versions, setVersions] = useState<H3Version[]>([]);
+  const [comparisonIds, setComparisonIds] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<H3Version[]>([]);
+  const comparisonIdsRef = useRef<string[]>([]);
   const sourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => () => sourceRef.current?.close(), []);
@@ -142,7 +145,44 @@ export default function H3GenerationPanel() {
 
   const selectVersion = async (version: H3Version): Promise<void> => {
     try {
-      setVersions(await h3JobApi.selectVersion(version.id));
+      setVersions(await h3JobApi.selectVersion(version.id, versions.find((item) => item.selected)?.id ?? null));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const toggleCompare = async (version: H3Version): Promise<void> => {
+    const ids = comparisonIdsRef.current.includes(version.id)
+      ? comparisonIdsRef.current.filter((id) => id !== version.id)
+      : [...comparisonIdsRef.current, version.id];
+    comparisonIdsRef.current = ids;
+    setComparisonIds(ids);
+    if (!ids.length) {
+      setComparison([]);
+      return;
+    }
+    try {
+      setComparison(await h3JobApi.compareVersions(ids));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const rejectVersion = async (version: H3Version): Promise<void> => {
+    try {
+      setVersions(await h3JobApi.rejectVersion(version.id));
+      const nextIds = comparisonIdsRef.current.filter((id) => id !== version.id);
+      comparisonIdsRef.current = nextIds;
+      setComparisonIds(nextIds);
+      setComparison((current) => current.filter((item) => item.id !== version.id));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
+  const undoVersion = async (version?: H3Version): Promise<void> => {
+    try {
+      setVersions(await h3JobApi.undoVersion(version?.id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -274,22 +314,80 @@ export default function H3GenerationPanel() {
       {versions.length > 0 && (
         <div className={styles.h3Versions} data-testid='h3-versions'>
           <div className={styles.h3Heading}>{t('preview.video.h3Versions', { defaultValue: '候选版本' })}</div>
+          {versions.some((version) => version.previousSelectedId) && (
+            <Button size='small' data-testid='h3-undo-selection' onClick={() => void undoVersion()}>
+              {t('preview.video.h3UndoSelection', { defaultValue: '撤销上次接受' })}
+            </Button>
+          )}
           {versions.map((version) => (
             <div className={styles.h3Version} key={version.id}>
               <span>
                 {version.label}
                 {version.selected ? ` · ${t('preview.video.h3CurrentVersion', { defaultValue: '当前' })}` : ''}
+                {version.review === 'rejected'
+                  ? ` · ${t('preview.video.h3RejectedVersion', { defaultValue: '已拒绝' })}`
+                  : ''}
               </span>
               <span className={styles.h3VersionActions}>
-                <Button size='small' onClick={() => void selectVersion(version)} disabled={version.selected}>
+                <Button
+                  size='small'
+                  data-testid={`h3-select-${version.id}`}
+                  onClick={() => void selectVersion(version)}
+                  disabled={version.selected || version.review === 'rejected'}
+                >
                   {t('preview.video.h3SelectVersion', { defaultValue: '选择' })}
                 </Button>
-                <Button size='small' onClick={() => void derive(version)} disabled={busy}>
+                <Button
+                  size='small'
+                  data-testid={`h3-compare-${version.id}`}
+                  onClick={() => void toggleCompare(version)}
+                  disabled={version.review === 'rejected'}
+                >
+                  {comparisonIds.includes(version.id)
+                    ? t('preview.video.h3RemoveCompare', { defaultValue: '移出比较' })
+                    : t('preview.video.h3CompareVersion', { defaultValue: '加入比较' })}
+                </Button>
+                {version.review === 'rejected' ? (
+                  <Button size='small' onClick={() => void undoVersion(version)}>
+                    {t('preview.video.h3UndoReject', { defaultValue: '撤销拒绝' })}
+                  </Button>
+                ) : (
+                  <Button
+                    size='small'
+                    data-testid={`h3-reject-${version.id}`}
+                    onClick={() => void rejectVersion(version)}
+                    disabled={version.selected}
+                  >
+                    {t('preview.video.h3RejectVersion', { defaultValue: '拒绝' })}
+                  </Button>
+                )}
+                <Button
+                  size='small'
+                  onClick={() => void derive(version)}
+                  disabled={busy || version.review === 'rejected'}
+                >
                   {t('preview.video.h3DeriveVersion', { defaultValue: '基于此版本迭代' })}
                 </Button>
               </span>
             </div>
           ))}
+        </div>
+      )}
+      {comparison.length > 0 && (
+        <div className={styles.h3Versions} data-testid='h3-version-compare'>
+          <div className={styles.h3Heading}>{t('preview.video.h3CompareTitle', { defaultValue: '候选比较' })}</div>
+          {comparison.map((version) =>
+            version.artifactPath ? (
+              <video
+                key={version.id}
+                data-testid={`h3-compare-output-${version.id}`}
+                className={styles.h3Output}
+                src={h3JobApi.resourceUrl(version.artifactPath)}
+                controls
+                preload='metadata'
+              />
+            ) : null
+          )}
         </div>
       )}
       {error && (

@@ -28,11 +28,36 @@ import {
 import type { ManagedAgent } from '@/renderer/utils/model/agentTypes';
 import { resolveBackendAssetUrl } from '@/renderer/utils/platform';
 import useSWR from 'swr';
+import openh3RoundLogo from '@/renderer/assets/logos/brand/openh3-logo-round.png';
 
 /** Map of lowercased backend id -> logo URL. */
 export type AgentLogoMap = Record<string, string>;
 
 export const AGENT_LOGOS_SWR_KEY = 'agents.logos';
+
+export type OpenH3NativeAgentIdentity = {
+  id?: string | null;
+  backend?: string | null;
+  agent_type?: string | null;
+  icon?: string | null;
+  avatar?: string | null;
+};
+
+/** Identify only the native OpenH3 runtime; third-party Agent branding is preserved. */
+export function isOpenH3NativeAgent(agent: OpenH3NativeAgentIdentity): boolean {
+  return (
+    agent.agent_type?.toLowerCase() === 'aionrs' ||
+    agent.backend?.toLowerCase() === 'aionrs' ||
+    isLegacyOpenH3Logo(agent.icon) ||
+    isLegacyOpenH3Logo(agent.avatar)
+  );
+}
+
+export const OPENH3_NATIVE_LOGO = openh3RoundLogo;
+
+function isLegacyOpenH3Logo(value?: string | null): boolean {
+  return typeof value === 'string' && /\/logos\/brand\/aion\.svg(?:[?#].*)?$/i.test(value);
+}
 
 function collectManagedAgentLogoKeys(agent: ManagedAgent): string[] {
   const keys = [agent.backend, agent.agent_type, agent.id, agent.custom_agent_id];
@@ -120,6 +145,9 @@ export function resolveAgentLogo(
     isExtension?: boolean;
   }
 ): string | null {
+  if (opts.backend?.toLowerCase() === 'aionrs' && (!opts.icon || isLegacyOpenH3Logo(opts.icon))) {
+    return OPENH3_NATIVE_LOGO;
+  }
   if (opts.icon) return normalizeLogoUrl(opts.icon);
 
   if (opts.isExtension && opts.custom_agent_id) {
@@ -141,7 +169,10 @@ export function resolveAgentAvatar(
   }
 ): AssistantAvatar {
   const explicitAvatar = resolveAssistantAvatar(opts.icon || undefined);
-  if (explicitAvatar.kind !== 'fallback') return explicitAvatar;
+  if (explicitAvatar.kind !== 'fallback' && !isLegacyOpenH3Logo(opts.icon)) return explicitAvatar;
+  if (opts.backend?.toLowerCase() === 'aionrs') {
+    return { kind: 'image', value: OPENH3_NATIVE_LOGO };
+  }
 
   if (opts.isExtension && opts.custom_agent_id) {
     const adapterId = opts.custom_agent_id.split(':').pop();

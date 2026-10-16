@@ -707,7 +707,7 @@
   "mcpAuthenticated": "已驗證",
   "mcpDisconnected": "未測試",
   "mcpError": "最近一次測試失敗",
-  "mcpErrorNodeCommandNotFound": "無法準備命令 {{command}}。AionCore 通常會自動準備受管的 Node 執行環境。請重試連線測試；若仍失敗，請檢查後端日誌，或把這個 MCP server 改成絕對命令路徑。",
+  "mcpErrorNodeCommandNotFound": "無法準備命令 {{command}}。OpenH3 Core 通常會自動準備受管的 Node 執行環境。請重試連線測試；若仍失敗，請檢查後端日誌，或把這個 MCP server 改成絕對命令路徑。",
   "mcpErrorBunCommandNotFound": "找不到命令 {{command}}。請安裝 Bun（包含 bun/bunx），重新啟動 OpenH3，或把這個 MCP server 改成絕對命令路徑。",
   "mcpErrorUvCommandNotFound": "找不到命令 {{command}}。請安裝 uv，重新啟動 OpenH3，或把這個 MCP server 改成絕對命令路徑。",
   "mcpErrorPythonCommandNotFound": "找不到命令 {{command}}。請安裝 Python，重新啟動 OpenH3，或把這個 MCP server 改成絕對命令路徑。",

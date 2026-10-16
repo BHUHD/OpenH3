@@ -12,6 +12,7 @@ import { Button, Dropdown, Menu, Switch } from '@arco-design/web-react';
 import { AllApplication, Down, MoreOne } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 
 type OfficialAssistantsGridProps = {
   assistants: AssistantListItem[];
@@ -144,7 +145,7 @@ const OfficialAssistantsGrid: React.FC<OfficialAssistantsGridProps> = ({
                 </span>
               </div>
               <div className={`mt-12px truncate text-14px font-600 text-t-primary ${enabled ? '' : 'opacity-70'}`}>
-                {assistant.name_i18n?.[localeKey] || assistant.name}
+                {normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name)}
               </div>
               <div
                 className={`mt-6px line-clamp-2 text-12px leading-[1.5] text-t-secondary ${enabled ? '' : 'opacity-55'}`}

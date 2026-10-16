@@ -5,6 +5,7 @@
  */
 
 import { resolveBackendAssetUrl } from '@/renderer/utils/platform';
+import openh3RoundLogo from '@/renderer/assets/logos/brand/openh3-logo-round.png';
 
 export type AssistantAvatar =
   | { kind: 'image'; value: string }
@@ -33,6 +34,12 @@ export function resolveAssistantAvatar(avatar: string | undefined): AssistantAva
   }
   if (value.startsWith('/') && !isBackendRelativeAssetPath(value)) {
     return { kind: 'fallback' };
+  }
+
+  // Older backend rows still point at the AionUi brand asset. Keep the data
+  // value for compatibility, but render the current circular OpenH3 mark.
+  if (/\/logos\/brand\/aion\.svg(?:[?#].*)?$/i.test(value)) {
+    return { kind: 'image', value: openh3RoundLogo };
   }
 
   const resolved = resolveBackendAssetUrl(value) ?? value;

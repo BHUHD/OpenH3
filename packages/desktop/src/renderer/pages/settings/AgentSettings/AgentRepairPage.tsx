@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Message, Typography } from '@arco-design/web-react';
 import { ArrowLeft, Connection } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ipcBridge } from '@/common';
 import { useManagedAgents } from '@/renderer/hooks/agent/useManagedAgents';
@@ -116,7 +117,7 @@ const AgentRepairPage: React.FC = () => {
           >
             {t('common.goBack', { defaultValue: 'Back' })}
           </Button>
-          <div className='truncate text-14px font-600 text-t-primary'>{agent.name}</div>
+          <div className='truncate text-14px font-600 text-t-primary'>{normalizeAssistantDisplayName(agent.name)}</div>
         </div>
         <Button
           type='outline'

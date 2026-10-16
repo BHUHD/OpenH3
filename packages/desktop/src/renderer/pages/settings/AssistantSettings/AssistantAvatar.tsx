@@ -7,7 +7,10 @@ import { Robot } from '@icon-park/react';
 import React from 'react';
 import { isEmoji, resolveAvatarImageSrc } from './assistantUtils';
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
-import openh3Logo from '@/renderer/assets/logos/brand/openh3-logo.png';
+import openh3Logo from '@/renderer/assets/logos/brand/openh3-logo-round.png';
+import { isOpenH3Assistant } from '@/common/types/agent/assistantDefaults';
+
+const isLegacyOpenH3Logo = (value?: string): boolean => /\/logos\/brand\/aion\.svg(?:[?#].*)?$/i.test(value || '');
 
 type AssistantAvatarProps = {
   assistant: AssistantListItem;
@@ -24,13 +27,18 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({
 }) => {
   const resolvedAvatar = assistant.avatar?.trim();
   const hasEmojiAvatar = Boolean(resolvedAvatar && isEmoji(resolvedAvatar));
-  const avatarImage = assistant.id === 'aionui-assistant' ? openh3Logo : resolveAvatarImageSrc(resolvedAvatar);
+  const isOpenH3 = isOpenH3Assistant(assistant) && (!resolvedAvatar || isLegacyOpenH3Logo(resolvedAvatar));
+  const avatarImage = isOpenH3 ? openh3Logo : resolveAvatarImageSrc(resolvedAvatar);
   const iconSize = Math.floor(size * 0.5);
   const emojiSize = Math.floor(size * 0.6);
 
   return (
     <Avatar.Group size={size}>
-      <Avatar className='border-none' shape={shape} style={{ backgroundColor: 'var(--color-fill-2)', border: 'none' }}>
+      <Avatar
+        className='border-none'
+        shape={isOpenH3 ? 'circle' : shape}
+        style={{ backgroundColor: isOpenH3 ? 'var(--color-white)' : 'var(--color-fill-2)', border: 'none' }}
+      >
         {avatarImage ? (
           <ThemedLogo
             src={avatarImage}

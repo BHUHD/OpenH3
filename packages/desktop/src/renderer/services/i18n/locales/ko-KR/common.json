@@ -79,12 +79,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "이 시스템은 번들 백엔드를 지원하지 않습니다",
-      "description": "OpenH3는 열렸지만 로컬 AionCore 백엔드를 이 Linux 버전에서 실행할 수 없습니다. 지원되는 Linux 배포판으로 업그레이드한 뒤 OpenH3를 다시 시작하세요.",
+      "description": "OpenH3는 열렸지만 로컬 OpenH3 Core 백엔드를 이 Linux 버전에서 실행할 수 없습니다. 지원되는 Linux 배포판으로 업그레이드한 뒤 OpenH3를 다시 시작하세요.",
       "requiredVersions": "필요한 런타임 심볼: {{versions}}"
     },
     "incompleteInstallation": {
       "title": "OpenH3 설치가 불완전합니다",
-      "description": "현재 설치에 필요한 로컬 리소스가 없어 AionCore를 시작할 수 없습니다. 최신 OpenH3를 다운로드하여 다시 설치하세요. 다시 설치한 후에도 문제가 반복되면 보안 또는 바이러스 백신 소프트웨어가 AionCore를 격리했는지 확인하세요.",
+      "description": "현재 설치에 필요한 로컬 리소스가 없어 OpenH3 Core를 시작할 수 없습니다. 최신 OpenH3를 다운로드하여 다시 설치하세요. 다시 설치한 후에도 문제가 반복되면 보안 또는 바이러스 백신 소프트웨어가 OpenH3 Core를 격리했는지 확인하세요.",
       "downloadLatest": "최신 버전 다운로드",
       "sendDiagnostics": "진단 보고서 보내기",
       "diagnosticsSent": "진단 보고서를 보냈습니다",
@@ -98,7 +98,7 @@
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "OpenH3 opened, but AionCore stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "OpenH3 opened, but OpenH3 Core stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -111,7 +111,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "OpenH3는 열렸지만 AionCore가 assistant 또는 에이전트 레코드 같은 로컬 시작 데이터를 준비하는 동안 중지되었습니다. OpenH3를 다시 설치해도 문제가 해결되지 않을 수 있습니다. 로컬 데이터베이스를 검사할 수 있도록 진단 보고서를 보내거나 지원팀에 문의하세요.",
+      "description": "OpenH3는 열렸지만 OpenH3 Core가 assistant 또는 에이전트 레코드 같은 로컬 시작 데이터를 준비하는 동안 중지되었습니다. OpenH3를 다시 설치해도 문제가 해결되지 않을 수 있습니다. 로컬 데이터베이스를 검사할 수 있도록 진단 보고서를 보내거나 지원팀에 문의하세요.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -119,7 +119,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "OpenH3 opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart OpenH3.",
+      "description": "OpenH3 opened, but OpenH3 Core could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart OpenH3.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -153,11 +153,11 @@
     },
     "pendingSlow": {
       "title": "시작 중",
-      "description": "AionCore를 시작하고 있습니다. 잠시 기다려 주세요. 한동안 응답이 없으면 앱을 종료한 후 다시 시도할 수 있습니다."
+      "description": "OpenH3 Core를 시작하고 있습니다. 잠시 기다려 주세요. 한동안 응답이 없으면 앱을 종료한 후 다시 시도할 수 있습니다."
     },
     "exited": {
       "title": "시작이 완료되지 않았습니다",
-      "description": "AionCore가 시작을 완료하지 못하고 종료되었습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
+      "description": "OpenH3 Core가 시작을 완료하지 못하고 종료되었습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
       "sendDiagnostics": "진단 보내기",
       "diagnosticsSent": "진단을 보냈습니다",
       "diagnosticsReportSuccess": "진단 정보를 보고했습니다",
@@ -165,7 +165,7 @@
     },
     "portReportTimeout": {
       "title": "시작 시간 초과",
-      "description": "AionCore가 예상 시간 내에 시작을 완료하지 못했습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
+      "description": "OpenH3 Core가 예상 시간 내에 시작을 완료하지 못했습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
       "sendDiagnostics": "진단 보내기",
       "diagnosticsSent": "진단을 보냈습니다",
       "diagnosticsReportSuccess": "진단 정보를 보고했습니다",
@@ -173,7 +173,7 @@
     },
     "startupFailed": {
       "title": "시작 실패",
-      "description": "AionCore를 시작하지 못했습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
+      "description": "OpenH3 Core를 시작하지 못했습니다. 앱을 다시 시작해 주세요. 계속 발생하면 진단 정보를 보내 주세요.",
       "sendDiagnostics": "진단 보내기",
       "diagnosticsSent": "진단을 보냈습니다",
       "diagnosticsReportSuccess": "진단 정보를 보고했습니다",

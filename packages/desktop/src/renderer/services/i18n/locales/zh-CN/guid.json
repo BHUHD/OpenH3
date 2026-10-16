@@ -1,4 +1,117 @@
 {
+  "aiCreation": "AI 创作",
+  "aiCreationSubtitle": "让创作随灵感而生",
+  "creation": {
+    "kind": "创作类型",
+    "source": "模型来源",
+    "model": "创作模型",
+    "local": "本地",
+    "cloud": "云端",
+    "localImage": "本地图片模型",
+    "localVideo": "本地视频模型",
+    "cloudImage": "云端图片模型",
+    "cloudVideo": "云端视频模型",
+    "manageLocal": "管理本地模型",
+    "configureCloud": "配置云端 API",
+    "requestSummary": "创作设置：{{kind}} · {{source}} · {{model}}（{{state}}）。请使用所选模型生成；如果暂不可用，请先询问我是否安装、配置或更换。",
+    "states": {
+      "installed": "已安装",
+      "not-installed": "未安装",
+      "no-workflow": "无可用工作流",
+      "configured": "已配置",
+      "not-configured": "待配置",
+      "unavailable": "状态不可用",
+      "checking": "检查中",
+      "downloaded": "已下载",
+      "loadable": "可加载",
+      "verified": "已验证",
+      "invalid": "配置无效"
+    },
+    "install": {
+      "states": {
+        "awaiting-consent": "等待确认",
+        "cancelled": "已取消",
+        "cancelling": "正在取消",
+        "failed": "未完成",
+        "paused": "已暂停",
+        "authorized": "已确认，等待助手",
+        "submitted": "已开始生成",
+        "installing": "正在安装"
+      },
+      "title": "安装 MiniMax H3 并继续创作",
+      "open": "去安装",
+      "continueRequest": "我已在安装窗口确认模型许可及所需硬件选项。请调用 aionui_h3_install_video_model，action=start，operationId={{id}}，继续原视频生成请求，不要重新提交或更换参数。",
+      "continue": "让助手继续",
+      "cancelRequest": "取消创作请求"
+    },
+    "toolsUnavailable": "创作工具尚未就绪，请稍后重试。"
+  },
+  "templatePlay": "播放 {{title}}",
+  "templatePause": "暂停 {{title}}",
+  "templateUse": "做同款",
+  "templateTitle": "灵感模板",
+  "templateHint": "图片与视频灵感，选一个开始创作",
+  "templateFilterLabel": "模板类型",
+  "templatePreviewUnavailable": "预览暂不可用",
+  "templateFilters": {
+    "all": "全部",
+    "image": "图片",
+    "video": "视频"
+  },
+  "templates": {
+    "poster": {
+      "title": "紫晶情绪海报",
+      "prompt": "生成一张竖版 3:4 情绪海报：紫水晶簇的微距特写，晶体折射柔和的紫色与玫瑰色光线，细腻矿物纹理和浅景深。加入清晰的中文大标题「允许自己慢下来」，配小号衬线字与留白，呈现安静、治愈的杂志封面风格。"
+    },
+    "product": {
+      "title": "香氛产品大片",
+      "prompt": "生成一张竖版 3:4 香氛产品广告图：透明玻璃香水瓶置于奶白色亚麻布与干花之间，暖色窗光从侧面照入，突出玻璃折射、金属瓶盖和柔软织物质感。产品主体清晰，背景干净，不出现品牌标识，保留文案空间，高级生活方式摄影。"
+    },
+    "illustration": {
+      "title": "插画故事",
+      "prompt": "创作一幅细节丰富、色彩协调的叙事插画，包含有趣的角色和环境细节，画面构图完整，适合做封面。"
+    },
+    "architecture": {
+      "title": "水城旅行明信片",
+      "prompt": "生成一张竖版 3:4 威尼斯旅行明信片：碧绿运河、暖粉色历史建筑和岸边小船，午后阳光洒在水面，建筑立面细节丰富，构图沿运河延伸。胶片摄影质感，柔和色调，顶部留白用于旅行标题，画面自然真实。"
+    },
+    "landscape": {
+      "title": "冰岛梦境风光",
+      "prompt": "生成一张横版 16:9 冰岛风光照片：翠绿山坡、壮观瀑布和远处开阔的平原，粉紫色晚霞映亮天空，水雾轻盈，画面有清晰的前景、中景与远景。广角构图、电影感光影、真实自然纹理，无人物、无文字。"
+    },
+    "pet": {
+      "title": "窗边猫咪写真",
+      "prompt": "生成一张竖版 3:4 宠物写真：一只毛茸茸的橘猫坐在木质窗台上，望向窗外，柔和的晨光照亮胡须和眼睛。毛发细节清晰，背景是虚化的浅色窗帘，暖色胶片调色，自然抓拍感，安静温柔。"
+    },
+    "food": {
+      "title": "轻食菜单摄影",
+      "prompt": "生成一张横版 4:3 轻食菜单照片：俯拍白色陶瓷盘中的藜麦、牛油果、彩色蔬菜与清爽沙拉，周围散落新鲜食材。浅色石质桌面，柔和自然光，食物色彩鲜活、纹理真实，留出菜单文字空间。"
+    },
+    "interior": {
+      "title": "奶油风理想客厅",
+      "prompt": "生成一张横版 16:9 现代奶油风客厅室内设计图：米白色沙发、浅木茶几、柔软地毯与简洁吊灯，宽大的窗户引入温暖自然光，空间通透、层次清晰。建筑摄影视角，真实材质与光影，无人物、无杂物。"
+    },
+    "flowers": {
+      "title": "春日花店封面",
+      "prompt": "生成一张竖版 3:4 春日花店封面图：淡粉色花束的近景特写，花瓣层次丰富，浅米色背景与柔和漫射光，呈现浪漫、清新的生活方式摄影。画面上方预留标题区域，不出现品牌或水印。"
+    },
+    "coast": {
+      "title": "海边日落短片",
+      "prompt": "生成一段 6 秒、横版 16:9 的电影感视频：夕阳缓缓落向海平线，橙金色光线铺满海面，轻柔浪花不断涌向岸边。镜头稳定、缓慢向前推进，天空与海水色彩自然，光影连续，画面安静治愈，无文字、无水印。"
+    },
+    "coffeeFilm": {
+      "title": "咖啡品牌短片",
+      "prompt": "生成一段 6 秒、横版 16:9 的咖啡广告视频：俯拍咖啡杯置于咖啡豆与肉桂之间，奶液缓缓注入咖啡，形成细腻、自然的旋涡。暖棕色调，柔和棚拍光，近景浅景深，动作连续、液体真实，不出现品牌标识或字幕。"
+    },
+    "cityFilm": {
+      "title": "城市黄昏航拍",
+      "prompt": "生成一段 6 秒、横版 16:9 的城市航拍视频：黄昏时分从高处俯瞰城市天际线，暮色渐深、建筑灯光亮起，远处晚霞与道路光带交织。镜头平稳前移，空间透视真实，电影感调色，无闪烁、无文字。"
+    },
+    "forestFilm": {
+      "title": "森林瀑布疗愈",
+      "prompt": "生成一段 6 秒、横版 16:9 的自然疗愈视频：茂密森林中，瀑布持续流入清澈水潭，苔藓覆盖岩石，树叶轻轻摇动。镜头固定并微微推进，柔和日光穿过树冠，水流、波纹与植被运动自然连续，无人物、无字幕。"
+    }
+  },
   "promptExamplesHint": "试试这些指令",
   "defaultPrompts": {
     "understand": "了解一下这个项目，用大白话告诉我它是做什么的、从哪里入手",
@@ -13,5 +126,77 @@
     "specifyWorkspace": "选择项目文件夹",
     "searchPlaceholder": "搜索项目…",
     "noProject": "不使用项目"
+  },
+  "comfy": {
+    "diagnosticLog": "诊断日志",
+    "title": "本地模型",
+    "noProfile": "尚无已安装的模型配置",
+    "use": "使用",
+    "selected": "已选择",
+    "version": "{{family}} 版本",
+    "draftHint": "点击安装后会填入可编辑的请求，确认内容后再发送。",
+    "families": {
+      "h3": "视频生成",
+      "qwen-edit": "图片编辑",
+      "z-image": "图片生成"
+    },
+    "actions": {
+      "install": "安装",
+      "repair": "检查 / 修复",
+      "install-other": "其他版本",
+      "generate": "生成"
+    },
+    "intentSummary": "本地模型任务：{{model}} · {{intent}}。目标配置：{{profile}}。请保持该模型家族与任务意图，先制定具体的 ComfyUI 方案并等待我确认后再安装。安装任务不需要视频或图片生成参数。",
+    "prompts": {
+      "install": "帮我在本地安装 {{family}}，通过 ComfyUI 使用。先检查我的显卡、架构、驱动、Torch/Python、内存、磁盘、网络和现有 ComfyUI 环境。任务映射必须保持：H3 用于文生视频或图生视频，Z-Image 用于文生图，Qwen-Edit 用于给定输入图片改图；不要把一个家族改成另一个任务。根据检测结果推荐完整且固定的模型方案：具体版本、扩散模型量化、文本/视觉编码器精度、VAE、LoRA、加载节点、ComfyUI 版本、工作流和运行参数必须作为同一组件集评估，说明哪些证据是本机实测、哪些只是估计。优先复用已验证方案；没有可复用方案时，先选择有加载器和工作流证据、并留有显存余量的均衡方案，再给出节省资源或更高质量的替代项。优先查找可证明与固定版本完全一致的魔搭或可靠国内镜像副本，固定上游身份、revision、文件名、大小、许可和 SHA-256；镜像只作传输来源，能访问同名文件不等于同一文件。调用 aionui_comfy_environment，并把模型、节点、Python 包和工作流的候选固定 HTTPS URL 放入 sources 后再判断网络；该工具每次最多接受 12 个 URL，超过 12 个候选时按模型、节点/Git、Python 包和工作流分类分批探测并保留每批结果，未传入的 URL 视为未探测。network.requested=false、缺少候选结果、重定向不可信或出现 NETWORK_* 都表示证据不完整，必须说明缺什么，不能声称网络检查通过。可达性、Range 或文件大小响应只证明传输通道，不证明镜像与上游是同一文件；只有仓库、revision、路径/文件名、大小、许可和 SHA-256 身份摘要全部匹配时才可采用魔搭或镜像。网络选择按魔搭、可靠国内镜像、上游的顺序逐项探测，但模型、Git、Python 包和工作流分别记录结果；节点和 Python 包仍需各自验证 ABI、提交版本和许可证。优先复用 comfy-cli 的 comfy、comfy-custom-nodes、comfy-build、comfy-debug 指导，但不要复制通用下载器或绕过本 Skill 的安装计划、用户确认和收据校验。工作流有 Skill 随附的固定 API 图时直接复用并记录 graph hash，生成时不要重复下载。说明下载大小、安装目录、剩余磁盘、断点续传收据、节点/模型/输入检查和最小 smoke input 验证步骤；安装前展示实际方案并等我确认。所有候选源失败、身份摘要缺失或探测不完整时先停在可审阅计划，让我选择来源或提供已校验文件，不要擅自更换模型家族、量化、尺寸或云服务。安装请求只负责安装，不要附带生成参数。",
+      "repair": "检查并修复我的本地 {{family}} 模型配置 {{profile}}。任务映射保持不变：H3 是文生/图生视频，Z-Image 是文生图，Qwen-Edit 是输入图片改图。先检查环境、模型组件、自定义节点、工作流、输入绑定、磁盘和已记录的实际日志，区分文件已下载、环境可加载和最小生成已验证。说明只针对当前故障的有界修复方案，修改前保存快照并等我确认；若需下载节点、模型、Python 包或工作流，先按模型、节点/Git、Python 包和工作流分类，用固定 HTTPS URL 调用 aionui_comfy_environment 探测来源；每次最多 12 个 URL，超过时分批并保留每批结果，使用匹配的断点续传收据而不是盲目重下。按魔搭、可靠国内镜像、上游顺序选择，但可达性、Range 或同名文件不证明镜像身份；只有仓库/revision/路径、文件名、大小、许可、SHA-256 和加载器兼容性证据全部匹配才可使用镜像。network.requested=false、缺少候选结果、重定向不可信或出现 NETWORK_* 都表示证据不完整，不能当作成功；Skill 已有固定 API 图时不要重新下载。优先参考 comfy-debug、comfy-custom-nodes 和 comfy-build 的对应诊断边界，不要做全局升级或新增通用下载器。只执行一次有界修复，再用与目标任务匹配的代表性 smoke input 验证；显存不足先按该方案允许的分辨率、批量或卸载策略调整，第二次 OOM 停止并让我选择新方案。不要自动换模型家族、量化、工作流或云服务。",
+      "install-other": "帮我为 {{family}} 安装其他版本或量化方案。任务映射保持不变：H3 用于文生/图生视频，Z-Image 用于文生图，Qwen-Edit 用于输入图片改图。先检查硬件、驱动、Torch/Python、网络和已有模型配置，优先复用已验证文件，同时提出与当前配置隔离的完整组件集；模型版本、扩散模型量化、编码器和 VAE 精度、LoRA、节点、ComfyUI 版本、固定 API 工作流及运行参数必须一起规划，保留当前可用配置。调用 aionui_comfy_environment，把每个模型、节点、Python 包和工作流的固定 HTTPS URL 放入 sources 后再判断网络；该工具每次最多接受 12 个 URL，超过 12 个候选时按模型、节点/Git、Python 包和工作流分批探测并保存批次结果，未探测候选不能当作失败或可达。network.requested=false、缺少候选结果、重定向不可信或出现 NETWORK_* 都表示证据不完整，必须说明缺什么。按魔搭、可靠国内镜像、上游顺序探测；可达性、Range、同名或同大小文件只说明传输可能，不说明镜像与上游相同，只有仓库、revision、路径/文件名、大小、许可、SHA-256 和加载器兼容性全部一致时才可把镜像当作同一文件；节点和 Python 包还要验证提交版本及 ABI。优先参考 comfy-cli 的 comfy、comfy-custom-nodes、comfy-build、comfy-debug 适配边界，不要另造绕过安装计划的下载器。工作流有 Skill 随附的固定 API 图时直接复用并保留 hash，生成时不要重复下载。安装前列出实际版本、量化组合、工作流、下载大小、安装目录、磁盘余量、断点续传和验证步骤并等待我确认；身份证据缺失或失败时停在可审阅计划，让我选择来源或提供已校验文件。不要擅自更换模型家族、任务、量化或尺寸，也不要把安装请求当作生成请求。"
+    },
+    "operation": {
+      "title": "ComfyUI 模型方案",
+      "authorize": "确认方案并让助手继续",
+      "continue": "让助手继续",
+      "cancel": "取消",
+      "target": "安装位置",
+      "download": "下载大小",
+      "disk": "所需剩余空间",
+      "details": "模型、节点与命令",
+      "source": "来源",
+      "unavailable": "本地模型服务暂不可用。",
+      "completedHint": "验证通过，可在本地模型选择器中使用该模型。",
+      "continueRequest": "我已确认此 ComfyUI 模型方案。请调用 aionui_comfy_install，action=start，operationId={{id}}，使用保存的模型家族、版本、量化方案与参数继续此已授权任务，不要新建其他安装任务。",
+      "states": {
+        "awaiting-consent": "等待确认",
+        "authorized": "已确认，等待助手",
+        "running": "执行中",
+        "paused": "已暂停",
+        "failed": "失败",
+        "completed": "验证通过，可使用",
+        "cancelled": "已取消"
+      },
+      "snapshotDirectory": "恢复快照"
+    },
+    "profileSummary": "已选本地配置：{{profile}}。请使用此配置。",
+    "session": {
+      "title": "本地生成配置",
+      "hint": "用于下一次生成，已提交任务继续使用原配置。",
+      "saveFailed": "无法保存模型选择，请重试。"
+    },
+    "generation": {
+      "title": "本地生成",
+      "unavailable": "本地生成服务暂不可用。",
+      "cancel": "取消生成",
+      "artifact": "生成结果 {{index}}",
+      "states": {
+        "queued": "排队中",
+        "running": "生成中",
+        "succeeded": "已完成",
+        "failed": "失败",
+        "cancelled": "已取消"
+      },
+      "adjusted": "已在此模型配置允许的范围内调整参数。",
+      "actualInput": "实际生成参数",
+      "submissionUncertain": "无法确认任务是否已提交，请先检查 ComfyUI 当前队列再决定是否重新提交。"
+    }
   }
 }

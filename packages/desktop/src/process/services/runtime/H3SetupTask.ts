@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { H3SetupPhase, H3SetupState, H3DownloadProgress } from '@/common/chat/document/h3Setup';
+import type { H3SetupPhase, H3SetupState, H3DownloadProgress } from '@/common/chat/document/creation/h3Setup';
 
 export class H3SetupTask {
   private state: H3SetupState = { phase: 'idle' };

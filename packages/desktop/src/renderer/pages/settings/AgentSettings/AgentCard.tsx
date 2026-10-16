@@ -9,8 +9,14 @@ import { Avatar, Button, Switch, Tag, Tooltip, Typography } from '@arco-design/w
 import { Delete, EditTwo, Robot } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
-import { resolveAgentAvatar, useAgentLogos } from '@/renderer/utils/model/agentLogo';
+import {
+  isOpenH3NativeAgent,
+  OPENH3_NATIVE_LOGO,
+  resolveAgentAvatar,
+  useAgentLogos,
+} from '@/renderer/utils/model/agentLogo';
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import {
   type AgentManagementStatus,
   type ManagedAgent,
@@ -110,13 +116,17 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
   const isDisabled = isCustom && agent.enabled === false;
   const diagnostics = formatManagedAgentDiagnosticMessage(t, agent);
   const displayStatus = resolveDisplayStatus(agent.status, agent.last_check_error_code);
+  const isOpenH3 = isOpenH3NativeAgent(agent);
+  const displayName = normalizeAssistantDisplayName(agent.name);
 
-  const avatar = resolveAgentAvatar(logos, {
-    icon: agent.avatar || agent.icon,
-    backend: agent.backend || agent.agent_type,
-    custom_agent_id: agent.custom_agent_id,
-    isExtension: agent.isExtension,
-  });
+  const avatar = isOpenH3
+    ? { kind: 'image' as const, value: OPENH3_NATIVE_LOGO }
+    : resolveAgentAvatar(logos, {
+        icon: agent.avatar || agent.icon,
+        backend: agent.backend || agent.agent_type,
+        custom_agent_id: agent.custom_agent_id,
+        isExtension: agent.isExtension,
+      });
 
   const stop = (event: React.MouseEvent) => event.stopPropagation();
 
@@ -129,13 +139,13 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
       <div className={`flex min-w-0 flex-1 items-center gap-12px ${isDisabled ? 'opacity-50' : ''}`}>
         <Avatar
           size={32}
-          shape='square'
+          shape={isOpenH3 ? 'circle' : 'square'}
           style={{ flexShrink: 0, backgroundColor: avatar.kind === 'image' ? 'transparent' : 'var(--color-fill-2)' }}
         >
           {avatar.kind === 'image' ? (
             <ThemedLogo
               src={avatar.value}
-              alt={agent.name}
+              alt={displayName}
               // Arco Avatar forces color:var(--color-white); pin to theme text so
               // the currentColor mask stays visible in light mode too.
               style={{ width: 32, height: 32, objectFit: 'contain', color: 'var(--text-primary)' }}
@@ -148,7 +158,7 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
         </Avatar>
         <div className='min-w-0 flex-1'>
           <div className='flex min-w-0 items-center gap-8px'>
-            <Typography.Text className='truncate text-14px font-medium text-t-primary'>{agent.name}</Typography.Text>
+            <Typography.Text className='truncate text-14px font-medium text-t-primary'>{displayName}</Typography.Text>
             <Tag
               data-testid={`agent-row-status-${agent.id}`}
               size='small'

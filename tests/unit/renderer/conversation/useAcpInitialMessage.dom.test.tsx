@@ -4,10 +4,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import { useAcpInitialMessage } from '@/renderer/pages/conversation/platforms/acp/useAcpInitialMessage';
+import { useGuidDraft } from '@/renderer/pages/guid/hooks/useGuidDraft';
+import { useComfySelectionPending } from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
+
+const bindCreation = vi.fn();
+const bindComfy = vi.fn();
+vi.mock('@/common/chat/document/creation/comfyApi', () => ({
+  comfyApi: { bind: (...args: unknown[]) => bindComfy(...args) },
+}));
+vi.mock('@/common/chat/document/h3JobApi', () => ({
+  h3JobApi: { bindCreation: (...args: unknown[]) => bindCreation(...args) },
+}));
 
 const { sendMessageInvokeMock, emitterEmitMock } = vi.hoisted(() => ({
   sendMessageInvokeMock: vi.fn(),
@@ -41,9 +52,150 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('useAcpInitialMessage', () => {
+  const mountInitial = () =>
+    renderHook(() =>
+      useAcpInitialMessage({
+        conversation_id: 'conv-1',
+        backend: 'codex',
+        setAiProcessing: vi.fn(),
+        resetState: vi.fn(),
+        checkAndUpdateTitle: vi.fn(),
+        addOrUpdateMessage: vi.fn(),
+      })
+    );
   beforeEach(() => {
     sessionStorage.clear();
     vi.clearAllMocks();
+    bindCreation.mockResolvedValue({ ok: true });
+    bindComfy.mockResolvedValue({ ok: true });
+  });
+
+  it('clears only the original Guid draft after the first message is accepted', async () => {
+    const draft = renderHook(() => useGuidDraft());
+    act(() => draft.result.current[1]('Original prompt'));
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({ input: 'Original prompt', guidDraft: 'Original prompt' })
+    );
+    let acknowledge!: (value: unknown) => void;
+    sendMessageInvokeMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          acknowledge = resolve;
+        })
+    );
+    mountInitial();
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(draft.result.current[0]).toBe('Original prompt');
+    await act(async () => acknowledge({ turn_id: 'turn-1', runtime: {} }));
+    expect(draft.result.current[0]).toBe('');
+  });
+
+  it('binds the local tools for an empty creation entry without sending a blank message', async () => {
+    sessionStorage.setItem('acp_initial_message_conv-1', JSON.stringify({ input: '', creationRequestId: 'request-1' }));
+    mountInitial();
+    await waitFor(() => expect(bindCreation).toHaveBeenCalledWith('request-1', 'conv-1'));
+    expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('binds local image snapshot family and profile before the first ACP turn', async () => {
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({
+        input: 'edit image',
+        creationRequestId: 'request-qwen',
+        creationRequest: {
+          source: 'local',
+          kind: 'image',
+          profileId: 'qwen-fp8',
+          family: 'qwen-edit',
+          intent: 'generate',
+        },
+      })
+    );
+    sendMessageInvokeMock.mockResolvedValueOnce({ turn_id: 'turn-1', runtime: {} });
+    mountInitial();
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(bindComfy).toHaveBeenCalledWith('request-qwen', 'conv-1', 'qwen-fp8', 'qwen-edit', 'generate', {
+      source: 'local',
+      kind: 'image',
+    });
+    expect(bindCreation).not.toHaveBeenCalled();
+    expect(bindComfy.mock.invocationCallOrder[0]).toBeLessThan(sendMessageInvokeMock.mock.invocationCallOrder[0]);
+  });
+
+  it('binds an explicit cloud source before the first ACP image turn', async () => {
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({
+        input: 'generate image',
+        creationRequestId: 'request-cloud',
+        creationRequest: { source: 'cloud', kind: 'image', intent: 'generate' },
+      })
+    );
+    sendMessageInvokeMock.mockResolvedValueOnce({ turn_id: 'turn-1', runtime: {} });
+    mountInitial();
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(bindComfy).toHaveBeenCalledWith('request-cloud', 'conv-1', undefined, undefined, 'generate', {
+      source: 'cloud',
+      kind: 'image',
+    });
+    expect(bindCreation).not.toHaveBeenCalled();
+  });
+
+  it('retains the prompt after failed binding and retries binding before sending on remount', async () => {
+    const draft = renderHook(() => useGuidDraft());
+    act(() => draft.result.current[1]('Original prompt'));
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({ input: 'Original prompt', guidDraft: 'Original prompt', creationRequestId: 'request-1' })
+    );
+    bindCreation.mockRejectedValueOnce(new Error('offline'));
+    const first = mountInitial();
+    await waitFor(() => expect(bindCreation).toHaveBeenCalledOnce());
+    expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+    expect(draft.result.current[0]).toBe('Original prompt');
+    expect(sessionStorage.getItem('acp_initial_message_conv-1')).not.toBeNull();
+    first.unmount();
+    sendMessageInvokeMock.mockResolvedValueOnce({ turn_id: 'turn-1', runtime: {} });
+    mountInitial();
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(bindCreation).toHaveBeenCalledTimes(2);
+    expect(draft.result.current[0]).toBe('');
+  });
+
+  it('keeps direct sends gated until the initial creation binding is accepted', async () => {
+    const gate = renderHook(() => useComfySelectionPending('conv-1'));
+    let finish!: (value: { ok: boolean }) => void;
+    bindComfy.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({ input: '', creationRequestId: 'request-1', creationRequest: { source: 'local', kind: 'image' } })
+    );
+    mountInitial();
+    await waitFor(() => expect(bindComfy).toHaveBeenCalledOnce());
+    expect(gate.result.current).toBe(true);
+    await act(async () => finish({ ok: true }));
+    expect(gate.result.current).toBe(false);
+    expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the draft when first-message send fails after conversation creation', async () => {
+    const draft = renderHook(() => useGuidDraft());
+    act(() => draft.result.current[1]('Unsent prompt'));
+    sessionStorage.setItem(
+      'acp_initial_message_conv-1',
+      JSON.stringify({ input: 'Unsent prompt', guidDraft: 'Unsent prompt' })
+    );
+    sendMessageInvokeMock.mockRejectedValueOnce(new Error('runtime unavailable'));
+    mountInitial();
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(draft.result.current[0]).toBe('Unsent prompt');
   });
 
   it('suppresses tips and reset when initial ACP send hits active-turn busy', async () => {

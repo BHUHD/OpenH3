@@ -2,7 +2,7 @@ import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { collectHardware, type HardwareSnapshot } from './hardwareProbe';
-import type { H3HardwareAssessment } from '@/common/chat/document/h3Setup';
+import type { H3HardwareAssessment } from '@/common/chat/document/creation/h3Setup';
 
 export function assessSetupHardware(hw: HardwareSnapshot): H3HardwareAssessment {
   const reasons: string[] = [];

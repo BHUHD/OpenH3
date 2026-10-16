@@ -11,7 +11,7 @@ if ($BundleRootOverride) { $BundleRoot = $BundleRootOverride }
 if ($PortOverride -gt 0) { $Port = $PortOverride }
 if ($ImagePathOverride) { $ImagePath = $ImagePathOverride }
 $scriptPath = Join-Path $PackageRoot 'resources\app.asar.unpacked\out\main\media-service.js'
-$electronPath = Join-Path $PackageRoot 'AionUi.exe'
+$electronPath = Join-Path $PackageRoot 'OpenH3.exe'
 New-Item -ItemType Directory -Force $DataRoot | Out-Null
 $env:ELECTRON_RUN_AS_NODE = '1'; $env:AIONUI_MEDIA_PORT = [string]$Port; $env:AIONUI_DATA_DIR = $DataRoot; $env:AIONUI_H3_BUNDLE_ROOT = $BundleRoot
 $out = Join-Path $DataRoot 'service.out.log'; $err = Join-Path $DataRoot 'service.err.log'

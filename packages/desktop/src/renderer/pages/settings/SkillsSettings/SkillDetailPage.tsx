@@ -15,6 +15,7 @@
  * their update path only accepts agent/defaults fields.
  */
 
+import { normalizeSkillDescription, normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { Assistant, UpdateAssistantRequest } from '@/common/types/agent/assistantTypes';
 import { resolveLocaleKey } from '@/common/utils';
@@ -210,17 +211,19 @@ const SkillDetailPage: React.FC = () => {
                 <div
                   className={`h-48px w-48px shrink-0 rounded-12px flex items-center justify-center text-18px font-bold shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
                 >
-                  {skill.name.charAt(0).toUpperCase()}
+                  {normalizeSkillDisplayName(skill.name, skill.source).charAt(0).toUpperCase()}
                 </div>
                 <div className='min-w-0 flex flex-col gap-6px'>
                   <div className='flex items-center gap-8px'>
-                    <span className='text-16px font-600 text-t-primary'>{skill.name}</span>
+                    <span className='text-16px font-600 text-t-primary'>
+                      {normalizeSkillDisplayName(skill.name, skill.source)}
+                    </span>
                     <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-11px text-t-secondary'>
                       {sourceLabel(skill)}
                     </span>
                   </div>
                   <p className='m-0 text-13px leading-relaxed text-t-secondary'>
-                    {skill.description ||
+                    {normalizeSkillDescription(skill.name, skill.description, skill.source) ||
                       t('settings.skillsHub.detailNoDescription', { defaultValue: 'No description.' })}
                   </p>
                 </div>

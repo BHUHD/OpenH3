@@ -16,6 +16,54 @@ import { z } from 'zod';
 import { BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME } from './constants';
 import { executeImageGeneration } from '@/common/chat/imageGenCore';
 import type { TProviderWithModel } from '@/common/config/storage';
+import {
+  comfyGenerationInputSchema,
+  type ComfyGenerationJob,
+  type ComfyProfile,
+} from '@/common/chat/document/creation/comfy';
+import path from 'node:path';
+
+type CreationSelection = {
+  profileId?: string;
+  family?: string;
+  intent: string;
+  source?: 'local' | 'cloud';
+  kind?: 'image' | 'video';
+};
+
+async function comfyRequest(endpoint: string, body?: unknown): Promise<unknown> {
+  const response = await fetch(`http://127.0.0.1:${Number(process.env.AIONUI_MEDIA_PORT ?? 33002)}${endpoint}`, {
+    ...(body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    signal: AbortSignal.timeout(45_000),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error((data as { error?: string }).error ?? `MEDIA_SERVICE_HTTP_${response.status}`);
+  return data;
+}
+
+async function localImageGeneration(
+  prompt: string,
+  imageUris: string[] | undefined,
+  requestId: string,
+  profiles: ComfyProfile[],
+  selection: CreationSelection
+) {
+  if (!selection.profileId) throw new Error('COMFY_SELECTED_PROFILE_REQUIRED');
+  const profile = profiles.find((candidate) => candidate.id === selection.profileId);
+  if (!profile || profile.kind !== 'image') throw new Error('CREATION_IMAGE_NOT_SELECTED');
+  if (profile.state !== 'verified') throw new Error('COMFY_PROFILE_NOT_VERIFIED');
+  if (imageUris?.some((uri) => /^https?:\/\//i.test(uri))) throw new Error('COMFY_LOCAL_IMAGE_PATH_REQUIRED');
+  const input = comfyGenerationInputSchema.parse({
+    prompt,
+    ...(imageUris?.length ? { imagePaths: imageUris.map((uri) => path.resolve(uri)) } : {}),
+  });
+  const job = (await comfyRequest('/api/comfy/jobs', {
+    profileId: profile.id,
+    input,
+    requestId,
+  })) as ComfyGenerationJob;
+  return { content: [{ type: 'text' as const, text: JSON.stringify({ comfyJobId: job.id, job }) }] };
+}
 
 // Read provider config from environment variables
 function getProviderFromEnv(): TProviderWithModel | null {
@@ -46,40 +94,12 @@ async function main() {
 
   server.tool(
     'aionui_image_generation',
-    `REQUIRED tool for generating or editing images. You MUST use this tool for ANY image generation request.
-
-CRITICAL: You (the AI assistant) CANNOT generate images directly. You MUST call this tool for:
-- Creating/generating any new images from text descriptions
-- Drawing, painting, or making any visual content
-- Editing or modifying existing images
-
-Primary Functions:
-- Generate new images from English text descriptions
-- Edit/modify existing images with English text prompts
-
-IMPORTANT: All prompts must be in English for optimal results.
-
-When to Use (MANDATORY):
-- User asks to "generate", "create", "draw", "make", "paint" an image
-- User asks for any visual content creation
-- User asks to edit or modify an image
-- User mentions @filename with image extensions (.jpg, .jpeg, .png, .gif, .webp, .bmp, .tiff, .svg)
-
-Input Support:
-- Multiple local file paths in array format: ["img1.jpg", "img2.png"]
-- Multiple HTTP/HTTPS image URLs in array format
-- Text prompts for generation or analysis
-
-Output:
-- Saves generated/processed images to workspace with timestamp naming
-- Returns image path and AI description/analysis
-
-IMPORTANT: When user provides multiple images, ALWAYS pass ALL images to the image_uris parameter as an array.`,
+    'Generate or edit images using the user-selected source and model. For a local creation session, use its currently selected verified registered ComfyUI image profile and the comfyui-local skill; this tool queues a generic ComfyUI job and returns comfyJobId. Local inputs must be local image paths. For cloud sessions, use the configured provider. Pass all user-provided image inputs. Never silently switch source/model or install a missing local profile; prepare installation separately through aionui_comfy_install and UI consent. The client monitors queued local jobs; end your turn after submission.',
     {
       prompt: z
         .string()
         .describe(
-          'The text prompt in English that must clearly specify the operation type: "Generate image: [description]" for creating new images, "Analyze image: [what to analyze]" for image recognition/analysis, or "Edit image: [modifications]" for image editing.'
+          'The generation description or image-edit instruction. Preserve the requested local model and source image roles.'
         ),
       image_uris: z
         .array(z.string())
@@ -89,6 +109,53 @@ IMPORTANT: When user provides multiple images, ALWAYS pass ALL images to the ima
         ),
     },
     async ({ prompt, image_uris }) => {
+      const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+      let resolvedCloudSelection = false;
+      if (requestId?.trim()) {
+        try {
+          const result = (await comfyRequest(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as {
+            profiles: ComfyProfile[];
+            selection?: CreationSelection;
+          };
+          const selection = result.selection;
+          if (!selection) throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
+          if (selection.kind === 'video' || selection.family === 'h3') throw new Error('CREATION_IMAGE_NOT_SELECTED');
+          if (selection.intent !== 'generate') throw new Error('CREATION_GENERATION_NOT_SELECTED');
+          if (selection.source === 'local' || selection.family || selection.profileId) {
+            return await localImageGeneration(prompt, image_uris, requestId, result.profiles, selection);
+          }
+          if (selection.source !== 'cloud') throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
+          resolvedCloudSelection = true;
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Local image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
+      }
+      if (!resolvedCloudSelection && process.env.AIONUI_CREATION_KIND === 'video')
+        return {
+          isError: true,
+          content: [
+            { type: 'text' as const, text: 'The user selected video generation. Ask before switching to an image.' },
+          ],
+        };
+      if (!resolvedCloudSelection && process.env.AIONUI_CREATION_SOURCE === 'local') {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text' as const,
+              text: 'CREATION_REQUEST_CONTEXT_MISSING: local generation requires a bound creation session and selected verified ComfyUI profile. Use the comfyui-local skill to prepare or select that profile.',
+            },
+          ],
+        };
+      }
       const provider = getProviderFromEnv();
       if (!provider) {
         return {

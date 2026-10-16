@@ -4,14 +4,16 @@ import { Button, Checkbox, Modal } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
 import { h3JobApi, type H3RuntimeStatus } from '@/common/chat/document/h3JobApi';
-import type { H3SetupState, H3SetupPlan, H3HardwareAssessment } from '@/common/chat/document/h3Setup';
+import type { H3SetupState, H3SetupPlan, H3HardwareAssessment } from '@/common/chat/document/creation/h3Setup';
 import type { H3Job } from '@/common/chat/document/h3Job';
+import type { CreationInstallConsent } from '@/common/chat/document/creation/operation';
 
 /** Available in system settings before the user has created a video. */
 export default function H3EnvironmentContent({
   automatic = false,
   onReady,
-}: { automatic?: boolean; onReady?: () => void } = {}) {
+  onInstall,
+}: { automatic?: boolean; onReady?: () => void; onInstall?: (consent: CreationInstallConsent) => Promise<void> } = {}) {
   const { t } = useTranslation();
   const attemptedRoot = useRef<string | undefined>(undefined);
   const [status, setStatus] = useState<H3RuntimeStatus>();
@@ -128,6 +130,14 @@ export default function H3EnvironmentContent({
     setBusy(true);
     setError('');
     try {
+      if (onInstall) {
+        await onInstall({
+          download,
+          acceptModelTerms: accepted,
+          ...(experimental ? { acceptExperimentalHardware: true } : {}),
+        });
+        return;
+      }
       setSetup(
         await h3JobApi.install(
           download
@@ -391,7 +401,7 @@ export default function H3EnvironmentContent({
               </div>
             )}
             <div className='flex flex-wrap gap-8px'>
-              <Button disabled={busy || installing} onClick={() => void install()}>
+              <Button disabled={busy || installing || (!!onInstall && !accepted)} onClick={() => void install()}>
                 {t('settings.h3Setup.offlineInstall')}
               </Button>
               <Button disabled={busy || installing} onClick={() => void checkCapabilities()}>

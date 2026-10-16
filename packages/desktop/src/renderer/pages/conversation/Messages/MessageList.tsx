@@ -41,6 +41,10 @@ import MessageAgentStatus from './components/MessageAgentStatus';
 import MessageTips from './components/MessageTips';
 import MessageToolCall from './components/MessageToolCall';
 import H3ToolResults, { h3TurnResults, stripH3PlayerMarkup } from './components/H3ToolResults';
+import CreationInstallResult from '../runtime/Creation/CreationInstallResult';
+import { creationTurnResults } from '../runtime/Creation/turnResults';
+import ComfyOperationResult, { comfyTurnResults } from '../runtime/Creation/ComfyOperationResult';
+import ComfyGenerationResult, { comfyGenerationTurnResults } from '../runtime/Creation/ComfyGenerationResult';
 import MessageToolGroup from './components/MessageToolGroup';
 import MessageToolGroupSummary from './components/MessageToolGroupSummary';
 import MessageCronTrigger from './components/MessageCronTrigger';
@@ -468,6 +472,9 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   }, [artifacts, list]);
 
   const h3ResultGroups = useMemo(() => h3TurnResults(processedList), [processedList]);
+  const creationResultGroups = useMemo(() => creationTurnResults(processedList), [processedList]);
+  const comfyResultGroups = useMemo(() => comfyTurnResults(processedList), [processedList]);
+  const comfyGenerationGroups = useMemo(() => comfyGenerationTurnResults(processedList), [processedList]);
   const h3KnownJobs = useMemo(() => [...h3ResultGroups.values()].flat(), [h3ResultGroups]);
 
   // An AI reply can be split into several messages (thinking / multiple text /
@@ -785,6 +792,24 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
                       <H3ToolResults messages={[]} jobIds={h3ResultGroups.get(item.id)} />
                     </div>
                   )}
+                  {conversationContext?.conversation_id &&
+                    creationResultGroups.get(item.id)?.map((operationId) => (
+                      <div key={operationId} className={rowWidthClass + ' min-w-0 px-8px'}>
+                        <CreationInstallResult id={operationId} conversationId={conversationContext.conversation_id} />
+                      </div>
+                    ))}
+                  {conversationContext?.conversation_id &&
+                    comfyResultGroups.get(item.id)?.map((operationId) => (
+                      <div key={operationId} className={rowWidthClass + ' min-w-0 px-8px'}>
+                        <ComfyOperationResult id={operationId} conversationId={conversationContext.conversation_id} />
+                      </div>
+                    ))}
+                  {conversationContext?.conversation_id &&
+                    comfyGenerationGroups.get(item.id)?.map((jobId) => (
+                      <div key={jobId} className={rowWidthClass + ' min-w-0 px-8px'}>
+                        <ComfyGenerationResult id={jobId} conversationId={conversationContext.conversation_id} />
+                      </div>
+                    ))}
                 </React.Fragment>
               ))}
               <div className='h-20px' />

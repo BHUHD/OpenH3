@@ -112,7 +112,9 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
     dropdownVisibleId,
     handleConversationClick,
     handleArchive,
+    handleDelete,
     handleBatchArchive,
+    handleBatchDelete,
     handleEditStart,
     handleRenameConfirm,
     handleRenameCancel,
@@ -180,6 +182,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       onEditStart: handleEditStart,
       onCreateCronTask: handleCreateCronTask,
       onArchive: handleArchive,
+      onDelete: handleDelete,
       onTogglePin: handleTogglePin,
       onToggleManualUnread: handleToggleManualUnread,
       getJobStatus,
@@ -203,6 +206,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
       handleEditStart,
       handleCreateCronTask,
       handleArchive,
+      handleDelete,
       handleTogglePin,
       handleToggleManualUnread,
       getJobStatus,
@@ -308,6 +312,14 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                 onClick={handleBatchArchive}
               >
                 {t('conversation.history.batchArchive')}
+              </Button>
+              <Button
+                className='!w-full !justify-center !min-w-0 !h-30px !px-8px !text-12px whitespace-nowrap'
+                size='mini'
+                status='danger'
+                onClick={handleBatchDelete}
+              >
+                {t('conversation.history.batchDelete')}
               </Button>
             </div>
           </div>

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutContext } from '@/renderer/hooks/context/LayoutContext';
@@ -304,6 +304,8 @@ describe('GuidPage', () => {
   beforeEach(() => {
     locationMock.state = null;
     locationMock.key = 'guid-location';
+    locationMock.pathname = '/guid';
+    guidInputMock.input = '';
     navigateMock.mockReset();
     swrMock.useSWRMock.mockReturnValue({ data: null });
     capturedGuidActionRowProps.length = 0;
@@ -411,8 +413,7 @@ describe('GuidPage', () => {
     unmount();
     guidInputMock.setInput.mockClear();
     render(<GuidPage />);
-    expect(guidInputMock.setInput).toHaveBeenCalledWith('');
-    expect(guidInputMock.setInput.mock.calls.some(([value]) => typeof value === 'function')).toBe(false);
+    expect(guidInputMock.setInput).not.toHaveBeenCalled();
   });
 
   it('removes a consumed preserved prefill even when no other navigation state remains', () => {
@@ -451,6 +452,102 @@ describe('GuidPage', () => {
     expect(latestGuidInputCardProps).not.toHaveProperty('mentionOpen');
     expect(latestGuidInputCardProps).not.toHaveProperty('mentionSelectorBadge');
     expect(latestGuidInputCardProps).not.toHaveProperty('mentionDropdown');
+  });
+
+  it('keeps the new conversation draft when clicking New Chat again', () => {
+    locationMock.state = { resetAssistant: true };
+    guidInputMock.input = 'Draft that is still being written';
+    guidInputMock.setInput.mockClear();
+
+    const { rerender } = render(<GuidPage />);
+
+    locationMock.state = null;
+    locationMock.key = 'guid-location-replaced';
+    rerender(<GuidPage />);
+
+    locationMock.state = { resetAssistant: true };
+    locationMock.key = 'guid-location-new-chat-again';
+    rerender(<GuidPage />);
+
+    expect(guidInputMock.setInput).not.toHaveBeenCalledWith('');
+    expect(capturedGuidInputCardProps.at(-1)?.input).toBe('Draft that is still being written');
+  });
+
+  it('shows creation templates and fills the composer when using one', () => {
+    locationMock.pathname = '/ai-creation';
+    guidInputMock.setInput.mockClear();
+
+    render(<GuidPage />);
+
+    expect(screen.getByText('guid.aiCreation')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(12);
+    fireEvent.click(screen.getAllByRole('button', { name: 'guid.templateUse' })[0]);
+    expect(guidInputMock.setInput).toHaveBeenCalledWith('guid.templates.poster.prompt');
+  });
+
+  it('adds model installation requests to the editable composer without sending or changing the selected H3 target', () => {
+    locationMock.pathname = '/ai-creation';
+    guidInputMock.setInput.mockClear();
+    sendMock.sendMessageHandler.mockClear();
+    const { unmount } = render(<GuidPage />);
+    const card = screen.getByRole('region', { name: 'Qwen-Edit' });
+    fireEvent.click(card.querySelector('button')!);
+    expect(guidInputMock.setInput).toHaveBeenCalledWith('guid.comfy.prompts.install');
+    expect(sendMock.sendMessageHandler).not.toHaveBeenCalled();
+    expect(capturedGuidSendDeps.at(-1)?.creationIntent).toEqual({
+      family: 'qwen-edit',
+      intent: 'install',
+      profileId: undefined,
+    });
+    expect(capturedGuidInputCardProps.at(-1)?.focusRequestKey).toBeTruthy();
+    expect(screen.getAllByRole('article')).toHaveLength(12);
+    unmount();
+    guidInputMock.input = 'guid.comfy.prompts.install';
+    render(<GuidPage />);
+    expect(capturedGuidSendDeps.at(-1)?.creationIntent).toMatchObject({ family: 'qwen-edit', intent: 'install' });
+  });
+
+  it('lets verified versions be selected and keeps downloaded versions available for repair', () => {
+    locationMock.pathname = '/ai-creation';
+    swrMock.useSWRMock.mockImplementation((key: string | null) => ({
+      data:
+        key === 'creation.comfy-profiles'
+          ? [
+              {
+                id: 'qwen-fp8',
+                family: 'qwen-edit',
+                kind: 'image',
+                name: 'Qwen-Edit FP8',
+                version: '2509',
+                quantization: 'fp8',
+                state: 'verified',
+                capabilities: ['image-edit'],
+              },
+              {
+                id: 'z-bf16',
+                family: 'z-image',
+                kind: 'image',
+                name: 'Z-Image BF16',
+                version: 'v1',
+                quantization: 'bf16',
+                state: 'downloaded',
+                capabilities: ['text-to-image'],
+              },
+            ]
+          : null,
+    }));
+    render(<GuidPage />);
+    fireEvent.click(screen.getByRole('button', { name: /guid.comfy.(use|selected)/ }));
+    expect(capturedGuidSendDeps.at(-1)?.creationModel).toMatchObject({ profileId: 'qwen-fp8', kind: 'image' });
+    const repair = within(screen.getByRole('region', { name: 'Z-Image' })).getByRole('button', {
+      name: 'guid.comfy.actions.repair',
+    });
+    fireEvent.click(repair);
+    expect(capturedGuidSendDeps.at(-1)?.creationIntent).toMatchObject({
+      family: 'z-image',
+      profileId: 'z-bf16',
+      intent: 'repair',
+    });
   });
 
   it('ignores legacy selectedAgentKey navigation state when preselecting an assistant', () => {

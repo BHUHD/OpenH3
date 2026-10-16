@@ -641,7 +641,7 @@ export interface IMcpServer {
 
 export type ISessionMcpServer = Pick<IMcpServer, 'id' | 'name' | 'transport'>;
 
-export type IConversationMcpStatusKind = 'loaded' | 'failed' | 'unsupported';
+export type IConversationMcpStatusKind = 'loaded' | 'failed' | 'unsupported' | 'timed_out';
 
 export interface IConversationMcpStatus {
   id: string;

@@ -17,6 +17,10 @@ describe('assistantAvatarUtils', () => {
       expect(resolveAvatarImageSrc('/assets/avatar.png')).toBe('/assets/avatar.png');
     });
 
+    it('maps the legacy AionUi brand asset to the circular OpenH3 logo', () => {
+      expect(resolveAvatarImageSrc('/api/assets/logos/brand/aion.svg')).toContain('openh3-logo-round');
+    });
+
     it('does not expose arbitrary absolute image paths', () => {
       expect(resolveAvatarImageSrc('/path/to/avatar.png')).toBeUndefined();
     });

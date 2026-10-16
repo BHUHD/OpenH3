@@ -9,8 +9,28 @@ import http from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
 import os from 'os';
+import { LEGACY_PRODUCT_NAME, PRODUCT_NAME } from '@/common/config/productIdentity';
 import { getDevAppName } from '@/common/platform';
 import { applyGpuRecoveryFlags } from './gpuRecovery';
+import { migrateLegacyUserDataDirectory } from './legacyProductMigration';
+
+function migrateLegacyProductProfile(): void {
+  const appDataDir = app.getPath('appData');
+  const nextName = app.isPackaged ? PRODUCT_NAME : getDevAppName();
+  const legacyName = app.isPackaged
+    ? LEGACY_PRODUCT_NAME
+    : process.env.AIONUI_MULTI_INSTANCE === '1'
+      ? 'AionUi-Dev-2'
+      : 'AionUi-Dev';
+  const nextPath = path.join(appDataDir, nextName);
+  const legacyPath = path.join(appDataDir, legacyName);
+  const migrated = migrateLegacyUserDataDirectory(legacyPath, nextPath);
+  const userDataPath = fs.existsSync(legacyPath) && !migrated && !fs.existsSync(nextPath) ? legacyPath : nextPath;
+  if (fs.existsSync(legacyPath) && !migrated && userDataPath === legacyPath) {
+    console.warn('[OpenH3] Could not move the legacy profile; continuing to use it without copying live data.');
+  }
+  app.setPath('userData', userDataPath);
+}
 
 // ============ E2E test isolation ============
 // When running under E2E with an explicit sandbox dir, redirect userData there
@@ -26,18 +46,24 @@ if (e2eUserDataDir && e2eUserDataDir.trim() !== '') {
 }
 
 // ============ Environment Separation ============
-// Set app name before any getPath() call so userData is isolated from production.
+// Set the branded app name before resolving appData or userData.
 // Note: getPlatformServices() auto-registration also applies this as a safety net
 // in case Rollup loads initStorage's chunk before this module runs.
 // 开发模式下设置独立 app 名称，userData 目录将与正式版隔离，允许同时运行
 // E2E 沙箱已显式设置 userData 时跳过，避免被 dev app 名覆盖。
-if (!app.isPackaged && !e2eUserDataDir) {
-  const devAppName = getDevAppName();
-  app.setName(devAppName);
+if (!e2eUserDataDir) {
+  const appName = app.isPackaged ? PRODUCT_NAME : getDevAppName();
+  app.setName(appName);
   // In Electron 28+, setName alone no longer updates userData path on macOS.
   // Explicitly override userData to the dev directory.
-  const appSupportDir = path.dirname(app.getPath('userData'));
-  app.setPath('userData', path.join(appSupportDir, devAppName));
+  if (!app.isPackaged) {
+    // Move the complete legacy profile before assigning the new path. This
+    // avoids a module-level getPath() call creating the destination first and
+    // thereby preventing an atomic migration.
+    migrateLegacyProductProfile();
+  } else {
+    migrateLegacyProductProfile();
+  }
 }
 
 // app.disableHardwareAcceleration() must run before app is ready.

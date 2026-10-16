@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AgentLogoMap } from '@/renderer/utils/model/agentLogo';
 import {
   fetchAgentLogos,
+  OPENH3_NATIVE_LOGO,
   resolveAgentAvatar,
   resolveAgentLogo,
   isDefaultModel,
@@ -62,6 +63,16 @@ describe('agentLogo', () => {
   });
 
   describe('resolveAgentLogo (backend lookup)', () => {
+    it('uses the circular OpenH3 logo instead of the legacy native backend icon', () => {
+      expect(resolveAgentLogo(LOGOS, { backend: 'aionrs' })).toBe(OPENH3_NATIVE_LOGO);
+      expect(resolveAgentLogo(LOGOS, { backend: 'aionrs', icon: '/api/assets/logos/brand/aion.svg' })).toBe(
+        OPENH3_NATIVE_LOGO
+      );
+      expect(resolveAgentLogo(LOGOS, { backend: 'aionrs', icon: '/api/custom/avatar.svg' })).toBe(
+        '/api/custom/avatar.svg'
+      );
+    });
+
     it('returns logo path for known backend (case-insensitive)', () => {
       expect(resolveAgentLogo(LOGOS, { backend: 'Claude' })).toContain('/api/assets/logos/ai-major/claude.svg');
     });

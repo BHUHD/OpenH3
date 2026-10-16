@@ -16,6 +16,7 @@ import GuidWorkspaceFootnote from './GuidWorkspaceFootnote';
 
 type GuidInputCardProps = {
   focusRequestKey?: string;
+  scrollOnFocusRequest?: boolean;
   // Input state
   input: string;
   onInputChange: (value: string) => void;
@@ -49,6 +50,7 @@ type GuidInputCardProps = {
 
 const GuidInputCard: React.FC<GuidInputCardProps> = ({
   focusRequestKey,
+  scrollOnFocusRequest = false,
   input,
   onInputChange,
   onKeyDown,
@@ -74,13 +76,21 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
   const isMobile = layout?.isMobile ?? false;
   const { compositionHandlers, isComposing } = useCompositionInput();
   const inputRef = useRef<RefTextAreaType | null>(null);
+  const lastTemplateFocus = useRef<string | undefined>(undefined);
   const textareaAutoSize = isMobile ? { minRows: 2, maxRows: 8 } : { minRows: 2, maxRows: 20 };
 
   useEffect(() => {
-    if (!focusRequestKey || isMobile) return;
-    inputRef.current?.focus();
+    if (!focusRequestKey || (isMobile && !scrollOnFocusRequest)) return;
+    if (scrollOnFocusRequest && lastTemplateFocus.current === focusRequestKey) return;
+    inputRef.current?.dom.focus({ preventScroll: scrollOnFocusRequest });
     inputRef.current?.dom.setSelectionRange(input.length, input.length);
-  }, [focusRequestKey, input, isMobile]);
+    if (scrollOnFocusRequest)
+      inputRef.current?.dom.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+        block: 'center',
+      });
+    if (scrollOnFocusRequest) lastTemplateFocus.current = focusRequestKey;
+  }, [focusRequestKey, input, isMobile, scrollOnFocusRequest]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (isComposing.current) return;

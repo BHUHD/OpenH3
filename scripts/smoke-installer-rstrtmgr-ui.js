@@ -83,7 +83,7 @@ function main() {
   const installDir = path.join(root, 'install-dir');
   mkdirSync(installDir, { recursive: true });
   const lockedFile = path.join(installDir, 'locked-by-smoke.txt');
-  writeFileSync(lockedFile, 'AionUi Restart Manager UI smoke lock\n', 'utf8');
+  writeFileSync(lockedFile, 'OpenH3 Restart Manager UI smoke lock\n', 'utf8');
 
   let locker = null;
   const nsiPath = path.join(root, 'aionui-rstrtmgr-ui-smoke.nsi');
@@ -97,15 +97,15 @@ function main() {
 
   const nsi = `
 Unicode true
-Name "AionUi Restart Manager UI Smoke"
+Name "OpenH3 Restart Manager UI Smoke"
 OutFile "${nsisQuote(exePath)}"
 RequestExecutionLevel user
 SilentInstall normal
 !define AIONUI_FALLBACK_LOG "aionui-installer-smoke-fallback.log"
 !define VERSION "rstrtmgr-ui-smoke"
 !define AIONUI_TARGET_ARCH "x64"
-!define AIONUI_APP_EXECUTABLE_FILENAME "AionUi.exe"
-!define UNINSTALL_FILENAME "Uninstall AionUi.exe"
+!define AIONUI_APP_EXECUTABLE_FILENAME "OpenH3.exe"
+!define UNINSTALL_FILENAME "Uninstall OpenH3.exe"
 !define PROJECT_DIR "${nsisQuote(repoRoot)}"
 !include LogicLib.nsh
 !include "${nsisQuote(messagesPath)}"

@@ -1,0 +1,1930 @@
+{
+  "schemaVersion": 1,
+  "status": "discovery-only",
+  "researchedAt": "2026-10-14",
+  "verifiedOnThisMachine": false,
+  "workflows": [
+    {
+      "id": "z-image-turbo-bf16-api-discovery",
+      "candidateId": "z-image-turbo-bf16-discovery",
+      "family": "z-image",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "capabilities": ["text-to-image"],
+      "requiredNodes": [
+        {
+          "id": "comfyui-core",
+          "version": "e0a32bce84f4603f2b61b16b50f8958e68fd6171"
+        }
+      ],
+      "requiredClassTypes": [
+        "CLIPLoader",
+        "CLIPTextEncode",
+        "ConditioningZeroOut",
+        "EmptySD3LatentImage",
+        "KSampler",
+        "ModelSamplingAuraFlow",
+        "SaveImage",
+        "UNETLoader",
+        "VAEDecode",
+        "VAELoader"
+      ],
+      "components": [
+        {
+          "role": "diffusion",
+          "name": "z_image_turbo_bf16.safetensors",
+          "directory": "diffusion_models",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "sha256": "2407613050b809ffdff18a4ac99af83ea6b95443ecebdf80e064a79c825574a6"
+        },
+        {
+          "role": "text-encoder",
+          "name": "qwen_3_4b.safetensors",
+          "directory": "text_encoders",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "sha256": "6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a"
+        },
+        {
+          "role": "vae",
+          "name": "ae.safetensors",
+          "directory": "vae",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38"
+        }
+      ],
+      "graph": {
+        "9": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "filename_prefix": "z-image-turbo",
+            "images": ["57:8", 0]
+          }
+        },
+        "57:30": {
+          "class_type": "CLIPLoader",
+          "inputs": {
+            "clip_name": "qwen_3_4b.safetensors",
+            "type": "lumina2",
+            "device": "default"
+          }
+        },
+        "57:29": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": "ae.safetensors"
+          }
+        },
+        "57:33": {
+          "class_type": "ConditioningZeroOut",
+          "inputs": {
+            "conditioning": ["57:27", 0]
+          }
+        },
+        "57:8": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": ["57:3", 0],
+            "vae": ["57:29", 0]
+          }
+        },
+        "57:28": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "z_image_turbo_bf16.safetensors",
+            "weight_dtype": "default"
+          }
+        },
+        "57:27": {
+          "class_type": "CLIPTextEncode",
+          "inputs": {
+            "text": "Latina female with thick wavy hair, harbor boats and pastel houses behind. Breezy seaside light, warm tones, cinematic close-up. ",
+            "clip": ["57:30", 0]
+          }
+        },
+        "57:13": {
+          "class_type": "EmptySD3LatentImage",
+          "inputs": {
+            "width": 1024,
+            "height": 1024,
+            "batch_size": 1
+          }
+        },
+        "57:11": {
+          "class_type": "ModelSamplingAuraFlow",
+          "inputs": {
+            "shift": 3,
+            "sampling": "flow",
+            "model": ["57:28", 0]
+          }
+        },
+        "57:3": {
+          "class_type": "KSampler",
+          "inputs": {
+            "seed": 0,
+            "steps": 8,
+            "cfg": 1,
+            "sampler_name": "res_multistep",
+            "scheduler": "simple",
+            "denoise": 1,
+            "model": ["57:11", 0],
+            "positive": ["57:27", 0],
+            "negative": ["57:33", 0],
+            "latent_image": ["57:13", 0]
+          }
+        }
+      },
+      "graphSha256": "805ecff78dbb5693fe104b532316d8926563d394c41b42499cbdc3897244dce9",
+      "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + LF",
+      "bindings": {
+        "prompt": [
+          {
+            "nodeId": "57:27",
+            "input": "text"
+          }
+        ],
+        "seed": [
+          {
+            "nodeId": "57:3",
+            "input": "seed"
+          }
+        ],
+        "width": [
+          {
+            "nodeId": "57:13",
+            "input": "width"
+          }
+        ],
+        "height": [
+          {
+            "nodeId": "57:13",
+            "input": "height"
+          }
+        ],
+        "batchSize": [
+          {
+            "nodeId": "57:13",
+            "input": "batch_size"
+          }
+        ],
+        "outputPrefix": [
+          {
+            "nodeId": "9",
+            "input": "filename_prefix"
+          }
+        ]
+      },
+      "defaults": {
+        "width": 1024,
+        "height": 1024,
+        "batchSize": 1,
+        "seed": 0,
+        "outputPrefix": "z-image-turbo"
+      },
+      "smokeInput": {
+        "prompt": "A red ceramic cup on a wooden table, soft daylight",
+        "width": 512,
+        "height": 512,
+        "seed": 0,
+        "batchSize": 1
+      },
+      "smokeRequirements": [],
+      "conversion": {
+        "performed": true,
+        "method": "Pinned source-derived planning schemas and pinned comfy-cli offline converter; explicit specializations below",
+        "converter": {
+          "repository": "Comfy-Org/comfy-cli",
+          "revision": "e05c06fe81e35abbbf57dbb4093468be72d48d16",
+          "path": "comfy_cli/workflow_to_api.py",
+          "sha256": "5142a4a449ddaf4cb5a62516db8359cb702f0925108f66af31e1b2e47b54e600",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/comfy-cli/e05c06fe81e35abbbf57dbb4093468be72d48d16/comfy_cli/workflow_to_api.py",
+          "entrypoint": "convert_ui_to_api(workflow, object_info)",
+          "requires": "Matching offline object_info including all executed class schemas, input ordering, widget types, output types and loader enums"
+        },
+        "originalTemplate": {
+          "repository": "Comfy-Org/workflow_templates",
+          "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+          "path": "templates/image_z_image_turbo.json",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/image_z_image_turbo.json",
+          "sizeBytes": 27390,
+          "sha256": "baaf937ff071970cc6b1e2fa0093a4dd664a4cc734d38adc4c7810e535c1f1d3",
+          "format": "ui",
+          "apiConversionRequired": true
+        },
+        "convertedApi": {
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "z-image-turbo",
+              "images": ["57:8", 0]
+            }
+          },
+          "57:30": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen_3_4b.safetensors",
+              "type": "lumina2",
+              "device": "default"
+            }
+          },
+          "57:29": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "ae.safetensors"
+            }
+          },
+          "57:33": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["57:27", 0]
+            }
+          },
+          "57:8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["57:3", 0],
+              "vae": ["57:29", 0]
+            }
+          },
+          "57:28": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "z_image_turbo_bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "57:27": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "Latina female with thick wavy hair, harbor boats and pastel houses behind. Breezy seaside light, warm tones, cinematic close-up. ",
+              "clip": ["57:30", 0]
+            }
+          },
+          "57:13": {
+            "class_type": "EmptySD3LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "57:11": {
+            "class_type": "ModelSamplingAuraFlow",
+            "inputs": {
+              "shift": 3,
+              "sampling": "flow",
+              "model": ["57:28", 0]
+            }
+          },
+          "57:3": {
+            "class_type": "KSampler",
+            "inputs": {
+              "seed": 0,
+              "steps": 8,
+              "cfg": 1,
+              "sampler_name": "res_multistep",
+              "scheduler": "simple",
+              "denoise": 1,
+              "model": ["57:11", 0],
+              "positive": ["57:27", 0],
+              "negative": ["57:33", 0],
+              "latent_image": ["57:13", 0]
+            }
+          }
+        },
+        "convertedApiSha256": "805ecff78dbb5693fe104b532316d8926563d394c41b42499cbdc3897244dce9",
+        "sourceDerivedObjectInfo": {
+          "CLIPLoader": {
+            "input": {
+              "required": {
+                "clip_name": [["qwen_2.5_vl_7b_fp8_scaled.safetensors", "qwen_3_4b.safetensors"]],
+                "type": [
+                  [
+                    "stable_diffusion",
+                    "stable_cascade",
+                    "sd3",
+                    "stable_audio",
+                    "mochi",
+                    "ltxv",
+                    "pixart",
+                    "cosmos",
+                    "lumina2",
+                    "wan",
+                    "hidream",
+                    "chroma",
+                    "ace",
+                    "omnigen2",
+                    "qwen_image",
+                    "hunyuan_image",
+                    "flux2",
+                    "ovis",
+                    "longcat_image",
+                    "cogvideox",
+                    "lens",
+                    "pixeldit",
+                    "ideogram4",
+                    "boogu",
+                    "krea2",
+                    "joyimage",
+                    "mage",
+                    "minimax",
+                    "yue2"
+                  ]
+                ]
+              },
+              "optional": {
+                "device": [
+                  ["default", "cpu"],
+                  {
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["CLIP"],
+            "output_node": false
+          },
+          "CLIPTextEncode": {
+            "input": {
+              "required": {
+                "text": [
+                  "STRING",
+                  {
+                    "multiline": true,
+                    "dynamicPrompts": true
+                  }
+                ],
+                "clip": ["CLIP", {}]
+              }
+            },
+            "output": ["CONDITIONING"],
+            "output_node": false
+          },
+          "ConditioningZeroOut": {
+            "input": {
+              "required": {
+                "conditioning": ["CONDITIONING"]
+              }
+            },
+            "output": ["CONDITIONING"],
+            "output_node": false
+          },
+          "EmptySD3LatentImage": {
+            "input": {
+              "required": {
+                "width": [
+                  "INT",
+                  {
+                    "default": 1024,
+                    "min": 16,
+                    "max": 16384,
+                    "step": 16
+                  }
+                ],
+                "height": [
+                  "INT",
+                  {
+                    "default": 1024,
+                    "min": 16,
+                    "max": 16384,
+                    "step": 16
+                  }
+                ],
+                "batch_size": [
+                  "INT",
+                  {
+                    "default": 1,
+                    "min": 1,
+                    "max": 4096
+                  }
+                ]
+              }
+            },
+            "output": ["LATENT"],
+            "output_node": false
+          },
+          "KSampler": {
+            "input": {
+              "required": {
+                "model": ["MODEL", {}],
+                "seed": [
+                  "INT",
+                  {
+                    "default": 0,
+                    "min": 0,
+                    "max": 18446744073709552000,
+                    "control_after_generate": true
+                  }
+                ],
+                "steps": [
+                  "INT",
+                  {
+                    "default": 20,
+                    "min": 1,
+                    "max": 10000
+                  }
+                ],
+                "cfg": [
+                  "FLOAT",
+                  {
+                    "default": 8,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                    "round": 0.01
+                  }
+                ],
+                "sampler_name": [
+                  [
+                    "euler",
+                    "euler_cfg_pp",
+                    "euler_ancestral",
+                    "euler_ancestral_cfg_pp",
+                    "heun",
+                    "heunpp2",
+                    "exp_heun_2_x0",
+                    "exp_heun_2_x0_sde",
+                    "dpm_2",
+                    "dpm_2_ancestral",
+                    "lms",
+                    "dpm_fast",
+                    "dpm_adaptive",
+                    "dpmpp_2s_ancestral",
+                    "dpmpp_2s_ancestral_cfg_pp",
+                    "dpmpp_sde",
+                    "dpmpp_sde_gpu",
+                    "dpmpp_2m",
+                    "dpmpp_2m_cfg_pp",
+                    "dpmpp_2m_sde",
+                    "dpmpp_2m_sde_gpu",
+                    "dpmpp_2m_sde_heun",
+                    "dpmpp_2m_sde_heun_gpu",
+                    "dpmpp_3m_sde",
+                    "dpmpp_3m_sde_gpu",
+                    "ddpm",
+                    "lcm",
+                    "ipndm",
+                    "ipndm_v",
+                    "deis",
+                    "cfgpp_ud10_ab",
+                    "res_multistep",
+                    "res_multistep_cfg_pp",
+                    "res_multistep_ancestral",
+                    "res_multistep_ancestral_cfg_pp",
+                    "gradient_estimation",
+                    "gradient_estimation_cfg_pp",
+                    "er_sde",
+                    "seeds_2",
+                    "seeds_3",
+                    "sa_solver",
+                    "sa_solver_pece",
+                    "ddim",
+                    "uni_pc",
+                    "uni_pc_bh2"
+                  ],
+                  {}
+                ],
+                "scheduler": [
+                  [
+                    "simple",
+                    "sgm_uniform",
+                    "karras",
+                    "exponential",
+                    "ddim_uniform",
+                    "beta",
+                    "normal",
+                    "linear_quadratic",
+                    "kl_optimal"
+                  ],
+                  {}
+                ],
+                "positive": ["CONDITIONING", {}],
+                "negative": ["CONDITIONING", {}],
+                "latent_image": ["LATENT", {}],
+                "denoise": [
+                  "FLOAT",
+                  {
+                    "default": 1,
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.01
+                  }
+                ]
+              }
+            },
+            "output": ["LATENT"],
+            "output_node": false
+          },
+          "ModelSamplingAuraFlow": {
+            "input": {
+              "required": {
+                "model": ["MODEL"],
+                "shift": [
+                  "FLOAT",
+                  {
+                    "default": 1.73,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.01
+                  }
+                ]
+              },
+              "optional": {
+                "sampling": [
+                  ["flow", "img_to_img_velocity"],
+                  {
+                    "default": "flow",
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "SaveImage": {
+            "input": {
+              "required": {
+                "images": ["IMAGE", {}],
+                "filename_prefix": [
+                  "STRING",
+                  {
+                    "default": "ComfyUI"
+                  }
+                ]
+              },
+              "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO"
+              }
+            },
+            "output": ["IMAGE"],
+            "output_node": true
+          },
+          "UNETLoader": {
+            "input": {
+              "required": {
+                "unet_name": [["qwen_image_edit_2511_fp8mixed.safetensors", "z_image_turbo_bf16.safetensors"]],
+                "weight_dtype": [
+                  ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],
+                  {
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "VAEDecode": {
+            "input": {
+              "required": {
+                "samples": ["LATENT", {}],
+                "vae": ["VAE", {}]
+              }
+            },
+            "output": ["IMAGE"],
+            "output_node": false
+          },
+          "VAELoader": {
+            "input": {
+              "required": {
+                "vae_name": [["ae.safetensors", "qwen_image_vae.safetensors"]]
+              }
+            },
+            "output": ["VAE"],
+            "output_node": false
+          }
+        },
+        "schemaSha256": "226aa8023b598fc50cc248847ced30adfc9343a05cedde9cc81b6db9ffd100eb",
+        "classEvidence": {
+          "CLIPLoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "CLIPLoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1019,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["clip_name", "type"],
+              "optional": ["device"]
+            }
+          },
+          "CLIPTextEncode": {
+            "sourcePath": "nodes.py",
+            "symbol": "CLIPTextEncode",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 60,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["text", "clip"]
+            }
+          },
+          "ConditioningZeroOut": {
+            "sourcePath": "nodes.py",
+            "symbol": "ConditioningZeroOut",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 278,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["conditioning"]
+            }
+          },
+          "EmptySD3LatentImage": {
+            "sourcePath": "comfy_extras/nodes_sd3.py",
+            "symbol": "EmptySD3LatentImage",
+            "schemaMethod": "define_schema",
+            "line": 42,
+            "sha256": "90a79847332fed7cc97379abbc7092116e6b1b883a7c9e933ac88167a521f693",
+            "inputOrder": {
+              "required": ["width", "height", "batch_size"]
+            }
+          },
+          "KSampler": {
+            "sourcePath": "nodes.py",
+            "symbol": "KSampler",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1608,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": [
+                "model",
+                "seed",
+                "steps",
+                "cfg",
+                "sampler_name",
+                "scheduler",
+                "positive",
+                "negative",
+                "latent_image",
+                "denoise"
+              ]
+            }
+          },
+          "ModelSamplingAuraFlow": {
+            "sourcePath": "comfy_extras/nodes_model_advanced.py",
+            "symbol": "ModelSamplingAuraFlow",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 153,
+            "sha256": "34c5065756d925791c7a238f084eefd5ff912e1e84976a2dbe94432deea8ffcc",
+            "inputOrder": {
+              "required": ["model", "shift"],
+              "optional": ["sampling"]
+            }
+          },
+          "SaveImage": {
+            "sourcePath": "nodes.py",
+            "symbol": "SaveImage",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1677,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["images", "filename_prefix"],
+              "hidden": ["prompt", "extra_pnginfo"]
+            }
+          },
+          "UNETLoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "UNETLoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 994,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["unet_name", "weight_dtype"]
+            }
+          },
+          "VAEDecode": {
+            "sourcePath": "nodes.py",
+            "symbol": "VAEDecode",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 323,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["samples", "vae"]
+            }
+          },
+          "VAELoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "VAELoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 836,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["vae_name"]
+            }
+          }
+        },
+        "schemaSources": [
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy/samplers.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy/samplers.py",
+            "sha256": "f2c264ca9d394612f828e3ffe167c856a278a10e1711b269f0ba65dccb66393f",
+            "sizeBytes": 64383
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_model_advanced.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_model_advanced.py",
+            "sha256": "34c5065756d925791c7a238f084eefd5ff912e1e84976a2dbe94432deea8ffcc",
+            "sizeBytes": 17086
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_sd3.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_sd3.py",
+            "sha256": "90a79847332fed7cc97379abbc7092116e6b1b883a7c9e933ac88167a521f693",
+            "sizeBytes": 8294
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "nodes.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/nodes.py",
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "sizeBytes": 109521
+          }
+        ],
+        "specializations": [],
+        "structuralValidation": "Focused repository checks passed against source-derived planning schemas, links, bindings, component identities, output reachability and hashes; live runtime and representative media validation remain pending.",
+        "schemaDerivation": "Extracted INPUT_TYPES or define_schema metadata from the pinned source without importing the ComfyUI runtime; preserved declared input order, input/output types, defaults and limits. KSampler choices come from the pinned comfy/samplers.py. Loader file choices are proposed candidate filenames, and LoadImage choices are the upstream example names plus the upload placeholder, not a live asset inventory."
+      },
+      "limitations": [
+        "No model or runtime installation was performed to produce this graph",
+        "No kernels, loader behavior, model precision metadata, GPU memory budget or media output have been validated on this computer",
+        "Select only after actual hardware/runtime evidence fits the atomic pinned component set; live object_info and representative smoke validation remain mandatory",
+        "Dynamic model/image choices in the planning schema describe proposed filenames, not assets found on this computer"
+      ]
+    },
+    {
+      "id": "qwen-edit-2511-fp8mixed-lightning-single-image-api-discovery",
+      "candidateId": "qwen-edit-2511-fp8mixed-lightning-discovery",
+      "family": "qwen-edit",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "capabilities": ["image-edit"],
+      "requiredNodes": [
+        {
+          "id": "comfyui-core",
+          "version": "e0a32bce84f4603f2b61b16b50f8958e68fd6171"
+        }
+      ],
+      "requiredClassTypes": [
+        "CFGNorm",
+        "CLIPLoader",
+        "FluxKontextImageScale",
+        "FluxKontextMultiReferenceLatentMethod",
+        "KSampler",
+        "LoadImage",
+        "LoraLoaderModelOnly",
+        "ModelSamplingAuraFlow",
+        "SaveImage",
+        "TextEncodeQwenImageEditPlus",
+        "UNETLoader",
+        "VAEDecode",
+        "VAEEncode",
+        "VAELoader"
+      ],
+      "components": [
+        {
+          "role": "text-encoder",
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "directory": "text_encoders",
+          "revision": "1405a2b738c29b890cf6d03fc038d8d3e92eeed7",
+          "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4"
+        },
+        {
+          "role": "vae",
+          "name": "qwen_image_vae.safetensors",
+          "directory": "vae",
+          "revision": "1f12b17be14c89b026c51a91d67c32f84bb047bc",
+          "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f"
+        },
+        {
+          "role": "diffusion",
+          "name": "qwen_image_edit_2511_fp8mixed.safetensors",
+          "directory": "diffusion_models",
+          "revision": "f68ace85e60b4a02a323e394253731947657b7d2",
+          "sha256": "c9fdc158e46d3b61ef75f21ae866ca2fe808bf4a53643120d1c1e87c19280a4e"
+        },
+        {
+          "role": "lora",
+          "name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+          "directory": "loras",
+          "revision": "d74eba145674fd7e31b949324e148e21e7118abd",
+          "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f"
+        }
+      ],
+      "graph": {
+        "9": {
+          "class_type": "SaveImage",
+          "inputs": {
+            "filename_prefix": "Qwen_Edit_2511",
+            "images": ["170:158", 0]
+          }
+        },
+        "41": {
+          "class_type": "LoadImage",
+          "inputs": {
+            "image": "source.png"
+          }
+        },
+        "170:145": {
+          "class_type": "ModelSamplingAuraFlow",
+          "inputs": {
+            "shift": 3.1,
+            "sampling": "flow",
+            "model": ["170:161", 0]
+          }
+        },
+        "170:146": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": "qwen_image_vae.safetensors"
+          }
+        },
+        "170:147": {
+          "class_type": "FluxKontextMultiReferenceLatentMethod",
+          "inputs": {
+            "reference_latents_method": "index_timestep_zero",
+            "conditioning": ["170:149", 0]
+          }
+        },
+        "170:148": {
+          "class_type": "FluxKontextMultiReferenceLatentMethod",
+          "inputs": {
+            "reference_latents_method": "index_timestep_zero",
+            "conditioning": ["170:151", 0]
+          }
+        },
+        "170:149": {
+          "class_type": "TextEncodeQwenImageEditPlus",
+          "inputs": {
+            "prompt": "",
+            "clip": ["170:162", 0],
+            "vae": ["170:146", 0],
+            "image1": ["170:160", 0]
+          }
+        },
+        "170:151": {
+          "class_type": "TextEncodeQwenImageEditPlus",
+          "inputs": {
+            "prompt": "Change the cup to blue while preserving its shape and the background.",
+            "clip": ["170:162", 0],
+            "vae": ["170:146", 0],
+            "image1": ["170:160", 0]
+          }
+        },
+        "170:152": {
+          "class_type": "CFGNorm",
+          "inputs": {
+            "strength": 1,
+            "pre_cfg": false,
+            "model": ["170:145", 0]
+          }
+        },
+        "170:153": {
+          "class_type": "LoraLoaderModelOnly",
+          "inputs": {
+            "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+            "strength_model": 1,
+            "model": ["170:152", 0]
+          }
+        },
+        "170:156": {
+          "class_type": "VAEEncode",
+          "inputs": {
+            "pixels": ["170:160", 0],
+            "vae": ["170:146", 0]
+          }
+        },
+        "170:161": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "qwen_image_edit_2511_fp8mixed.safetensors",
+            "weight_dtype": "default"
+          }
+        },
+        "170:162": {
+          "class_type": "CLIPLoader",
+          "inputs": {
+            "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+            "type": "qwen_image",
+            "device": "default"
+          }
+        },
+        "170:169": {
+          "class_type": "KSampler",
+          "inputs": {
+            "seed": 0,
+            "sampler_name": "euler",
+            "scheduler": "simple",
+            "denoise": 1,
+            "model": ["170:153", 0],
+            "steps": 4,
+            "cfg": 1,
+            "positive": ["170:148", 0],
+            "negative": ["170:147", 0],
+            "latent_image": ["170:156", 0]
+          }
+        },
+        "170:158": {
+          "class_type": "VAEDecode",
+          "inputs": {
+            "samples": ["170:169", 0],
+            "vae": ["170:146", 0]
+          }
+        },
+        "170:160": {
+          "class_type": "FluxKontextImageScale",
+          "inputs": {
+            "image": ["41", 0]
+          }
+        }
+      },
+      "graphSha256": "b8d4a601cefe11c9509a09eedc18ff5aed549400187cfb7043c012787356d533",
+      "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + LF",
+      "bindings": {
+        "prompt": [
+          {
+            "nodeId": "170:151",
+            "input": "prompt"
+          }
+        ],
+        "negativePrompt": [
+          {
+            "nodeId": "170:149",
+            "input": "prompt"
+          }
+        ],
+        "image": [
+          {
+            "nodeId": "41",
+            "input": "image"
+          }
+        ],
+        "seed": [
+          {
+            "nodeId": "170:169",
+            "input": "seed"
+          }
+        ],
+        "outputPrefix": [
+          {
+            "nodeId": "9",
+            "input": "filename_prefix"
+          }
+        ]
+      },
+      "defaults": {
+        "seed": 0,
+        "negativePrompt": "",
+        "outputPrefix": "Qwen_Edit_2511"
+      },
+      "smokeInput": {
+        "prompt": "Change only the background wall to light blue; preserve the foreground subject",
+        "seed": 0
+      },
+      "smokeRequirements": [
+        "Supply one real absolute local image path in smokeInput.imagePaths; the placeholder is not an installed asset",
+        "This baseline uses the official FluxKontextImageScale canvas policy; width/height/batch/offload are not user bindings"
+      ],
+      "conversion": {
+        "performed": true,
+        "method": "Pinned source-derived planning schemas and pinned comfy-cli offline converter; explicit specializations below",
+        "converter": {
+          "repository": "Comfy-Org/comfy-cli",
+          "revision": "e05c06fe81e35abbbf57dbb4093468be72d48d16",
+          "path": "comfy_cli/workflow_to_api.py",
+          "sha256": "5142a4a449ddaf4cb5a62516db8359cb702f0925108f66af31e1b2e47b54e600",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/comfy-cli/e05c06fe81e35abbbf57dbb4093468be72d48d16/comfy_cli/workflow_to_api.py",
+          "entrypoint": "convert_ui_to_api(workflow, object_info)",
+          "requires": "Matching offline object_info including all executed class schemas, input ordering, widget types, output types and loader enums"
+        },
+        "originalTemplate": {
+          "repository": "Comfy-Org/workflow_templates",
+          "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+          "path": "templates/image_qwen_image_edit_2511.json",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/image_qwen_image_edit_2511.json",
+          "sizeBytes": 59841,
+          "sha256": "b23103935f437e1fe3184247fa5bafb891a28113d0c63de7449b7cdfb0419111",
+          "format": "ui",
+          "apiConversionRequired": true
+        },
+        "convertedApi": {
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "filename_prefix": "Qwen_Edit_2511",
+              "images": ["170:158", 0]
+            }
+          },
+          "41": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "leather_sofa.png"
+            }
+          },
+          "83": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "texture_fur.png"
+            }
+          },
+          "170:145": {
+            "class_type": "ModelSamplingAuraFlow",
+            "inputs": {
+              "shift": 3.1,
+              "sampling": "flow",
+              "model": ["170:161", 0]
+            }
+          },
+          "170:146": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "qwen_image_vae.safetensors"
+            }
+          },
+          "170:147": {
+            "class_type": "FluxKontextMultiReferenceLatentMethod",
+            "inputs": {
+              "reference_latents_method": "index_timestep_zero",
+              "conditioning": ["170:149", 0]
+            }
+          },
+          "170:148": {
+            "class_type": "FluxKontextMultiReferenceLatentMethod",
+            "inputs": {
+              "reference_latents_method": "index_timestep_zero",
+              "conditioning": ["170:151", 0]
+            }
+          },
+          "170:149": {
+            "class_type": "TextEncodeQwenImageEditPlus",
+            "inputs": {
+              "prompt": "",
+              "clip": ["170:162", 0],
+              "vae": ["170:146", 0],
+              "image1": ["170:160", 0],
+              "image2": ["83", 0]
+            }
+          },
+          "170:151": {
+            "class_type": "TextEncodeQwenImageEditPlus",
+            "inputs": {
+              "prompt": "Change the furniture leather difference in image 1 to the fur material in image 2.",
+              "clip": ["170:162", 0],
+              "vae": ["170:146", 0],
+              "image1": ["170:160", 0],
+              "image2": ["83", 0]
+            }
+          },
+          "170:152": {
+            "class_type": "CFGNorm",
+            "inputs": {
+              "strength": 1,
+              "pre_cfg": false,
+              "model": ["170:145", 0]
+            }
+          },
+          "170:153": {
+            "class_type": "LoraLoaderModelOnly",
+            "inputs": {
+              "lora_name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+              "strength_model": 1,
+              "model": ["170:152", 0]
+            }
+          },
+          "170:154": {
+            "class_type": "PrimitiveFloat",
+            "inputs": {
+              "value": 4
+            }
+          },
+          "170:155": {
+            "class_type": "PrimitiveFloat",
+            "inputs": {
+              "value": 1
+            }
+          },
+          "170:156": {
+            "class_type": "VAEEncode",
+            "inputs": {
+              "pixels": ["170:160", 0],
+              "vae": ["170:146", 0]
+            }
+          },
+          "170:161": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "qwen_image_edit_2511_fp8mixed.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "170:162": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+              "type": "qwen_image",
+              "device": "default"
+            }
+          },
+          "170:163": {
+            "class_type": "ComfySwitchNode",
+            "inputs": {
+              "switch": ["170:168", 0],
+              "on_false": ["170:152", 0],
+              "on_true": ["170:153", 0]
+            }
+          },
+          "170:165": {
+            "class_type": "PrimitiveInt",
+            "inputs": {
+              "value": 4
+            }
+          },
+          "170:166": {
+            "class_type": "PrimitiveInt",
+            "inputs": {
+              "value": 40
+            }
+          },
+          "170:168": {
+            "class_type": "PrimitiveBoolean",
+            "inputs": {
+              "value": false
+            }
+          },
+          "170:164": {
+            "class_type": "ComfySwitchNode",
+            "inputs": {
+              "switch": ["170:168", 0],
+              "on_false": ["170:154", 0],
+              "on_true": ["170:155", 0]
+            }
+          },
+          "170:167": {
+            "class_type": "ComfySwitchNode",
+            "inputs": {
+              "switch": ["170:168", 0],
+              "on_false": ["170:166", 0],
+              "on_true": ["170:165", 0]
+            }
+          },
+          "170:169": {
+            "class_type": "KSampler",
+            "inputs": {
+              "seed": 677909188488042,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "denoise": 1,
+              "model": ["170:163", 0],
+              "steps": ["170:167", 0],
+              "cfg": ["170:164", 0],
+              "positive": ["170:148", 0],
+              "negative": ["170:147", 0],
+              "latent_image": ["170:156", 0]
+            }
+          },
+          "170:158": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["170:169", 0],
+              "vae": ["170:146", 0]
+            }
+          },
+          "170:160": {
+            "class_type": "FluxKontextImageScale",
+            "inputs": {
+              "image": ["41", 0]
+            }
+          }
+        },
+        "convertedApiSha256": "3ea5b8472b321fa19beca4ddcc4353c21ebb57ce74ce6c1eb0b860bf2f05cb57",
+        "sourceDerivedObjectInfo": {
+          "CFGNorm": {
+            "input": {
+              "required": {
+                "model": ["MODEL"],
+                "strength": [
+                  "FLOAT",
+                  {
+                    "default": 1,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.01
+                  }
+                ]
+              },
+              "optional": {
+                "pre_cfg": [
+                  "BOOLEAN",
+                  {
+                    "default": false
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "CLIPLoader": {
+            "input": {
+              "required": {
+                "clip_name": [["qwen_2.5_vl_7b_fp8_scaled.safetensors", "qwen_3_4b.safetensors"]],
+                "type": [
+                  [
+                    "stable_diffusion",
+                    "stable_cascade",
+                    "sd3",
+                    "stable_audio",
+                    "mochi",
+                    "ltxv",
+                    "pixart",
+                    "cosmos",
+                    "lumina2",
+                    "wan",
+                    "hidream",
+                    "chroma",
+                    "ace",
+                    "omnigen2",
+                    "qwen_image",
+                    "hunyuan_image",
+                    "flux2",
+                    "ovis",
+                    "longcat_image",
+                    "cogvideox",
+                    "lens",
+                    "pixeldit",
+                    "ideogram4",
+                    "boogu",
+                    "krea2",
+                    "joyimage",
+                    "mage",
+                    "minimax",
+                    "yue2"
+                  ]
+                ]
+              },
+              "optional": {
+                "device": [
+                  ["default", "cpu"],
+                  {
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["CLIP"],
+            "output_node": false
+          },
+          "ComfySwitchNode": {
+            "input": {
+              "required": {
+                "switch": ["BOOLEAN"]
+              },
+              "optional": {
+                "on_false": ["*"],
+                "on_true": ["*"]
+              }
+            },
+            "output": ["*"],
+            "output_node": false
+          },
+          "FluxKontextImageScale": {
+            "input": {
+              "required": {
+                "image": ["IMAGE"]
+              }
+            },
+            "output": ["IMAGE"],
+            "output_node": false
+          },
+          "FluxKontextMultiReferenceLatentMethod": {
+            "input": {
+              "required": {
+                "conditioning": ["CONDITIONING"],
+                "reference_latents_method": [
+                  ["offset", "index", "uxo/uno", "index_timestep_zero"],
+                  {
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["CONDITIONING"],
+            "output_node": false
+          },
+          "KSampler": {
+            "input": {
+              "required": {
+                "model": ["MODEL", {}],
+                "seed": [
+                  "INT",
+                  {
+                    "default": 0,
+                    "min": 0,
+                    "max": 18446744073709552000,
+                    "control_after_generate": true
+                  }
+                ],
+                "steps": [
+                  "INT",
+                  {
+                    "default": 20,
+                    "min": 1,
+                    "max": 10000
+                  }
+                ],
+                "cfg": [
+                  "FLOAT",
+                  {
+                    "default": 8,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.1,
+                    "round": 0.01
+                  }
+                ],
+                "sampler_name": [
+                  [
+                    "euler",
+                    "euler_cfg_pp",
+                    "euler_ancestral",
+                    "euler_ancestral_cfg_pp",
+                    "heun",
+                    "heunpp2",
+                    "exp_heun_2_x0",
+                    "exp_heun_2_x0_sde",
+                    "dpm_2",
+                    "dpm_2_ancestral",
+                    "lms",
+                    "dpm_fast",
+                    "dpm_adaptive",
+                    "dpmpp_2s_ancestral",
+                    "dpmpp_2s_ancestral_cfg_pp",
+                    "dpmpp_sde",
+                    "dpmpp_sde_gpu",
+                    "dpmpp_2m",
+                    "dpmpp_2m_cfg_pp",
+                    "dpmpp_2m_sde",
+                    "dpmpp_2m_sde_gpu",
+                    "dpmpp_2m_sde_heun",
+                    "dpmpp_2m_sde_heun_gpu",
+                    "dpmpp_3m_sde",
+                    "dpmpp_3m_sde_gpu",
+                    "ddpm",
+                    "lcm",
+                    "ipndm",
+                    "ipndm_v",
+                    "deis",
+                    "cfgpp_ud10_ab",
+                    "res_multistep",
+                    "res_multistep_cfg_pp",
+                    "res_multistep_ancestral",
+                    "res_multistep_ancestral_cfg_pp",
+                    "gradient_estimation",
+                    "gradient_estimation_cfg_pp",
+                    "er_sde",
+                    "seeds_2",
+                    "seeds_3",
+                    "sa_solver",
+                    "sa_solver_pece",
+                    "ddim",
+                    "uni_pc",
+                    "uni_pc_bh2"
+                  ],
+                  {}
+                ],
+                "scheduler": [
+                  [
+                    "simple",
+                    "sgm_uniform",
+                    "karras",
+                    "exponential",
+                    "ddim_uniform",
+                    "beta",
+                    "normal",
+                    "linear_quadratic",
+                    "kl_optimal"
+                  ],
+                  {}
+                ],
+                "positive": ["CONDITIONING", {}],
+                "negative": ["CONDITIONING", {}],
+                "latent_image": ["LATENT", {}],
+                "denoise": [
+                  "FLOAT",
+                  {
+                    "default": 1,
+                    "min": 0,
+                    "max": 1,
+                    "step": 0.01
+                  }
+                ]
+              }
+            },
+            "output": ["LATENT"],
+            "output_node": false
+          },
+          "LoadImage": {
+            "input": {
+              "required": {
+                "image": [
+                  ["source.png", "leather_sofa.png", "texture_fur.png"],
+                  {
+                    "image_upload": true
+                  }
+                ]
+              }
+            },
+            "output": ["IMAGE", "MASK"],
+            "output_node": false
+          },
+          "LoraLoaderModelOnly": {
+            "input": {
+              "required": {
+                "model": ["MODEL"],
+                "lora_name": [["Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"]],
+                "strength_model": [
+                  "FLOAT",
+                  {
+                    "default": 1,
+                    "min": -100,
+                    "max": 100,
+                    "step": 0.01
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "ModelSamplingAuraFlow": {
+            "input": {
+              "required": {
+                "model": ["MODEL"],
+                "shift": [
+                  "FLOAT",
+                  {
+                    "default": 1.73,
+                    "min": 0,
+                    "max": 100,
+                    "step": 0.01
+                  }
+                ]
+              },
+              "optional": {
+                "sampling": [
+                  ["flow", "img_to_img_velocity"],
+                  {
+                    "default": "flow",
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "PrimitiveBoolean": {
+            "input": {
+              "required": {
+                "value": ["BOOLEAN"]
+              }
+            },
+            "output": ["BOOLEAN"],
+            "output_node": false
+          },
+          "PrimitiveFloat": {
+            "input": {
+              "required": {
+                "value": [
+                  "FLOAT",
+                  {
+                    "min": -9223372036854776000,
+                    "max": 9223372036854776000,
+                    "step": 0.1
+                  }
+                ]
+              }
+            },
+            "output": ["FLOAT"],
+            "output_node": false
+          },
+          "PrimitiveInt": {
+            "input": {
+              "required": {
+                "value": [
+                  "INT",
+                  {
+                    "min": -9223372036854776000,
+                    "max": 9223372036854776000,
+                    "control_after_generate": true
+                  }
+                ]
+              }
+            },
+            "output": ["INT"],
+            "output_node": false
+          },
+          "SaveImage": {
+            "input": {
+              "required": {
+                "images": ["IMAGE", {}],
+                "filename_prefix": [
+                  "STRING",
+                  {
+                    "default": "ComfyUI"
+                  }
+                ]
+              },
+              "hidden": {
+                "prompt": "PROMPT",
+                "extra_pnginfo": "EXTRA_PNGINFO"
+              }
+            },
+            "output": ["IMAGE"],
+            "output_node": true
+          },
+          "TextEncodeQwenImageEditPlus": {
+            "input": {
+              "required": {
+                "clip": ["CLIP"],
+                "prompt": [
+                  "STRING",
+                  {
+                    "multiline": true,
+                    "dynamicPrompts": true
+                  }
+                ]
+              },
+              "optional": {
+                "vae": ["VAE"],
+                "image1": ["IMAGE"],
+                "image2": ["IMAGE"],
+                "image3": ["IMAGE"]
+              }
+            },
+            "output": ["CONDITIONING"],
+            "output_node": false
+          },
+          "UNETLoader": {
+            "input": {
+              "required": {
+                "unet_name": [["qwen_image_edit_2511_fp8mixed.safetensors", "z_image_turbo_bf16.safetensors"]],
+                "weight_dtype": [
+                  ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],
+                  {
+                    "advanced": true
+                  }
+                ]
+              }
+            },
+            "output": ["MODEL"],
+            "output_node": false
+          },
+          "VAEDecode": {
+            "input": {
+              "required": {
+                "samples": ["LATENT", {}],
+                "vae": ["VAE", {}]
+              }
+            },
+            "output": ["IMAGE"],
+            "output_node": false
+          },
+          "VAEEncode": {
+            "input": {
+              "required": {
+                "pixels": ["IMAGE"],
+                "vae": ["VAE"]
+              }
+            },
+            "output": ["LATENT"],
+            "output_node": false
+          },
+          "VAELoader": {
+            "input": {
+              "required": {
+                "vae_name": [["ae.safetensors", "qwen_image_vae.safetensors"]]
+              }
+            },
+            "output": ["VAE"],
+            "output_node": false
+          }
+        },
+        "schemaSha256": "24b7e1de0f4f09dbc733324ea9dd7fe9c411b05ac8a9e93c2b73e3c1b0845d2f",
+        "classEvidence": {
+          "CFGNorm": {
+            "sourcePath": "comfy_extras/nodes_cfg.py",
+            "symbol": "CFGNorm",
+            "schemaMethod": "define_schema",
+            "line": 53,
+            "sha256": "688a73094509efcc81bf22bf0e77b2cd8c9f1726f455ed55f6f9747dec656e99",
+            "inputOrder": {
+              "required": ["model", "strength"],
+              "optional": ["pre_cfg"]
+            }
+          },
+          "CLIPLoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "CLIPLoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1019,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["clip_name", "type"],
+              "optional": ["device"]
+            }
+          },
+          "ComfySwitchNode": {
+            "sourcePath": "comfy_extras/nodes_logic.py",
+            "symbol": "SwitchNode",
+            "schemaMethod": "define_schema",
+            "line": 88,
+            "sha256": "6a146d3a814e37c65c9e749c2fde6d8f0ea8c1fc3f215cb249009e87303908bf",
+            "inputOrder": {
+              "required": ["switch"],
+              "optional": ["on_false", "on_true"]
+            }
+          },
+          "FluxKontextImageScale": {
+            "sourcePath": "comfy_extras/nodes_flux.py",
+            "symbol": "FluxKontextImageScale",
+            "schemaMethod": "define_schema",
+            "line": 128,
+            "sha256": "71c9d804a9acfb7a828fecb8fcc4b93e28f4417f0c4259a68910f4027059741f",
+            "inputOrder": {
+              "required": ["image"]
+            }
+          },
+          "FluxKontextMultiReferenceLatentMethod": {
+            "sourcePath": "comfy_extras/nodes_flux.py",
+            "symbol": "FluxKontextMultiReferenceLatentMethod",
+            "schemaMethod": "define_schema",
+            "line": 155,
+            "sha256": "71c9d804a9acfb7a828fecb8fcc4b93e28f4417f0c4259a68910f4027059741f",
+            "inputOrder": {
+              "required": ["conditioning", "reference_latents_method"]
+            }
+          },
+          "KSampler": {
+            "sourcePath": "nodes.py",
+            "symbol": "KSampler",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1608,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": [
+                "model",
+                "seed",
+                "steps",
+                "cfg",
+                "sampler_name",
+                "scheduler",
+                "positive",
+                "negative",
+                "latent_image",
+                "denoise"
+              ]
+            }
+          },
+          "LoadImage": {
+            "sourcePath": "nodes.py",
+            "symbol": "LoadImage",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1749,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["image"]
+            }
+          },
+          "LoraLoaderModelOnly": {
+            "sourcePath": "nodes.py",
+            "symbol": "LoraLoaderModelOnly",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 763,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["model", "lora_name", "strength_model"]
+            }
+          },
+          "ModelSamplingAuraFlow": {
+            "sourcePath": "comfy_extras/nodes_model_advanced.py",
+            "symbol": "ModelSamplingAuraFlow",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 153,
+            "sha256": "34c5065756d925791c7a238f084eefd5ff912e1e84976a2dbe94432deea8ffcc",
+            "inputOrder": {
+              "required": ["model", "shift"],
+              "optional": ["sampling"]
+            }
+          },
+          "PrimitiveBoolean": {
+            "sourcePath": "comfy_extras/nodes_primitive.py",
+            "symbol": "Boolean",
+            "schemaMethod": "define_schema",
+            "line": 80,
+            "sha256": "329963dd20fbf8985539b7b990780291f4b82ee9cfd42b96b571288b77eaa47a",
+            "inputOrder": {
+              "required": ["value"]
+            }
+          },
+          "PrimitiveFloat": {
+            "sourcePath": "comfy_extras/nodes_primitive.py",
+            "symbol": "Float",
+            "schemaMethod": "define_schema",
+            "line": 62,
+            "sha256": "329963dd20fbf8985539b7b990780291f4b82ee9cfd42b96b571288b77eaa47a",
+            "inputOrder": {
+              "required": ["value"]
+            }
+          },
+          "PrimitiveInt": {
+            "sourcePath": "comfy_extras/nodes_primitive.py",
+            "symbol": "Int",
+            "schemaMethod": "define_schema",
+            "line": 44,
+            "sha256": "329963dd20fbf8985539b7b990780291f4b82ee9cfd42b96b571288b77eaa47a",
+            "inputOrder": {
+              "required": ["value"]
+            }
+          },
+          "SaveImage": {
+            "sourcePath": "nodes.py",
+            "symbol": "SaveImage",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 1677,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["images", "filename_prefix"],
+              "hidden": ["prompt", "extra_pnginfo"]
+            }
+          },
+          "TextEncodeQwenImageEditPlus": {
+            "sourcePath": "comfy_extras/nodes_qwen.py",
+            "symbol": "TextEncodeQwenImageEditPlus",
+            "schemaMethod": "define_schema",
+            "line": 56,
+            "sha256": "54ce02aa9e167c0b497ce026ac6b558f539427d2d1ed4fc1fcc2ec8e6bc529da",
+            "inputOrder": {
+              "required": ["clip", "prompt"],
+              "optional": ["vae", "image1", "image2", "image3"]
+            }
+          },
+          "UNETLoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "UNETLoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 994,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["unet_name", "weight_dtype"]
+            }
+          },
+          "VAEDecode": {
+            "sourcePath": "nodes.py",
+            "symbol": "VAEDecode",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 323,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["samples", "vae"]
+            }
+          },
+          "VAEEncode": {
+            "sourcePath": "nodes.py",
+            "symbol": "VAEEncode",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 387,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["pixels", "vae"]
+            }
+          },
+          "VAELoader": {
+            "sourcePath": "nodes.py",
+            "symbol": "VAELoader",
+            "schemaMethod": "INPUT_TYPES",
+            "line": 836,
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "inputOrder": {
+              "required": ["vae_name"]
+            }
+          }
+        },
+        "schemaSources": [
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy/samplers.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy/samplers.py",
+            "sha256": "f2c264ca9d394612f828e3ffe167c856a278a10e1711b269f0ba65dccb66393f",
+            "sizeBytes": 64383
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_cfg.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_cfg.py",
+            "sha256": "688a73094509efcc81bf22bf0e77b2cd8c9f1726f455ed55f6f9747dec656e99",
+            "sizeBytes": 4485
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_flux.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_flux.py",
+            "sha256": "71c9d804a9acfb7a828fecb8fcc4b93e28f4417f0c4259a68910f4027059741f",
+            "sizeBytes": 10510
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_logic.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_logic.py",
+            "sha256": "6a146d3a814e37c65c9e749c2fde6d8f0ea8c1fc3f215cb249009e87303908bf",
+            "sizeBytes": 12601
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_model_advanced.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_model_advanced.py",
+            "sha256": "34c5065756d925791c7a238f084eefd5ff912e1e84976a2dbe94432deea8ffcc",
+            "sizeBytes": 17086
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_primitive.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_primitive.py",
+            "sha256": "329963dd20fbf8985539b7b990780291f4b82ee9cfd42b96b571288b77eaa47a",
+            "sizeBytes": 2992
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "comfy_extras/nodes_qwen.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_qwen.py",
+            "sha256": "54ce02aa9e167c0b497ce026ac6b558f539427d2d1ed4fc1fcc2ec8e6bc529da",
+            "sizeBytes": 11872
+          },
+          {
+            "repository": "Comfy-Org/ComfyUI",
+            "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+            "path": "nodes.py",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/nodes.py",
+            "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+            "sizeBytes": 109521
+          }
+        ],
+        "specializations": [
+          {
+            "change": "Select the official enable_turbo_mode=true branch and constant-fold its three switches",
+            "sourceNode": "170:168",
+            "result": {
+              "model": ["170:153", 0],
+              "cfg": 1,
+              "steps": 4
+            },
+            "evidence": "nodes_logic.SwitchNode.execute selects on_true when switch is true; the official primitives provide CFG=1, steps=4 and the matching 2511 LoRA",
+            "originalValue": false,
+            "selectedValue": true
+          },
+          {
+            "change": "Use one user source image and omit the optional image2/image3 encoder inputs",
+            "removedNodes": ["83"],
+            "removedInputs": ["170:149.image2", "170:151.image2"],
+            "evidence": "nodes_qwen.TextEncodeQwenImageEditPlus defines image1/image2/image3 as optional and skips each absent image; the first image feeds the official FluxKontextImageScale -> VAEEncode path"
+          },
+          {
+            "change": "Replace the sample input filename with an uploaded-source placeholder",
+            "nodeId": "41",
+            "input": "image",
+            "value": "source.png",
+            "evidence": "The application uploads smokeInput.imagePaths[0] and replaces this dynamic LoadImage enum before submission"
+          },
+          {
+            "change": "Replace the two-image sample instruction and sample seed with single-image planning defaults",
+            "inputs": {
+              "170:151.prompt": "Change the cup to blue while preserving its shape and the background.",
+              "170:169.seed": 0
+            },
+            "evidence": "These are semantic prompt/seed bindings, not changes to model, sampler, precision or image routing."
+          }
+        ],
+        "structuralValidation": "Focused repository checks passed against source-derived planning schemas, links, bindings, component identities, output reachability and hashes; live runtime and representative media validation remain pending.",
+        "schemaDerivation": "Extracted INPUT_TYPES or define_schema metadata from the pinned source without importing the ComfyUI runtime; preserved declared input order, input/output types, defaults and limits. KSampler choices come from the pinned comfy/samplers.py. Loader file choices are proposed candidate filenames, and LoadImage choices are the upstream example names plus the upload placeholder, not a live asset inventory."
+      },
+      "limitations": [
+        "No model or runtime installation was performed to produce this graph",
+        "No kernels, loader behavior, model precision metadata, GPU memory budget or media output have been validated on this computer",
+        "Select only after actual hardware/runtime evidence fits the atomic pinned component set; live object_info and representative smoke validation remain mandatory",
+        "Dynamic model/image choices in the planning schema describe proposed filenames, not assets found on this computer"
+      ]
+    }
+  ]
+}

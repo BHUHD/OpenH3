@@ -103,7 +103,7 @@ import type { Assistant } from '@/common/types/agent/assistantTypes';
 const makeAgents = () => [
   {
     id: 'aionrs',
-    name: 'Aion CLI',
+    name: 'OpenH3 CLI',
     agent_type: 'aionrs',
     agent_source: 'internal',
     backend: 'aionrs',
@@ -199,7 +199,7 @@ describe('LocalAgents', () => {
 
     // Proves L30 (useManagedAgents) ran and fed the derived lists.
     expect(useManagedAgents).toHaveBeenCalled();
-    expect(screen.getByText('Aion CLI')).toBeTruthy();
+    expect(screen.getByText('OpenH3 CLI')).toBeTruthy();
     expect(screen.getByText('Claude Code')).toBeTruthy();
     expect(screen.getByText('My Agent')).toBeTruthy();
   });
@@ -244,7 +244,7 @@ describe('LocalAgents', () => {
     render(<LocalAgents />);
 
     expect(screen.getByText('settings.agentManagement.refreshingStatuses')).toBeInTheDocument();
-    expect(screen.getByText('Aion CLI')).toBeInTheDocument();
+    expect(screen.getByText('OpenH3 CLI')).toBeInTheDocument();
   });
 
   it('renders official agents as diagnostics cards and filters out deprecated types', () => {
@@ -257,7 +257,7 @@ describe('LocalAgents', () => {
     render(<LocalAgents />);
 
     // Agent names render
-    expect(screen.getByText('Aion CLI')).toBeInTheDocument();
+    expect(screen.getByText('OpenH3 CLI')).toBeInTheDocument();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
     // Deprecated openclaw-gateway agent is filtered out
     expect(screen.queryByText('OpenClaw Gateway')).toBeNull();
@@ -370,7 +370,7 @@ describe('LocalAgents', () => {
 
     // Alphabetically Claude Code < Kimi, so this order proves the pin rule:
     // aionrs stays first, Kimi jumps ahead of the localeCompare ordering.
-    const aion = screen.getByText('Aion CLI');
+    const aion = screen.getByText('OpenH3 CLI');
     const kimi = screen.getByText('Kimi');
     const claude = screen.getByText('Claude Code');
     expect(kimi.compareDocumentPosition(aion) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
@@ -392,7 +392,7 @@ describe('LocalAgents', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Aion CLI')).toBeInTheDocument();
+    expect(screen.getByText('OpenH3 CLI')).toBeInTheDocument();
     expect(screen.queryByText('settings.agentManagement.localAgents')).toBeNull();
   });
 
@@ -437,17 +437,17 @@ describe('LocalAgents', () => {
     expect(allTab.tagName).toBe('BUTTON');
 
     // Default "all": both official agents visible (Aion CLI online, Claude Code missing).
-    expect(screen.getByText('Aion CLI')).toBeInTheDocument();
+    expect(screen.getByText('OpenH3 CLI')).toBeInTheDocument();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
 
     // "available" keeps only the online agent.
     fireEvent.click(availableTab);
-    expect(screen.getByText('Aion CLI')).toBeInTheDocument();
+    expect(screen.getByText('OpenH3 CLI')).toBeInTheDocument();
     expect(screen.queryByText('Claude Code')).toBeNull();
 
     // "unavailable" keeps only the non-online agent.
     fireEvent.click(unavailableTab);
-    expect(screen.queryByText('Aion CLI')).toBeNull();
+    expect(screen.queryByText('OpenH3 CLI')).toBeNull();
     expect(screen.getByText('Claude Code')).toBeInTheDocument();
   });
 });

@@ -11,6 +11,7 @@ import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AcpSendBox from '@/renderer/pages/conversation/platforms/acp/AcpSendBox';
 import type { UseAcpMessageReturn } from '@/renderer/pages/conversation/platforms/acp/useAcpMessage';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
+import { beginComfySelectionChange } from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
 
 const {
   sendMessageInvokeMock,
@@ -753,6 +754,24 @@ describe('AcpSendBox', () => {
   });
 
   describe('mid-turn interjection controls', () => {
+    it('blocks even a supporting agent while the local profile binding changes', async () => {
+      runtimeViewMock.supportsMidturnDelivery = true;
+      render(<AcpSendBox conversation_id='conv-1' backend='codex' messageState={makeMessageState()} />);
+      let done!: () => void;
+      act(() => {
+        done = beginComfySelectionChange('conv-1');
+      });
+      const props = sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { sendDisabled?: boolean };
+      expect(props.sendDisabled).toBe(true);
+      await act(async () => {
+        screen.getByRole('button', { name: 'send' }).click();
+      });
+      expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+      act(() => done());
+      expect((sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { sendDisabled?: boolean } | undefined)?.sendDisabled).toBe(
+        false
+      );
+    });
     it('shows the add-to-draft-box entry for a supporting agent with a non-empty draft, and clicking it enqueues without executing', async () => {
       runtimeViewMock.supportsMidturnDelivery = true;
       runtimeViewMock.isProcessing = true;

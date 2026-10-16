@@ -11,6 +11,14 @@ import { useGuidSend, type GuidSendDeps } from '@/renderer/pages/guid/hooks/useG
 
 const createConversationInvokeMock = vi.fn();
 const swrMutateMock = vi.fn();
+const bindCreationMock = vi.fn().mockResolvedValue({ ok: true });
+vi.mock('@/common/chat/document/h3JobApi', () => ({
+  h3JobApi: { bindCreation: (...args: unknown[]) => bindCreationMock(...args) },
+}));
+vi.mock('@/renderer/hooks/mcp/catalog', async () => ({
+  ...(await vi.importActual<typeof import('@/renderer/hooks/mcp/catalog')>('@/renderer/hooks/mcp/catalog')),
+  ensureBackendMcpCatalog: vi.fn().mockResolvedValue({ allServers: [] }),
+}));
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -75,6 +83,197 @@ const createDeps = (): GuidSendDeps => ({
 });
 
 describe('useGuidSend', () => {
+  it('preserves an unsent draft when conversation creation fails', async () => {
+    const deps = createDeps();
+    createConversationInvokeMock.mockResolvedValueOnce(null);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      result.current.sendMessageHandler();
+    });
+    expect(deps.setInput).not.toHaveBeenCalled();
+    expect(deps.navigate).not.toHaveBeenCalled();
+  });
+
+  it('adds the required local tool with a scoped request and navigates to the existing conversation', async () => {
+    const deps = createDeps();
+    deps.creationModel = {
+      id: 'minimax-h3',
+      name: 'MiniMax H3',
+      kind: 'video',
+      source: 'local',
+      state: 'not-installed',
+      available: false,
+    };
+    deps.availableMcpServers.push({
+      id: 'media',
+      name: 'aionui-video-media',
+      builtin: true,
+      transport: { type: 'stdio', command: 'node', args: ['media.js'] },
+    } as IMcpServer);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.extra.selected_session_mcp_servers[0]).toMatchObject({
+      id: 'media',
+      transport: {
+        env: { AIONUI_CREATION_KIND: 'video', AIONUI_CREATION_SOURCE: 'local', AIONUI_CREATION_MODEL: 'minimax-h3' },
+      },
+    });
+    expect(payload.extra.selected_session_mcp_servers[0].transport.env.AIONUI_CREATION_REQUEST_ID).toMatch(
+      /^[a-f0-9-]{36}$/i
+    );
+    expect(deps.navigate).toHaveBeenCalledWith('/conversation/conv-1');
+    const initial = JSON.parse(sessionStorage.getItem('acp_initial_message_conv-1')!);
+    expect(initial.input).toContain('hello');
+    expect(initial.guidDraft).toBe('hello');
+    expect(initial.creationRequestId).toBe(
+      payload.extra.selected_session_mcp_servers[0].transport.env.AIONUI_CREATION_REQUEST_ID
+    );
+  });
+
+  it('uses the media tool and local skill for a local image profile and persists its request snapshot', async () => {
+    const deps = createDeps();
+    deps.creationModel = {
+      id: 'qwen-profile',
+      name: 'Qwen-Edit BF16',
+      kind: 'image',
+      source: 'local',
+      state: 'verified',
+      available: true,
+      profileId: 'qwen-profile',
+      family: 'qwen-edit',
+    } as GuidSendDeps['creationModel'];
+    deps.guidEnabledSkills = ['other-skill'];
+    deps.guidDisabledBuiltinSkills = ['comfyui-local', 'disabled-skill'];
+    deps.availableMcpServers.push({
+      id: 'media',
+      name: 'aionui-video-media',
+      builtin: true,
+      transport: { type: 'stdio', command: 'node', args: ['media.js'] },
+    } as IMcpServer);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+    const payload = createConversationInvokeMock.mock.calls[0]?.[0];
+    expect(payload?.assistant.conversation_overrides.skill_ids).toEqual(['other-skill', 'comfyui-local']);
+    expect(payload?.assistant.conversation_overrides.disabled_builtin_skill_ids).toEqual(['disabled-skill']);
+    expect(payload?.extra.creation_request).toMatchObject({
+      family: 'qwen-edit',
+      profileId: 'qwen-profile',
+      kind: 'image',
+      intent: 'generate',
+      source: 'local',
+    });
+    expect(payload?.extra.selected_session_mcp_servers).toHaveLength(1);
+    expect(payload?.extra.selected_session_mcp_servers[0].name).toBe('aionui-video-media');
+    const initial = JSON.parse(sessionStorage.getItem('acp_initial_message_conv-1')!);
+    expect(initial.creationRequest).toEqual(payload.extra.creation_request);
+    expect(initial.creationRequestId).toBe(payload.extra.creation_request.requestId);
+  });
+
+  it('keeps an explicit cloud image request bound to its source before the first turn', async () => {
+    const deps = createDeps();
+    deps.creationModel = {
+      id: 'cloud::image',
+      name: 'cloud-image',
+      kind: 'image',
+      source: 'cloud',
+      state: 'configured',
+      available: true,
+    };
+    deps.availableMcpServers.push({
+      id: 'images',
+      name: 'aionui-image-generation',
+      builtin: true,
+      transport: { type: 'stdio', command: 'node' },
+    } as IMcpServer);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    const initial = JSON.parse(sessionStorage.getItem('acp_initial_message_conv-1')!);
+    expect(initial.creationRequestId).toBe(payload.extra.creation_request.requestId);
+    expect(initial.creationRequest.source).toBe('cloud');
+    expect(payload.assistant.conversation_overrides.skill_ids ?? []).not.toContain('comfyui-local');
+  });
+
+  it('keeps the explicit image installation intent when the generation selector is still H3', async () => {
+    const deps = createDeps();
+    deps.creationModel = {
+      id: 'minimax-h3',
+      name: 'MiniMax H3',
+      kind: 'video',
+      source: 'local',
+      state: 'installed',
+      available: true,
+    };
+    (deps as GuidSendDeps & { creationIntent: unknown }).creationIntent = {
+      family: 'z-image',
+      intent: 'install-other',
+    };
+    deps.input = 'Please install another Z-Image version';
+    deps.availableMcpServers.push({
+      id: 'media',
+      name: 'aionui-video-media',
+      builtin: true,
+      transport: { type: 'stdio', command: 'node' },
+    } as IMcpServer);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.extra.creation_request).toMatchObject({
+      family: 'z-image',
+      intent: 'install-other',
+      kind: 'image',
+      source: 'local',
+    });
+    expect(payload.extra.creation_request.id).not.toBe('minimax-h3');
+    expect(payload.extra.selected_session_mcp_servers[0].transport.env).toMatchObject({
+      AIONUI_CREATION_FAMILY: 'z-image',
+      AIONUI_CREATION_INTENT: 'install-other',
+    });
+  });
+
+  it('does not copy a selected cloud image provider into a local install request', async () => {
+    const deps = createDeps();
+    deps.creationModel = {
+      id: 'cloud::image',
+      name: 'cloud-image',
+      kind: 'image',
+      source: 'cloud',
+      state: 'configured',
+      available: true,
+      provider: {
+        id: 'cloud',
+        platform: 'openai',
+        base_url: 'https://example.com',
+        api_key: 'cloud-secret',
+        use_model: 'cloud-image',
+        models: ['cloud-image'],
+      },
+    } as GuidSendDeps['creationModel'];
+    deps.creationIntent = { family: 'qwen-edit', intent: 'install' };
+    deps.availableMcpServers = [
+      { id: 'media', name: 'aionui-video-media', builtin: true, transport: { type: 'stdio', command: 'node' } },
+      { id: 'images', name: 'aionui-image-generation', builtin: true, transport: { type: 'stdio', command: 'node' } },
+    ] as IMcpServer[];
+    deps.selectedMcpServerIds = ['images'];
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+    const servers = createConversationInvokeMock.mock.calls[0][0].extra.selected_session_mcp_servers;
+    expect(JSON.stringify(servers)).not.toContain('cloud-secret');
+    expect(servers.find((server: { id: string }) => server.id === 'images').transport.env.AIONUI_CREATION_SOURCE).toBe(
+      'local'
+    );
+  });
   beforeEach(() => {
     createConversationInvokeMock.mockReset();
     createConversationInvokeMock.mockResolvedValue({ id: 'conv-1' });
@@ -84,7 +283,7 @@ describe('useGuidSend', () => {
 
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
     const deps = createDeps();
-    (deps as any).selectedThoughtLevelValue = 'high';
+    deps.selectedThoughtLevelValue = 'high';
 
     const { result } = renderHook(() => useGuidSend(deps));
 

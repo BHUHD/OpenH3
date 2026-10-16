@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { normalizeSkillDescription, normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { iconColors } from '@/renderer/styles/colors';
@@ -52,9 +53,9 @@ const ConversationSkillsIndicator: React.FC<ConversationSkillsIndicatorProps> = 
             key={name}
             className='flex items-center gap-8px py-4px px-8px rounded-4px hover:bg-2 cursor-pointer text-13px text-t-primary truncate'
             onClick={() => handleSkillClick(name)}
-            title={descriptionByName.get(name) ?? ''}
+            title={normalizeSkillDescription(name, descriptionByName.get(name))}
           >
-            {name}
+            {normalizeSkillDisplayName(name)}
           </div>
         ))}
       </div>

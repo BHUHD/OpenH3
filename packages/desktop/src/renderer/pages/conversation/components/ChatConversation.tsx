@@ -38,6 +38,7 @@ import { resolveConversationBackend } from '../utils/conversationAssistantIdenti
 import LegacyReadOnlyConversation from '../platforms/legacy/LegacyReadOnlyConversation';
 import SingleChatEmptyState from './SingleChatEmptyState';
 import { useActiveLease } from '../hooks/useActiveLease';
+import ComfySessionProfile from '../runtime/Creation/ComfySessionProfile';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 const configErrorMessageKey = (error: unknown) => {
@@ -245,6 +246,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
 
   return (
     <ChatLayout {...chatLayoutProps} conversation_id={conversation.id}>
+      <ComfySessionProfile conversation={conversation} />
       <AionrsChat
         conversation_id={conversation.id}
         workspace={conversation.extra.workspace}
@@ -440,6 +442,7 @@ const ChatConversation: React.FC<{
       }
       conversation_id={conversation?.id}
     >
+      {conversation && !resolvedHideSendBox && <ComfySessionProfile conversation={conversation} />}
       {conversationNode}
     </ChatLayout>
   );

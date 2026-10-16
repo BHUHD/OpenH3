@@ -15,6 +15,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatNameList } from '@/renderer/services/i18n/list';
 import useSWR from 'swr';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 
 const BOUND_ASSISTANTS_SWR_KEY = 'agents.boundAssistants.list';
 
@@ -36,7 +37,7 @@ export const useAssistantsForAgents = (): { assistants: Assistant[]; isLoading: 
 };
 
 const assistantLabel = (assistant: Assistant, localeKey: string): string =>
-  assistant.name_i18n?.[localeKey] || assistant.name;
+  normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name);
 
 /**
  * Compact overlapping avatar stack shown on an agent list row to surface which

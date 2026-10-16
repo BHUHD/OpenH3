@@ -394,6 +394,10 @@ export const conversation = {
     } | null,
     { conversation_id: string }
   >((p) => `/api/conversations/${p.conversation_id}/usage`),
+  getMcpRuntimeStatuses: httpGet<
+    Array<{ name: string; state: 'connected' | 'failed' | 'timed_out'; tool_count: number; reason?: string }>,
+    { conversation_id: string }
+  >((p) => `/api/conversations/${p.conversation_id}/mcp-statuses`),
   askSideQuestion: httpPost<ConversationSideQuestionResult, { conversation_id: string; question: string }>(
     (p) => `/api/conversations/${p.conversation_id}/side-question`,
     (p) => ({ question: p.question })

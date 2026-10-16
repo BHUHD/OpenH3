@@ -216,7 +216,7 @@ class AutoUpdaterService extends EventEmitter {
     }
 
     try {
-      const safeCwd = path.join(app.getPath('temp'), 'aionui-updater-cwd');
+      const safeCwd = path.join(app.getPath('temp'), 'openh3-updater-cwd');
       fs.mkdirSync(safeCwd, { recursive: true });
       process.chdir(safeCwd);
       log.info('[auto-update] Moved process cwd before Windows installer handoff', { cwd: safeCwd });

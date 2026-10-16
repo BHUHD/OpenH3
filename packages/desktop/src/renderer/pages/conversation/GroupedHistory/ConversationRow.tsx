@@ -12,11 +12,12 @@ import { CronJobIndicator } from '@/renderer/pages/cron';
 import { resolveConversationLeadingMark } from '@/renderer/pages/conversation/utils/conversationAssistantIdentity';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { Checkbox, Dropdown, Menu, Spin, Tooltip } from '@arco-design/web-react';
+import { Checkbox, Dropdown, Menu, Modal, Spin, Tooltip } from '@arco-design/web-react';
 import {
   Attention,
   EditOne,
   Export,
+  Delete,
   FolderClose,
   Inbox,
   MessageOne,
@@ -59,6 +60,7 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
     onEditStart,
     onCreateCronTask,
     onArchive,
+    onDelete,
     onExport,
     onTogglePin,
     onToggleManualUnread,
@@ -292,6 +294,17 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
                     }
                     if (key === 'archive') {
                       onArchive(conversation);
+                      return;
+                    }
+                    if (key === 'delete') {
+                      Modal.confirm({
+                        title: t('conversation.history.deleteTitle'),
+                        content: t('conversation.history.deleteConfirm'),
+                        okText: t('conversation.history.confirmDelete'),
+                        cancelText: t('conversation.history.cancelDelete'),
+                        okButtonProps: { status: 'danger' },
+                        onOk: () => onDelete(conversation),
+                      });
                     }
                   }}
                 >
@@ -333,6 +346,12 @@ const ConversationRow: React.FC<ConversationRowProps> = (props) => {
                     <div className='flex items-center gap-8px'>
                       <FolderClose theme='outline' size='14' />
                       <span>{t('conversation.history.archive')}</span>
+                    </div>
+                  </Menu.Item>
+                  <Menu.Item key='delete'>
+                    <div className='flex items-center gap-8px text-danger'>
+                      <Delete theme='outline' size='14' />
+                      <span>{t('conversation.history.deleteTitle')}</span>
                     </div>
                   </Menu.Item>
                 </Menu>

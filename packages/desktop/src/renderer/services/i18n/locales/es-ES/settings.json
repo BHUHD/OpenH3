@@ -695,7 +695,7 @@
   "mcpAuthenticated": "Autenticado",
   "mcpDisconnected": "No probado",
   "mcpError": "Última prueba falló",
-  "mcpErrorNodeCommandNotFound": "El comando {{command}} no pudo prepararse. AionCore generalmente provisiona su runtime de Node administrado automáticamente. Reintenta la prueba de conexión, revisa los registros del backend si sigue fallando, o configura este servidor MCP para usar una ruta de comando absoluta.",
+  "mcpErrorNodeCommandNotFound": "El comando {{command}} no pudo prepararse. OpenH3 Core generalmente provisiona su runtime de Node administrado automáticamente. Reintenta la prueba de conexión, revisa los registros del backend si sigue fallando, o configura este servidor MCP para usar una ruta de comando absoluta.",
   "mcpErrorBunCommandNotFound": "El comando {{command}} no se encontró. Instala Bun (que incluye bun/bunx), reinicia OpenH3, o configura este servidor MCP para usar una ruta de comando absoluta.",
   "mcpErrorUvCommandNotFound": "El comando {{command}} no se encontró. Instala uv, reinicia OpenH3, o configura este servidor MCP para usar una ruta de comando absoluta.",
   "mcpErrorPythonCommandNotFound": "El comando {{command}} no se encontró. Instala Python, reinicia OpenH3, o configura este servidor MCP para usar una ruta de comando absoluta.",

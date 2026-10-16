@@ -13,6 +13,16 @@ import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
 
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import { appendPromptToDraft } from '@/renderer/hooks/chat/useSendBoxDraft';
+import CreationTemplates from './components/CreationTemplates';
+import CreationControls from './Creation/CreationControls';
+import { useCreationModels } from './Creation/useCreationModels';
+import ComfyModelCards from './components/ComfyModelCards';
+import {
+  comfyFamilyDetails,
+  readComfyDraftIntent,
+  writeComfyDraftIntent,
+  type ComfyDraftIntent,
+} from './Creation/comfyDraft';
 import { getFuzzyMatchIndices, useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/components/chat/SlashCommandMenu';
@@ -57,6 +67,13 @@ const GuidPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAiCreationPage = location.pathname === '/ai-creation';
+  const [templateFocusKey, setTemplateFocusKey] = useState<string>();
+  const [creationIntent, setCreationIntentState] = useState<ComfyDraftIntent>(readComfyDraftIntent);
+  const setCreationIntent = useCallback((intent?: ComfyDraftIntent) => {
+    writeComfyDraftIntent(intent);
+    setCreationIntentState(intent);
+  }, []);
   const guidContainerRef = useRef<HTMLDivElement>(null);
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
 
@@ -76,7 +93,9 @@ const GuidPage: React.FC = () => {
   // Skill metadata comes from the database-backed catalog. Built-in auto-inject
   // skills default checked; the rest are opt-in per conversation or pre-checked
   // by assistant defaults.
-  const [allSkills, setAllSkills] = useState<Array<{ name: string; description: string; isAuto: boolean }>>([]);
+  const [allSkills, setAllSkills] = useState<
+    Array<{ name: string; description: string; isAuto: boolean; source: 'builtin' | 'custom' | 'cron' | 'extension' }>
+  >([]);
   const [guidDisabledBuiltinSkills, setGuidDisabledBuiltinSkills] = useState<string[] | undefined>(undefined);
   const [guidEnabledSkills, setGuidEnabledSkills] = useState<string[] | undefined>(undefined);
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
@@ -91,6 +110,7 @@ const GuidPage: React.FC = () => {
             name: s.name,
             description: s.description,
             isAuto: s.source === 'builtin' && s.is_auto_inject,
+            source: s.source,
           }))
         );
       })
@@ -133,6 +153,7 @@ const GuidPage: React.FC = () => {
   // Only aionrs uses this provider-based model picker now (Gemini runs as a
   // regular ACP backend with its own model selector).
   const modelSelection = useGuidModelSelection('aionrs');
+  const creation = useCreationModels(isAiCreationPage);
 
   const navState = location.state as GuidNavigationState | null;
   const resetAssistantRequested = navState?.resetAssistant === true;
@@ -248,6 +269,8 @@ const GuidPage: React.FC = () => {
   const send = useGuidSend({
     // Input state
     input: guidInput.input,
+    creationModel: isAiCreationPage ? creation.model : undefined,
+    creationIntent,
     setInput: guidInput.setInput,
     files: guidInput.files,
     setFiles: guidInput.setFiles,
@@ -286,11 +309,25 @@ const GuidPage: React.FC = () => {
   });
 
   // --- Coordinated handlers (depend on multiple hooks) ---
+  const handleComfyAction = useCallback(
+    (intent: ComfyDraftIntent) => {
+      setCreationIntent(intent);
+      guidInput.setInput(
+        t(`guid.comfy.prompts.${intent.intent}`, {
+          family: comfyFamilyDetails(intent.family).name,
+          profile: intent.profileId ?? '',
+        })
+      );
+      setTemplateFocusKey(crypto.randomUUID());
+    },
+    [guidInput.setInput, t]
+  );
   const handleInputChange = useCallback(
     (value: string) => {
       guidInput.setInput(value);
+      if (!value.trim()) setCreationIntent(undefined);
     },
-    [guidInput.setInput]
+    [guidInput.setInput, setCreationIntent]
   );
 
   const handleInputKeyDown = useCallback(
@@ -505,10 +542,9 @@ const GuidPage: React.FC = () => {
     [hasSelectedAssistant, modelSelection, selectedAssistantId]
   );
 
-  // Reset guid-local UI state before paint so same-route navigations do not
-  // briefly show the previous draft or preset assistant layout. When a caller
-  // navigates here with a `prefillPrompt` (e.g. "Create via chat" from the
-  // scheduled tasks page), seed the input with it instead of clearing.
+  // Reset guid-local options before paint while retaining the unsent draft.
+  // When a caller navigates here with a `prefillPrompt` (e.g. "Create via chat"
+  // from the scheduled tasks page), seed or append it as requested.
   //
   // The prefill is consumed once per navigation: a ref keyed on location.key
   // guards against re-seeding if the user later clears the input and returns to
@@ -517,9 +553,8 @@ const GuidPage: React.FC = () => {
   const consumedPrefillKeyRef = useRef<string | null>(null);
   // When a "via chat" navigation also pins an assistant (selectedAssistantId),
   // the assistant-selection cleanup effect below fires a state-clearing
-  // replace() that churns location.key. That second pass has no prefillPrompt
-  // and would otherwise wipe the freshly seeded input. This flag lets exactly
-  // one such follow-up pass skip the clear, preserving the seeded prompt.
+  // replace() that churns location.key. This flag lets exactly one follow-up
+  // pass retain the prefilled attachments and workspace as well.
   const skipNextClearRef = useRef(false);
   useLayoutEffect(() => {
     const prefillState = location.state as GuidNavigationState | null;
@@ -533,24 +568,32 @@ const GuidPage: React.FC = () => {
       if (prefillState.preservePrefillDraft) {
         guidInput.setInput((draft) => appendPromptToDraft(draft, prefillPrompt));
       } else {
+        setCreationIntent(undefined);
         guidInput.setInput(prefillPrompt);
         // Prefill attachments (e.g. "via chat" screenshots) arrive as bare paths
         // with no source tag; treat them as uploads to preserve prior behavior.
         guidInput.setFiles(prefillFiles && prefillFiles.length > 0 ? prefillFiles.map(uploadFileRef) : []);
       }
     } else if (skipNextClearRef.current) {
-      // This pass is the state-clearing replace() right after a prefill — keep
-      // the seeded input instead of clearing it.
+      // Keep the prefilled options during the state-clearing replace().
       skipNextClearRef.current = false;
     } else {
-      guidInput.setInput('');
+      // Navigating to a fresh chat resets its options but leaves its draft intact.
       guidInput.setFiles([]);
     }
     guidInput.setLoading(false);
     if (!preserveCurrentDraft && !(location.state as { workspace?: string } | null)?.workspace) {
       guidInput.setDir('');
     }
-  }, [guidInput.setDir, guidInput.setFiles, guidInput.setInput, guidInput.setLoading, location.key, location.state]);
+  }, [
+    guidInput.setDir,
+    guidInput.setFiles,
+    guidInput.setInput,
+    guidInput.setLoading,
+    location.key,
+    location.state,
+    resetAssistantRequested,
+  ]);
 
   // A draft-preserving prefill is an action, not durable navigation state.
   // Strip it after consumption so browser history or a remount cannot replay it.
@@ -616,6 +659,26 @@ const GuidPage: React.FC = () => {
   // Build the action row
   const actionRowNode = (
     <GuidActionRow
+      creationControls={
+        isAiCreationPage ? (
+          <CreationControls
+            selection={creation.selection}
+            models={creation.models}
+            model={creation.model}
+            onChange={(update) => {
+              setCreationIntent(undefined);
+              creation.setSelection(update);
+            }}
+            onManageLocal={(model) =>
+              handleComfyAction({
+                family: model.family ?? (model.kind === 'video' ? 'h3' : 'qwen-edit'),
+                intent: model.profileId ? (model.available ? 'install-other' : 'repair') : 'install',
+                profileId: model.available ? undefined : model.profileId,
+              })
+            }
+          />
+        ) : undefined
+      }
       files={displayFilePaths}
       onFilesUploaded={guidInput.handleFilesUploaded}
       onFilesPicked={guidInput.handleFilesPicked}
@@ -668,44 +731,84 @@ const GuidPage: React.FC = () => {
 
   return (
     <ConfigProvider getPopupContainer={() => guidContainerRef.current || document.body}>
-      <div ref={guidContainerRef} className={styles.guidContainer}>
+      <div ref={guidContainerRef} className={`${styles.guidContainer} ${isAiCreationPage ? styles.creationPage : ''}`}>
         <div className={styles.guidLayout}>
           <div className={styles.heroHeader}>
-            <p className='text-2xl font-semibold mb-0 text-t-primary text-center'>{t('conversation.welcome.title')}</p>
+            <div className='text-center'>
+              <p className='text-2xl font-semibold mb-0 text-t-primary text-center'>
+                {isAiCreationPage ? t('guid.aiCreation') : t('conversation.welcome.title')}
+              </p>
+              {isAiCreationPage && (
+                <p className='mt-6px mb-0 text-14px text-t-secondary'>{t('guid.aiCreationSubtitle')}</p>
+              )}
+            </div>
           </div>
 
-          <AssistantSelectionArea
-            selectedAssistantId={agentSelection.selectedAssistantId}
-            assistants={agentSelection.assistants}
-            localeKey={localeKey}
-            onSelectAssistant={handleSelectAssistant}
-          />
+          <div className={isAiCreationPage ? styles.creationComposer : undefined}>
+            <AssistantSelectionArea
+              selectedAssistantId={agentSelection.selectedAssistantId}
+              assistants={agentSelection.assistants}
+              localeKey={localeKey}
+              onSelectAssistant={handleSelectAssistant}
+            />
 
-          <GuidInputCard
-            focusRequestKey={navState?.focusPrefill && navState.prefillPrompt ? location.key : undefined}
-            input={guidInput.input}
-            onInputChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
-            onPaste={guidInput.onPaste}
-            onFocus={guidInput.handleTextareaFocus}
-            onBlur={guidInput.handleTextareaBlur}
-            placeholder={typewriterPlaceholder || t('conversation.welcome.placeholder')}
-            isInputActive={guidInput.isInputFocused}
-            isFileDragging={guidInput.isFileDragging}
-            activeBorderColor={activeBorderColor}
-            inactiveBorderColor={inactiveBorderColor}
-            activeShadow={activeShadow}
-            dragHandlers={guidInput.dragHandlers}
-            files={displayFilePaths}
-            onRemoveFile={guidInput.handleRemoveFile}
-            actionRow={actionRowNode}
-            slashCommandMenu={slashCommandMenuNode}
-            workspaceDir={guidInput.dir}
-            onSelectWorkspace={(dir) => guidInput.setDir(dir)}
-            onClearWorkspace={() => guidInput.setDir('')}
-          />
+            <GuidInputCard
+              focusRequestKey={
+                templateFocusKey || (navState?.focusPrefill && navState.prefillPrompt ? location.key : undefined)
+              }
+              scrollOnFocusRequest={isAiCreationPage && Boolean(templateFocusKey)}
+              input={guidInput.input}
+              onInputChange={handleInputChange}
+              onKeyDown={handleInputKeyDown}
+              onPaste={guidInput.onPaste}
+              onFocus={guidInput.handleTextareaFocus}
+              onBlur={guidInput.handleTextareaBlur}
+              placeholder={typewriterPlaceholder || t('conversation.welcome.placeholder')}
+              isInputActive={guidInput.isInputFocused}
+              isFileDragging={guidInput.isFileDragging}
+              activeBorderColor={activeBorderColor}
+              inactiveBorderColor={inactiveBorderColor}
+              activeShadow={activeShadow}
+              dragHandlers={guidInput.dragHandlers}
+              files={displayFilePaths}
+              onRemoveFile={guidInput.handleRemoveFile}
+              actionRow={actionRowNode}
+              slashCommandMenu={slashCommandMenuNode}
+              workspaceDir={guidInput.dir}
+              onSelectWorkspace={(dir) => guidInput.setDir(dir)}
+              onClearWorkspace={() => guidInput.setDir('')}
+            />
+          </div>
 
-          {selectedAssistantPrompts.length > 0 ? (
+          {isAiCreationPage ? (
+            <>
+              <ComfyModelCards
+                profiles={creation.profiles}
+                selectedProfileId={creation.selection.source === 'local' ? creation.model.profileId : undefined}
+                loading={creation.isLoading}
+                unavailable={!!creation.error}
+                onAction={handleComfyAction}
+                onUseProfile={(profile) => {
+                  setCreationIntent(undefined);
+                  creation.setSelection((previous) => ({
+                    ...previous,
+                    kind: profile.kind,
+                    source: 'local',
+                    modelIds: { ...previous.modelIds, [`local-${profile.kind}`]: profile.id },
+                  }));
+                  setTemplateFocusKey(crypto.randomUUID());
+                }}
+              />
+              <CreationTemplates
+                onUseTemplate={(prompt, template) => {
+                  setCreationIntent(undefined);
+                  guidInput.setInput(prompt);
+                  creation.setSelection((previous) => ({ ...previous, kind: template.kind }));
+                  setTemplateFocusKey(crypto.randomUUID());
+                }}
+              />
+            </>
+          ) : selectedAssistantPrompts.length > 0 ? (
             <div className='mt-18px w-full animate-fade-in ps-20px'>
               <div className={`${styles.assistantPromptHint} mb-10px text-start`}>
                 {t('guid.promptExamplesHint', { defaultValue: 'Try these example prompts:' })}

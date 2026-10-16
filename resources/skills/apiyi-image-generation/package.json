@@ -1,0 +1,11 @@
+{
+  "name": "apiyi-image-generation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OpenH3 adaptation of the user-provided api2img skill",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.17"
+  }
+}

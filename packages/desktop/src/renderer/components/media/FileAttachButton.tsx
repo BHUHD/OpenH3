@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import type { IConversationMcpStatus, IConversationMcpStatusKind } from '@/common/config/storage';
 import { ipcBridge } from '@/common';
 import { Button, Message, Trigger } from '@arco-design/web-react';
@@ -55,6 +56,7 @@ const MCP_STATUS_CLASS_NAME: Record<IConversationMcpStatusKind, string> = {
   loaded: 'text-[var(--color-success-6)]',
   failed: 'text-[var(--color-danger-6)]',
   unsupported: 'text-[var(--color-warning-6)]',
+  timed_out: 'text-[var(--color-warning-6)]',
 };
 
 const buildLoadedMcpStatuses = (
@@ -160,7 +162,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
         <MenuItem
           key={name}
           icon={<Lightning theme='outline' size={15} strokeWidth={2.5} />}
-          label={name}
+          label={normalizeSkillDisplayName(name)}
           onClick={() => handleSkillClick(name)}
           className='mx-6px'
         />
@@ -186,7 +188,9 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
           suffix={
             item.status === 'loaded' ? undefined : (
               <span className={`text-12px leading-none ${MCP_STATUS_CLASS_NAME[item.status]}`}>
-                {t(`conversation.mcp.status.${item.status}` as const)}
+                {item.status === 'timed_out'
+                  ? t('conversation.mcp.status.failed', { defaultValue: 'Timed out' })
+                  : t(`conversation.mcp.status.${item.status}` as const)}
               </span>
             )
           }

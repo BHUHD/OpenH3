@@ -1,6 +1,6 @@
 appId: com.aionui.app
 productName: OpenH3
-executableName: AionUi
+executableName: OpenH3
 copyright: Copyright © 2024 AionUi
 
 protocols:
@@ -115,6 +115,10 @@ extraResources:
     to: bundled-aioncore
   - from: resources/hub
     to: hub
+  - from: resources/skills/comfyui-local
+    to: skills/comfyui-local
+  - from: resources/skills/apiyi-image-generation
+    to: skills/apiyi-image-generation
 win:
   target:
     - nsis

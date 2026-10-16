@@ -1,3 +1,4 @@
+import { normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { AssistantEditorViewModel, AssistantListItem } from './types';
 import { useManagedAgentRuntimeCatalog } from '@/renderer/hooks/agent/useManagedAgents';
@@ -242,20 +243,20 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
     const optionMap = new Map<string, { value: string; label: string; isAuto?: boolean; disabled?: boolean }>();
 
     pendingSkills.forEach((skill) => {
-      optionMap.set(skill.name, { value: skill.name, label: skill.name });
+      optionMap.set(skill.name, { value: skill.name, label: normalizeSkillDisplayName(skill.name) });
     });
 
     availableSkills.forEach((skill) => {
       optionMap.set(skill.name, {
         value: skill.name,
-        label: skill.name,
+        label: normalizeSkillDisplayName(skill.name),
       });
     });
 
     builtinAutoSkills.forEach((skill) => {
       optionMap.set(skill.name, {
         value: skill.name,
-        label: skill.name,
+        label: normalizeSkillDisplayName(skill.name),
         isAuto: true,
       });
     });

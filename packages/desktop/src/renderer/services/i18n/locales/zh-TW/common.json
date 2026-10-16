@@ -79,12 +79,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "目前系統不支援內建後端",
-      "description": "OpenH3 已開啟，但本機 AionCore 後端無法在目前 Linux 版本上執行。請升級到受支援的 Linux 發行版後重新啟動 OpenH3。",
+      "description": "OpenH3 已開啟，但本機 OpenH3 Core 後端無法在目前 Linux 版本上執行。請升級到受支援的 Linux 發行版後重新啟動 OpenH3。",
       "requiredVersions": "需要的執行階段符號：{{versions}}"
     },
     "incompleteInstallation": {
       "title": "OpenH3 安裝不完整",
-      "description": "目前安裝缺少必要的本機資源，AionCore 無法啟動。請下載並重新安裝最新版 OpenH3；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 AionCore。",
+      "description": "目前安裝缺少必要的本機資源，OpenH3 Core 無法啟動。請下載並重新安裝最新版 OpenH3；如果重新安裝後仍然出現，請檢查系統安全軟體或防毒軟體是否隔離了 OpenH3 Core。",
       "downloadLatest": "下載最新版",
       "sendDiagnostics": "傳送診斷報告",
       "diagnosticsSent": "診斷報告已傳送",
@@ -98,7 +98,7 @@
     },
     "dataMigration": {
       "title": "本地資料遷移失敗",
-      "description": "OpenH3 已開啟，但 AionCore 在初始化本地資料時停止。重新安裝 OpenH3 未必能解決此問題。請傳送診斷報告或聯絡支援，以便檢查本地資料庫遷移狀態。",
+      "description": "OpenH3 已開啟，但 OpenH3 Core 在初始化本地資料時停止。重新安裝 OpenH3 未必能解決此問題。請傳送診斷報告或聯絡支援，以便檢查本地資料庫遷移狀態。",
       "sendDiagnostics": "傳送診斷報告",
       "diagnosticsSent": "診斷報告已傳送",
       "diagnosticsReportSuccess": "診斷報告已傳送",
@@ -111,7 +111,7 @@
     },
     "localDataRepair": {
       "title": "本機資料修復失敗",
-      "description": "OpenH3 已開啟，但 AionCore 在準備本機啟動資料時停止，例如 assistant 或代理記錄。重新安裝 OpenH3 可能無法解決此問題。請傳送診斷報告或聯絡支援，以便檢查本機資料庫。",
+      "description": "OpenH3 已開啟，但 OpenH3 Core 在準備本機啟動資料時停止，例如 assistant 或代理記錄。重新安裝 OpenH3 可能無法解決此問題。請傳送診斷報告或聯絡支援，以便檢查本機資料庫。",
       "sendDiagnostics": "傳送診斷",
       "diagnosticsSent": "診斷已傳送",
       "diagnosticsReportSuccess": "診斷報告已傳送",
@@ -119,7 +119,7 @@
     },
     "startupDirectory": {
       "title": "啟動目錄無法使用",
-      "description": "OpenH3 已開啟，但因為設定的工作目錄或日誌目錄不存在、無法存取或權限受限，AionCore 無法啟動。請確認這些目錄存在且可寫入，然後重新啟動 OpenH3。",
+      "description": "OpenH3 已開啟，但因為設定的工作目錄或日誌目錄不存在、無法存取或權限受限，OpenH3 Core 無法啟動。請確認這些目錄存在且可寫入，然後重新啟動 OpenH3。",
       "sendDiagnostics": "傳送診斷報告",
       "diagnosticsSent": "診斷報告已傳送",
       "diagnosticsReportSuccess": "診斷報告已傳送",
@@ -153,11 +153,11 @@
     },
     "pendingSlow": {
       "title": "正在啟動",
-      "description": "AionCore 正在啟動，請稍候。若長時間無回應，可結束應用程式後再試。"
+      "description": "OpenH3 Core 正在啟動，請稍候。若長時間無回應，可結束應用程式後再試。"
     },
     "exited": {
       "title": "啟動未完成",
-      "description": "AionCore 未能完成啟動並已結束。請重新啟動應用程式；若反覆出現，請回報診斷資訊。",
+      "description": "OpenH3 Core 未能完成啟動並已結束。請重新啟動應用程式；若反覆出現，請回報診斷資訊。",
       "sendDiagnostics": "傳送診斷",
       "diagnosticsSent": "診斷已傳送",
       "diagnosticsReportSuccess": "診斷資訊已回報",
@@ -165,7 +165,7 @@
     },
     "portReportTimeout": {
       "title": "啟動逾時",
-      "description": "AionCore 未在預期時間內完成啟動。請重新啟動應用程式；若反覆出現，請傳送診斷。",
+      "description": "OpenH3 Core 未在預期時間內完成啟動。請重新啟動應用程式；若反覆出現，請傳送診斷。",
       "sendDiagnostics": "傳送診斷",
       "diagnosticsSent": "診斷已傳送",
       "diagnosticsReportSuccess": "診斷資訊已回報",
@@ -173,7 +173,7 @@
     },
     "startupFailed": {
       "title": "啟動失敗",
-      "description": "AionCore 啟動失敗。請重新啟動應用程式；若反覆出現，請傳送診斷。",
+      "description": "OpenH3 Core 啟動失敗。請重新啟動應用程式；若反覆出現，請傳送診斷。",
       "sendDiagnostics": "傳送診斷",
       "diagnosticsSent": "診斷已傳送",
       "diagnosticsReportSuccess": "診斷資訊已回報",

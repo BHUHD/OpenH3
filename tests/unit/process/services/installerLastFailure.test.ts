@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 describe('installerLastFailure service', () => {
-  it('consumes a valid installer-last-failure marker once from the AppData AionUi directory', async () => {
+  it('consumes a valid installer-last-failure marker once from the AppData OpenH3 directory', async () => {
     const { consumeInstallerLastFailure, getInstallerLastFailureMarkerPath } =
       await import('@/process/services/installerLastFailure');
     const appDataDir = makeAppDataDir();
@@ -56,6 +56,33 @@ describe('installerLastFailure service', () => {
     expect(consumed?.blockers).toEqual([{ pid: 1234, name: 'AionUi.exe' }]);
     expect(existsSync(markerPath)).toBe(false);
     await expect(consumeInstallerLastFailure({ appDataDir })).resolves.toBeNull();
+  });
+
+  it('continues to consume a marker written by a legacy AionUi installer', async () => {
+    const { consumeInstallerLastFailure, getInstallerLastFailureMarkerPath } =
+      await import('@/process/services/installerLastFailure');
+    const appDataDir = makeAppDataDir();
+    const markerPath = path.join(appDataDir, 'AionUi', 'installer-last-failure.json');
+    const marker = {
+      schemaVersion: 1,
+      kind: 'app-cannot-be-closed',
+      phase: 'customCheckAppRunning',
+      silent: true,
+      updated: true,
+      retryCount: 3,
+      instDir: 'D:\\AionUi',
+      logPath: 'C:\\Temp\\installer.log',
+      at: '2026-07-01T00:00:00.000Z',
+    };
+
+    await import('node:fs/promises').then((fs) => fs.mkdir(path.dirname(markerPath), { recursive: true }));
+    writeFileSync(markerPath, JSON.stringify(marker));
+
+    expect(getInstallerLastFailureMarkerPath(appDataDir)).toBe(
+      path.join(appDataDir, 'OpenH3', 'installer-last-failure.json')
+    );
+    await expect(consumeInstallerLastFailure({ appDataDir })).resolves.toMatchObject(marker);
+    expect(existsSync(markerPath)).toBe(false);
   });
 
   it('does not consume malformed marker JSON', async () => {

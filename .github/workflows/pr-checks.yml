@@ -449,6 +449,9 @@ jobs:
           Start-Process -FilePath $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
           $candidates = @(
+            "$env:LOCALAPPDATA\\Programs\\OpenH3\\OpenH3.exe",
+            "$env:ProgramFiles\\OpenH3\\OpenH3.exe",
+            "$env:ProgramFiles(x86)\\OpenH3\\OpenH3.exe",
             "$env:LOCALAPPDATA\\Programs\\OpenH3\\AionUi.exe",
             "$env:ProgramFiles\\OpenH3\\AionUi.exe",
             "$env:ProgramFiles(x86)\\OpenH3\\AionUi.exe",
@@ -485,7 +488,8 @@ jobs:
           hdiutil detach "$MOUNT_POINT"
 
           APP_PATH=$(ls -d "$APP_DIR"/*.app | head -n 1)
-          APP_BIN="$APP_PATH/Contents/MacOS/AionUi"
+          APP_BIN="$APP_PATH/Contents/MacOS/OpenH3"
+          if [ ! -x "$APP_BIN" ]; then APP_BIN="$APP_PATH/Contents/MacOS/AionUi"; fi
 
           test -x "$APP_BIN"
           "$APP_BIN" --version || true
@@ -503,7 +507,7 @@ jobs:
           PKG_NAME=$(dpkg-deb -f "$DEB_FILE" Package)
           sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
 
-          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin|opt)/.*(aionui)$' | head -n 1 || true)
+          INSTALLED_BIN=$(dpkg -L "$PKG_NAME" | grep -Ei '/(bin|opt)/.*(openh3|aionui)$' | head -n 1 || true)
           if [ -z "$INSTALLED_BIN" ]; then
             echo "Package files:"
             dpkg -L "$PKG_NAME" | head -n 50

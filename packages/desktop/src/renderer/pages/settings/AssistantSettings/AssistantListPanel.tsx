@@ -15,6 +15,7 @@ import { Button, Dropdown, Menu, Switch, Tag, Tooltip } from '@arco-design/web-r
 import { Attention, Drag, MoreOne } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 
 type AssistantListPanelProps = {
   assistants: AssistantListItem[];
@@ -146,7 +147,9 @@ const SortableAssistantCard: React.FC<SortableAssistantCardProps> = ({
         <AssistantAvatar assistant={assistant} size={28} />
         <div className='min-w-0 flex-1'>
           <div className='flex min-w-0 items-center gap-8px font-medium text-t-primary'>
-            <span className='truncate'>{assistant.name_i18n?.[localeKey] || assistant.name}</span>
+            <span className='truncate'>
+              {normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name)}
+            </span>
             {/* F2-05: when the assistant's underlying agent is not online, flag it
                 with a warning icon + hover reason. The assistant is NOT disabled
                 or removed — it stays listed and toggleable. */}

@@ -13,5 +13,190 @@
     "specifyWorkspace": "選擇專案資料夾",
     "searchPlaceholder": "搜尋專案…",
     "noProject": "不使用專案"
+  },
+  "comfy": {
+    "diagnosticLog": "診斷日誌",
+    "title": "本地模型",
+    "noProfile": "尚無已安裝的模型設定",
+    "use": "使用",
+    "selected": "已選擇",
+    "version": "{{family}} 版本",
+    "draftHint": "點擊安裝後會填入可編輯的請求，確認內容後再傳送。",
+    "families": {
+      "h3": "影片生成",
+      "qwen-edit": "圖片編輯",
+      "z-image": "圖片生成"
+    },
+    "actions": {
+      "install": "安裝",
+      "repair": "檢查 / 修復",
+      "install-other": "其他版本",
+      "generate": "生成"
+    },
+    "intentSummary": "本地模型任務：{{model}} · {{intent}}。目標設定：{{profile}}。請保持該模型家族與任務意圖，先制定具體的 ComfyUI 方案並等待我確認後再安裝。安裝任務不需要生成參數。",
+    "prompts": {
+      "install": "幫我在本地安裝 {{family}}，透過 ComfyUI 使用。先檢查顯示卡、記憶體、磁碟、網路與現有環境，推薦適合的固定模型版本及量化方案，並選擇與該模型家族任務匹配的 ComfyUI 工作流程，列出所需節點、模型、編碼器與 VAE。優先尋找可證明與固定版本完全一致的魔搭或可靠中國內地鏡像副本，固定來源、版本與 SHA-256，說明下載大小、安裝位置、斷點續傳方式與驗證步驟，等我確認後再開始安裝。 呼叫 aionui_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "檢查並修復我的本地 {{family}} 模型設定 {{profile}}。檢查環境、模型元件、自訂節點與工作流程，說明修復方案，等我確認後再修改，並以小規模生成測試驗證。 Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "幫我為 {{family}} 安裝其他版本或量化方案。先檢查硬體與已有設定，提出獨立設定、固定來源與驗證方案，等我確認後再安裝，並保留目前可用設定。 呼叫 aionui_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI 模型方案",
+      "authorize": "確認方案並讓助手繼續",
+      "continue": "讓助手繼續",
+      "cancel": "取消",
+      "target": "安裝位置",
+      "download": "下載大小",
+      "disk": "所需可用空間",
+      "details": "模型、節點與命令",
+      "source": "來源",
+      "unavailable": "本地模型服務暫時無法使用。",
+      "completedHint": "驗證通過，可在本地模型選擇器中使用。",
+      "continueRequest": "我已確認此 ComfyUI 模型方案。請呼叫 aionui_comfy_install，action=start，operationId={{id}}，使用儲存的模型家族、版本、量化方案與參數繼續此已授權任務，不要建立其他安裝任務。",
+      "states": {
+        "awaiting-consent": "等待確認",
+        "authorized": "已確認，等待助手",
+        "running": "執行中",
+        "paused": "已暫停",
+        "failed": "失敗",
+        "completed": "驗證通過，可使用",
+        "cancelled": "已取消"
+      },
+      "snapshotDirectory": "復原快照"
+    },
+    "profileSummary": "已選本地設定：{{profile}}。請使用此設定。",
+    "session": {
+      "title": "本機生成設定",
+      "hint": "套用於下一次生成，已提交的任務繼續使用原設定。",
+      "saveFailed": "無法儲存模型選擇，請重試。"
+    },
+    "generation": {
+      "title": "本機生成",
+      "unavailable": "本機生成服務暫時無法使用。",
+      "cancel": "取消生成",
+      "artifact": "生成結果 {{index}}",
+      "states": {
+        "queued": "排隊中",
+        "running": "生成中",
+        "succeeded": "已完成",
+        "failed": "失敗",
+        "cancelled": "已取消"
+      },
+      "adjusted": "已在此模型配置核准的範圍內調整參數。",
+      "actualInput": "實際生成參數",
+      "submissionUncertain": "尚未確認請求已提交。重新提交前，請先檢查目前的 ComfyUI 佇列。"
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "已下載",
+      "loadable": "可載入",
+      "verified": "已驗證",
+      "invalid": "設定無效",
+      "installed": "已安裝",
+      "not-installed": "未安裝",
+      "no-workflow": "無可用工作流程",
+      "configured": "已設定",
+      "not-configured": "待設定",
+      "unavailable": "狀態無法取得",
+      "checking": "檢查中"
+    },
+    "kind": "創作類型",
+    "source": "模型來源",
+    "model": "創作模型",
+    "local": "本地",
+    "cloud": "雲端",
+    "localImage": "本地圖片模型",
+    "localVideo": "本地影片模型",
+    "cloudImage": "雲端圖片模型",
+    "cloudVideo": "雲端影片模型",
+    "manageLocal": "管理本地模型",
+    "configureCloud": "設定雲端 API",
+    "requestSummary": "創作設定：{{kind}} · {{source}} · {{model}}（{{state}}）。請使用選定模型；若不可用，請先詢問我是否安裝或設定。不要自動切換至其他模型或雲端服務。",
+    "toolsUnavailable": "創作工具尚未準備好，請稍後再試。",
+    "install": {
+      "states": {
+        "awaiting-consent": "等待確認",
+        "cancelled": "已取消",
+        "cancelling": "正在取消",
+        "failed": "未完成",
+        "paused": "已暫停",
+        "authorized": "已確認，等待助手",
+        "submitted": "已提交生成",
+        "installing": "正在安裝"
+      },
+      "title": "安裝 MiniMax H3 並繼續創作",
+      "open": "檢視安裝內容",
+      "continueRequest": "我已在安裝視窗確認模型授權及所需硬體選項。請呼叫 aionui_h3_install_video_model，action=start，operationId={{id}}，繼續原始影片生成請求，不要重新提交或變更參數。",
+      "continue": "讓助手繼續",
+      "cancelRequest": "取消創作請求"
+    }
+  },
+  "aiCreation": "AI 創作",
+  "aiCreationSubtitle": "把想像變成作品",
+  "templatePlay": "播放 {{title}}",
+  "templatePause": "暫停 {{title}}",
+  "templateUse": "使用範本",
+  "templateTitle": "靈感範本",
+  "templateHint": "探索圖片與影片靈感，選擇一個開始創作。",
+  "templateFilterLabel": "範本類型",
+  "templatePreviewUnavailable": "無法預覽",
+  "templateFilters": {
+    "all": "全部",
+    "image": "圖片",
+    "video": "影片"
+  },
+  "templates": {
+    "poster": {
+      "title": "紫晶情緒海報",
+      "prompt": "生成一張直式 3:4 情緒海報：紫水晶簇的微距特寫，晶體折射柔和的紫色與玫瑰色光線，細緻礦物紋理和淺景深。加入清晰的中文大標題「允許自己慢下來」，配小號襯線字與充足留白，呈現安靜、療癒的雜誌封面風格。"
+    },
+    "product": {
+      "title": "香氛產品廣告",
+      "prompt": "生成一張直式 3:4 香氛廣告照片：透明玻璃香水瓶置於奶白色亞麻布與乾燥花之間，暖色窗光從側面照入，突出玻璃反射、金屬瓶蓋和柔軟織物質感。主體清晰、背景乾淨，保留文案空間，不出現品牌標誌。"
+    },
+    "illustration": {
+      "title": "插畫故事",
+      "prompt": "創作一幅細節豐富、色彩協調的敘事插畫，包含有趣的角色和環境細節，構圖完整，適合用作封面。"
+    },
+    "architecture": {
+      "title": "威尼斯旅行明信片",
+      "prompt": "生成一張直式 3:4 威尼斯旅行明信片：碧綠運河、暖粉色歷史建築和岸邊小船，午後陽光映在水面，細緻建築立面，構圖沿運河延伸。柔和底片色調、自然寫實攝影，頂部留白供旅行標題使用。"
+    },
+    "landscape": {
+      "title": "冰島夢境風光",
+      "prompt": "生成一張橫式 16:9 冰島風光照片：翠綠山坡、壯觀瀑布與開闊平原，粉紫色晚霞映亮天空。輕盈水霧、清晰前景中景與遠景，廣角構圖、電影感光影及真實自然紋理。無人物、無文字。"
+    },
+    "pet": {
+      "title": "窗邊貓咪寫真",
+      "prompt": "生成一張直式 3:4 寵物寫真：毛茸茸的橘貓坐在木質窗台上望向窗外，柔和晨光照亮鬍鬚和眼睛。毛髮細節清晰，背景是虛化的淺色窗簾，暖色底片調色，自然抓拍、安靜溫柔。"
+    },
+    "food": {
+      "title": "清爽菜單攝影",
+      "prompt": "生成一張橫式 4:3 俯拍料理照片：白色陶瓷碗中的藜麥、酪梨和彩色蔬菜，周圍散落新鮮食材。淺色石質桌面、柔和自然光、鮮活色彩與真實紋理。留出菜單文字空間。"
+    },
+    "interior": {
+      "title": "溫暖簡約的理想客廳",
+      "prompt": "生成一張橫式 16:9 室內照片：溫暖簡約的客廳，奶白色沙發、淺木茶几、柔軟地毯與簡潔吊燈。大片窗戶引入暖色自然光，空間通透、層次清晰，材質真實，建築攝影視角。無人物或雜物。"
+    },
+    "flowers": {
+      "title": "春日花店封面",
+      "prompt": "生成一張直式 3:4 花店封面照片：淡粉色花朵近景，花瓣層次豐富，淺奶油色背景與柔和漫射光。浪漫清新的生活風格攝影，頂部預留標題區域，不出現品牌或浮水印。"
+    },
+    "coast": {
+      "title": "海邊日落短片",
+      "prompt": "生成一段 6 秒、橫式 16:9 的電影感影片：夕陽緩緩沉向海平線，橙金色光鋪滿海面，輕柔波浪湧向岸邊。鏡頭穩定並緩慢前進，色彩自然、光影連續、氣氛安靜療癒。無文字或浮水印。"
+    },
+    "coffeeFilm": {
+      "title": "咖啡廣告短片",
+      "prompt": "生成一段 6 秒、橫式 16:9 的咖啡廣告影片：俯拍咖啡杯置於咖啡豆和肉桂之間，牛奶緩緩注入咖啡，形成自然細緻的漩渦。暖棕色調、柔和棚拍光、淺景深、真實連續的液體動作。無品牌標誌或字幕。"
+    },
+    "cityFilm": {
+      "title": "城市黃昏空拍",
+      "prompt": "生成一段 6 秒、橫式 16:9 的城市空拍影片：黃昏漸深，建築燈光亮起，遠處晚霞和道路光帶交織。鏡頭平穩前移，空間透視真實、電影感調色。無閃爍或文字。"
+    },
+    "forestFilm": {
+      "title": "森林瀑布療癒時光",
+      "prompt": "生成一段 6 秒、橫式 16:9 的自然影片：茂密森林的瀑布流入清澈水潭，苔蘚覆蓋岩石，葉片輕輕搖動。鏡頭幾乎固定並微微推進，柔和日光穿過樹冠，水流、波紋和植被自然連續運動。無人物或字幕。"
+    }
   }
 }

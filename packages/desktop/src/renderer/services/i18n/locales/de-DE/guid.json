@@ -31,5 +31,190 @@
     "statusTesting": "Latenz wird gemessen...",
     "statusUnreachable": "Nicht erreichbar",
     "statusAvailable": "Verfügbar"
+  },
+  "comfy": {
+    "diagnosticLog": "Diagnoseprotokoll",
+    "title": "Lokale Modelle",
+    "noProfile": "Kein installiertes Profil",
+    "use": "Verwenden",
+    "selected": "Ausgewählt",
+    "version": "Version von {{family}}",
+    "draftHint": "Installationsaktionen füllen eine bearbeitbare Anfrage aus. Sende sie, wenn du bereit bist.",
+    "families": {
+      "h3": "Videogenerierung",
+      "qwen-edit": "Bildbearbeitung",
+      "z-image": "Bildgenerierung"
+    },
+    "actions": {
+      "install": "Installieren",
+      "repair": "Prüfen / Reparieren",
+      "install-other": "Andere Version",
+      "generate": "Generieren"
+    },
+    "intentSummary": "Lokale Modellaufgabe: {{model}} · {{intent}}. Zielprofil: {{profile}}. Behalte die Familie und Aufgabe bei. Erstelle einen konkreten ComfyUI-Plan und warte auf meine Bestätigung. Für eine Installation sind keine Generierungsparameter erforderlich.",
+    "prompts": {
+      "install": "Installiere {{family}} lokal mit ComfyUI. Prüfe zuerst Hardware, Netzwerk und vorhandene Umgebung. Wähle den passenden ComfyUI-Workflow für Familie und Aufgabe mit benötigten Knoten, Modellen, Encodern und VAE. Schlage eine feste Version und Quantisierung vor und bevorzuge eine nachweislich identische ModelScope- oder vertrauenswürdige Inlandsspiegel-Kopie; pinne Quelle, Revision und SHA-256 und nenne Größe, Ort, Fortsetzen und Validierung. Warte vor der Installation auf meine Bestätigung. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "Prüfe und repariere mein lokales {{family}}-Profil {{profile}}. Prüfe Umgebung, Komponenten, Knoten und Workflow. Erkläre den Plan, warte auf meine Bestätigung und validiere ihn mit einem kleinen Generierungstest. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "Installiere eine andere Version oder Quantisierung von {{family}} als separates Profil. Prüfe die Hardware, gib feste Quellen und einen Validierungsplan an. Warte auf meine Bestätigung und behalte das funktionierende Profil. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI-Modellplan",
+      "authorize": "Plan bestätigen und Assistenten fortsetzen lassen",
+      "continue": "Assistenten fortsetzen lassen",
+      "cancel": "Abbrechen",
+      "target": "Installationsort",
+      "download": "Downloadgröße",
+      "disk": "Benötigter freier Speicher",
+      "details": "Modelle, Knoten und Befehle",
+      "source": "Quelle",
+      "unavailable": "Der lokale Modelldienst ist nicht verfügbar.",
+      "completedHint": "Validierung erfolgreich. Das Modell ist in der lokalen Modellauswahl verfügbar.",
+      "continueRequest": "Plan bestätigen und Assistenten fortsetzen lassen. aionui_comfy_install action=start operationId={{id}}. ComfyUI-Modellplan.",
+      "states": {
+        "awaiting-consent": "Warte auf Bestätigung",
+        "authorized": "Bestätigt, warte auf Assistenten",
+        "running": "Läuft",
+        "paused": "Pausiert",
+        "failed": "Fehlgeschlagen",
+        "completed": "Geprüft und bereit",
+        "cancelled": "Abgebrochen"
+      },
+      "snapshotDirectory": "Wiederherstellungssnapshot"
+    },
+    "profileSummary": "Ausgewähltes lokales Profil: {{profile}}. Verwende genau dieses Profil.",
+    "session": {
+      "title": "Lokales Generierungsprofil",
+      "hint": "Gilt für die nächste Generierung. Übermittelte Aufträge behalten ihr gespeichertes Profil.",
+      "saveFailed": "Die Profilauswahl konnte nicht gespeichert werden. Erneut versuchen."
+    },
+    "generation": {
+      "title": "Lokale Generierung",
+      "unavailable": "Der lokale Generierungsdienst ist nicht verfügbar.",
+      "cancel": "Generierung abbrechen",
+      "artifact": "Generiertes Ergebnis {{index}}",
+      "states": {
+        "queued": "In der Warteschlange",
+        "running": "Wird generiert",
+        "succeeded": "Abgeschlossen",
+        "failed": "Fehlgeschlagen",
+        "cancelled": "Abgebrochen"
+      },
+      "adjusted": "Die Parameter wurden innerhalb der freigegebenen Grenzen dieses Profils angepasst.",
+      "actualInput": "Tatsächliche Generierungsparameter",
+      "submissionUncertain": "Die Übermittlung wurde nicht bestätigt. Prüfe die aktuelle ComfyUI-Warteschlange, bevor du erneut übermittelst."
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "Heruntergeladen",
+      "loadable": "Ladbar",
+      "verified": "Geprüft",
+      "invalid": "Ungültig",
+      "installed": "Installiert",
+      "not-installed": "Nicht installiert",
+      "no-workflow": "Kein Workflow",
+      "configured": "Konfiguriert",
+      "not-configured": "Nicht konfiguriert",
+      "unavailable": "Status nicht verfügbar",
+      "checking": "Prüfung läuft"
+    },
+    "kind": "Erstellungstyp",
+    "source": "Modellquelle",
+    "model": "Erstellungsmodell",
+    "local": "Lokal",
+    "cloud": "Cloud",
+    "localImage": "Lokales Bildmodell",
+    "localVideo": "Lokales Videomodell",
+    "cloudImage": "Cloud-Bildmodell",
+    "cloudVideo": "Cloud-Videomodell",
+    "manageLocal": "Lokale Modelle verwalten",
+    "configureCloud": "Cloud-API konfigurieren",
+    "requestSummary": "Erstellungseinstellungen: {{kind}} · {{source}} · {{model}} ({{state}}). Verwende das ausgewählte Modell. Wenn es nicht verfügbar ist, bitte mich um Installation oder Konfiguration. Wechsle nie automatisch zu einem anderen Modell oder einem Cloud-Dienst.",
+    "toolsUnavailable": "Die Erstellungstools sind noch nicht bereit. Bitte versuche es in Kürze erneut.",
+    "install": {
+      "states": {
+        "awaiting-consent": "Warte auf Bestätigung",
+        "cancelled": "Abgebrochen",
+        "cancelling": "Wird abgebrochen",
+        "failed": "Unvollständig",
+        "paused": "Pausiert",
+        "authorized": "Bestätigt, warte auf Assistenten",
+        "submitted": "Generierung übermittelt",
+        "installing": "Wird installiert"
+      },
+      "title": "MiniMax H3 installieren und fortfahren",
+      "open": "Installation prüfen",
+      "continueRequest": "Ich habe die Modelllizenz und die erforderlichen Hardwareoptionen im Installationsdialog bestätigt. Rufe aionui_h3_install_video_model mit action=start und operationId={{id}} auf, um die ursprüngliche Videoanfrage fortzusetzen, ohne sie erneut zu übermitteln oder Parameter zu ändern.",
+      "continue": "Mit dem Assistenten fortfahren",
+      "cancelRequest": "Erstellungsanfrage abbrechen"
+    }
+  },
+  "aiCreation": "KI-Erstellung",
+  "aiCreationSubtitle": "Verwirkliche deine Ideen",
+  "templatePlay": "Abspielen: {{title}}",
+  "templatePause": "Anhalten: {{title}}",
+  "templateUse": "Vorlage verwenden",
+  "templateTitle": "Inspirationsvorlagen",
+  "templateHint": "Entdecke Bild- und Videoideen. Wähle eine Vorlage zum Starten.",
+  "templateFilterLabel": "Vorlagentyp",
+  "templatePreviewUnavailable": "Vorschau nicht verfügbar",
+  "templateFilters": {
+    "all": "Alle",
+    "image": "Bilder",
+    "video": "Videos"
+  },
+  "templates": {
+    "poster": {
+      "title": "Stimmungsposter mit Amethyst",
+      "prompt": "Erstelle ein vertikales 3:4-Poster mit einer Makroaufnahme von Amethystkristallen, weichem violettem und rosafarbenem Licht, feinen Mineralstrukturen und geringer Schärfentiefe. Füge die klare chinesische Überschrift „允许自己慢下来“, kleine Serifenschrift und viel Freiraum hinzu. Ruhiger, wohltuender Magazincover-Stil."
+    },
+    "product": {
+      "title": "Duftkampagne",
+      "prompt": "Erstelle ein vertikales 3:4-Werbefoto: eine transparente Parfümflasche zwischen cremefarbenem Leinen und Trockenblumen. Warmes seitliches Fensterlicht, feine Glasreflexionen, Metallverschluss und weiche Stofftexturen. Das Produkt bleibt scharf, der Hintergrund sauber. Platz für Text, keine Markenlogos."
+    },
+    "illustration": {
+      "title": "Erzählerische Illustration",
+      "prompt": "Erstelle eine detailreiche erzählerische Illustration mit liebenswerten Figuren, harmonischen Farben und einer vollständigen Komposition, die sich als Cover eignet."
+    },
+    "architecture": {
+      "title": "Reisepostkarte aus Venedig",
+      "prompt": "Erstelle eine vertikale 3:4-Reisepostkarte aus Venedig: türkisfarbener Kanal, warme rosa historische Gebäude und Boote am Ufer. Nachmittagssonne auf dem Wasser, detailreiche Fassaden und ein Blick entlang des Kanals. Realistische Fotografie mit sanften Filmfarben und Platz oben für eine Überschrift."
+    },
+    "landscape": {
+      "title": "Isländische Traumlandschaft",
+      "prompt": "Erstelle ein horizontales 16:9-Landschaftsfoto aus Island: grüne Hügel, ein gewaltiger Wasserfall und weite Ebenen im rosa-violetten Sonnenuntergang. Feiner Nebel, klarer Vorder-, Mittel- und Hintergrund. Weitwinkel, filmisches Licht und natürliche Texturen, keine Personen oder Schrift."
+    },
+    "pet": {
+      "title": "Katze am Fenster",
+      "prompt": "Erstelle ein vertikales 3:4-Porträt einer flauschigen roten Katze auf einer hölzernen Fensterbank, die nach draußen blickt. Sanftes Morgenlicht auf Schnurrhaaren und Augen, detailreiches Fell, unscharfe helle Vorhänge und warme Filmfarben. Ruhige, natürliche Momentaufnahme."
+    },
+    "food": {
+      "title": "Frische Menüfotografie",
+      "prompt": "Erstelle ein horizontales 4:3-Foodfoto von oben: Quinoa, Avocado und bunte Gemüse in einer weißen Keramikschale, frische Zutaten daneben. Heller Steintisch, weiches Tageslicht, lebendige Farben und realistische Texturen. Platz für Menütext."
+    },
+    "interior": {
+      "title": "Ein warmes minimalistisches Zuhause",
+      "prompt": "Erstelle ein horizontales 16:9-Interieurfoto eines warmen minimalistischen Wohnzimmers: cremefarbenes Sofa, heller Holztisch, weicher Teppich und schlichte Pendelleuchten. Große Fenster mit warmem Tageslicht, luftiger Raum, klare Tiefe und realistische Materialien. Keine Personen oder Unordnung."
+    },
+    "flowers": {
+      "title": "Frühlingsblumen als Cover",
+      "prompt": "Erstelle ein vertikales 3:4-Coverfoto für einen Blumenladen: blassrosa Blumen in Nahaufnahme, vielschichtige Blütenblätter, weicher cremefarbener Hintergrund und sanftes diffuses Licht. Romantische, frische Lifestyle-Fotografie mit Platz oben für eine Überschrift, ohne Marken oder Wasserzeichen."
+    },
+    "coast": {
+      "title": "Sonnenuntergang am Meer",
+      "prompt": "Generiere ein 6-sekündiges horizontales 16:9-Video: Die Sonne sinkt zum Horizont, orangegoldenes Licht liegt auf dem Meer und sanfte Wellen rollen zum Ufer. Stabile Kamera mit langsamer Vorwärtsbewegung, natürliche Farben, durchgängiges Licht und ruhige Stimmung. Keine Schrift oder Wasserzeichen."
+    },
+    "coffeeFilm": {
+      "title": "Kaffeewerbefilm",
+      "prompt": "Generiere ein 6-sekündiges horizontales 16:9-Werbevideo von oben: eine Kaffeetasse zwischen Bohnen und Zimt. Milch fließt langsam hinein und bildet feine natürliche Wirbel. Warme Brauntöne, weiches Studiolicht, geringe Schärfentiefe und realistische, kontinuierliche Flüssigkeitsbewegung. Keine Logos oder Untertitel."
+    },
+    "cityFilm": {
+      "title": "Stadt in der Dämmerung",
+      "prompt": "Generiere ein 6-sekündiges horizontales 16:9-Luftvideo einer Stadt in der Dämmerung. Gebäude leuchten unter dem verblassenden Abendhimmel auf, der Verkehr bildet Lichtbänder. Die Kamera gleitet ruhig nach vorn, mit realistischer Perspektive und filmischen Farben. Kein Flackern oder Text."
+    },
+    "forestFilm": {
+      "title": "Wald und Wasserfall zum Entspannen",
+      "prompt": "Generiere ein 6-sekündiges horizontales 16:9-Naturvideo: Ein Wasserfall fließt in ein klares Becken im dichten Wald, Moos bedeckt Steine und Blätter bewegen sich sanft. Nahezu feste Kamera mit leichtem Vorwärtsschub, weiches Sonnenlicht durch die Baumkronen, natürliche durchgängige Wasser- und Blattbewegung. Keine Menschen oder Untertitel."
+    }
   }
 }

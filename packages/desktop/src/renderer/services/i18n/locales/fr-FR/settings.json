@@ -707,7 +707,7 @@
   "mcpAuthenticated": "Authentifié",
   "mcpDisconnected": "Déconnecté",
   "mcpError": "Erreur",
-  "mcpErrorNodeCommandNotFound": "La commande {{command}} n'a pas pu être préparée. AionCore provisionne généralement automatiquement son environnement d'exécution Node géré. Réessayez le test de connexion, vérifiez les journaux backend s'il échoue toujours ou configurez ce serveur MCP pour utiliser un chemin de commande absolu.",
+  "mcpErrorNodeCommandNotFound": "La commande {{command}} n'a pas pu être préparée. OpenH3 Core provisionne généralement automatiquement son environnement d'exécution Node géré. Réessayez le test de connexion, vérifiez les journaux backend s'il échoue toujours ou configurez ce serveur MCP pour utiliser un chemin de commande absolu.",
   "mcpErrorBunCommandNotFound": "La commande {{command}} n'a pas été trouvée. Installez Bun (qui inclut bun/bunx), redémarrez OpenH3 ou configurez ce serveur MCP pour utiliser un chemin de commande absolu.",
   "mcpErrorUvCommandNotFound": "La commande {{command}} n'a pas été trouvée. Installez uv, redémarrez OpenH3 ou configurez ce serveur MCP pour utiliser un chemin de commande absolu.",
   "mcpErrorPythonCommandNotFound": "La commande {{command}} n'a pas été trouvée. Installez Python, redémarrez OpenH3 ou configurez ce serveur MCP pour utiliser un chemin de commande absolu.",

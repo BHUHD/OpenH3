@@ -10,12 +10,16 @@ import type { TConversationRuntimeSummary } from '@/common/config/storage';
 import { parseError, uuid } from '@/common/utils';
 import { emitter } from '@/renderer/utils/emitter';
 import { type ChatFileRef, isChatFileRef, uploadFileRef } from '@/common/types/chatFile';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getConversationRuntimeWorkspaceErrorMessage } from '../../utils/conversationCreateError';
 import type { ConversationRuntimeSendFailure } from '../../runtime/conversationRuntimeViewStore';
 import { classifyConversationBusyError } from '../conversationBusyError';
 import { buildSendFailureError } from './buildSendFailureError';
+import { h3JobApi } from '@/common/chat/document/h3JobApi';
+import { comfyApi } from '@/common/chat/document/creation/comfyApi';
+import { clearGuidDraftIfMatches } from '@/renderer/pages/guid/hooks/useGuidDraft';
+import { beginComfySelectionChange } from '../../runtime/Creation/useComfySelectionPending';
 
 type UseAcpInitialMessageParams = {
   conversation_id: string;
@@ -45,16 +49,20 @@ export const useAcpInitialMessage = ({
   addOrUpdateMessage,
 }: UseAcpInitialMessageParams): void => {
   const { t } = useTranslation();
+  const attemptedConversation = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const storageKey = `acp_initial_message_${conversation_id}`;
     const storedMessage = sessionStorage.getItem(storageKey);
 
-    if (!storedMessage) return;
+    if (!storedMessage || attemptedConversation.current === conversation_id) return;
+    attemptedConversation.current = conversation_id;
 
     // Clear immediately to prevent duplicate sends (e.g., if component remounts while sendMessage is pending)
     sessionStorage.removeItem(storageKey);
 
+    let bindingPending = false;
+    let finishBinding: (() => void) | undefined;
     const sendInitialMessage = async () => {
       try {
         const initialMessage = JSON.parse(storedMessage);
@@ -70,6 +78,38 @@ export const useAcpInitialMessage = ({
               .filter(isChatFileRef)
           : [];
 
+        if (typeof initialMessage.creationRequestId === 'string' && initialMessage.creationRequest) {
+          bindingPending = true;
+          finishBinding = beginComfySelectionChange(conversation_id);
+          const request = initialMessage.creationRequest as {
+            profileId?: string;
+            family?: 'h3' | 'qwen-edit' | 'z-image';
+            intent?: 'generate' | 'install' | 'repair' | 'install-other';
+            source?: 'local' | 'cloud';
+            kind?: 'image' | 'video';
+          };
+          const bound = await comfyApi.bind(
+            initialMessage.creationRequestId,
+            conversation_id,
+            request.profileId,
+            request.family,
+            request.intent,
+            {
+              source: request.source ?? 'local',
+              kind: request.kind ?? 'image',
+            }
+          );
+          if (!bound.ok) throw new Error(t('guid.creation.toolsUnavailable'));
+          bindingPending = false;
+        } else if (typeof initialMessage.creationRequestId === 'string') {
+          bindingPending = true;
+          finishBinding = beginComfySelectionChange(conversation_id);
+          await h3JobApi.bindCreation(initialMessage.creationRequestId, conversation_id);
+          bindingPending = false;
+        }
+        // An empty creation entry only binds its tools; the chat opens idle.
+        if (!input.trim()) return;
+
         markSendStarted?.();
         setAiProcessing(true);
 
@@ -80,10 +120,13 @@ export const useAcpInitialMessage = ({
           files,
         });
         markSendAccepted?.(result.turn_id, result.runtime, result.msg_id);
+        if (typeof initialMessage.guidDraft === 'string') clearGuidDraftIfMatches(initialMessage.guidDraft);
 
         // Initial message sent successfully
         emitter.emit('chat.history.refresh');
       } catch (error) {
+        // No message was sent if binding failed. Reopening the chat can retry safely.
+        if (bindingPending) sessionStorage.setItem(storageKey, storedMessage);
         const errorMessageText =
           getConversationRuntimeWorkspaceErrorMessage(error, t) || parseError(error) || t('common.unknownError');
         const busyError = classifyConversationBusyError(error);
@@ -128,6 +171,8 @@ export const useAcpInitialMessage = ({
         addOrUpdateMessage(errorMessage, true);
         resetState();
         setAiProcessing(false); // Keep the prop-setter in sync with the hook reset
+      } finally {
+        finishBinding?.();
       }
     };
 

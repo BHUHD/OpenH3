@@ -13,5 +13,190 @@
     "specifyWorkspace": "Выбрать папку проекта",
     "searchPlaceholder": "Поиск проектов…",
     "noProject": "Без проекта"
+  },
+  "comfy": {
+    "diagnosticLog": "Журнал диагностики",
+    "title": "Локальные модели",
+    "noProfile": "Нет установленного профиля",
+    "use": "Использовать",
+    "selected": "Выбрано",
+    "version": "Версия {{family}}",
+    "draftHint": "Установка заполняет редактируемый запрос. Отправьте его, когда будете готовы.",
+    "families": {
+      "h3": "Генерация видео",
+      "qwen-edit": "Редактирование изображений",
+      "z-image": "Генерация изображений"
+    },
+    "actions": {
+      "install": "Установить",
+      "repair": "Проверить / исправить",
+      "install-other": "Другая версия",
+      "generate": "Создать"
+    },
+    "intentSummary": "Локальная задача: {{model}} · {{intent}}. Профиль: {{profile}}. Сохрани семейство и задачу. Подготовь конкретный план ComfyUI и дождись моего подтверждения. Для установки не нужны параметры генерации.",
+    "prompts": {
+      "install": "Установи {{family}} локально через ComfyUI. Сначала проверь оборудование, сеть и среду. Выбери подходящий рабочий процесс ComfyUI для семейства и задачи, включая нужные узлы, модели, энкодеры и VAE. Предложи фиксированные версию и квантизацию; предпочитай копию ModelScope или надёжного внутреннего зеркала только при доказанном совпадении с закреплённым upstream-артефактом. Зафиксируй источник, ревизию и SHA-256, укажи размер, папку, возобновление и проверку. Перед установкой дождись моего подтверждения. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "Проверь и исправь локальный профиль {{family}} {{profile}}. Проверь среду, компоненты, узлы и процесс. Объясни план, дождись подтверждения и проверь небольшой генерацией. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "Установи другую версию или квантизацию {{family}} отдельным профилем. Проверь оборудование, предложи фиксированные источники и проверку. Дождись подтверждения и сохрани рабочий профиль. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "План модели ComfyUI",
+      "authorize": "Подтвердить план и продолжить с ассистентом",
+      "continue": "Продолжить с ассистентом",
+      "cancel": "Отмена",
+      "target": "Папка установки",
+      "download": "Размер загрузки",
+      "disk": "Требуемое свободное место",
+      "details": "Модели, узлы и команды",
+      "source": "Источник",
+      "unavailable": "Локальный сервис моделей недоступен.",
+      "completedHint": "Проверка пройдена. Модель доступна в локальном списке.",
+      "continueRequest": "Подтвердить план и продолжить с ассистентом. aionui_comfy_install action=start operationId={{id}}. План модели ComfyUI.",
+      "states": {
+        "awaiting-consent": "Ожидает подтверждения",
+        "authorized": "Подтверждено, ожидает ассистента",
+        "running": "Выполняется",
+        "paused": "Приостановлено",
+        "failed": "Ошибка",
+        "completed": "Проверено и готово",
+        "cancelled": "Отменено"
+      },
+      "snapshotDirectory": "Снимок для восстановления"
+    },
+    "profileSummary": "Выбранный локальный профиль: {{profile}}. Используй именно этот профиль.",
+    "session": {
+      "title": "Профиль локальной генерации",
+      "hint": "Применяется к следующей генерации. Отправленные задания сохраняют свой профиль.",
+      "saveFailed": "Не удалось сохранить выбранный профиль. Повторите попытку."
+    },
+    "generation": {
+      "title": "Локальная генерация",
+      "unavailable": "Сервис локальной генерации недоступен.",
+      "cancel": "Отменить генерацию",
+      "artifact": "Результат генерации {{index}}",
+      "states": {
+        "queued": "В очереди",
+        "running": "Генерация",
+        "succeeded": "Завершено",
+        "failed": "Ошибка",
+        "cancelled": "Отменено"
+      },
+      "adjusted": "Параметры скорректированы в пределах разрешённых для этого профиля значений.",
+      "actualInput": "Фактические параметры генерации",
+      "submissionUncertain": "Отправка не подтверждена. Перед повторной отправкой проверь текущую очередь ComfyUI."
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "Загружено",
+      "loadable": "Можно загрузить",
+      "verified": "Проверено",
+      "invalid": "Недействительно",
+      "installed": "Установлено",
+      "not-installed": "Не установлено",
+      "no-workflow": "Нет процесса",
+      "configured": "Настроено",
+      "not-configured": "Не настроено",
+      "unavailable": "Статус недоступен",
+      "checking": "Проверка"
+    },
+    "kind": "Тип создания",
+    "source": "Источник модели",
+    "model": "Модель создания",
+    "local": "Локально",
+    "cloud": "Облако",
+    "localImage": "Локальная модель изображений",
+    "localVideo": "Локальная модель видео",
+    "cloudImage": "Облачная модель изображений",
+    "cloudVideo": "Облачная модель видео",
+    "manageLocal": "Управление локальными моделями",
+    "configureCloud": "Настроить облачный API",
+    "requestSummary": "Настройки создания: {{kind}} · {{source}} · {{model}} ({{state}}). Используй выбранную модель; если она недоступна, попроси меня установить или настроить её. Не переключайся автоматически на другую модель или облачный сервис.",
+    "toolsUnavailable": "Инструменты создания ещё не готовы. Повторите попытку чуть позже.",
+    "install": {
+      "states": {
+        "awaiting-consent": "Ожидает подтверждения",
+        "cancelled": "Отменено",
+        "cancelling": "Отмена",
+        "failed": "Не завершено",
+        "paused": "Приостановлено",
+        "authorized": "Подтверждено, ожидает ассистента",
+        "submitted": "Генерация отправлена",
+        "installing": "Установка"
+      },
+      "title": "Установить MiniMax H3 и продолжить",
+      "open": "Проверить установку",
+      "continueRequest": "Я подтвердил лицензию модели и необходимые параметры оборудования в окне установки. Вызови aionui_h3_install_video_model с action=start и operationId={{id}}, чтобы продолжить исходный запрос на видео без повторной отправки или изменения параметров.",
+      "continue": "Продолжить с ассистентом",
+      "cancelRequest": "Отменить запрос на создание"
+    }
+  },
+  "aiCreation": "Создание с ИИ",
+  "aiCreationSubtitle": "Превратите воображение в творчество",
+  "templatePlay": "Воспроизвести {{title}}",
+  "templatePause": "Приостановить {{title}}",
+  "templateUse": "Использовать шаблон",
+  "templateTitle": "Шаблоны для вдохновения",
+  "templateHint": "Посмотрите идеи изображений и видео. Выберите одну, чтобы начать.",
+  "templateFilterLabel": "Тип шаблона",
+  "templatePreviewUnavailable": "Предпросмотр недоступен",
+  "templateFilters": {
+    "all": "Все",
+    "image": "Изображения",
+    "video": "Видео"
+  },
+  "templates": {
+    "poster": {
+      "title": "Аметистовый постер настроения",
+      "prompt": "Создай вертикальный постер 3:4 с макрофотографией кристаллов аметиста, отражающих мягкий фиолетовый и розовый свет. Тонкие минеральные текстуры и малая глубина резкости. Добавь чёткий китайский заголовок «允许自己慢下来», мелкий шрифт с засечками и много свободного пространства. Спокойный, умиротворяющий стиль журнальной обложки."
+    },
+    "product": {
+      "title": "Реклама парфюма",
+      "prompt": "Создай вертикальное рекламное фото 3:4: прозрачный стеклянный флакон духов среди кремового льна и сухих цветов. Тёплый боковой свет из окна, изящные отражения, металлическая крышка и мягкие ткани. Товар резкий, фон чистый, место для текста, без логотипов."
+    },
+    "illustration": {
+      "title": "Иллюстрация истории",
+      "prompt": "Создай детальную сюжетную иллюстрацию с обаятельными персонажами, гармоничными цветами и проработанным окружением. Завершённая композиция, подходящая для обложки."
+    },
+    "architecture": {
+      "title": "Открытка из Венеции",
+      "prompt": "Создай вертикальную открытку 3:4 из Венеции: бирюзовый канал, исторические здания тёплого розового цвета и лодки у берега. Дневное солнце отражается в воде, детальные фасады и перспектива вдоль канала. Реалистичное фото с мягкими плёночными цветами и местом сверху для заголовка."
+    },
+    "landscape": {
+      "title": "Сказочный пейзаж Исландии",
+      "prompt": "Создай горизонтальное фото 16:9 Исландии: зелёные холмы, величественный водопад и открытые равнины под розово-фиолетовым закатом. Лёгкий туман и отчётливые передний, средний и дальний планы. Широкий угол, кинематографичный свет, естественные текстуры, без людей и текста."
+    },
+    "pet": {
+      "title": "Кот у окна",
+      "prompt": "Создай вертикальный портрет 3:4 пушистого рыжего кота на деревянном подоконнике, смотрящего наружу. Мягкий утренний свет на усах и глазах, детальная шерсть, размытые светлые шторы и тёплые плёночные цвета. Тихая естественная атмосфера."
+    },
+    "food": {
+      "title": "Свежая фотография для меню",
+      "prompt": "Создай горизонтальное фото еды 4:3 сверху: киноа, авокадо и разноцветные овощи в белой керамической миске, свежие ингредиенты рядом. Светлая каменная столешница, мягкий дневной свет, яркие цвета и реалистичные текстуры. Оставь место для текста меню."
+    },
+    "interior": {
+      "title": "Тёплый минималистичный дом",
+      "prompt": "Создай горизонтальное интерьерное фото 16:9 тёплой минималистичной гостиной: кремовый диван, светлый деревянный столик, мягкий ковёр и простые подвесные светильники. Большие окна с тёплым светом, простор, чёткая глубина и реалистичные материалы. Без людей и беспорядка."
+    },
+    "flowers": {
+      "title": "Весенняя цветочная обложка",
+      "prompt": "Создай вертикальное фото 3:4 для обложки цветочного магазина: бледно-розовые цветы крупным планом, многослойные лепестки, мягкий кремовый фон и нежный рассеянный свет. Романтичная свежая фотография, место сверху для заголовка, без брендов и водяных знаков."
+    },
+    "coast": {
+      "title": "Закат у моря",
+      "prompt": "Сгенерируй горизонтальное кинематографичное видео 16:9 длительностью 6 секунд: солнце опускается к горизонту, оранжево-золотой свет над морем и мягкие волны к берегу. Стабильная камера медленно движется вперёд, естественные цвета, непрерывное освещение и спокойная атмосфера. Без текста и водяных знаков."
+    },
+    "coffeeFilm": {
+      "title": "Рекламный ролик о кофе",
+      "prompt": "Сгенерируй горизонтальное рекламное видео 16:9 длительностью 6 секунд, вид сверху: чашка кофе среди зёрен и корицы. Молоко медленно вливается, образуя тонкие естественные завихрения. Тёплые коричневые тона, мягкий студийный свет, малая глубина резкости и непрерывное реалистичное движение жидкости. Без брендов и субтитров."
+    },
+    "cityFilm": {
+      "title": "Город в сумерках",
+      "prompt": "Сгенерируй горизонтальное видео 16:9 с воздуха длительностью 6 секунд: город в сумерках, здания загораются под вечерним небом, транспорт рисует световые ленты. Камера плавно движется вперёд, реалистичная перспектива и кинематографичная цветокоррекция. Без мерцания и текста."
+    },
+    "forestFilm": {
+      "title": "Отдых у лесного водопада",
+      "prompt": "Сгенерируй горизонтальное природное видео 16:9 длительностью 6 секунд: водопад впадает в прозрачный водоём густого леса, камни покрыты мхом, листья мягко качаются. Почти неподвижная камера медленно приближается, мягкое солнце проходит сквозь кроны. Естественное непрерывное движение воды, ряби и растений, без людей и субтитров."
+    }
   }
 }

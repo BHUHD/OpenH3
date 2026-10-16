@@ -122,6 +122,27 @@ describe('SkillsHubSettings', () => {
     expect(typeof SkillsHubSettings).toBe('function');
   });
 
+  it('displays the OpenH3 config skill while preserving its legacy route identifier', async () => {
+    searchParamsMock.state = { skillsTab: 'official' };
+    mocks.listAvailableSkills.mockResolvedValue([
+      {
+        name: 'aionui-config',
+        description: 'Configure AionUi with the bundled aioncore CLI.',
+        location: '/skills/aionui-config',
+        source: 'builtin',
+        is_auto_inject: true,
+        is_custom: false,
+      },
+    ]);
+    render(<SkillsHubSettings withWrapper={false} />);
+    const label = await screen.findByText('openh3-config');
+    expect(screen.getByText('Configure OpenH3 with the bundled OpenH3 Core CLI.')).toBeInTheDocument();
+    fireEvent.click(label);
+    expect(searchParamsMock.navigate).toHaveBeenCalledWith('/settings/skills/detail/aionui-config', {
+      state: { skillsTab: 'official' },
+    });
+  });
+
   it('has display name or name property (structure check)', () => {
     expect(SkillsHubSettings.displayName || SkillsHubSettings.name).toBeTruthy();
   });

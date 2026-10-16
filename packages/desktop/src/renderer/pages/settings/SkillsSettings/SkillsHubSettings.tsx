@@ -1,3 +1,4 @@
+import { normalizeSkillDescription, normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
@@ -188,6 +189,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
       return list.filter(
         (s) =>
           s.name.toLowerCase().includes(lowerQuery) ||
+          normalizeSkillDisplayName(s.name).toLowerCase().includes(lowerQuery) ||
           (s.description && s.description.toLowerCase().includes(lowerQuery))
       );
     },
@@ -672,15 +674,20 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
             <div
               className={`w-40px h-40px rd-10px flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
             >
-              {skill.name.charAt(0).toUpperCase()}
+              {normalizeSkillDisplayName(skill.name, skill.source).charAt(0).toUpperCase()}
             </div>
           )}
         </div>
         <div className='flex-1 min-w-0 flex flex-col justify-center gap-4px'>
-          <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>{skill.name}</h3>
+          <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>
+            {normalizeSkillDisplayName(skill.name, skill.source)}
+          </h3>
           {skill.description && (
-            <p className='text-13px text-t-secondary leading-relaxed line-clamp-2 m-0' title={skill.description}>
-              {skill.description}
+            <p
+              className='text-13px text-t-secondary leading-relaxed line-clamp-2 m-0'
+              title={normalizeSkillDescription(skill.name, skill.description, skill.source)}
+            >
+              {normalizeSkillDescription(skill.name, skill.description, skill.source)}
             </p>
           )}
         </div>
@@ -856,15 +863,20 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
                 <div
                   className={`w-40px h-40px rd-10px flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
                 >
-                  {skill.name.charAt(0).toUpperCase()}
+                  {normalizeSkillDisplayName(skill.name, skill.source).charAt(0).toUpperCase()}
                 </div>
               </div>
 
               <div className='flex-1 min-w-0 flex flex-col justify-center gap-4px'>
-                <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>{skill.name}</h3>
+                <h3 className='text-14px font-semibold text-t-primary/90 truncate m-0'>
+                  {normalizeSkillDisplayName(skill.name, skill.source)}
+                </h3>
                 {skill.description && (
-                  <p className='text-13px text-t-secondary leading-relaxed line-clamp-2 m-0' title={skill.description}>
-                    {skill.description}
+                  <p
+                    className='text-13px text-t-secondary leading-relaxed line-clamp-2 m-0'
+                    title={normalizeSkillDescription(skill.name, skill.description, skill.source)}
+                  >
+                    {normalizeSkillDescription(skill.name, skill.description, skill.source)}
                   </p>
                 )}
               </div>

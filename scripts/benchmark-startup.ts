@@ -142,14 +142,22 @@ function getLogFilePath(): string {
   const candidates: string[] = [];
   if (process.platform === 'darwin') {
     candidates.push(
+      path.join(os.homedir(), 'Library', 'Logs', 'OpenH3-Dev', `${today}.log`),
+      path.join(os.homedir(), 'Library', 'Logs', 'OpenH3', `${today}.log`),
       path.join(os.homedir(), 'Library', 'Logs', 'AionUi-Dev', `${today}.log`),
       path.join(os.homedir(), 'Library', 'Logs', 'AionUi', `${today}.log`)
     );
   } else if (process.platform === 'win32') {
     const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming');
-    candidates.push(path.join(appData, 'AionUi', 'logs', `${today}.log`));
+    candidates.push(
+      path.join(appData, 'OpenH3', 'logs', `${today}.log`),
+      path.join(appData, 'AionUi', 'logs', `${today}.log`)
+    );
   } else {
-    candidates.push(path.join(os.homedir(), '.config', 'AionUi', 'logs', `${today}.log`));
+    candidates.push(
+      path.join(os.homedir(), '.config', 'OpenH3', 'logs', `${today}.log`),
+      path.join(os.homedir(), '.config', 'AionUi', 'logs', `${today}.log`)
+    );
   }
   return candidates.find((p) => fs.existsSync(p)) ?? candidates[0];
 }

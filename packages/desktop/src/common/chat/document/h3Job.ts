@@ -162,12 +162,15 @@ export const h3VersionSchema = z
     jobId: z.string().min(1),
     createdAt: z.string().min(1),
     selected: z.boolean(),
+    review: z.enum(['candidate', 'accepted', 'rejected']).optional(),
+    /** The version that was selected immediately before this candidate was accepted. */
+    previousSelectedId: z.string().min(1).optional(),
     artifactPath: z.string().min(1).optional(),
   })
   .strict();
 export type H3Version = z.infer<typeof h3VersionSchema>;
 
-export function createH3Job(specInput: unknown, id = crypto.randomUUID()): H3Job {
+export function createH3Job(specInput: unknown, id: string = crypto.randomUUID()): H3Job {
   const spec = normalizeH3GenerationSpec(specInput);
   return { id, spec, resolvedMode: inferH3Mode(spec), status: 'queued', progress: 0, artifacts: [] };
 }

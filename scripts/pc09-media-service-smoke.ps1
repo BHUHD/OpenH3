@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptPath = Join-Path $PackageRoot 'resources\app.asar.unpacked\out\main\media-service.js'
-$electronPath = Join-Path $PackageRoot 'AionUi.exe'
+$electronPath = Join-Path $PackageRoot 'OpenH3.exe'
 $logRoot = Split-Path $DataRoot -Parent
 $stdoutPath = Join-Path $logRoot 'media-direct.out.log'
 $stderrPath = Join-Path $logRoot 'media-direct.err.log'

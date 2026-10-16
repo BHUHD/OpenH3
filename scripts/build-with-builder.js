@@ -939,11 +939,12 @@ try {
     const winUnpackedDir = path.join(outDir, 'win-unpacked');
     let cleaned = tryRemoveDir(winUnpackedDir);
     if (!cleaned) {
-      const aionRunning = isProcessRunningWindows('AionUi.exe');
+      const openH3Running = isProcessRunningWindows('OpenH3.exe');
+      const legacyAionRunning = isProcessRunningWindows('AionUi.exe');
       const electronRunning = isProcessRunningWindows('electron.exe');
-      if (aionRunning || electronRunning) {
-        console.log('⚠️  Detected running AionUi/Electron process. Attempting to close...');
-        killWindowsProcesses(['AionUi.exe', 'electron.exe']);
+      if (openH3Running || legacyAionRunning || electronRunning) {
+        console.log('⚠️  Detected running OpenH3/AionUi/Electron process. Attempting to close...');
+        killWindowsProcesses(['OpenH3.exe', 'AionUi.exe', 'electron.exe']);
         cleaned = tryRemoveDir(winUnpackedDir);
         if (!cleaned) {
           console.log('⚠️  Directory still locked. Please close any running AionUi/Electron processes and retry.');
@@ -964,7 +965,7 @@ try {
   try {
     buildWithDmgRetry(builderCommand, targetArch);
   } catch (error) {
-    const winExePath = path.join(outDir, 'win-unpacked', 'AionUi.exe');
+    const winExePath = path.join(outDir, 'win-unpacked', 'OpenH3.exe');
     const firstError = formatExecError(error);
     const canRetryWithoutExecutableEdit =
       process.platform === 'win32' &&
@@ -990,7 +991,7 @@ try {
     }
     console.log('   Retrying local build with win.signAndEditExecutable=false...');
     console.log('   This fallback handles transient Windows tool downloads, rcedit, and file-lock failures locally.');
-    killWindowsProcesses(['AionUi.exe', 'electron.exe']);
+    killWindowsProcesses(['OpenH3.exe', 'AionUi.exe', 'electron.exe']);
     cleanupWindowsPackOutput();
 
     try {

@@ -33,6 +33,7 @@ import {
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
+import { useComfySelectionPending } from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/chatSurfaceWidth';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
@@ -240,10 +241,15 @@ const AcpSendBox: React.FC<{
     setAtPath,
     setUploadFile,
   });
-  const commandQueueRuntimeGate = teamRuntime?.runtimeGate ?? {
+  const selectionPending = useComfySelectionPending(conversation_id);
+  const baseCommandQueueRuntimeGate = teamRuntime?.runtimeGate ?? {
     hydrated: runtimeView.hydrated,
     canSendMessage: runtimeView.canSendMessage,
     isProcessing: runtimeView.isProcessing,
+  };
+  const commandQueueRuntimeGate = {
+    ...baseCommandQueueRuntimeGate,
+    canSendMessage: !selectionPending && baseCommandQueueRuntimeGate.canSendMessage,
   };
   const isCancelling = runtimeView.state === 'cancelling';
   const isBusy = isCancelling || commandQueueRuntimeGate.isProcessing || !commandQueueRuntimeGate.canSendMessage;
@@ -411,7 +417,6 @@ Please check your local CLI tool authentication status`,
     enqueue,
     remove,
     prioritize,
-    sendNow,
     clear,
     reorder,
     toggleMode,
@@ -442,7 +447,7 @@ Please check your local CLI tool authentication status`,
   // that path is hard-blocked with a toast; the only way to queue a message
   // while busy is the explicit "add to queue" entry (handleAddToQueue below).
   const onSendHandler = async (message: string): Promise<void | false> => {
-    if (!supportsMidturnDelivery && isBusy) {
+    if (selectionPending || (!supportsMidturnDelivery && isBusy)) {
       Message.warning(
         t('conversation.commandQueue.midturnBlocked', {
           defaultValue:
@@ -820,7 +825,7 @@ Please check your local CLI tool authentication status`,
         active={teamRuntime?.isActive}
         onFocused={teamRuntime?.onFocus}
         disabled={false}
-        sendDisabled={!supportsMidturnDelivery && isBusy}
+        sendDisabled={selectionPending || (!supportsMidturnDelivery && isBusy)}
         sendDisabledTooltip={
           !supportsMidturnDelivery && isBusy
             ? t('conversation.commandQueue.midturnBlockedSendHint', {

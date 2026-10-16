@@ -29,6 +29,7 @@ import { Drag } from '@icon-park/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
+import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantDisplay';
 
 type EnabledAssistantsListProps = {
   assistants: AssistantListItem[];
@@ -63,7 +64,7 @@ const EnabledAssistantRow: React.FC<EnabledAssistantRowProps> = ({
     id: assistant.id,
     disabled: !draggable,
   });
-  const name = assistant.name_i18n?.[localeKey] || assistant.name;
+  const name = normalizeAssistantDisplayName(assistant.name_i18n?.[localeKey] || assistant.name);
   const sourceTag = resolveAssistantSourceTag(assistant.source);
   const sourceLabel =
     sourceTag === 'builtin'

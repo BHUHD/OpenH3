@@ -2,7 +2,7 @@ param([string]$Root = 'D:\h3-setup-validation', [int]$Port = 33012)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $bundle = 'D:\视频Agent\.runtime\h3-offline-bundle'
-$electron = 'D:\视频Agent\deploy\portable-test\AionUi.exe'
+$electron = 'D:\视频Agent\deploy\portable-test\OpenH3.exe'
 $env:ELECTRON_RUN_AS_NODE = '1'
 $env:NODE_PATH = Join-Path (Split-Path $electron) 'resources\app.asar.unpacked\node_modules'
 $env:AIONUI_MEDIA_PORT = [string]$Port

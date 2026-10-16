@@ -81,12 +81,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Ця система не підтримується вбудованим backend",
-      "description": "OpenH3 відкрився, але локальний backend AionCore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть OpenH3.",
+      "description": "OpenH3 відкрився, але локальний backend OpenH3 Core не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть OpenH3.",
       "requiredVersions": "Потрібні символи середовища виконання: {{versions}}"
     },
     "incompleteInstallation": {
       "title": "Встановлення OpenH3 неповне",
-      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому AionCore не може запуститися. Завантажте та перевстановіть останню версію OpenH3. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило AionCore у карантин.",
+      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому OpenH3 Core не може запуститися. Завантажте та перевстановіть останню версію OpenH3. Якщо проблема повториться після перевстановлення, перевірте, чи захисне або антивірусне ПЗ не помістило OpenH3 Core у карантин.",
       "downloadLatest": "Завантажити останню версію",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsSent": "Діагностику надіслано",
@@ -100,7 +100,7 @@
     },
     "dataMigration": {
       "title": "Local data migration failed",
-      "description": "OpenH3 opened, but AionCore stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
+      "description": "OpenH3 opened, but OpenH3 Core stopped while initializing local data. Reinstalling OpenH3 may not fix this. Send a diagnostics report or contact support so the local database migration can be inspected.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -113,7 +113,7 @@
     },
     "localDataRepair": {
       "title": "Local data repair failed",
-      "description": "OpenH3 відкрився, але AionCore зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення OpenH3 може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
+      "description": "OpenH3 відкрився, але OpenH3 Core зупинився під час підготовки локальних даних запуску, як-от записи assistants або агентів. Повторне встановлення OpenH3 може не вирішити проблему. Надішліть діагностичний звіт або зверніться до підтримки, щоб можна було перевірити локальну базу даних.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -121,7 +121,7 @@
     },
     "startupDirectory": {
       "title": "Startup directory is unavailable",
-      "description": "OpenH3 opened, but AionCore could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart OpenH3.",
+      "description": "OpenH3 opened, but OpenH3 Core could not start because the configured work or log directory is missing, unavailable, or blocked by permissions. Check that the configured directories exist and are writable, then restart OpenH3.",
       "sendDiagnostics": "Send diagnostics",
       "diagnosticsSent": "Diagnostics sent",
       "diagnosticsReportSuccess": "Diagnostics report sent",
@@ -155,11 +155,11 @@
     },
     "pendingSlow": {
       "title": "Запуск",
-      "description": "AionCore запускається, зачекайте. Якщо він довго не відповідає, закрийте застосунок і відкрийте його знову."
+      "description": "OpenH3 Core запускається, зачекайте. Якщо він довго не відповідає, закрийте застосунок і відкрийте його знову."
     },
     "exited": {
       "title": "Запуск не завершено",
-      "description": "AionCore не зміг завершити запуск і закрився. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
+      "description": "OpenH3 Core не зміг завершити запуск і закрився. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsSent": "Діагностику надіслано",
       "diagnosticsReportSuccess": "Діагностику надіслано",
@@ -167,7 +167,7 @@
     },
     "portReportTimeout": {
       "title": "Час запуску вичерпано",
-      "description": "AionCore не завершив запуск за очікуваний час. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
+      "description": "OpenH3 Core не завершив запуск за очікуваний час. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsSent": "Діагностику надіслано",
       "diagnosticsReportSuccess": "Діагностику надіслано",
@@ -175,7 +175,7 @@
     },
     "startupFailed": {
       "title": "Не вдалося запустити",
-      "description": "AionCore не вдалося запустити. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
+      "description": "OpenH3 Core не вдалося запустити. Перезапустіть застосунок; якщо це повторюється, надішліть діагностику.",
       "sendDiagnostics": "Надіслати діагностику",
       "diagnosticsSent": "Діагностику надіслано",
       "diagnosticsReportSuccess": "Діагностику надіслано",

@@ -1,0 +1,511 @@
+{
+  "schemaVersion": 1,
+  "researchedAt": "2026-10-14",
+  "status": "discovery-only",
+  "sources": {
+    "workflowTemplates": {
+      "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+      "repository": "Comfy-Org/workflow_templates"
+    },
+    "comfyCore": {
+      "revision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+      "repository": "Comfy-Org/ComfyUI"
+    },
+    "comfyCli": {
+      "revision": "e05c06fe81e35abbbf57dbb4093468be72d48d16",
+      "repository": "Comfy-Org/comfy-cli"
+    },
+    "h3Lite": {
+      "componentSetDocument": "references/component-sets.md",
+      "revision": "9bafafa6f1741fd6eb49d46b078e2dbb0feec3be",
+      "repository": "Rimagination/h3lite"
+    }
+  },
+  "offlineApiPreparation": {
+    "status": "source-derived-api-baselines-discovery-only",
+    "conversionPerformed": true,
+    "liveRuntimeVerified": false,
+    "converter": {
+      "repository": "Comfy-Org/comfy-cli",
+      "revision": "e05c06fe81e35abbbf57dbb4093468be72d48d16",
+      "path": "comfy_cli/workflow_to_api.py",
+      "sha256": "5142a4a449ddaf4cb5a62516db8359cb702f0925108f66af31e1b2e47b54e600",
+      "url": "https://raw.githubusercontent.com/Comfy-Org/comfy-cli/e05c06fe81e35abbbf57dbb4093468be72d48d16/comfy_cli/workflow_to_api.py",
+      "entrypoint": "convert_ui_to_api(workflow, object_info)",
+      "requires": "Matching offline object_info including all executed class schemas, input ordering, widget types, output types and loader enums"
+    },
+    "coreSchemaSources": [
+      {
+        "path": "nodes.py",
+        "sha256": "8c5a0239a4d3b9709085348a96d25184d28fa2267c2421b7f354614c03f3139c",
+        "sizeBytes": 109521,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/nodes.py"
+      },
+      {
+        "path": "comfy_extras/nodes_qwen.py",
+        "sha256": "54ce02aa9e167c0b497ce026ac6b558f539427d2d1ed4fc1fcc2ec8e6bc529da",
+        "sizeBytes": 11872,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_qwen.py"
+      },
+      {
+        "path": "comfy_extras/nodes_minimax_h3.py",
+        "sha256": "108ceff11e5a5c9a34a57bbc380447cf9941beb673a1bd421abc818de54ccd5c",
+        "sizeBytes": 30934,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_minimax_h3.py"
+      },
+      {
+        "path": "comfy_extras/nodes_model_advanced.py",
+        "sha256": "34c5065756d925791c7a238f084eefd5ff912e1e84976a2dbe94432deea8ffcc",
+        "sizeBytes": 17086,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_model_advanced.py"
+      },
+      {
+        "path": "comfy_extras/nodes_sd3.py",
+        "sha256": "90a79847332fed7cc97379abbc7092116e6b1b883a7c9e933ac88167a521f693",
+        "sizeBytes": 8294,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_sd3.py"
+      },
+      {
+        "path": "comfy_extras/nodes_flux.py",
+        "sha256": "71c9d804a9acfb7a828fecb8fcc4b93e28f4417f0c4259a68910f4027059741f",
+        "sizeBytes": 10510,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/e0a32bce84f4603f2b61b16b50f8958e68fd6171/comfy_extras/nodes_flux.py"
+      }
+    ],
+    "limitations": [
+      "Packaged Z-Image and single-image Qwen-Edit API graphs include source-derived planning schemas and conversion provenance, not live object_info exports.",
+      "The official H3 UI-only candidate still requires its own faithful conversion; the separate legacy H3 candidate uses its existing pinned API export.",
+      "Dynamic loader/image enums describe proposed or upstream example filenames, not local installed assets.",
+      "Offline conversion does not prove installed components, accelerator kernels, live node imports or end-to-end generation."
+    ],
+    "packagedApiBaselines": "references/workflows.json",
+    "convertedFamilies": ["z-image", "qwen-edit"]
+  },
+  "updateProcedure": [
+    "Query official repository HEAD/release metadata read-only when a different baseline is needed.",
+    "Fetch the selected template and Git-LFS metadata at fixed revisions, review changes, and build a new complete candidate.",
+    "Keep the previous verified registered profile unchanged until the replacement passes local validation."
+  ],
+  "candidates": [
+    {
+      "id": "h3-official-int8-turbo8-discovery",
+      "family": "h3",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "workflow": {
+        "repository": "Comfy-Org/workflow_templates",
+        "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+        "path": "templates/video_minimax_h3_t2v.json",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/video_minimax_h3_t2v.json",
+        "sizeBytes": 68461,
+        "sha256": "8a5eb23b0dd2df9e99b6f7af9684e770f188feca820d241364b729e01dedf3b6",
+        "format": "ui",
+        "apiConversionRequired": true
+      },
+      "components": [
+        {
+          "role": "diffusion",
+          "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+          "directory": "diffusion_models",
+          "precision": "INT8-ConvRot",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "repositoryPath": "diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+          "sizeBytes": 20970379616,
+          "sha256": "e889202c41dafb67b10d67b97f0d8541508036a6090af23425a5c2615d03c47a",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "text-encoder",
+          "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          "directory": "text_encoders",
+          "precision": "NVFP4-AWQ",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "repositoryPath": "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          "sizeBytes": 15687142551,
+          "sha256": "35a88d51044231fe332301d7a62aa81e3f2cba62febeb446e2c1e3e0ef76f2c6",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "audio-vae",
+          "name": "minimax_h3_audio_vae_fp32.safetensors",
+          "directory": "vae",
+          "precision": "FP32",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "repositoryPath": "vae/minimax_h3_audio_vae_fp32.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/vae/minimax_h3_audio_vae_fp32.safetensors",
+          "sizeBytes": 605254808,
+          "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "video-vae",
+          "name": "minimax_h3_video_vae_int8_convrot.safetensors",
+          "directory": "vae",
+          "precision": "INT8-ConvRot",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "repositoryPath": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "sizeBytes": 2811065184,
+          "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "lora",
+          "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+          "directory": "loras",
+          "precision": "BF16",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "lightx2v/Minimax-h3-Turbo",
+          "revision": "3ec17a324ced54151364f24f8b5fb6bf7e26414f",
+          "repositoryPath": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+          "url": "https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/3ec17a324ced54151364f24f8b5fb6bf7e26414f/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
+          "sizeBytes": 1956193000,
+          "sha256": "2339acdf19bfe123f46b971ea35d367a84adb85de43627e1eceafa5a5b2b111e",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        }
+      ],
+      "nodeRequirements": {
+        "source": "https://github.com/Comfy-Org/ComfyUI",
+        "researchHeadRevision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+        "templateAuthoredCoreVersions": ["0.33.0"],
+        "authoredVersionsAreNotMinimumSupportedVersions": true,
+        "classTypes": [
+          "BasicGuider",
+          "BasicScheduler",
+          "CLIPLoader",
+          "ComfyMathExpression",
+          "ComfySwitchNode",
+          "CreateVideo",
+          "KSamplerSelect",
+          "LoraLoaderModelOnly",
+          "MiniMaxH3ImageToVideo",
+          "PrimitiveBoolean",
+          "PrimitiveFloat",
+          "PrimitiveInt",
+          "RandomNoise",
+          "ResolutionSelector",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ],
+        "actualObjectInfoAndKernelValidationRequired": true
+      },
+      "limitations": [
+        "This is a reproducible upstream discovery snapshot, not an installable or hardware-compatible profile.",
+        "Resolve UI subgraphs and validate the complete API graph against the selected pinned runtime before UI consent.",
+        "Verify all required precision/attention kernels on the real accelerator; no VRAM capacity mapping is provided.",
+        "Alternative quantizations and accelerated component sets are separate candidates; never mix assets by filename."
+      ]
+    },
+    {
+      "id": "qwen-edit-2511-fp8mixed-lightning-discovery",
+      "family": "qwen-edit",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "workflow": {
+        "repository": "Comfy-Org/workflow_templates",
+        "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+        "path": "templates/image_qwen_image_edit_2511.json",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/image_qwen_image_edit_2511.json",
+        "sizeBytes": 59841,
+        "sha256": "b23103935f437e1fe3184247fa5bafb891a28113d0c63de7449b7cdfb0419111",
+        "format": "ui",
+        "apiConversionRequired": true
+      },
+      "components": [
+        {
+          "role": "text-encoder",
+          "name": "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "directory": "text_encoders",
+          "precision": "FP8-scaled",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/HunyuanVideo_1.5_repackaged",
+          "revision": "1405a2b738c29b890cf6d03fc038d8d3e92eeed7",
+          "repositoryPath": "split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/HunyuanVideo_1.5_repackaged/resolve/1405a2b738c29b890cf6d03fc038d8d3e92eeed7/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "sizeBytes": 9384670680,
+          "sha256": "cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "vae",
+          "name": "qwen_image_vae.safetensors",
+          "directory": "vae",
+          "precision": "unconfirmed: inspect model metadata before planning",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/Qwen-Image_ComfyUI",
+          "revision": "1f12b17be14c89b026c51a91d67c32f84bb047bc",
+          "repositoryPath": "split_files/vae/qwen_image_vae.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/1f12b17be14c89b026c51a91d67c32f84bb047bc/split_files/vae/qwen_image_vae.safetensors",
+          "sizeBytes": 253806246,
+          "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "diffusion",
+          "name": "qwen_image_edit_2511_fp8mixed.safetensors",
+          "directory": "diffusion_models",
+          "precision": "FP8-mixed",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/Qwen-Image-Edit_ComfyUI",
+          "revision": "f68ace85e60b4a02a323e394253731947657b7d2",
+          "repositoryPath": "split_files/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/Qwen-Image-Edit_ComfyUI/resolve/f68ace85e60b4a02a323e394253731947657b7d2/split_files/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors",
+          "sizeBytes": 20533762817,
+          "sha256": "c9fdc158e46d3b61ef75f21ae866ca2fe808bf4a53643120d1c1e87c19280a4e",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "lora",
+          "name": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+          "directory": "loras",
+          "precision": "BF16",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "lightx2v/Qwen-Image-Edit-2511-Lightning",
+          "revision": "d74eba145674fd7e31b949324e148e21e7118abd",
+          "repositoryPath": "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+          "url": "https://huggingface.co/lightx2v/Qwen-Image-Edit-2511-Lightning/resolve/d74eba145674fd7e31b949324e148e21e7118abd/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors",
+          "sizeBytes": 849608296,
+          "sha256": "22226e8d05d354bb356627d428809f5afd7819399b077238a2b70a82883a904f",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        }
+      ],
+      "nodeRequirements": {
+        "source": "https://github.com/Comfy-Org/ComfyUI",
+        "researchHeadRevision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+        "templateAuthoredCoreVersions": ["0.13.0", "0.16.4", "0.5.1"],
+        "authoredVersionsAreNotMinimumSupportedVersions": true,
+        "classTypes": [
+          "CFGNorm",
+          "CLIPLoader",
+          "ComfySwitchNode",
+          "FluxKontextImageScale",
+          "FluxKontextMultiReferenceLatentMethod",
+          "KSampler",
+          "LoadImage",
+          "LoraLoaderModelOnly",
+          "ModelSamplingAuraFlow",
+          "PrimitiveBoolean",
+          "PrimitiveFloat",
+          "PrimitiveInt",
+          "SaveImage",
+          "TextEncodeQwenImageEditPlus",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEEncode",
+          "VAELoader"
+        ],
+        "actualObjectInfoAndKernelValidationRequired": true
+      },
+      "limitations": [
+        "This is a reproducible upstream discovery snapshot, not an installable or hardware-compatible profile.",
+        "Resolve UI subgraphs and validate the complete API graph against the selected pinned runtime before UI consent.",
+        "Verify all required precision/attention kernels on the real accelerator; no VRAM capacity mapping is provided.",
+        "Alternative quantizations and accelerated component sets are separate candidates; never mix assets by filename."
+      ],
+      "apiBaselineId": "qwen-edit-2511-fp8mixed-lightning-single-image-api-discovery"
+    },
+    {
+      "id": "z-image-turbo-bf16-discovery",
+      "family": "z-image",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "workflow": {
+        "repository": "Comfy-Org/workflow_templates",
+        "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+        "path": "templates/image_z_image_turbo.json",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/image_z_image_turbo.json",
+        "sizeBytes": 27390,
+        "sha256": "baaf937ff071970cc6b1e2fa0093a4dd664a4cc734d38adc4c7810e535c1f1d3",
+        "format": "ui",
+        "apiConversionRequired": true
+      },
+      "components": [
+        {
+          "role": "diffusion",
+          "name": "z_image_turbo_bf16.safetensors",
+          "directory": "diffusion_models",
+          "precision": "BF16",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/z_image_turbo",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "repositoryPath": "split_files/diffusion_models/z_image_turbo_bf16.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/diffusion_models/z_image_turbo_bf16.safetensors",
+          "sizeBytes": 12309866400,
+          "sha256": "2407613050b809ffdff18a4ac99af83ea6b95443ecebdf80e064a79c825574a6",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "text-encoder",
+          "name": "qwen_3_4b.safetensors",
+          "directory": "text_encoders",
+          "precision": "unconfirmed: inspect model metadata before planning",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/z_image_turbo",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "repositoryPath": "split_files/text_encoders/qwen_3_4b.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/text_encoders/qwen_3_4b.safetensors",
+          "sizeBytes": 8044982048,
+          "sha256": "6c671498573ac2f7a5501502ccce8d2b08ea6ca2f661c458e708f36b36edfc5a",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        },
+        {
+          "role": "vae",
+          "name": "ae.safetensors",
+          "directory": "vae",
+          "precision": "unconfirmed: inspect model metadata before planning",
+          "precisionEvidence": "Filename convention only; verify loader and model metadata",
+          "repository": "Comfy-Org/z_image_turbo",
+          "revision": "6fc90a3b1b653e935a0d175e260736de25b84df5",
+          "repositoryPath": "split_files/vae/ae.safetensors",
+          "url": "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/6fc90a3b1b653e935a0d175e260736de25b84df5/split_files/vae/ae.safetensors",
+          "sizeBytes": 335304388,
+          "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38",
+          "integrityEvidence": "Upstream Hugging Face Git-LFS metadata; file not downloaded"
+        }
+      ],
+      "nodeRequirements": {
+        "source": "https://github.com/Comfy-Org/ComfyUI",
+        "researchHeadRevision": "e0a32bce84f4603f2b61b16b50f8958e68fd6171",
+        "templateAuthoredCoreVersions": ["0.3.64", "0.3.73"],
+        "authoredVersionsAreNotMinimumSupportedVersions": true,
+        "classTypes": [
+          "CLIPLoader",
+          "CLIPTextEncode",
+          "ConditioningZeroOut",
+          "EmptySD3LatentImage",
+          "KSampler",
+          "ModelSamplingAuraFlow",
+          "SaveImage",
+          "UNETLoader",
+          "VAEDecode",
+          "VAELoader"
+        ],
+        "actualObjectInfoAndKernelValidationRequired": true
+      },
+      "limitations": [
+        "This is a reproducible upstream discovery snapshot, not an installable or hardware-compatible profile.",
+        "Resolve UI subgraphs and validate the complete API graph against the selected pinned runtime before UI consent.",
+        "Verify all required precision/attention kernels on the real accelerator; no VRAM capacity mapping is provided.",
+        "Alternative quantizations and accelerated component sets are separate candidates; never mix assets by filename."
+      ],
+      "apiBaselineId": "z-image-turbo-bf16-api-discovery"
+    },
+    {
+      "id": "h3-matlowai-existing-bundle-discovery",
+      "family": "h3",
+      "status": "discovery-only",
+      "verifiedOnThisMachine": false,
+      "source": "OpenH3 pinned legacy bundle constants (h3OfflineBundle.ts / h3DownloadPlan.ts); recorded upstream and previously published hashes, no new local generation performed",
+      "modelRevision": "8a8dffaa0cd99c6184833ae0a3b4e9b0089c17b3",
+      "runtime": {
+        "version": "v0.35.0",
+        "url": "https://github.com/Comfy-Org/ComfyUI/releases/download/v0.35.0/ComfyUI_windows_portable_nvidia.7z",
+        "sizeBytes": 1910039517,
+        "sha256": "6fb005a8269c6f5972a8fb76d7a4fc251578ccc7906671a801b382591c791dd2"
+      },
+      "components": [
+        {
+          "role": "diffusion",
+          "path": "models/diffusion_models/minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors",
+          "repository": "MATLOWAI/minimax-h3-fused-turbo-int8-convrot",
+          "revision": "8a8dffaa0cd99c6184833ae0a3b4e9b0089c17b3",
+          "sizeBytes": 20980178976,
+          "sha256": "4262e4e9963c553fa00016bbe83961407a4fc0a888be95fd836c8d4f2304e48b",
+          "url": "https://huggingface.co/MATLOWAI/minimax-h3-fused-turbo-int8-convrot/resolve/8a8dffaa0cd99c6184833ae0a3b4e9b0089c17b3/diffusion_models/minimax_h3_fused_refdelta_r1024_turbo8_mystic07_int8_convrot.safetensors"
+        },
+        {
+          "role": "video-vae",
+          "path": "models/vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "repository": "GuangyuanSD/minimax_h3_video_vae_int8_convrot",
+          "revision": "fc2f3c9dcb4449ef08d46fc3dc6b0e353a586321",
+          "sizeBytes": 3171670912,
+          "sha256": "9bb2d96f218c76babd85e0611b85ca8fb330a90546c01a0005e8a58a59593410",
+          "url": "https://huggingface.co/GuangyuanSD/minimax_h3_video_vae_int8_convrot/resolve/fc2f3c9dcb4449ef08d46fc3dc6b0e353a586321/minimax_h3_video_vae_int8_convrot.safetensors"
+        },
+        {
+          "role": "audio-vae",
+          "path": "models/vae/minimax_h3_audio_vae_fp32.safetensors",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "a98869194787969724c7425d95d0ed73ce9202af",
+          "sizeBytes": 605254808,
+          "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/a98869194787969724c7425d95d0ed73ce9202af/vae/minimax_h3_audio_vae_fp32.safetensors"
+        },
+        {
+          "role": "text-encoder",
+          "path": "models/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "a98869194787969724c7425d95d0ed73ce9202af",
+          "sizeBytes": 15687142551,
+          "sha256": "35a88d51044231fe332301d7a62aa81e3f2cba62febeb446e2c1e3e0ef76f2c6",
+          "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/a98869194787969724c7425d95d0ed73ce9202af/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "comfyui-mainodes",
+          "repository": "https://github.com/matlowai/ComfyUI-MAINodes",
+          "revision": "f4868b4a08e8a504ce86db54a17961d399ffa2bc",
+          "sizeBytes": 97516766,
+          "sha256": "053029c608cb52bd6da0784f8434806d4e954fa9c4da943c1b3bd9cb2bbee60e",
+          "url": "https://github.com/matlowai/ComfyUI-MAINodes/archive/f4868b4a08e8a504ce86db54a17961d399ffa2bc.zip"
+        },
+        {
+          "id": "h3-sla-node",
+          "repository": "https://github.com/ethanfel/ComfyUI-PlagueKind-Nodes-only-sparse",
+          "revision": "fd26ffb89dee294ca740a59632e5b3423b9a9d2a",
+          "sizeBytes": 23514,
+          "sha256": "1225b4f57f07430dcfc047ccb58ed6f6287a30d9cdeef0239ed17c566fb28f47",
+          "url": "https://github.com/ethanfel/ComfyUI-PlagueKind-Nodes-only-sparse/archive/fd26ffb89dee294ca740a59632e5b3423b9a9d2a.zip"
+        },
+        {
+          "id": "comfyui-kjnodes",
+          "repository": "https://github.com/kijai/ComfyUI-KJNodes",
+          "revision": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+          "sizeBytes": 1131840,
+          "sha256": "cf4d48541219ecf8ef693b7fc25871eae9fbb6e417449871b39753bc087a6109",
+          "url": "https://github.com/kijai/ComfyUI-KJNodes/archive/d3cfe21625e5170126ce06fbfcfe1d88108688c3.zip"
+        }
+      ],
+      "workflows": [
+        {
+          "path": "workflows/lowvram/01_reference_4step_sla_lowvram.api.json",
+          "format": "api",
+          "sizeBytes": 4139,
+          "sha256": "f622f57e30056f45355079203e7d3fc6ea4db60451686293d1eda47c9f471487"
+        },
+        {
+          "path": "workflows/lowvram/04_i2v_fl2v_4step_sla_lowvram.api.json",
+          "format": "api",
+          "sizeBytes": 4327,
+          "sha256": "5993d7f12f7cb43cb446d8c71c1a6c56d0c35dfc49cf6998db64979de70f6f4d"
+        },
+        {
+          "path": "workflows/lowvram/05_ref2va_4step_sla_lowvram.api.json",
+          "format": "api",
+          "sizeBytes": 4737,
+          "sha256": "c3bf8dc9bb5d8265648f5a49d31c4323a1f132206ddc3a4230c4e5e07bd979c4"
+        }
+      ],
+      "limitations": [
+        "This entire legacy fused diffusion + NVFP4-AWQ encoder + INT8-ConvRot video VAE + FP32 audio VAE + pinned custom nodes is an atomic separate set.",
+        "Do not replace its VAE or diffusion with the official current candidate just because filenames look similar.",
+        "Existing archive/hash evidence is not a new hardware compatibility result. Revalidate actual accelerator and all required kernels before registration."
+      ]
+    }
+  ]
+}

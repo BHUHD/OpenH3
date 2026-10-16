@@ -7,7 +7,13 @@
 import { ipcBridge } from '@/common';
 import { type ChatFileRef, chatFileRefPath } from '@/common/types/chatFile';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
-import { toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
+import {
+  creationMessage,
+  creationSessionServers,
+  type CreationModel,
+  type CreationRequest,
+} from '@/common/chat/document/creation/creation';
+import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { emitter } from '@/renderer/utils/emitter';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
 import { Message } from '@arco-design/web-react';
@@ -16,8 +22,11 @@ import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { mutate as swrMutate } from 'swr';
 import { getConversationCreateErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
+import { comfyFamilyDetails, writeComfyDraftIntent, type ComfyDraftIntent } from '../Creation/comfyDraft';
 
 export type GuidSendDeps = {
+  creationModel?: CreationModel;
+  creationIntent?: ComfyDraftIntent;
   // Input state
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
@@ -58,7 +67,7 @@ export type GuidSendDeps = {
 };
 
 export type GuidSendResult = {
-  handleSend: () => Promise<void>;
+  handleSend: () => Promise<boolean>;
   sendMessageHandler: () => void;
   isButtonDisabled: boolean;
 };
@@ -68,8 +77,9 @@ export type GuidSendResult = {
  */
 export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
   const {
+    creationModel,
+    creationIntent,
     input,
-    setInput,
     files,
     setFiles,
     dir,
@@ -101,7 +111,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
 
   const handleSend = useCallback(async () => {
     if (!selectedAssistantId) {
-      return;
+      return false;
     }
 
     const isCustomWorkspace = !!dir;
@@ -130,12 +140,84 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       selectedMcpServerIds !== undefined ? selectedAllMcpServerIds : defaultSelectedMcpServerIds;
     const selectedUserMcpServerIdsToSend =
       selectedMcpServerIds !== undefined ? selectedUserMcpServerIds : defaultSelectedUserMcpServerIds;
-    const selectedSessionMcpServersToSend =
+    let selectedSessionMcpServersToSend =
       selectedMcpServerIds !== undefined
         ? selectedAllSessionMcpServers
         : availableMcpServers
             .filter((server) => (defaultSelectedMcpServerIds ?? []).includes(server.id))
             .map((server) => toSessionMcpServer(server));
+
+    const creationRequest: CreationRequest | undefined = creationIntent
+      ? {
+          id: creationIntent.profileId ?? creationIntent.family,
+          name: comfyFamilyDetails(creationIntent.family).name,
+          kind: comfyFamilyDetails(creationIntent.family).kind,
+          source: 'local',
+          state: creationIntent.profileId ? 'invalid' : 'not-installed',
+          family: creationIntent.family,
+          intent: creationIntent.intent,
+          profileId: creationIntent.profileId,
+        }
+      : creationModel
+        ? {
+            id: creationModel.id,
+            name: creationModel.name,
+            kind: creationModel.kind,
+            source: creationModel.source,
+            state: creationModel.state,
+            family: creationModel.family,
+            profileId: creationModel.profileId,
+            intent: creationModel.intent ?? 'generate',
+          }
+        : undefined;
+    const initialInput =
+      creationRequest && input.trim()
+        ? creationMessage(
+            input,
+            t(creationIntent ? 'guid.comfy.intentSummary' : 'guid.creation.requestSummary', {
+              kind: t(`guid.templateFilters.${creationRequest.kind}`),
+              source: t(`guid.creation.${creationRequest.source}`),
+              model:
+                creationRequest.name ||
+                t(`guid.creation.${creationRequest.source}${creationRequest.kind === 'image' ? 'Image' : 'Video'}`),
+              state: t(`guid.creation.states.${creationRequest.state}`),
+              intent: creationRequest.intent && t(`guid.comfy.actions.${creationRequest.intent}`),
+              profile: creationRequest.profileId ?? '',
+            }) +
+              (!creationIntent && creationRequest.profileId
+                ? `\n${t('guid.comfy.profileSummary', { profile: creationRequest.profileId })}`
+                : '')
+          )
+        : input;
+    const creationRequestId = creationRequest ? crypto.randomUUID() : undefined;
+    const requiresCreationBinding = creationRequest?.source === 'local';
+    const creationSnapshot = creationRequest ? { ...creationRequest, requestId: creationRequestId! } : undefined;
+    if (creationRequest) {
+      const requiredName =
+        requiresCreationBinding || creationRequest.kind === 'video' ? 'aionui-video-media' : 'aionui-image-generation';
+      let required = availableMcpServers.find((server) => server.builtin && server.name === requiredName);
+      // First-load migrations can register the builtin tools after Guid mounts.
+      if (!required)
+        required = (await ensureBackendMcpCatalog()).allServers.find(
+          (server) => server.builtin && server.name === requiredName
+        );
+      if (!required) {
+        Message.error(t('guid.creation.toolsUnavailable'));
+        return false;
+      }
+      const sessionServers =
+        selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend;
+      const combined =
+        required && !sessionServers.some((server) => server.id === required.id)
+          ? [...sessionServers, toSessionMcpServer(required)]
+          : sessionServers;
+      selectedSessionMcpServersToSend = creationSessionServers(
+        combined,
+        creationRequest,
+        creationRequest.source === 'cloud' ? creationModel?.provider : undefined,
+        creationRequestId
+      );
+    }
 
     // `current_model` is the aionrs provider selection and means nothing to a
     // CLI agent, which owns its own model list. Used as a blanket fallback it
@@ -165,15 +247,26 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       model: assistantOverrideModel,
       permission: selectedMode || undefined,
       thought_level: selectedThoughtLevelValue || undefined,
-      skill_ids: enabled_skills_to_send,
-      disabled_builtin_skill_ids: excludeBuiltinSkills,
-      mcp_ids: assistantOverrideMcpIds,
+      skill_ids: requiresCreationBinding
+        ? [...new Set([...(enabled_skills_to_send ?? []), 'comfyui-local'])]
+        : enabled_skills_to_send,
+      disabled_builtin_skill_ids: requiresCreationBinding
+        ? (excludeBuiltinSkills ?? []).filter((skill) => skill !== 'comfyui-local')
+        : excludeBuiltinSkills,
+      mcp_ids: creationRequest
+        ? [
+            ...new Set([
+              ...(assistantOverrideMcpIds ?? []),
+              ...selectedSessionMcpServersToSend.map((server) => server.id),
+            ]),
+          ]
+        : assistantOverrideMcpIds,
     };
 
     if (assistantBackend === 'aionrs') {
       if (!current_model) {
         Message.warning(t('conversation.noModelConfigured'));
-        return;
+        return false;
       }
       try {
         const conversation = await ipcBridge.conversation.create.invoke({
@@ -185,6 +278,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             conversation_overrides: assistantOverrides,
           },
           extra: {
+            ...(creationSnapshot ? { creation_request: creationSnapshot } : {}),
             default_files: files.map(chatFileRefPath),
             workspace: finalWorkspace,
             custom_workspace: isCustomWorkspace,
@@ -195,7 +289,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
 
         if (!conversation || !conversation.id) {
           Message.error(t('conversation.createFailed'));
-          return;
+          return false;
         }
 
         if (isCustomWorkspace) {
@@ -214,20 +308,24 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         // Empty input = "start chat": create the conversation but do not stash an
         // initial message, so the window opens idle on the empty state instead of
         // auto-sending a blank first turn.
-        if (input.trim()) {
+        if (input.trim() || creationRequestId) {
           const initialMessage = {
-            input,
+            input: initialInput,
             files: files.length > 0 ? files : undefined,
+            guidDraft: input,
+            creationRequestId,
+            creationRequest: creationSnapshot,
           };
           sessionStorage.setItem(`aionrs_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
         }
 
+        writeComfyDraftIntent(undefined);
         await navigate(`/conversation/${conversation.id}`);
+        return true;
       } catch (error: unknown) {
         console.error('Failed to create Aion CLI conversation:', error);
         throw error;
       }
-      return;
     }
 
     try {
@@ -239,17 +337,22 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           conversation_overrides: assistantOverrides,
         },
         extra: {
+          ...(creationSnapshot ? { creation_request: creationSnapshot } : {}),
           workspace: finalWorkspace,
           custom_workspace: isCustomWorkspace,
           default_files: files.map(chatFileRefPath),
           selected_mcp_server_ids: selectedUserMcpServerIdsToSend,
-          selected_session_mcp_servers:
-            selectedMcpServerIds !== undefined ? selectedSessionMcpServers : selectedSessionMcpServersToSend,
+          selected_session_mcp_servers: creationRequest
+            ? selectedSessionMcpServersToSend
+            : selectedMcpServerIds !== undefined
+              ? selectedSessionMcpServers
+              : selectedSessionMcpServersToSend,
         },
       });
       if (!conversation || !conversation.id) {
         console.error('Failed to create ACP conversation - conversation object is null or missing id');
-        return;
+        Message.error(t('conversation.createFailed'));
+        return false;
       }
 
       if (isCustomWorkspace) {
@@ -268,20 +371,27 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       // Empty input = "start chat": create the conversation but do not stash an
       // initial message, so the window opens idle on the empty state instead of
       // auto-sending a blank first turn.
-      if (input.trim()) {
+      if (input.trim() || creationRequestId) {
         const initialMessage = {
-          input,
+          input: initialInput,
           files: files.length > 0 ? files : undefined,
+          guidDraft: input,
+          creationRequestId,
+          creationRequest: creationSnapshot,
         };
         sessionStorage.setItem(`acp_initial_message_${conversation.id}`, JSON.stringify(initialMessage));
       }
 
+      writeComfyDraftIntent(undefined);
       await navigate(`/conversation/${conversation.id}`);
+      return true;
     } catch (error: unknown) {
       console.error('Failed to create ACP conversation:', error);
       throw error;
     }
   }, [
+    creationModel,
+    creationIntent,
     input,
     files,
     dir,
@@ -308,8 +418,8 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     sendingRef.current = true;
     setLoading(true);
     handleSend()
-      .then(() => {
-        setInput('');
+      .then((created) => {
+        if (!created) return;
         setMentionOpen(false);
         setMentionQuery(null);
         setMentionSelectorOpen(false);
@@ -329,7 +439,6 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     loading,
     handleSend,
     setLoading,
-    setInput,
     setMentionOpen,
     setMentionQuery,
     setMentionSelectorOpen,

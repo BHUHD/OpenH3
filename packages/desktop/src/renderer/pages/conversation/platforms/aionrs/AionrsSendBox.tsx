@@ -5,6 +5,9 @@
  */
 
 import { ipcBridge } from '@/common';
+import { h3JobApi } from '@/common/chat/document/h3JobApi';
+import { comfyApi } from '@/common/chat/document/creation/comfyApi';
+import { clearGuidDraftIfMatches } from '@/renderer/pages/guid/hooks/useGuidDraft';
 import type { IConversationMcpStatus } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
@@ -32,6 +35,10 @@ import {
   type ConversationCommandQueueItem,
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
+import {
+  beginComfySelectionChange,
+  useComfySelectionPending,
+} from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
 import { getConversationRuntimeWorkspaceErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
 import { getChatSurfaceWidthClass } from '@/renderer/pages/conversation/utils/chatSurfaceWidth';
 import { ensureConversationRuntime } from '@/renderer/pages/conversation/utils/ensureConversationRuntime';
@@ -50,7 +57,8 @@ import { collectChatFileRefs, splitChatFileRefs } from '@/renderer/utils/file/me
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
 import { Button, Message, Tag } from '@arco-design/web-react';
 import { Brain, Lightning, MagicHat, Shield } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import useSWR from 'swr';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
 import { useAionrsMessage } from './useAionrsMessage';
@@ -138,6 +146,20 @@ const AionrsSendBox: React.FC<{
       name,
       status: 'loaded',
     }));
+  const { data: runtimeMcpStatuses } = useSWR(
+    ['conversation-mcp-runtime', conversation_id],
+    () => ipcBridge.conversation.getMcpRuntimeStatuses.invoke({ conversation_id }),
+    { refreshInterval: 5000, revalidateOnFocus: true }
+  );
+  const effectiveMcpStatuses: IConversationMcpStatus[] =
+    runtimeMcpStatuses && runtimeMcpStatuses.length > 0
+      ? runtimeMcpStatuses.map((item) => ({
+          id: item.name,
+          name: item.name,
+          status: item.state === 'connected' ? 'loaded' : item.state,
+          reason: item.reason,
+        }))
+      : loadedMcpStatuses;
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const { current_model } = modelSelection;
@@ -212,10 +234,15 @@ const AionrsSendBox: React.FC<{
   });
 
   const { setSendBoxHandler } = usePreviewContext();
-  const commandQueueRuntimeGate = teamRuntime?.runtimeGate ?? {
+  const selectionPending = useComfySelectionPending(conversation_id);
+  const baseCommandQueueRuntimeGate = teamRuntime?.runtimeGate ?? {
     hydrated: runtimeView.hydrated,
     canSendMessage: runtimeView.canSendMessage,
     isProcessing: runtimeView.isProcessing,
+  };
+  const commandQueueRuntimeGate = {
+    ...baseCommandQueueRuntimeGate,
+    canSendMessage: !selectionPending && baseCommandQueueRuntimeGate.canSendMessage,
   };
   const isCancelling = runtimeView.state === 'cancelling';
   const isBusy = isCancelling || commandQueueRuntimeGate.isProcessing || !commandQueueRuntimeGate.canSendMessage;
@@ -332,7 +359,6 @@ const AionrsSendBox: React.FC<{
     enqueue,
     remove,
     prioritize,
-    sendNow,
     clear,
     reorder,
     toggleMode,
@@ -348,6 +374,7 @@ const AionrsSendBox: React.FC<{
   });
 
   // Handle initial message from Guid page — wait until model is ready
+  const attemptedInitialConversation = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!conversation_id || !current_model?.use_model) return;
 
@@ -357,28 +384,61 @@ const AionrsSendBox: React.FC<{
     const processInitialMessage = async () => {
       if (sessionStorage.getItem(processedKey)) return;
       const storedMessage = sessionStorage.getItem(storageKey);
-      if (!storedMessage) return;
+      if (!storedMessage || attemptedInitialConversation.current === conversation_id) return;
+      attemptedInitialConversation.current = conversation_id;
 
       sessionStorage.setItem(processedKey, '1');
       sessionStorage.removeItem(storageKey);
 
+      let bindingPending = false;
+      let finishBinding: (() => void) | undefined;
       try {
-        const { input, files: initialFiles } = JSON.parse(storedMessage);
+        const { input, files: initialFiles, guidDraft, creationRequestId, creationRequest } = JSON.parse(storedMessage);
         // Guid-page initial files are source-tagged ChatFileRefs (`local` for
         // backend-machine picks, `upload` for device uploads). Legacy string[]
         // entries (a stale pre-upgrade session) coerce to upload refs.
         const initialRefs: ChatFileRef[] = Array.isArray(initialFiles)
           ? initialFiles.map((f: unknown) => (typeof f === 'string' ? uploadFileRef(f) : f)).filter(isChatFileRef)
           : [];
+        if (typeof creationRequestId === 'string' && creationRequest) {
+          bindingPending = true;
+          finishBinding = beginComfySelectionChange(conversation_id);
+          const bound = await comfyApi.bind(
+            creationRequestId,
+            conversation_id,
+            creationRequest.profileId,
+            creationRequest.family,
+            creationRequest.intent,
+            {
+              source: creationRequest.source ?? 'local',
+              kind: creationRequest.kind ?? 'image',
+            }
+          );
+          if (!bound.ok) throw new Error(t('guid.creation.toolsUnavailable'));
+          bindingPending = false;
+        } else if (typeof creationRequestId === 'string') {
+          bindingPending = true;
+          finishBinding = beginComfySelectionChange(conversation_id);
+          await h3JobApi.bindCreation(creationRequestId, conversation_id);
+          bindingPending = false;
+        }
+        if (!input.trim()) return;
         await executeCommand({ input, files: initialRefs });
+        if (typeof guidDraft === 'string') clearGuidDraftIfMatches(guidDraft);
       } catch (error) {
         console.error('[AionrsSendBox] Failed to send initial message:', error);
+        if (bindingPending) {
+          sessionStorage.setItem(storageKey, storedMessage);
+          Message.error(t('guid.creation.toolsUnavailable'));
+        }
         sessionStorage.removeItem(processedKey);
+      } finally {
+        finishBinding?.();
       }
     };
 
     void processInitialMessage();
-  }, [conversation_id, current_model?.use_model, executeCommand]);
+  }, [conversation_id, current_model?.use_model, executeCommand, t]);
 
   // `@@` session references the user picked. Declared before the handlers that
   // read it — every send path has to both forward and release it.
@@ -798,7 +858,7 @@ const AionrsSendBox: React.FC<{
           <FileAttachButton
             openFileSelector={openFileSelector}
             onLocalFilesAdded={handleFilesAdded}
-            loadedMcpStatuses={loadedMcpStatuses}
+            loadedMcpStatuses={effectiveMcpStatuses}
           />
         }
         rightTools={

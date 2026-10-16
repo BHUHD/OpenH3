@@ -21,11 +21,14 @@ export class H3JobRunner {
     return this.store.listBlocked().length > 0;
   }
 
-  async enqueue(spec: H3GenerationSpec): Promise<H3Job> {
+  async enqueue(spec: H3GenerationSpec, id?: string): Promise<H3Job> {
+    const existing = id ? this.store.get(id) : undefined;
+    if (existing) return existing;
     if (this.blocked()) throw new Error('H3_REMOTE_STATE_UNCONFIRMED');
-    const job = createH3Job(spec);
+    const job = createH3Job(spec, id);
     await this.preflight.validate(job.spec.references);
     if (this.blocked()) throw new Error('H3_REMOTE_STATE_UNCONFIRMED');
+    if (id && this.store.get(id)) return this.store.get(id)!;
     return this.store.create(job);
   }
 

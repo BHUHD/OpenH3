@@ -697,7 +697,7 @@
   "mcpAuthenticated": "Authentifiziert",
   "mcpDisconnected": "Getrennt",
   "mcpError": "Fehler",
-  "mcpErrorNodeCommandNotFound": "Der Befehl {{command}} konnte nicht vorbereitet werden. AionCore stellt normalerweise seine verwaltete Node-Runtime automatisch bereit. Wiederhole den Verbindungstest, überprüfe bei Fortsetzung des Problems die Backend-Protokolle, oder konfiguriere diesen MCP-Server, um einen absoluten Befehlspfad zu verwenden.",
+  "mcpErrorNodeCommandNotFound": "Der Befehl {{command}} konnte nicht vorbereitet werden. OpenH3 Core stellt normalerweise seine verwaltete Node-Runtime automatisch bereit. Wiederhole den Verbindungstest, überprüfe bei Fortsetzung des Problems die Backend-Protokolle, oder konfiguriere diesen MCP-Server, um einen absoluten Befehlspfad zu verwenden.",
   "mcpErrorBunCommandNotFound": "Der Befehl {{command}} wurde nicht gefunden. Installiere Bun (das bun/bunx enthält), starte OpenH3 neu, oder konfiguriere diesen MCP-Server, um einen absoluten Befehlspfad zu verwenden.",
   "mcpErrorUvCommandNotFound": "Der Befehl {{command}} wurde nicht gefunden. Installiere uv, starte OpenH3 neu, oder konfiguriere diesen MCP-Server, um einen absoluten Befehlspfad zu verwenden.",
   "mcpErrorPythonCommandNotFound": "Der Befehl {{command}} wurde nicht gefunden. Installiere Python, starte OpenH3 neu, oder konfiguriere diesen MCP-Server, um einen absoluten Befehlspfad zu verwenden.",

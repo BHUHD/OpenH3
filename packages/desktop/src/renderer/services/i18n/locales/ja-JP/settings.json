@@ -706,7 +706,7 @@
   "mcpAuthenticated": "認証済み",
   "mcpDisconnected": "未テスト",
   "mcpError": "直近のテストに失敗",
-  "mcpErrorNodeCommandNotFound": "コマンド {{command}} を準備できませんでした。AionCore は通常、管理対象の Node ランタイムを自動で準備します。接続テストを再試行し、それでも失敗する場合はバックエンドログを確認するか、この MCP サーバーに絶対コマンドパスを設定してください。",
+  "mcpErrorNodeCommandNotFound": "コマンド {{command}} を準備できませんでした。OpenH3 Core は通常、管理対象の Node ランタイムを自動で準備します。接続テストを再試行し、それでも失敗する場合はバックエンドログを確認するか、この MCP サーバーに絶対コマンドパスを設定してください。",
   "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart OpenH3, or configure this MCP server to use an absolute command path.",
   "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart OpenH3, or configure this MCP server to use an absolute command path.",
   "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart OpenH3, or configure this MCP server to use an absolute command path.",

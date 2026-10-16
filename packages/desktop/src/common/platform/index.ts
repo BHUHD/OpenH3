@@ -10,7 +10,7 @@ let _services: IPlatformServices | null = null;
  */
 export function getDevAppName(): string {
   const isMultiInstance = process.env.AIONUI_MULTI_INSTANCE === '1';
-  return isMultiInstance ? 'AionUi-Dev-2' : 'AionUi-Dev';
+  return isMultiInstance ? 'OpenH3-Dev-2' : 'OpenH3-Dev';
 }
 
 export function registerPlatformServices(services: IPlatformServices): void {
@@ -36,13 +36,40 @@ export function getPlatformServices(): IPlatformServices {
       } else {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { app, net } = require('electron') as typeof import('electron');
-        // Dev isolation: set app name before any getPath('userData') call.
-        // Rollup may load this chunk before configureChromium.ts runs, so we
-        // must apply the dev name here as a safety net.
-        if (!app.isPackaged) {
-          const devAppName = getDevAppName();
-          app.setName(devAppName);
-          app.setPath('userData', path.join(path.dirname(app.getPath('userData')), devAppName));
+        // E2E must be redirected before any shared module can resolve userData.
+        const e2eUserDataDir =
+          process.env.AIONUI_E2E_TEST === '1' ? process.env.AIONUI_E2E_USER_DATA_DIR?.trim() : undefined;
+        if (e2eUserDataDir) {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const fs = require('fs') as typeof import('fs');
+          fs.mkdirSync(e2eUserDataDir, { recursive: true });
+          app.setPath('userData', e2eUserDataDir);
+        } else {
+          // Rollup can execute this shared chunk before configureChromium.ts
+          // and initStorage.ts. Migrate here, before either one can create an
+          // empty OpenH3 profile that would block the atomic directory rename.
+          const appName = app.isPackaged ? 'OpenH3' : getDevAppName();
+          app.setName(appName);
+          const appDataDir = app.getPath('appData');
+          const legacyName = app.isPackaged
+            ? 'AionUi'
+            : process.env.AIONUI_MULTI_INSTANCE === '1'
+              ? 'AionUi-Dev-2'
+              : 'AionUi-Dev';
+          const legacyPath = path.join(appDataDir, legacyName);
+          const openH3Path = path.join(appDataDir, appName);
+          let userDataPath = openH3Path;
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const fs = require('fs') as typeof import('fs');
+          // Keep an existing legacy profile in place. The database stores
+          // absolute paths for imported skills, workspaces, and media jobs;
+          // renaming this directory without a transactional path migration
+          // makes those records point at files that no longer exist. New
+          // installs use the OpenH3 path, while upgraded installs continue to
+          // use their intact legacy root until a dedicated path migration is
+          // available.
+          if (!fs.existsSync(openH3Path) && fs.existsSync(legacyPath)) userDataPath = legacyPath;
+          app.setPath('userData', userDataPath);
         }
         // Typed as IPlatformPaths so tsc enforces completeness: any new method
         // added to the interface will cause a compile error here if omitted below.

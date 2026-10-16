@@ -11,6 +11,9 @@ const h3 = vi.hoisted(() => ({
   cancel: vi.fn(),
   versions: vi.fn().mockResolvedValue([]),
   selectVersion: vi.fn(),
+  compareVersions: vi.fn(),
+  rejectVersion: vi.fn(),
+  undoVersion: vi.fn(),
   deriveVersion: vi.fn(),
   status: vi.fn().mockResolvedValue({
     ready: true,
@@ -89,5 +92,40 @@ describe('H3 generation panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'preview.video.h3Generate' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('INVALID_INPUT: CHECK_WORKFLOW_INPUTS (node 42)');
     expect(screen.getByRole('alert')).not.toHaveTextContent('traceback');
+  });
+
+  it('compares candidates and accepts against the selected source version', async () => {
+    const versions = [
+      {
+        id: 'v1',
+        parentId: null,
+        label: 'H3 1',
+        jobId: 'j1',
+        createdAt: '2026-01-01T00:00:00Z',
+        selected: true,
+        review: 'accepted',
+        artifactPath: '/api/h3/jobs/j1/artifacts/0',
+      },
+      {
+        id: 'v2',
+        parentId: 'v1',
+        label: 'H3 2',
+        jobId: 'j2',
+        createdAt: '2026-01-01T00:00:01Z',
+        selected: false,
+        review: 'candidate',
+        artifactPath: '/api/h3/jobs/j2/artifacts/0',
+      },
+    ];
+    h3.versions.mockResolvedValue(versions);
+    h3.compareVersions.mockResolvedValue([versions[0], versions[1]]);
+    h3.selectVersion.mockResolvedValue(versions.map((version) => ({ ...version, selected: version.id === 'v2' })));
+    render(<H3GenerationPanel />);
+    expect(await screen.findByTestId('h3-versions')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('h3-compare-v1'));
+    fireEvent.click(screen.getByTestId('h3-compare-v2'));
+    await waitFor(() => expect(h3.compareVersions).toHaveBeenLastCalledWith(['v1', 'v2']));
+    fireEvent.click(screen.getByTestId('h3-select-v2'));
+    await waitFor(() => expect(h3.selectVersion).toHaveBeenCalledWith('v2', 'v1'));
   });
 });

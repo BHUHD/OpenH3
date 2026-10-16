@@ -10,6 +10,7 @@ import { usePasteService } from '@/renderer/hooks/file/usePasteService';
 import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileService';
 import { measureCaretTop, scrollCaretToLastLine } from '../utils/caretUtils';
 import { useCallback, useEffect, useState } from 'react';
+import { useGuidDraft } from '@/renderer/pages/guid/hooks/useGuidDraft';
 
 export type GuidInputResult = {
   input: string;
@@ -42,7 +43,7 @@ type UseGuidInputOptions = {
  * Hook that manages input state, file handling, and drag/paste for the Guid page.
  */
 export const useGuidInput = ({ locationState }: UseGuidInputOptions): GuidInputResult => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useGuidDraft();
   const [files, setFiles] = useState<ChatFileRef[]>([]);
   const [dir, setDir] = useState<string>('');
   const [isInputFocused, setIsInputFocused] = useState(false);

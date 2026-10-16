@@ -185,7 +185,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
           <span className='flex items-center gap-6px min-w-0'>
             <Brain theme='outline' size='14' fill={iconColors.secondary} className='shrink-0' />
             <span className='guid-model-label'>{geminiButtonLabel}</span>
-            <Down theme='outline' size='12' fill={iconColors.secondary} className='shrink-0' />
+            <Down theme='outline' size='14' strokeWidth={4} fill={iconColors.secondary} className='shrink-0' />
           </span>
         </Button>
       </Dropdown>
@@ -260,7 +260,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
             <span className='flex items-center gap-6px min-w-0'>
               <Brain theme='outline' size='14' fill={iconColors.secondary} className='shrink-0' />
               <span className='guid-model-label'>{combinedAcpButtonLabel}</span>
-              <Down theme='outline' size='12' fill={iconColors.secondary} className='shrink-0' />
+              <Down theme='outline' size='14' strokeWidth={4} fill={iconColors.secondary} className='shrink-0' />
             </span>
           </Button>
         </Dropdown>

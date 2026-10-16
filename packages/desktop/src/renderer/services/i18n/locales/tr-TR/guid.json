@@ -13,5 +13,190 @@
     "specifyWorkspace": "Proje klasörü seç",
     "searchPlaceholder": "Proje ara…",
     "noProject": "Proje Yok"
+  },
+  "comfy": {
+    "diagnosticLog": "Tanılama günlüğü",
+    "title": "Yerel modeller",
+    "noProfile": "Yüklü profil yok",
+    "use": "Kullan",
+    "selected": "Seçildi",
+    "version": "{{family}} sürümü",
+    "draftHint": "Yükleme işlemleri düzenlenebilir bir istek doldurur. Hazır olduğunda gönderin.",
+    "families": {
+      "h3": "Video oluşturma",
+      "qwen-edit": "Görüntü düzenleme",
+      "z-image": "Görüntü oluşturma"
+    },
+    "actions": {
+      "install": "Yükle",
+      "repair": "Kontrol et / onar",
+      "install-other": "Diğer sürüm",
+      "generate": "Oluştur"
+    },
+    "intentSummary": "Yerel model görevi: {{model}} · {{intent}}. Profil: {{profile}}. Bu aile ve görevi koru. Somut bir ComfyUI planı hazırla ve onayımı bekle. Yükleme için üretim parametreleri gerekli değildir.",
+    "prompts": {
+      "install": "{{family}} modelini ComfyUI ile yerel olarak yükle. Önce donanım, ağ ve mevcut ortamı kontrol et. Aile ve görevle eşleşen ComfyUI iş akışını, gerekli düğümleri, modelleri, kodlayıcıları ve VAE'yi seç. Sabit sürüm ve nicemleme öner; yalnızca sabitlenmiş upstream yapıtla aynı olduğu kanıtlanan ModelScope veya güvenilir yerel ayna kopyasını tercih et. Kaynak, revizyon ve SHA-256'yı sabitle; boyut, konum, devam ettirme ve doğrulamayı açıkla. Yüklemeden önce onayımı bekle. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "Yerel {{family}} profilim {{profile}} için kontrol ve onarım yap. Ortamı, bileşenleri, düğümleri ve iş akışını incele. Planı açıkla, onayımı bekle ve küçük bir üretim testiyle doğrula. Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "{{family}} için başka sürüm veya nicemlemeyi ayrı profile yükle. Donanımı kontrol et, sabit kaynaklar ve doğrulama planı öner. Onayımı bekle ve çalışan profili koru. Call aionui_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+    },
+    "operation": {
+      "title": "ComfyUI model planı",
+      "authorize": "Planı onayla ve asistandan devam etmesini iste",
+      "continue": "Asistandan devam etmesini iste",
+      "cancel": "İptal",
+      "target": "Yükleme konumu",
+      "download": "İndirme boyutu",
+      "disk": "Gerekli boş alan",
+      "details": "Modeller, düğümler ve komutlar",
+      "source": "Kaynak",
+      "unavailable": "Yerel model hizmeti kullanılamıyor.",
+      "completedHint": "Doğrulama başarılı. Model yerel seçicide kullanılabilir.",
+      "continueRequest": "Planı onayla ve asistandan devam etmesini iste. aionui_comfy_install action=start operationId={{id}}. ComfyUI model planı.",
+      "states": {
+        "awaiting-consent": "Onay bekleniyor",
+        "authorized": "Onaylandı, asistan bekleniyor",
+        "running": "Çalışıyor",
+        "paused": "Duraklatıldı",
+        "failed": "Başarısız",
+        "completed": "Doğrulandı ve hazır",
+        "cancelled": "İptal edildi"
+      },
+      "snapshotDirectory": "Kurtarma anlık görüntüsü"
+    },
+    "profileSummary": "Seçilen yerel profil: {{profile}}. Tam olarak bu profili kullan.",
+    "session": {
+      "title": "Yerel üretim profili",
+      "hint": "Sonraki üretime uygulanır. Gönderilen işler kayıtlı profillerini korur.",
+      "saveFailed": "Profil seçimi kaydedilemedi. Tekrar deneyin."
+    },
+    "generation": {
+      "title": "Yerel üretim",
+      "unavailable": "Yerel üretim hizmeti kullanılamıyor.",
+      "cancel": "Üretimi iptal et",
+      "artifact": "Üretilen sonuç {{index}}",
+      "states": {
+        "queued": "Sırada",
+        "running": "Üretiliyor",
+        "succeeded": "Tamamlandı",
+        "failed": "Başarısız",
+        "cancelled": "İptal edildi"
+      },
+      "adjusted": "Parametreler bu profilin onaylanmış sınırları içinde ayarlandı.",
+      "actualInput": "Gerçek üretim parametreleri",
+      "submissionUncertain": "Gönderim doğrulanmadı. Yeniden göndermeden önce mevcut ComfyUI kuyruğunu kontrol et."
+    }
+  },
+  "creation": {
+    "states": {
+      "downloaded": "İndirildi",
+      "loadable": "Yüklenebilir",
+      "verified": "Doğrulandı",
+      "invalid": "Geçersiz",
+      "installed": "Yüklü",
+      "not-installed": "Yüklü değil",
+      "no-workflow": "İş akışı yok",
+      "configured": "Yapılandırılmış",
+      "not-configured": "Yapılandırılmamış",
+      "unavailable": "Durum kullanılamıyor",
+      "checking": "Kontrol ediliyor"
+    },
+    "kind": "Oluşturma türü",
+    "source": "Model kaynağı",
+    "model": "Oluşturma modeli",
+    "local": "Yerel",
+    "cloud": "Bulut",
+    "localImage": "Yerel görüntü modeli",
+    "localVideo": "Yerel video modeli",
+    "cloudImage": "Bulut görüntü modeli",
+    "cloudVideo": "Bulut video modeli",
+    "manageLocal": "Yerel modelleri yönet",
+    "configureCloud": "Bulut API yapılandır",
+    "requestSummary": "Oluşturma ayarları: {{kind}} · {{source}} · {{model}} ({{state}}). Seçilen modeli kullan; kullanılamıyorsa yüklememi veya yapılandırmamı iste. Başka bir modele ya da bulut hizmetine otomatik geçme.",
+    "toolsUnavailable": "Oluşturma araçları henüz hazır değil. Kısa süre sonra tekrar deneyin.",
+    "install": {
+      "states": {
+        "awaiting-consent": "Onay bekleniyor",
+        "cancelled": "İptal edildi",
+        "cancelling": "İptal ediliyor",
+        "failed": "Tamamlanmadı",
+        "paused": "Duraklatıldı",
+        "authorized": "Onaylandı, asistan bekleniyor",
+        "submitted": "Üretim gönderildi",
+        "installing": "Yükleniyor"
+      },
+      "title": "MiniMax H3 yükle ve devam et",
+      "open": "Yüklemeyi gözden geçir",
+      "continueRequest": "Yükleme penceresinde model lisansını ve gerekli donanım seçeneklerini onayladım. Orijinal video isteğini yeniden göndermeden veya parametreleri değiştirmeden sürdürmek için aionui_h3_install_video_model aracını action=start ve operationId={{id}} ile çağır.",
+      "continue": "Asistanla devam et",
+      "cancelRequest": "Oluşturma isteğini iptal et"
+    }
+  },
+  "aiCreation": "Yapay zekâ ile oluştur",
+  "aiCreationSubtitle": "Hayal gücünüzü esere dönüştürün",
+  "templatePlay": "{{title}} oynat",
+  "templatePause": "{{title}} duraklat",
+  "templateUse": "Şablonu kullan",
+  "templateTitle": "İlham şablonları",
+  "templateHint": "Görsel ve video fikirlerini keşfedin. Başlamak için birini seçin.",
+  "templateFilterLabel": "Şablon türü",
+  "templatePreviewUnavailable": "Önizleme kullanılamıyor",
+  "templateFilters": {
+    "all": "Tümü",
+    "image": "Görseller",
+    "video": "Videolar"
+  },
+  "templates": {
+    "poster": {
+      "title": "Ametist duygu posteri",
+      "prompt": "Dikey 3:4 bir poster oluştur: yumuşak mor ve pembe ışığı yansıtan ametist kristallerinin makro fotoğrafı, ince mineral dokuları ve sığ alan derinliği. Net Çince “允许自己慢下来” başlığı, küçük serif yazı ve geniş boşluklar ekle. Sakin, rahatlatıcı dergi kapağı tarzı."
+    },
+    "product": {
+      "title": "Parfüm kampanyası",
+      "prompt": "Dikey 3:4 parfüm reklam fotoğrafı oluştur: krem keten ve kuru çiçekler arasında şeffaf cam parfüm şişesi. Yandan sıcak pencere ışığı, zarif cam yansımaları, metal kapak ve yumuşak kumaş dokuları. Ürün net, arka plan temiz, metin için boşluk bırak ve marka işareti ekleme."
+    },
+    "illustration": {
+      "title": "Öykü illüstrasyonu",
+      "prompt": "Sevimli karakterler, uyumlu renkler, zengin çevre ayrıntıları ve kapak olarak kullanılabilecek tamamlanmış bir kompozisyonla ayrıntılı bir öykü illüstrasyonu oluştur."
+    },
+    "architecture": {
+      "title": "Venedik seyahat kartpostalı",
+      "prompt": "Dikey 3:4 Venedik kartpostalı oluştur: turkuaz kanal, sıcak pembe tarihi binalar ve kıyıdaki tekneler. Öğleden sonra güneşi suya yansısın; ayrıntılı cepheler ve kanal boyunca uzanan kompozisyon kullan. Yumuşak film renkleriyle gerçekçi fotoğraf, üstte başlık alanı bırak."
+    },
+    "landscape": {
+      "title": "İzlanda düş manzarası",
+      "prompt": "Yatay 16:9 İzlanda manzara fotoğrafı oluştur: yeşil tepeler, görkemli şelale ve pembe-mor gün batımı altında açık ovalar. İnce sis ve belirgin ön, orta ve uzak planlar. Geniş açı, sinematik ışık, doğal dokular; insan veya yazı olmasın."
+    },
+    "pet": {
+      "title": "Pencere kenarındaki kedi",
+      "prompt": "Dikey 3:4 portre oluştur: ahşap pencere pervazında dışarı bakan tüylü turuncu kedi. Yumuşak sabah ışığı bıyıklarını ve gözlerini aydınlatsın. Ayrıntılı tüyler, bulanık açık perdeler, sıcak film renkleri ve sakin doğal an."
+    },
+    "food": {
+      "title": "Taze menü fotoğrafı",
+      "prompt": "Yatay 4:3 üstten yemek fotoğrafı oluştur: beyaz seramik kâsede kinoa, avokado ve renkli sebzeler, çevresinde taze malzemeler. Açık taş masa, yumuşak gün ışığı, canlı renkler ve gerçekçi dokular. Menü metni için boşluk bırak."
+    },
+    "interior": {
+      "title": "Sıcak ve minimalist bir ev",
+      "prompt": "Yatay 16:9 iç mekân fotoğrafı oluştur: krem kanepe, açık ahşap sehpa, yumuşak halı ve sade sarkıt lambalarla sıcak minimalist oturma odası. Büyük pencerelerden sıcak gün ışığı, ferah alan, belirgin derinlik ve gerçekçi malzemeler. İnsan veya dağınıklık olmasın."
+    },
+    "flowers": {
+      "title": "Bahar çiçekleri kapağı",
+      "prompt": "Dikey 3:4 çiçekçi kapak fotoğrafı oluştur: açık pembe çiçeklerin yakın planı, katmanlı yapraklar, yumuşak krem arka plan ve hafif dağınık ışık. Romantik, taze yaşam tarzı fotoğrafı; üstte başlık alanı, marka veya filigran yok."
+    },
+    "coast": {
+      "title": "Deniz kıyısında gün batımı",
+      "prompt": "6 saniyelik yatay 16:9 sinematik video üret: güneş ufka doğru insin, turuncu ve altın ışık denize yayılsın, hafif dalgalar kıyıya gelsin. Sabit kamera yavaşça ileri hareket etsin. Doğal renkler, kesintisiz ışık ve sakin atmosfer; yazı veya filigran yok."
+    },
+    "coffeeFilm": {
+      "title": "Kahve reklam filmi",
+      "prompt": "6 saniyelik yatay 16:9 kahve reklam videosu üret: çekirdekler ve tarçın arasındaki fincanı üstten göster. Süt yavaşça dökülüp ince, doğal girdaplar oluştursun. Sıcak kahverengi tonlar, yumuşak stüdyo ışığı, sığ alan derinliği ve gerçekçi kesintisiz sıvı hareketi. Marka veya altyazı yok."
+    },
+    "cityFilm": {
+      "title": "Alacakaranlıkta şehir",
+      "prompt": "6 saniyelik yatay 16:9 şehir hava videosu üret. Gün batımı solarken binalar aydınlansın, trafik ışık şeritleri oluştursun. Kamera akıcı biçimde ileri süzülsün, gerçekçi perspektif ve sinematik renkler kullan. Titreme veya yazı yok."
+    },
+    "forestFilm": {
+      "title": "Orman şelalesinde dinlenme",
+      "prompt": "6 saniyelik yatay 16:9 doğa videosu üret: yoğun ormanda şelale berrak havuza aksın, kayalar yosunla kaplı olsun ve yapraklar hafifçe sallansın. Neredeyse sabit kamera yavaşça yaklaşsın, ağaçlardan yumuşak güneş ışığı süzülsün. Su, dalgacıklar ve bitkiler doğal ve kesintisiz hareket etsin. İnsan veya altyazı yok."
+    }
   }
 }

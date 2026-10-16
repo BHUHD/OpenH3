@@ -706,7 +706,7 @@
   "mcpAuthenticated": "Kimlik doğrulandı",
   "mcpDisconnected": "Test edilmedi",
   "mcpError": "Son test başarısız",
-  "mcpErrorNodeCommandNotFound": "{{command}} komutu hazırlanamadı. AionCore genellikle yönetilen Node çalışma zamanını otomatik olarak hazırlar. Bağlantı testini yeniden deneyin; sorun sürerse arka uç günlüklerini kontrol edin veya bu MCP sunucusu için mutlak komut yolu yapılandırın.",
+  "mcpErrorNodeCommandNotFound": "{{command}} komutu hazırlanamadı. OpenH3 Core genellikle yönetilen Node çalışma zamanını otomatik olarak hazırlar. Bağlantı testini yeniden deneyin; sorun sürerse arka uç günlüklerini kontrol edin veya bu MCP sunucusu için mutlak komut yolu yapılandırın.",
   "mcpErrorBunCommandNotFound": "Command {{command}} was not found. Install Bun (which includes bun/bunx), restart OpenH3, or configure this MCP server to use an absolute command path.",
   "mcpErrorUvCommandNotFound": "Command {{command}} was not found. Install uv, restart OpenH3, or configure this MCP server to use an absolute command path.",
   "mcpErrorPythonCommandNotFound": "Command {{command}} was not found. Install Python, restart OpenH3, or configure this MCP server to use an absolute command path.",

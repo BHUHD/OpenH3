@@ -6,7 +6,7 @@ $BundleRoot = 'D:\视频Agent\.runtime\h3-offline-bundle'
 New-Item -ItemType Directory -Force $DataRoot | Out-Null
 $env:ELECTRON_RUN_AS_NODE = '1'; $env:AIONUI_MEDIA_PORT = [string]$Port; $env:AIONUI_DATA_DIR = $DataRoot; $env:AIONUI_H3_BUNDLE_ROOT = $BundleRoot
 $scriptPath = Join-Path $PackageRoot 'resources\app.asar.unpacked\out\main\media-service.js'
-$electronPath = Join-Path $PackageRoot 'AionUi.exe'
+$electronPath = Join-Path $PackageRoot 'OpenH3.exe'
 $out = Join-Path $DataRoot 'service.out.log'; $err = Join-Path $DataRoot 'service.err.log'
 $service = Start-Process -FilePath $electronPath -ArgumentList @($scriptPath) -WorkingDirectory $DataRoot -RedirectStandardOutput $out -RedirectStandardError $err -PassThru
 $total = [Diagnostics.Stopwatch]::StartNew()

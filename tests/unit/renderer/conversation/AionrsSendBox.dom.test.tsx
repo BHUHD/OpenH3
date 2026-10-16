@@ -1,11 +1,17 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Message } from '@arco-design/web-react';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AionrsSendBox from '@/renderer/pages/conversation/platforms/aionrs/AionrsSendBox';
 import type { AionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
+import { useGuidDraft } from '@/renderer/pages/guid/hooks/useGuidDraft';
+import { beginComfySelectionChange } from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
+const bindComfy = vi.fn().mockResolvedValue({ ok: true });
+vi.mock('@/common/chat/document/creation/comfyApi', () => ({
+  comfyApi: { bind: (...args: unknown[]) => bindComfy(...args) },
+}));
 
 const {
   ensureConversationRuntimeMock,
@@ -309,6 +315,60 @@ describe('AionrsSendBox', () => {
     useTeamPermissionMock.mockReturnValue(null);
     draftContentRef.current = '';
     runtimeViewIsProcessingRef.current = false;
+    sessionStorage.clear();
+  });
+
+  it('keeps the Guid draft until the initial aionrs message is accepted', async () => {
+    const draft = renderHook(() => useGuidDraft());
+    act(() => draft.result.current[1]('Original prompt'));
+    sessionStorage.setItem(
+      'aionrs_initial_message_conv-1',
+      JSON.stringify({ input: 'Original prompt', guidDraft: 'Original prompt' })
+    );
+    let acknowledge!: (value: unknown) => void;
+    sendMessageInvokeMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          acknowledge = resolve;
+        })
+    );
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(draft.result.current[0]).toBe('Original prompt');
+    await act(async () => acknowledge({ turn_id: 'turn-1', msg_id: 'msg-1', runtime: {} }));
+    expect(draft.result.current[0]).toBe('');
+  });
+
+  it('binds the selected local profile snapshot before the initial Aion CLI turn', async () => {
+    sessionStorage.setItem(
+      'aionrs_initial_message_conv-1',
+      JSON.stringify({
+        input: 'generate image',
+        creationRequestId: 'request-z',
+        creationRequest: { source: 'local', kind: 'image', profileId: 'z-fp8', family: 'z-image', intent: 'generate' },
+      })
+    );
+    sendMessageInvokeMock.mockResolvedValueOnce({ turn_id: 'turn-1', msg_id: 'msg-1', runtime: {} });
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(bindComfy).toHaveBeenCalledWith('request-z', 'conv-1', 'z-fp8', 'z-image', 'generate', {
+      source: 'local',
+      kind: 'image',
+    });
+    expect(bindComfy.mock.invocationCallOrder[0]).toBeLessThan(sendMessageInvokeMock.mock.invocationCallOrder[0]);
+  });
+
+  it('preserves the Guid draft after a rejected initial aionrs send', async () => {
+    const draft = renderHook(() => useGuidDraft());
+    act(() => draft.result.current[1]('Unsent prompt'));
+    sessionStorage.setItem(
+      'aionrs_initial_message_conv-1',
+      JSON.stringify({ input: 'Unsent prompt', guidDraft: 'Unsent prompt' })
+    );
+    sendMessageInvokeMock.mockRejectedValueOnce(new Error('runtime unavailable'));
+    render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+    await waitFor(() => expect(sendMessageInvokeMock).toHaveBeenCalledOnce());
+    expect(draft.result.current[0]).toBe('Unsent prompt');
   });
 
   it('does not warm up team session when draft content changes', async () => {
@@ -430,6 +490,25 @@ describe('AionrsSendBox', () => {
   });
 
   describe('mid-turn interjection controls', () => {
+    it('blocks sends while the local profile binding changes', async () => {
+      render(<AionrsSendBox conversation_id='conv-1' modelSelection={modelSelection} />);
+      await waitFor(() => expect(ensureConversationRuntimeMock).toHaveBeenCalledWith('conv-1'));
+      let done!: () => void;
+      act(() => {
+        done = beginComfySelectionChange('conv-1');
+      });
+      expect((sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { sendDisabled?: boolean } | undefined)?.sendDisabled).toBe(
+        true
+      );
+      await act(async () => {
+        screen.getByRole('button', { name: 'send' }).click();
+      });
+      expect(sendMessageInvokeMock).not.toHaveBeenCalled();
+      act(() => done());
+      expect((sendBoxPropsSpy.mock.calls.at(-1)?.[0] as { sendDisabled?: boolean } | undefined)?.sendDisabled).toBe(
+        false
+      );
+    });
     it('disables the send button and blocks Enter with a toast while replying, without implicitly enqueuing', async () => {
       runtimeViewIsProcessingRef.current = true;
       draftContentRef.current = 'hello world';

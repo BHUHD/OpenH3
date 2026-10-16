@@ -4,10 +4,24 @@ import { useTranslation } from 'react-i18next';
 import type { IMessageToolCall } from '@/common/chat/chatLib';
 import type { H3Job } from '@/common/chat/document/h3Job';
 import { h3JobApi } from '@/common/chat/document/h3JobApi';
+import { toolResultRecords } from '@/common/chat/document/creation/toolResults';
 
 export function h3ToolJobIds(messages: Array<{ type: string; content: unknown }>): string[] {
   const ids = new Set<string>();
   for (const message of messages) {
+    if (message.type !== 'tool_call') {
+      for (const output of toolResultRecords(message)) {
+        if (
+          typeof output.id === 'string' &&
+          /^[a-f0-9-]{36}$/i.test(output.id) &&
+          output.spec &&
+          typeof output.status === 'string' &&
+          Array.isArray(output.artifacts)
+        )
+          ids.add(output.id);
+      }
+      continue;
+    }
     if (message.type !== 'tool_call') continue;
     const content = message.content as IMessageToolCall['content'];
     if (!['aionui_h3_generate_video', 'aionui_h3_job_status'].includes(content.name)) continue;
@@ -163,7 +177,7 @@ export function H3LiveProgress({ job, unavailable }: { job: H3Job; unavailable: 
   );
 }
 
-function H3ToolResult({ id }: { id: string }) {
+export function H3ToolResult({ id }: { id: string }) {
   const { t } = useTranslation();
   const [unavailable, setUnavailable] = useState(false);
   const [cancelling, setCancelling] = useState(false);
