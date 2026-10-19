@@ -331,724 +331,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aionui-ai-agent"
-version = "0.2.2"
-dependencies = [
- "agent-client-protocol",
- "aion-agent",
- "aion-config",
- "aion-mcp",
- "aion-protocol",
- "aion-providers",
- "aion-types",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-extension",
- "aionui-mcp",
- "aionui-process",
- "aionui-realtime",
- "aionui-runtime",
- "aionui-session",
- "aionui-system",
- "aionui-team-prompts",
- "async-trait",
- "axum",
- "base64",
- "dashmap",
- "dirs",
- "ed25519-dalek",
- "fs2",
- "futures-util",
- "getrandom 0.2.17",
- "hex",
- "http 1.4.0",
- "libc",
- "mime_guess",
- "regex",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "which 7.0.3",
-]
-
-[[package]]
-name = "aionui-api-types"
-version = "0.2.2"
-dependencies = [
- "aionui-common",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aionui-app"
-version = "0.2.2"
-dependencies = [
- "aion-config",
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-assets",
- "aionui-assistant",
- "aionui-auth",
- "aionui-channel",
- "aionui-common",
- "aionui-conversation",
- "aionui-cron",
- "aionui-db",
- "aionui-extension",
- "aionui-file",
- "aionui-mcp",
- "aionui-office",
- "aionui-process",
- "aionui-project",
- "aionui-realtime",
- "aionui-runtime",
- "aionui-session",
- "aionui-session-message",
- "aionui-shell",
- "aionui-sidebar",
- "aionui-skill-runtime",
- "aionui-system",
- "aionui-team",
- "aionui-team-prompts",
- "anyhow",
- "async-trait",
- "axum",
- "base64",
- "chrono",
- "clap",
- "dirs",
- "dunce",
- "futures-util",
- "git2",
- "http-body-util",
- "libc",
- "reqwest",
- "rmcp",
- "rpassword",
- "rust_xlsxwriter",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "sqlx",
- "tempfile",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tower",
- "tower-http",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
- "uuid",
- "windows-sys 0.61.2",
- "wiremock",
-]
-
-[[package]]
-name = "aionui-assets"
-version = "0.2.2"
-dependencies = [
- "aionui-common",
- "axum",
- "http 1.4.0",
- "http-body-util",
- "mime_guess",
- "rust-embed",
- "sha2 0.10.9",
- "tokio",
- "tower",
-]
-
-[[package]]
-name = "aionui-assistant"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-extension",
- "aionui-realtime",
- "async-trait",
- "axum",
- "chrono",
- "dirs",
- "http-body-util",
- "include_dir",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "aionui-auth"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-common",
- "aionui-db",
- "async-trait",
- "axum",
- "base64",
- "bcrypt",
- "dashmap",
- "getrandom 0.2.17",
- "http-body-util",
- "jsonwebtoken 9.3.1",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
-]
-
-[[package]]
-name = "aionui-channel"
-version = "0.2.2"
-dependencies = [
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-conversation",
- "aionui-db",
- "aionui-extension",
- "aionui-realtime",
- "async-trait",
- "axum",
- "base64",
- "dashmap",
- "futures-util",
- "getrandom 0.2.17",
- "prost",
- "regex",
- "reqwest",
- "rustls",
- "rustls-native-certs",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "aionui-common"
-version = "0.2.2"
-dependencies = [
- "aes-gcm",
- "async-trait",
- "axum",
- "base64",
- "getrandom 0.2.17",
- "semver",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "aionui-conversation"
-version = "0.2.2"
-dependencies = [
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-extension",
- "aionui-mcp",
- "aionui-project",
- "aionui-realtime",
- "aionui-runtime",
- "aionui-session",
- "async-trait",
- "axum",
- "base64",
- "chrono",
- "futures-util",
- "regex",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "aionui-cron"
-version = "0.2.2"
-dependencies = [
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-conversation",
- "aionui-db",
- "aionui-realtime",
- "aionui-system",
- "async-trait",
- "axum",
- "chrono",
- "chrono-tz",
- "cron",
- "dashmap",
- "iana-time-zone",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "aionui-db"
-version = "0.2.2"
-dependencies = [
- "aionui-common",
- "async-trait",
- "fs2",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "aionui-extension"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-realtime",
- "aionui-runtime",
- "async-trait",
- "axum",
- "dirs",
- "fs2",
- "hex",
- "http-body-util",
- "include_dir",
- "junction",
- "mime_guess",
- "notify",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2 0.10.9",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "zip 2.4.2",
-]
-
-[[package]]
-name = "aionui-file"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-project",
- "aionui-realtime",
- "async-trait",
- "axum",
- "base64",
- "dashmap",
- "dirs",
- "git2",
- "ignore",
- "mime_guess",
- "notify",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "walkdir",
- "zip 2.4.2",
-]
-
-[[package]]
-name = "aionui-mcp"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-realtime",
- "aionui-runtime",
- "aionui-system",
- "async-trait",
- "axum",
- "dashmap",
- "dirs",
- "oauth2",
- "open",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "toml 0.8.23",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "aionui-office"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-file",
- "aionui-project",
- "aionui-realtime",
- "aionui-runtime",
- "async-trait",
- "axum",
- "calamine",
- "dashmap",
- "reqwest",
- "rust_xlsxwriter",
- "serde",
- "serde_json",
- "sha1",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "which 7.0.3",
-]
-
-[[package]]
-name = "aionui-process"
-version = "0.2.2"
-dependencies = [
- "aionui-common",
- "aionui-runtime",
- "async-trait",
- "fs2",
- "libc",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-util",
- "tracing",
- "uuid",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "aionui-project"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "async-trait",
- "axum",
- "base64",
- "chrono",
- "git2",
- "http-body-util",
- "ignore",
- "notify",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "trash",
- "url",
-]
-
-[[package]]
-name = "aionui-realtime"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "axum",
- "dashmap",
- "futures-util",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tracing",
-]
-
-[[package]]
-name = "aionui-runtime"
-version = "0.2.2"
-dependencies = [
- "dirs",
- "flate2",
- "fs2",
- "hex",
- "libc",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tar",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "wait-timeout",
- "walkdir",
- "which 7.0.3",
- "zip 2.4.2",
-]
-
-[[package]]
-name = "aionui-session"
-version = "0.2.2"
-dependencies = [
- "aionui-common",
- "aionui-process",
- "aionui-session",
- "async-trait",
- "base64",
- "futures-util",
- "proptest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "aionui-session-message"
-version = "0.2.2"
-dependencies = [
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-conversation",
- "aionui-db",
- "aionui-project",
- "aionui-realtime",
- "async-trait",
- "axum",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "aionui-shell"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-runtime",
- "aionui-system",
- "arboard",
- "async-trait",
- "axum",
- "base64",
- "futures-util",
- "http-body-util",
- "open",
- "reqwest",
- "rustls",
- "rustls-native-certs",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tokio-tungstenite 0.26.2",
- "tower",
- "tracing",
- "which 7.0.3",
- "wiremock",
-]
-
-[[package]]
-name = "aionui-sidebar"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-conversation",
- "aionui-db",
- "aionui-project",
- "async-trait",
- "axum",
- "base64",
- "http-body-util",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "aionui-skill-runtime"
-version = "0.2.2"
-dependencies = [
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-common",
- "aionui-db",
- "aionui-extension",
- "async-trait",
- "axum",
- "http-body-util",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "aionui-system"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-realtime",
- "aionui-runtime",
- "async-trait",
- "aws-config",
- "aws-sdk-bedrock",
- "axum",
- "dirs",
- "http-body-util",
- "reqwest",
- "semver",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror 2.0.18",
- "tokio",
- "tower",
- "tracing",
- "tracing-subscriber",
- "windows-sys 0.61.2",
- "wiremock",
-]
-
-[[package]]
-name = "aionui-team"
-version = "0.2.2"
-dependencies = [
- "agent-client-protocol",
- "aionui-ai-agent",
- "aionui-api-types",
- "aionui-auth",
- "aionui-common",
- "aionui-db",
- "aionui-project",
- "aionui-realtime",
- "aionui-team-prompts",
- "async-trait",
- "axum",
- "dashmap",
- "futures-util",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "aionui-team-prompts"
-version = "0.2.2"
-dependencies = [
- "aionui-api-types",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4170,6 +3452,724 @@ dependencies = [
  "is-wsl",
  "libc",
  "pathdiff",
+]
+
+[[package]]
+name = "openh3-ai-agent"
+version = "0.2.2"
+dependencies = [
+ "agent-client-protocol",
+ "aion-agent",
+ "aion-config",
+ "aion-mcp",
+ "aion-protocol",
+ "aion-providers",
+ "aion-types",
+ "async-trait",
+ "axum",
+ "base64",
+ "dashmap",
+ "dirs",
+ "ed25519-dalek",
+ "fs2",
+ "futures-util",
+ "getrandom 0.2.17",
+ "hex",
+ "http 1.4.0",
+ "libc",
+ "mime_guess",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-extension",
+ "openh3-mcp",
+ "openh3-process",
+ "openh3-realtime",
+ "openh3-runtime",
+ "openh3-session",
+ "openh3-system",
+ "openh3-team-prompts",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "which 7.0.3",
+]
+
+[[package]]
+name = "openh3-api-types"
+version = "0.2.2"
+dependencies = [
+ "openh3-common",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "openh3-app"
+version = "0.2.2"
+dependencies = [
+ "aion-config",
+ "anyhow",
+ "async-trait",
+ "axum",
+ "base64",
+ "chrono",
+ "clap",
+ "dirs",
+ "dunce",
+ "futures-util",
+ "git2",
+ "http-body-util",
+ "libc",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-assets",
+ "openh3-assistant",
+ "openh3-auth",
+ "openh3-channel",
+ "openh3-common",
+ "openh3-conversation",
+ "openh3-cron",
+ "openh3-db",
+ "openh3-extension",
+ "openh3-file",
+ "openh3-mcp",
+ "openh3-office",
+ "openh3-process",
+ "openh3-project",
+ "openh3-realtime",
+ "openh3-runtime",
+ "openh3-session",
+ "openh3-session-message",
+ "openh3-shell",
+ "openh3-sidebar",
+ "openh3-skill-runtime",
+ "openh3-system",
+ "openh3-team",
+ "openh3-team-prompts",
+ "reqwest",
+ "rmcp",
+ "rpassword",
+ "rust_xlsxwriter",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "sqlx",
+ "tempfile",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "uuid",
+ "windows-sys 0.61.2",
+ "wiremock",
+]
+
+[[package]]
+name = "openh3-assets"
+version = "0.2.2"
+dependencies = [
+ "axum",
+ "http 1.4.0",
+ "http-body-util",
+ "mime_guess",
+ "openh3-common",
+ "rust-embed",
+ "sha2 0.10.9",
+ "tokio",
+ "tower",
+]
+
+[[package]]
+name = "openh3-assistant"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "dirs",
+ "http-body-util",
+ "include_dir",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-extension",
+ "openh3-realtime",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "openh3-auth"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "bcrypt",
+ "dashmap",
+ "getrandom 0.2.17",
+ "http-body-util",
+ "jsonwebtoken 9.3.1",
+ "openh3-api-types",
+ "openh3-common",
+ "openh3-db",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-channel"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "dashmap",
+ "futures-util",
+ "getrandom 0.2.17",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-conversation",
+ "openh3-db",
+ "openh3-extension",
+ "openh3-realtime",
+ "prost",
+ "regex",
+ "reqwest",
+ "rustls",
+ "rustls-native-certs",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "openh3-common"
+version = "0.2.2"
+dependencies = [
+ "aes-gcm",
+ "async-trait",
+ "axum",
+ "base64",
+ "getrandom 0.2.17",
+ "semver",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "openh3-conversation"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "chrono",
+ "futures-util",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-extension",
+ "openh3-mcp",
+ "openh3-project",
+ "openh3-realtime",
+ "openh3-runtime",
+ "openh3-session",
+ "regex",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "openh3-cron"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "chrono-tz",
+ "cron",
+ "dashmap",
+ "iana-time-zone",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-conversation",
+ "openh3-db",
+ "openh3-realtime",
+ "openh3-system",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-db"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "fs2",
+ "openh3-common",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-extension"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "dirs",
+ "fs2",
+ "hex",
+ "http-body-util",
+ "include_dir",
+ "junction",
+ "mime_guess",
+ "notify",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-realtime",
+ "openh3-runtime",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2 0.10.9",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "zip 2.4.2",
+]
+
+[[package]]
+name = "openh3-file"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "dashmap",
+ "dirs",
+ "git2",
+ "ignore",
+ "mime_guess",
+ "notify",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-project",
+ "openh3-realtime",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tracing",
+ "walkdir",
+ "zip 2.4.2",
+]
+
+[[package]]
+name = "openh3-mcp"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "dashmap",
+ "dirs",
+ "oauth2",
+ "open",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-realtime",
+ "openh3-runtime",
+ "openh3-system",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "openh3-office"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "calamine",
+ "dashmap",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-file",
+ "openh3-project",
+ "openh3-realtime",
+ "openh3-runtime",
+ "reqwest",
+ "rust_xlsxwriter",
+ "serde",
+ "serde_json",
+ "sha1",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "which 7.0.3",
+]
+
+[[package]]
+name = "openh3-process"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "fs2",
+ "libc",
+ "openh3-common",
+ "openh3-runtime",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "uuid",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "openh3-project"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "chrono",
+ "git2",
+ "http-body-util",
+ "ignore",
+ "notify",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "trash",
+ "url",
+]
+
+[[package]]
+name = "openh3-realtime"
+version = "0.2.2"
+dependencies = [
+ "axum",
+ "dashmap",
+ "futures-util",
+ "openh3-api-types",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-runtime"
+version = "0.2.2"
+dependencies = [
+ "dirs",
+ "flate2",
+ "fs2",
+ "hex",
+ "libc",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "wait-timeout",
+ "walkdir",
+ "which 7.0.3",
+ "zip 2.4.2",
+]
+
+[[package]]
+name = "openh3-session"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "base64",
+ "futures-util",
+ "openh3-common",
+ "openh3-process",
+ "openh3-session",
+ "proptest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "openh3-session-message"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-conversation",
+ "openh3-db",
+ "openh3-project",
+ "openh3-realtime",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-shell"
+version = "0.2.2"
+dependencies = [
+ "arboard",
+ "async-trait",
+ "axum",
+ "base64",
+ "futures-util",
+ "http-body-util",
+ "open",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-runtime",
+ "openh3-system",
+ "reqwest",
+ "rustls",
+ "rustls-native-certs",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tower",
+ "tracing",
+ "which 7.0.3",
+ "wiremock",
+]
+
+[[package]]
+name = "openh3-sidebar"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64",
+ "http-body-util",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-conversation",
+ "openh3-db",
+ "openh3-project",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "openh3-skill-runtime"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "axum",
+ "http-body-util",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-common",
+ "openh3-db",
+ "openh3-extension",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
+name = "openh3-system"
+version = "0.2.2"
+dependencies = [
+ "async-trait",
+ "aws-config",
+ "aws-sdk-bedrock",
+ "axum",
+ "dirs",
+ "http-body-util",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-realtime",
+ "openh3-runtime",
+ "reqwest",
+ "semver",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "windows-sys 0.61.2",
+ "wiremock",
+]
+
+[[package]]
+name = "openh3-team"
+version = "0.2.2"
+dependencies = [
+ "agent-client-protocol",
+ "async-trait",
+ "axum",
+ "dashmap",
+ "futures-util",
+ "openh3-ai-agent",
+ "openh3-api-types",
+ "openh3-auth",
+ "openh3-common",
+ "openh3-db",
+ "openh3-project",
+ "openh3-realtime",
+ "openh3-team-prompts",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "openh3-team-prompts"
+version = "0.2.2"
+dependencies = [
+ "openh3-api-types",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -6,7 +6,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 Set-Location $repoRoot
 
-$migrationDir = Join-Path $repoRoot "crates/aionui-db/migrations"
+$migrationDir = Join-Path $repoRoot "crates/openh3-db/migrations"
 $duplicateVersions = Get-ChildItem -LiteralPath $migrationDir -File -Filter "*.sql" |
     ForEach-Object {
         if ($_.Name -match '^([0-9]+)_') {
@@ -62,7 +62,8 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-$changed = git diff --name-status --diff-filter=DMR $baseCommit -- "crates/aionui-db/migrations/*.sql"
+$changed = git diff --name-status --find-renames --diff-filter=DMR $baseCommit -- "crates/openh3-db/migrations/*.sql" "crates/aionui-db/migrations/*.sql" |
+    Where-Object { $_ -notmatch '^R100\s' }
 if (-not [string]::IsNullOrWhiteSpace(($changed -join "`n"))) {
     [Console]::Error.WriteLine("Existing migration files from main must not be modified or deleted.")
     [Console]::Error.WriteLine("")

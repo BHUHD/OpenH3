@@ -21,7 +21,7 @@ permissions:
   contents: write
 
 env:
-  BINARY_NAME: aioncore
+  BINARY_NAME: openh3-core
   CARGO_TERM_COLOR: always
   CARGO_HTTP_TIMEOUT: "600"
   CARGO_NET_RETRY: "10"
@@ -66,26 +66,26 @@ jobs:
           # deliberately drop it.
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            binary_name: aioncore
+            binary_name: openh3-core
           # Linux aarch64: keep `cross` (its image happens to not trip the
           # aws-lc-sys check and also yields an older GLIBC baseline).
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            binary_name: aioncore
+            binary_name: openh3-core
             use_cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
-            binary_name: aioncore
+            binary_name: openh3-core
           - os: macos-latest
             target: aarch64-apple-darwin
-            binary_name: aioncore
+            binary_name: openh3-core
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary_name: aioncore.exe
+            binary_name: openh3-core.exe
             rustflags: "-C target-feature=+crt-static"
           - os: windows-latest
             target: aarch64-pc-windows-msvc
-            binary_name: aioncore.exe
+            binary_name: openh3-core.exe
             rustflags: "-C target-feature=+crt-static"
 
     steps:
@@ -131,9 +131,9 @@ jobs:
             echo "Using RUSTFLAGS=${RUSTFLAGS}"
           fi
           if [[ "${{ matrix.use_cross }}" == "true" ]]; then
-            cross build --release --target ${{ matrix.target }} -p aionui-app
+            cross build --release --target ${{ matrix.target }} -p openh3-app
           else
-            cargo build --release --target ${{ matrix.target }} -p aionui-app
+            cargo build --release --target ${{ matrix.target }} -p openh3-app
           fi
 
       - name: Verify Linux ARM64 GLIBC baseline
@@ -153,8 +153,10 @@ jobs:
           VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
           mkdir -p dist
-          ARCHIVE="aioncore-v${VERSION}-${{ matrix.target }}.tar.gz"
-          tar -C target/${{ matrix.target }}/release -czf "dist/${ARCHIVE}" ${{ matrix.binary_name }}
+          ARCHIVE="openh3-core-v${VERSION}-${{ matrix.target }}.tar.gz"
+          LEGACY_ARCHIVE="aioncore-v${VERSION}-${{ matrix.target }}.tar.gz"
+          tar -C target/${{ matrix.target }}/release -czf "dist/${ARCHIVE}" openh3-core aioncore
+          cp "dist/${ARCHIVE}" "dist/${LEGACY_ARCHIVE}"
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
       - name: Package binary (Windows)
@@ -164,8 +166,10 @@ jobs:
           VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $archive = "aioncore-v${env:VERSION}-${{ matrix.target }}.zip"
-          Compress-Archive -Path "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" -DestinationPath "dist/${archive}" -Force
+          $archive = "openh3-core-v${env:VERSION}-${{ matrix.target }}.zip"
+          $legacyArchive = "aioncore-v${env:VERSION}-${{ matrix.target }}.zip"
+          Compress-Archive -Path "target/${{ matrix.target }}/release/openh3-core.exe", "target/${{ matrix.target }}/release/aioncore.exe" -DestinationPath "dist/${archive}" -Force
+          Copy-Item "dist/${archive}" "dist/${legacyArchive}" -Force
           "ARCHIVE=${archive}" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Upload release artifact
@@ -192,7 +196,7 @@ jobs:
         shell: bash
         run: |
           cd artifacts
-          sha256sum aioncore-* > aioncore-checksums.txt
+          sha256sum openh3-core-* aioncore-* > openh3-core-checksums.txt
 
       - name: Upload release assets
         shell: bash

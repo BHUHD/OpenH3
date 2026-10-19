@@ -1,33 +1,33 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/aionui-assets",
-    "crates/aionui-common",
-    "crates/aionui-db",
-    "crates/aionui-api-types",
-    "crates/aionui-realtime",
-    "crates/aionui-runtime",
-    "crates/aionui-process",
-    "crates/aionui-session",
-    "crates/aionui-session-message",
-    "crates/aionui-skill-runtime",
-    "crates/aionui-auth",
-    "crates/aionui-system",
-    "crates/aionui-file",
-    "crates/aionui-office",
-    "crates/aionui-shell",
-    "crates/aionui-ai-agent",
-    "crates/aionui-mcp",
-    "crates/aionui-conversation",
-    "crates/aionui-extension",
-    "crates/aionui-channel",
-    "crates/aionui-team-prompts",
-    "crates/aionui-team",
-    "crates/aionui-project",
-    "crates/aionui-sidebar",
-    "crates/aionui-cron",
-    "crates/aionui-assistant",
-    "crates/aionui-app",
+    "crates/openh3-assets",
+    "crates/openh3-common",
+    "crates/openh3-db",
+    "crates/openh3-api-types",
+    "crates/openh3-realtime",
+    "crates/openh3-runtime",
+    "crates/openh3-process",
+    "crates/openh3-session",
+    "crates/openh3-session-message",
+    "crates/openh3-skill-runtime",
+    "crates/openh3-auth",
+    "crates/openh3-system",
+    "crates/openh3-file",
+    "crates/openh3-office",
+    "crates/openh3-shell",
+    "crates/openh3-ai-agent",
+    "crates/openh3-mcp",
+    "crates/openh3-conversation",
+    "crates/openh3-extension",
+    "crates/openh3-channel",
+    "crates/openh3-team-prompts",
+    "crates/openh3-team",
+    "crates/openh3-project",
+    "crates/openh3-sidebar",
+    "crates/openh3-cron",
+    "crates/openh3-assistant",
+    "crates/openh3-app",
 ]
 
 [workspace.package]
@@ -37,33 +37,36 @@ license = "MIT"
 
 [workspace.dependencies]
 # Internal crates
-aionui-common = { path = "crates/aionui-common" }
-aionui-assets = { path = "crates/aionui-assets" }
-aionui-db = { path = "crates/aionui-db" }
-aionui-api-types = { path = "crates/aionui-api-types" }
-aionui-realtime = { path = "crates/aionui-realtime" }
-aionui-runtime = { path = "crates/aionui-runtime" }
-aionui-process = { path = "crates/aionui-process" }
-aionui-session = { path = "crates/aionui-session" }
-aionui-session-message = { path = "crates/aionui-session-message" }
-aionui-skill-runtime = { path = "crates/aionui-skill-runtime" }
-aionui-auth = { path = "crates/aionui-auth" }
-aionui-system = { path = "crates/aionui-system" }
-aionui-file = { path = "crates/aionui-file" }
-aionui-office = { path = "crates/aionui-office" }
-aionui-shell = { path = "crates/aionui-shell" }
-aionui-ai-agent = { path = "crates/aionui-ai-agent" }
-aionui-mcp = { path = "crates/aionui-mcp" }
-aionui-conversation = { path = "crates/aionui-conversation" }
-aionui-extension = { path = "crates/aionui-extension" }
-aionui-channel = { path = "crates/aionui-channel" }
-aionui-team-prompts = { path = "crates/aionui-team-prompts" }
-aionui-team = { path = "crates/aionui-team" }
-aionui-project = { path = "crates/aionui-project" }
-aionui-sidebar = { path = "crates/aionui-sidebar" }
-aionui-cron = { path = "crates/aionui-cron" }
-aionui-assistant = { path = "crates/aionui-assistant" }
-aionui-app = { path = "crates/aionui-app" }
+# Dependency keys and library names use the OpenH3 namespace. Runtime data and
+# wire-level legacy identifiers are migrated separately and are not derived
+# from Rust crate names.
+openh3-common = { package = "openh3-common", path = "crates/openh3-common" }
+openh3-assets = { package = "openh3-assets", path = "crates/openh3-assets" }
+openh3-db = { package = "openh3-db", path = "crates/openh3-db" }
+openh3-api-types = { package = "openh3-api-types", path = "crates/openh3-api-types" }
+openh3-realtime = { package = "openh3-realtime", path = "crates/openh3-realtime" }
+openh3-runtime = { package = "openh3-runtime", path = "crates/openh3-runtime" }
+openh3-process = { package = "openh3-process", path = "crates/openh3-process" }
+openh3-session = { package = "openh3-session", path = "crates/openh3-session" }
+openh3-session-message = { package = "openh3-session-message", path = "crates/openh3-session-message" }
+openh3-skill-runtime = { package = "openh3-skill-runtime", path = "crates/openh3-skill-runtime" }
+openh3-auth = { package = "openh3-auth", path = "crates/openh3-auth" }
+openh3-system = { package = "openh3-system", path = "crates/openh3-system" }
+openh3-file = { package = "openh3-file", path = "crates/openh3-file" }
+openh3-office = { package = "openh3-office", path = "crates/openh3-office" }
+openh3-shell = { package = "openh3-shell", path = "crates/openh3-shell" }
+openh3-ai-agent = { package = "openh3-ai-agent", path = "crates/openh3-ai-agent" }
+openh3-mcp = { package = "openh3-mcp", path = "crates/openh3-mcp" }
+openh3-conversation = { package = "openh3-conversation", path = "crates/openh3-conversation" }
+openh3-extension = { package = "openh3-extension", path = "crates/openh3-extension" }
+openh3-channel = { package = "openh3-channel", path = "crates/openh3-channel" }
+openh3-team-prompts = { package = "openh3-team-prompts", path = "crates/openh3-team-prompts" }
+openh3-team = { package = "openh3-team", path = "crates/openh3-team" }
+openh3-project = { package = "openh3-project", path = "crates/openh3-project" }
+openh3-sidebar = { package = "openh3-sidebar", path = "crates/openh3-sidebar" }
+openh3-cron = { package = "openh3-cron", path = "crates/openh3-cron" }
+openh3-assistant = { package = "openh3-assistant", path = "crates/openh3-assistant" }
+openh3-app = { package = "openh3-app", path = "crates/openh3-app" }
 
 aion-agent = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
 aion-providers = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }

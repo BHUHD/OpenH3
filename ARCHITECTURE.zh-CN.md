@@ -17,25 +17,25 @@ AionCore 是 AionUi 的后端服务，使用 Rust 构建（Axum + Tokio + SQLite
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  aionui-app                      │
+│                  openh3-app                      │
 │            （二进制入口，路由组装）                  │
 ├──────────┬──────────┬──────────┬────────────────┤
 │conversa- │ channel  │  team    │  ...（领域层）   │
 │  tion    │          │          │                 │
 ├──────────┴──────────┴──────────┴────────────────┤
-│   aionui-auth          aionui-realtime           │
+│   openh3-auth          openh3-realtime           │
 │  （JWT、CSRF、中间件）  （WebSocket、事件广播）      │
 ├─────────────────────────────────────────────────┤
-│  aionui-db    aionui-api-types   aionui-runtime  │
+│  openh3-db    openh3-api-types   openh3-runtime  │
 │  （仓库层）    （API 契约）       （运行时/子进程）   │
 ├─────────────────────────────────────────────────┤
-│       aionui-common          aionui-assets       │
+│       openh3-common          openh3-assets       │
 │  （错误类型、枚举、加密）      （嵌入式数据）        │
 └─────────────────────────────────────────────────┘
 ```
 
-依赖方向严格向下流动。领域 crate 不可依赖 aionui-app，
-aionui-common 没有任何内部依赖。
+依赖方向严格向下流动。领域 crate 不可依赖 openh3-app，
+openh3-common 没有任何内部依赖。
 
 ## Crate 层级
 
@@ -47,12 +47,12 @@ aionui-common 没有任何内部依赖。
 
 | Crate | 职责 |
 |-------|------|
-| `aionui-common` | 共享错误类型（ApiError）、枚举、ID 生成、加密工具、时间戳、分页 |
-| `aionui-api-types` | 所有 HTTP/WebSocket 的请求和响应类型，是 API 契约的唯一定义处 |
-| `aionui-db` | SQLite 数据库层，定义 Repository trait 和实现 |
-| `aionui-assets` | 嵌入式静态资源（Agent 元数据、提示词） |
-| `aionui-runtime` | 托管 Node、子进程管理、PATH 增强 |
-| `aionui-process` | 直连 CLI 会话的子进程监管、隔离和启动清理 |
+| `openh3-common` | 共享错误类型（ApiError）、枚举、ID 生成、加密工具、时间戳、分页 |
+| `openh3-api-types` | 所有 HTTP/WebSocket 的请求和响应类型，是 API 契约的唯一定义处 |
+| `openh3-db` | SQLite 数据库层，定义 Repository trait 和实现 |
+| `openh3-assets` | 嵌入式静态资源（Agent 元数据、提示词） |
+| `openh3-runtime` | 托管 Node、子进程管理、PATH 增强 |
+| `openh3-process` | 直连 CLI 会话的子进程监管、隔离和启动清理 |
 
 ### 能力层（Capability）
 
@@ -60,8 +60,8 @@ aionui-common 没有任何内部依赖。
 
 | Crate | 职责 |
 |-------|------|
-| `aionui-auth` | JWT 认证、密码哈希、CSRF 保护、Cookie 管理、认证中间件 |
-| `aionui-realtime` | WebSocket 连接管理、事件广播（BroadcastEventBus）、消息路由 |
+| `openh3-auth` | JWT 认证、密码哈希、CSRF 保护、Cookie 管理、认证中间件 |
+| `openh3-realtime` | WebSocket 连接管理、事件广播（BroadcastEventBus）、消息路由 |
 
 ### 领域层（Domain）
 
@@ -69,27 +69,27 @@ aionui-common 没有任何内部依赖。
 
 | Crate | 职责 |
 |-------|------|
-| `aionui-conversation` | 对话管理、消息收发、确认机制、流式响应 |
-| `aionui-session` | 统一直连 CLI 与 ACP 后端的会话状态、能力、命令和事件 |
-| `aionui-channel` | 多渠道集成（微信、钉钉、飞书）、插件系统、配对会话 |
-| `aionui-team` | 团队协作、任务调度、邮箱系统 |
-| `aionui-team-prompts` | 团队角色提示词、治理规则和工具授权元数据 |
-| `aionui-cron` | 定时任务执行、Cron 表达式、事件触发 |
-| `aionui-file` | 文件操作、监听、快照、Git 操作、压缩 |
-| `aionui-project` | 项目/文件夹绑定、项目浏览器、文件系统监听和资源边界校验 |
-| `aionui-office` | Office 文档处理（Excel、PPT、Word）、预览、转换 |
-| `aionui-system` | 系统设置、提供商管理、版本检查、模型获取 |
-| `aionui-mcp` | MCP 协议集成、OAuth、多平台适配器 |
-| `aionui-ai-agent` | Agent 生命周期管理、Worker 任务队列、ACP/辅助技能 |
-| `aionui-extension` | 扩展注册中心、Hub 管理、技能发现与安装 |
-| `aionui-shell` | Shell 命令执行、语音转文字 |
-| `aionui-assistant` | Assistant 配置与管理 |
+| `openh3-conversation` | 对话管理、消息收发、确认机制、流式响应 |
+| `openh3-session` | 统一直连 CLI 与 ACP 后端的会话状态、能力、命令和事件 |
+| `openh3-channel` | 多渠道集成（微信、钉钉、飞书）、插件系统、配对会话 |
+| `openh3-team` | 团队协作、任务调度、邮箱系统 |
+| `openh3-team-prompts` | 团队角色提示词、治理规则和工具授权元数据 |
+| `openh3-cron` | 定时任务执行、Cron 表达式、事件触发 |
+| `openh3-file` | 文件操作、监听、快照、Git 操作、压缩 |
+| `openh3-project` | 项目/文件夹绑定、项目浏览器、文件系统监听和资源边界校验 |
+| `openh3-office` | Office 文档处理（Excel、PPT、Word）、预览、转换 |
+| `openh3-system` | 系统设置、提供商管理、版本检查、模型获取 |
+| `openh3-mcp` | MCP 协议集成、OAuth、多平台适配器 |
+| `openh3-ai-agent` | Agent 生命周期管理、Worker 任务队列、ACP/辅助技能 |
+| `openh3-extension` | 扩展注册中心、Hub 管理、技能发现与安装 |
+| `openh3-shell` | Shell 命令执行、语音转文字 |
+| `openh3-assistant` | Assistant 配置与管理 |
 
 ### 组装层（Composition）
 
 | Crate | 职责 |
 |-------|------|
-| `aionui-app` | 顶层二进制入口，组装所有 crate 为完整的 Axum 服务 |
+| `openh3-app` | 顶层二进制入口，组装所有 crate 为完整的 Axum 服务 |
 
 ### 依赖方向规则
 
@@ -105,12 +105,12 @@ aionui-common 没有任何内部依赖。
 
 ## 领域 Crate 内部结构
 
-每个领域 crate 遵循统一的内部组织模式，以 aionui-conversation 为参考示例：
+每个领域 crate 遵循统一的内部组织模式，以 openh3-conversation 为参考示例：
 
 ### 标准目录结构
 
 ```
-crates/aionui-conversation/src/
+crates/openh3-conversation/src/
 ├── lib.rs       # 模块导出，定义 crate 的公共 API
 ├── routes.rs    # HTTP 路由处理函数
 ├── service.rs   # 业务逻辑层
@@ -201,7 +201,7 @@ async fn handler(
 }
 ```
 
-所有响应类型定义在 `aionui-api-types` 中，这是 API 契约的唯一来源。
+所有响应类型定义在 `openh3-api-types` 中，这是 API 契约的唯一来源。
 
 ### HTTP 状态码映射
 
@@ -262,7 +262,7 @@ async fn handler(
 
 ### ACP 工具输出清洗
 
-ACP Agent 的工具调用事件在 `aionui-ai-agent` 翻译层进入统一
+ACP Agent 的工具调用事件在 `openh3-ai-agent` 翻译层进入统一
 `AgentStreamEvent`。该边界必须保证 WebSocket 和 SQLite 消息内容
 是可控大小，不能把工具返回的大型二进制或 inline base64 原样透传。
 
@@ -277,7 +277,7 @@ inline base64。
 
 ### Repository Trait 模式
 
-所有数据库访问通过 trait 抽象，定义在 `aionui-db` 中：
+所有数据库访问通过 trait 抽象，定义在 `openh3-db` 中：
 
 ```rust
 #[async_trait]
@@ -302,21 +302,21 @@ pub trait IConversationRepository: Send + Sync {
 
 | 类型 | 位置 | 用途 | 示例 |
 |------|------|------|------|
-| Row 模型 | `aionui-db/src/models/` | 数据库行映射 | `ConversationRow` |
-| Params 对象 | `aionui-db/src/repository/` | 数据库写入参数 | `UpdateConversationParams` |
-| 请求/响应类型 | `aionui-api-types` | API 契约与共享 DTO | `CreateConversationRequest`、`ConversationResponse` |
+| Row 模型 | `openh3-db/src/models/` | 数据库行映射 | `ConversationRow` |
+| Params 对象 | `openh3-db/src/repository/` | 数据库写入参数 | `UpdateConversationParams` |
+| 请求/响应类型 | `openh3-api-types` | API 契约与共享 DTO | `CreateConversationRequest`、`ConversationResponse` |
 
-**Service 层可以直接使用 `aionui-api-types` 中的类型。** 该 crate 是纯数据结构定义，
+**Service 层可以直接使用 `openh3-api-types` 中的类型。** 该 crate 是纯数据结构定义，
 不依赖任何 HTTP 框架，本质上是共享 DTO 层。
 
-⚠️ **关键约束：`aionui-api-types` 禁止依赖 axum、tower 等 HTTP 框架，
+⚠️ **关键约束：`openh3-api-types` 禁止依赖 axum、tower 等 HTTP 框架，
 只允许 serde 和基础类型依赖。** 这是 Service 层能安全使用它的前提。
 
 ### 职责分界
 
 - **Handler（routes.rs）**：请求校验、参数提取、错误映射、构造 `ApiResponse`
 - **Service（service.rs）**：业务逻辑、规则校验、编排 Repository 调用、Row ↔ Response 转换
-- **Repository（aionui-db）**：纯数据库操作，不包含业务逻辑
+- **Repository（openh3-db）**：纯数据库操作，不包含业务逻辑
 
 Handler 与 Service 的分界线是**职责**而非类型——
 Handler 不做业务判断，Service 不做 HTTP 处理。
@@ -324,7 +324,7 @@ Handler 不做业务判断，Service 不做 HTTP 处理。
 ### Migration 管理
 
 使用 sqlx 的内嵌迁移（`sqlx::migrate!()`）：
-- 迁移文件位于 `crates/aionui-db/migrations/`
+- 迁移文件位于 `crates/openh3-db/migrations/`
 - 命名格式：`NNN_descriptive_name.sql`（序号递增）
 - 迁移在应用启动时自动执行
 - 新增表或字段变更必须通过迁移文件，禁止手动修改数据库
@@ -334,7 +334,7 @@ Handler 不做业务判断，Service 不做 HTTP 处理。
 
 ```
 DbError（数据库层）
-  ↓ From trait 实现（aionui-db/src/error.rs）
+  ↓ From trait 实现（openh3-db/src/error.rs）
 ApiError（统一错误类型）
   ↓ IntoResponse 实现
 HTTP 响应（状态码 + ErrorResponse JSON）
@@ -353,7 +353,7 @@ HTTP 响应（状态码 + ErrorResponse JSON）
 
 **第一步：集中构建服务（AppServices）**
 
-`aionui-app` 中定义 `AppServices`，集中持有所有共享依赖：
+`openh3-app` 中定义 `AppServices`，集中持有所有共享依赖：
 
 ```rust
 pub struct AppServices {
@@ -443,7 +443,7 @@ CORS（仅 local 模式）
 - **AppServices 是唯一的服务构建中心**——所有 Repository 实例化和 Service 组装在此完成
 - **RouterState 只持有必要的依赖**——每个领域的 State 只包含自己用到的 service
 - **依赖通过 `Arc<dyn Trait>` 传递**——支持运行时多态和测试替换
-- **领域 crate 不负责构建自己的依赖**——只定义需要什么（RouterState），由 `aionui-app` 负责组装
+- **领域 crate 不负责构建自己的依赖**——只定义需要什么（RouterState），由 `openh3-app` 负责组装
 
 ## 安全模型
 
@@ -467,7 +467,7 @@ CORS（仅 local 模式，允许任意来源）
 - 有效期：24 小时
 - Payload：`user_id`、`username`、`iat`、`exp`、`iss`（"aionui"）、`aud`（"aionui-webui"）
 - Secret 来源优先级：环境变量 → 数据库 → 随机生成（64 字节，getrandom）
-- Token 提取优先级：`Authorization: Bearer` 头 → `aionui-session` Cookie
+- Token 提取优先级：`Authorization: Bearer` 头 → `openh3-session` Cookie
 - 支持 Token 黑名单（SHA-256 哈希，DashMap 存储）
 
 ### CSRF 保护
@@ -489,7 +489,7 @@ CORS（仅 local 模式，允许任意来源）
 
 | Cookie | HttpOnly | Secure | SameSite | Max-Age |
 |--------|----------|--------|----------|---------|
-| `aionui-session` | ✅ | HTTPS 时 | Strict(HTTPS) / Lax(HTTP) | 30 天 |
+| `openh3-session` | ✅ | HTTPS 时 | Strict(HTTPS) / Lax(HTTP) | 30 天 |
 | `aionui-csrf-token` | ❌ | HTTPS 时 | Strict(HTTPS) / Lax(HTTP) | 30 天 |
 
 ### 频率限制
@@ -526,7 +526,7 @@ IP 提取优先级：`X-Forwarded-For` → `X-Real-IP` → "unknown"
 |------|------|-----------|------|
 | 单元测试 | 各 `.rs` 文件内 `#[cfg(test)]` | 无或 Mock | 函数级逻辑验证 |
 | 集成测试 | `crates/<crate>/tests/` | 内存 SQLite | Service 和 Repository 行为验证 |
-| E2E 测试 | `crates/aionui-app/tests/` | 内存 SQLite | 完整 HTTP 请求链路验证 |
+| E2E 测试 | `crates/openh3-app/tests/` | 内存 SQLite | 完整 HTTP 请求链路验证 |
 
 ### 内存数据库
 
@@ -547,7 +547,7 @@ IP 提取优先级：`X-Forwarded-For` → `X-Real-IP` → "unknown"
 
 ### E2E 测试模式
 
-`aionui-app/tests/common/mod.rs` 提供共享的测试工具：
+`openh3-app/tests/common/mod.rs` 提供共享的测试工具：
 
 ```rust
 // 构建完整应用
@@ -606,28 +606,28 @@ let response = app.oneshot(
 
 ### 新建领域 Crate 的完整步骤
 
-以添加 `aionui-my-feature` 为例：
+以添加 `openh3-my-feature` 为例：
 
 **第一步：创建 crate 并注册到 workspace**
 
-1. 创建目录 `crates/aionui-my-feature/`
+1. 创建目录 `crates/openh3-my-feature/`
 2. 在根 `Cargo.toml` 中添加 workspace 成员：
    ```toml
    members = [
        # ... 现有成员
-       "crates/aionui-my-feature",
+       "crates/openh3-my-feature",
    ]
    ```
 3. 在根 `Cargo.toml` 的 `[workspace.dependencies]` 中注册：
    ```toml
-   aionui-my-feature = { path = "crates/aionui-my-feature" }
+   openh3-my-feature = { path = "crates/openh3-my-feature" }
    ```
 4. crate 内的依赖使用 `.workspace = true` 引用共享版本
 
 **第二步：按标准结构编写 crate**
 
 ```
-crates/aionui-my-feature/
+crates/openh3-my-feature/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs        # 导出 my_feature_routes、MyFeatureService、MyFeatureRouterState
@@ -638,21 +638,21 @@ crates/aionui-my-feature/
     └── my_feature_test.rs
 ```
 
-**第三步：如需数据库，在 aionui-db 中添加**
+**第三步：如需数据库，在 openh3-db 中添加**
 
 1. 在 `models/` 添加 Row 模型
 2. 在 `repository/` 定义 Repository trait（`I` 前缀）和 Sqlite 实现
 3. 在 `migrations/` 添加迁移文件（`NNN_descriptive_name.sql`）
 
-**第四步：如需 API 类型，在 aionui-api-types 中添加**
+**第四步：如需 API 类型，在 openh3-api-types 中添加**
 
-在 `aionui-api-types` 中定义请求/响应类型，保持 API 契约集中管理。
+在 `openh3-api-types` 中定义请求/响应类型，保持 API 契约集中管理。
 
-**第五步：接入 aionui-app**
+**第五步：接入 openh3-app**
 
-1. 在 `aionui-app/Cargo.toml` 添加依赖：
+1. 在 `openh3-app/Cargo.toml` 添加依赖：
    ```toml
-   aionui-my-feature.workspace = true
+   openh3-my-feature.workspace = true
    ```
 
 2. 在 `ModuleStates` 中添加字段：
@@ -692,8 +692,8 @@ crates/aionui-my-feature/
 新增 crate 前确认：
 - [ ] crate 内部结构遵循标准模式（lib/routes/service/state）
 - [ ] 依赖方向正确（不依赖上层或同层 crate 的具体实现）
-- [ ] Repository trait 定义在 aionui-db，实现使用 Sqlite 前缀
-- [ ] API 类型定义在 aionui-api-types
+- [ ] Repository trait 定义在 openh3-db，实现使用 Sqlite 前缀
+- [ ] API 类型定义在 openh3-api-types
 - [ ] 路由使用 `/api/` 前缀，资源名 kebab-case
 - [ ] 包含对应的测试文件
 - [ ] WebSocket 事件遵循 `domain.camelCaseAction` 命名
@@ -702,7 +702,7 @@ crates/aionui-my-feature/
 
 ### 托管 Node 运行时
 
-内置 ACP adapter 通过 `crates/aionui-runtime/src/node_runtime/` 中的托管
+内置 ACP adapter 通过 `crates/openh3-runtime/src/node_runtime/` 中的托管
 Node 运行时启动。打包版本从 managed-resources bundle 激活 Node；download
 模式将固定版本安装到 `{data_dir}/runtime/node`。Adapter 命令携带明确的
 Node 可执行文件路径，不依赖环境中的 `PATH`。
@@ -710,7 +710,7 @@ Node 可执行文件路径，不依赖环境中的 `PATH`。
 ### 启动时 PATH 增强
 
 `fn main()` 在 tokio 运行时启动**之前**调用
-`aionui_runtime::enhance_process_path()`，使后续所有
+`openh3_runtime::enhance_process_path()`，使后续所有
 `which::which(...)` 和 `Command::new(...)` 继承增强后的 `PATH`。
 三层合并优先级：交互式 login-shell `$PATH`（Unix，3 秒超时）→ 当前继承的
 PATH → 平台 fallback 目录（`~/.cargo/bin`、`~/.local/bin`、版本管理器安装
@@ -722,8 +722,8 @@ PATH → 平台 fallback 目录（`~/.cargo/bin`、`~/.local/bin`、版本管理
 ### 子进程 Spawn Builder
 
 新的子进程启动点应通过
-`aionui_runtime::Builder::agent(program)`（长期运行的 Agent CLI，
-调用者拥有 stdio）或 `aionui_runtime::Builder::clean_cli(program)`
+`openh3_runtime::Builder::agent(program)`（长期运行的 Agent CLI，
+调用者拥有 stdio）或 `openh3_runtime::Builder::clean_cli(program)`
 （短期工具，解析输出）创建。两者都设置 `kill_on_drop(true)`
 并清除 `NODE_OPTIONS`/`NODE_INSPECT`/`NODE_DEBUG`/`CLAUDECODE`
 防止调试环境泄露到子进程。`clean_cli` 额外设置管道 stdio

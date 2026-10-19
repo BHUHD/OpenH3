@@ -69,11 +69,11 @@ check: migration-check lint fmt-check test
 
 # Run the server (debug)
 run *ARGS:
-    @just _cargo run --bin aioncore -- {{ARGS}}
+    @just _cargo run --bin openh3-core -- {{ARGS}}
 
 # Run the server (release)
 run-release *ARGS:
-    @just _cargo run --release --bin aioncore -- {{ARGS}}
+    @just _cargo run --release --bin openh3-core -- {{ARGS}}
 
 # Pre-push gate: migration check, format, lint, auto-commit fixes, test, then push
 push *ARGS: migration-check lint-fix fmt _auto-commit-fixes test

@@ -26,7 +26,7 @@ permissions:
   contents: read
 
 env:
-  BINARY_NAME: aioncore
+  BINARY_NAME: openh3-core
   CARGO_TERM_COLOR: always
   CARGO_HTTP_TIMEOUT: "600"
   CARGO_NET_RETRY: "10"
@@ -49,12 +49,12 @@ jobs:
         run: |
           PLATFORM="${{ inputs.platform }}"
 
-          MACOS_ARM64='{"platform":"macos-arm64","os":"macos-latest","target":"aarch64-apple-darwin","binary_name":"aioncore","artifact_name":"aioncore-manual-macos-arm64","use_cross":false}'
-          MACOS_X64='{"platform":"macos-x64","os":"macos-latest","target":"x86_64-apple-darwin","binary_name":"aioncore","artifact_name":"aioncore-manual-macos-x64","use_cross":false}'
-          WINDOWS_X64='{"platform":"windows-x64","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary_name":"aioncore.exe","artifact_name":"aioncore-manual-windows-x64","rustflags":"-C target-feature=+crt-static","use_cross":false}'
-          WINDOWS_ARM64='{"platform":"windows-arm64","os":"windows-latest","target":"aarch64-pc-windows-msvc","binary_name":"aioncore.exe","artifact_name":"aioncore-manual-windows-arm64","rustflags":"-C target-feature=+crt-static","use_cross":false}'
-          LINUX_X64='{"platform":"linux-x64","os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","binary_name":"aioncore","artifact_name":"aioncore-manual-linux-x64","use_cross":false}'
-          LINUX_ARM64='{"platform":"linux-arm64","os":"ubuntu-latest","target":"aarch64-unknown-linux-gnu","binary_name":"aioncore","artifact_name":"aioncore-manual-linux-arm64","use_cross":true}'
+          MACOS_ARM64='{"platform":"macos-arm64","os":"macos-latest","target":"aarch64-apple-darwin","binary_name":"openh3-core","artifact_name":"openh3-core-manual-macos-arm64","use_cross":false}'
+          MACOS_X64='{"platform":"macos-x64","os":"macos-latest","target":"x86_64-apple-darwin","binary_name":"openh3-core","artifact_name":"openh3-core-manual-macos-x64","use_cross":false}'
+          WINDOWS_X64='{"platform":"windows-x64","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary_name":"openh3-core.exe","artifact_name":"openh3-core-manual-windows-x64","rustflags":"-C target-feature=+crt-static","use_cross":false}'
+          WINDOWS_ARM64='{"platform":"windows-arm64","os":"windows-latest","target":"aarch64-pc-windows-msvc","binary_name":"openh3-core.exe","artifact_name":"openh3-core-manual-windows-arm64","rustflags":"-C target-feature=+crt-static","use_cross":false}'
+          LINUX_X64='{"platform":"linux-x64","os":"ubuntu-22.04","target":"x86_64-unknown-linux-gnu","binary_name":"openh3-core","artifact_name":"openh3-core-manual-linux-x64","use_cross":false}'
+          LINUX_ARM64='{"platform":"linux-arm64","os":"ubuntu-latest","target":"aarch64-unknown-linux-gnu","binary_name":"openh3-core","artifact_name":"openh3-core-manual-linux-arm64","use_cross":true}'
 
           if [ "$PLATFORM" = "all" ]; then
             MATRIX="{\"include\":[$MACOS_ARM64,$MACOS_X64,$WINDOWS_X64,$WINDOWS_ARM64,$LINUX_X64,$LINUX_ARM64]}"
@@ -130,9 +130,9 @@ jobs:
           fi
 
           if [[ "${{ matrix.use_cross }}" == "true" ]]; then
-            cross build --release --target ${{ matrix.target }} -p aionui-app
+            cross build --release --target ${{ matrix.target }} -p openh3-app
           else
-            cargo build --release --target ${{ matrix.target }} -p aionui-app
+            cargo build --release --target ${{ matrix.target }} -p openh3-app
           fi
 
       - name: Verify Linux ARM64 GLIBC baseline
@@ -152,7 +152,7 @@ jobs:
           COMMIT_SHORT: ${{ steps.commit.outputs.short }}
         run: |
           mkdir -p dist
-          ARCHIVE="aioncore-${COMMIT_SHORT}-${{ matrix.target }}.tar.gz"
+          ARCHIVE="openh3-core-${COMMIT_SHORT}-${{ matrix.target }}.tar.gz"
           tar -C target/${{ matrix.target }}/release -czf "dist/${ARCHIVE}" ${{ matrix.binary_name }}
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
 
@@ -163,7 +163,7 @@ jobs:
           COMMIT_SHORT: ${{ steps.commit.outputs.short }}
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $archive = "aioncore-${env:COMMIT_SHORT}-${{ matrix.target }}.zip"
+          $archive = "openh3-core-${env:COMMIT_SHORT}-${{ matrix.target }}.zip"
           Compress-Archive -Path "target/${{ matrix.target }}/release/${{ matrix.binary_name }}" -DestinationPath "dist/${archive}" -Force
           "ARCHIVE=${archive}" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -191,7 +191,7 @@ jobs:
           PLATFORMS=$(echo "$MATRIX" | jq -r '[.include[].platform] | join(", ")')
           ARTIFACTS=$(echo "$MATRIX" | jq -r '[.include[].artifact_name] | join(", ")')
 
-          echo "## AionCore Manual Build" >> "$GITHUB_STEP_SUMMARY"
+          echo "## OpenH3 Core Manual Build" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Key | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|-------|" >> "$GITHUB_STEP_SUMMARY"

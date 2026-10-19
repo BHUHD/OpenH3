@@ -17,25 +17,25 @@ It provides HTTP REST APIs and WebSocket real-time events for the AionUi desktop
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  aionui-app                      │
+│                  openh3-app                      │
 │         (binary entry, router assembly)          │
 ├──────────┬──────────┬──────────┬────────────────┤
 │conversa- │ channel  │  team    │  ... (domain)  │
 │  tion    │          │          │                 │
 ├──────────┴──────────┴──────────┴────────────────┤
-│   aionui-auth          aionui-realtime           │
+│   openh3-auth          openh3-realtime           │
 │  (JWT, CSRF, middleware) (WebSocket, events)     │
 ├─────────────────────────────────────────────────┤
-│  aionui-db    aionui-api-types   aionui-runtime  │
+│  openh3-db    openh3-api-types   openh3-runtime  │
 │ (repositories) (API contracts)  (runtime/process)│
 ├─────────────────────────────────────────────────┤
-│       aionui-common          aionui-assets       │
+│       openh3-common          openh3-assets       │
 │  (error types, enums, crypto)  (embedded data)   │
 └─────────────────────────────────────────────────┘
 ```
 
-Dependencies flow strictly downward. Domain crates must not depend on aionui-app,
-and aionui-common has zero internal dependencies.
+Dependencies flow strictly downward. Domain crates must not depend on openh3-app,
+and openh3-common has zero internal dependencies.
 
 ## Crate Hierarchy
 
@@ -47,12 +47,12 @@ Depended on by nearly all other crates. Changes require careful impact assessmen
 
 | Crate | Responsibility |
 |-------|----------------|
-| `aionui-common` | Shared error types (ApiError), enums, ID generation, crypto utilities, timestamps, pagination |
-| `aionui-api-types` | All HTTP/WebSocket request and response types — the single source of truth for API contracts |
-| `aionui-db` | SQLite database layer, defines Repository traits and implementations |
-| `aionui-assets` | Embedded static assets (agent metadata, prompts) |
-| `aionui-runtime` | Managed Node, subprocess spawning, PATH enhancement |
-| `aionui-process` | Supervised subprocess lifecycle, containment, and startup cleanup for direct CLI sessions |
+| `openh3-common` | Shared error types (ApiError), enums, ID generation, crypto utilities, timestamps, pagination |
+| `openh3-api-types` | All HTTP/WebSocket request and response types — the single source of truth for API contracts |
+| `openh3-db` | SQLite database layer, defines Repository traits and implementations |
+| `openh3-assets` | Embedded static assets (agent metadata, prompts) |
+| `openh3-runtime` | Managed Node, subprocess spawning, PATH enhancement |
+| `openh3-process` | Supervised subprocess lifecycle, containment, and startup cleanup for direct CLI sessions |
 
 ### Capability
 
@@ -60,8 +60,8 @@ Cross-cutting capabilities used by domain crates.
 
 | Crate | Responsibility |
 |-------|----------------|
-| `aionui-auth` | JWT authentication, password hashing, CSRF protection, cookie management, auth middleware |
-| `aionui-realtime` | WebSocket connection management, event broadcasting (BroadcastEventBus), message routing |
+| `openh3-auth` | JWT authentication, password hashing, CSRF protection, cookie management, auth middleware |
+| `openh3-realtime` | WebSocket connection management, event broadcasting (BroadcastEventBus), message routing |
 
 ### Domain
 
@@ -69,27 +69,27 @@ Each crate owns an independent business domain. They remain loosely coupled from
 
 | Crate | Responsibility |
 |-------|----------------|
-| `aionui-conversation` | Conversation management, messaging, confirmations, streaming responses |
-| `aionui-session` | Unified session state, capabilities, commands, and events across direct CLI and ACP backends |
-| `aionui-channel` | Multi-channel integration (WeChat, DingTalk, Lark), plugin system, pairing sessions |
-| `aionui-team` | Team collaboration, task scheduling, mailbox system |
-| `aionui-team-prompts` | Shared team role prompts, governance rules, and tool authorization metadata |
-| `aionui-cron` | Scheduled job execution, cron expressions, event triggering |
-| `aionui-file` | File operations, watching, snapshots, git operations, compression |
-| `aionui-project` | Project/folder bindings, Project Explorer, filesystem monitoring, and resource containment |
-| `aionui-office` | Office document handling (Excel, PPT, Word), preview, conversion |
-| `aionui-system` | System settings, provider management, version checking, model fetching |
-| `aionui-mcp` | MCP protocol integration, OAuth, multi-platform adapters |
-| `aionui-ai-agent` | Agent lifecycle management, worker task queues, ACP/auxiliary skills |
-| `aionui-extension` | Extension registry, hub management, skill discovery and installation |
-| `aionui-shell` | Shell command execution, speech-to-text |
-| `aionui-assistant` | Assistant configuration and management |
+| `openh3-conversation` | Conversation management, messaging, confirmations, streaming responses |
+| `openh3-session` | Unified session state, capabilities, commands, and events across direct CLI and ACP backends |
+| `openh3-channel` | Multi-channel integration (WeChat, DingTalk, Lark), plugin system, pairing sessions |
+| `openh3-team` | Team collaboration, task scheduling, mailbox system |
+| `openh3-team-prompts` | Shared team role prompts, governance rules, and tool authorization metadata |
+| `openh3-cron` | Scheduled job execution, cron expressions, event triggering |
+| `openh3-file` | File operations, watching, snapshots, git operations, compression |
+| `openh3-project` | Project/folder bindings, Project Explorer, filesystem monitoring, and resource containment |
+| `openh3-office` | Office document handling (Excel, PPT, Word), preview, conversion |
+| `openh3-system` | System settings, provider management, version checking, model fetching |
+| `openh3-mcp` | MCP protocol integration, OAuth, multi-platform adapters |
+| `openh3-ai-agent` | Agent lifecycle management, worker task queues, ACP/auxiliary skills |
+| `openh3-extension` | Extension registry, hub management, skill discovery and installation |
+| `openh3-shell` | Shell command execution, speech-to-text |
+| `openh3-assistant` | Assistant configuration and management |
 
 ### Composition
 
 | Crate | Responsibility |
 |-------|----------------|
-| `aionui-app` | Top-level binary entry point, assembles all crates into the Axum server |
+| `openh3-app` | Top-level binary entry point, assembles all crates into the Axum server |
 
 ### Dependency Direction Rules
 
@@ -105,12 +105,12 @@ Composition → Domain → Capability → Foundation
 
 ## Domain Crate Anatomy
 
-Every domain crate follows a consistent internal organization. Using aionui-conversation as a reference:
+Every domain crate follows a consistent internal organization. Using openh3-conversation as a reference:
 
 ### Standard Directory Structure
 
 ```
-crates/aionui-conversation/src/
+crates/openh3-conversation/src/
 ├── lib.rs       # Module exports, defines the crate's public API
 ├── routes.rs    # HTTP route handlers
 ├── service.rs   # Business logic layer
@@ -201,7 +201,7 @@ Both `data` and `message` are optional fields, omitted from serialization when n
 }
 ```
 
-All response types are defined in `aionui-api-types` — the single source of truth for API contracts.
+All response types are defined in `openh3-api-types` — the single source of truth for API contracts.
 
 ### HTTP Status Code Mapping
 
@@ -263,7 +263,7 @@ Existing inconsistencies will be unified incrementally during related module ite
 ### ACP Tool Output Sanitization
 
 ACP agent tool-call events enter the unified `AgentStreamEvent` stream through
-the `aionui-ai-agent` translation boundary. That boundary keeps WebSocket and
+the `openh3-ai-agent` translation boundary. That boundary keeps WebSocket and
 SQLite message payloads bounded instead of forwarding large binary or inline
 base64 results unchanged.
 
@@ -278,7 +278,7 @@ the image from its file path on demand and must not depend on inline base64.
 
 ### Repository Trait Pattern
 
-All database access goes through trait abstractions defined in `aionui-db`:
+All database access goes through trait abstractions defined in `openh3-db`:
 
 ```rust
 #[async_trait]
@@ -303,21 +303,21 @@ The project has three categories of data types, each with its own home:
 
 | Type | Location | Purpose | Example |
 |------|----------|---------|---------|
-| Row models | `aionui-db/src/models/` | Database row mapping | `ConversationRow` |
-| Params objects | `aionui-db/src/repository/` | Database write parameters | `UpdateConversationParams` |
-| Request/response types | `aionui-api-types` | API contracts and shared DTOs | `CreateConversationRequest`, `ConversationResponse` |
+| Row models | `openh3-db/src/models/` | Database row mapping | `ConversationRow` |
+| Params objects | `openh3-db/src/repository/` | Database write parameters | `UpdateConversationParams` |
+| Request/response types | `openh3-api-types` | API contracts and shared DTOs | `CreateConversationRequest`, `ConversationResponse` |
 
-**The service layer may directly use types from `aionui-api-types`.** This crate contains
+**The service layer may directly use types from `openh3-api-types`.** This crate contains
 pure data structure definitions with no HTTP framework dependencies, essentially serving as a shared DTO layer.
 
-⚠️ **Critical constraint: `aionui-api-types` must not depend on axum, tower, or any HTTP framework.
+⚠️ **Critical constraint: `openh3-api-types` must not depend on axum, tower, or any HTTP framework.
 Only serde and basic type dependencies are allowed.** This is the prerequisite for services to safely use it.
 
 ### Responsibility Boundaries
 
 - **Handler (routes.rs):** Request validation, parameter extraction, error mapping, constructing `ApiResponse`
 - **Service (service.rs):** Business logic, rule validation, orchestrating Repository calls, Row ↔ Response conversion
-- **Repository (aionui-db):** Pure database operations, no business logic
+- **Repository (openh3-db):** Pure database operations, no business logic
 
 The boundary between Handler and Service is defined by **responsibility**, not by types —
 Handlers do not make business decisions, Services do not handle HTTP concerns.
@@ -325,7 +325,7 @@ Handlers do not make business decisions, Services do not handle HTTP concerns.
 ### Migration Management
 
 Using sqlx's embedded migrations (`sqlx::migrate!()`):
-- Migration files are located in `crates/aionui-db/migrations/`
+- Migration files are located in `crates/openh3-db/migrations/`
 - Naming format: `NNN_descriptive_name.sql` (sequential numbering)
 - Migrations run automatically on application startup
 - New tables or schema changes must go through migration files — manual database modifications are forbidden
@@ -335,7 +335,7 @@ Using sqlx's embedded migrations (`sqlx::migrate!()`):
 
 ```
 DbError (database layer)
-  ↓ From trait implementation (aionui-db/src/error.rs)
+  ↓ From trait implementation (openh3-db/src/error.rs)
 ApiError (unified error type)
   ↓ IntoResponse implementation
 HTTP response (status code + ErrorResponse JSON)
@@ -354,7 +354,7 @@ The application uses Axum's `with_state()` pattern for dependency injection in t
 
 **Step 1: Centralized service construction (AppServices)**
 
-`aionui-app` defines `AppServices`, which holds all shared dependencies centrally:
+`openh3-app` defines `AppServices`, which holds all shared dependencies centrally:
 
 ```rust
 pub struct AppServices {
@@ -444,7 +444,7 @@ Key points:
 - **AppServices is the sole service construction center** — all Repository instantiation and Service assembly happens here
 - **RouterState holds only necessary dependencies** — each domain's State includes only the services it uses
 - **Dependencies are passed via `Arc<dyn Trait>`** — enables runtime polymorphism and test substitution
-- **Domain crates do not construct their own dependencies** — they only define what they need (RouterState), `aionui-app` handles assembly
+- **Domain crates do not construct their own dependencies** — they only define what they need (RouterState), `openh3-app` handles assembly
 
 ## Security Model
 
@@ -468,7 +468,7 @@ CORS (local mode only, allows any origin)
 - Validity: 24 hours
 - Payload: `user_id`, `username`, `iat`, `exp`, `iss` ("aionui"), `aud` ("aionui-webui")
 - Secret source priority: environment variable → database → random generation (64 bytes, getrandom)
-- Token extraction priority: `Authorization: Bearer` header → `aionui-session` cookie
+- Token extraction priority: `Authorization: Bearer` header → `openh3-session` cookie
 - Supports token blacklist (SHA-256 hash, DashMap storage)
 
 ### CSRF Protection
@@ -490,7 +490,7 @@ Uses the Double Submit Cookie pattern:
 
 | Cookie | HttpOnly | Secure | SameSite | Max-Age |
 |--------|----------|--------|----------|---------|
-| `aionui-session` | ✅ | When HTTPS | Strict(HTTPS) / Lax(HTTP) | 30 days |
+| `openh3-session` | ✅ | When HTTPS | Strict(HTTPS) / Lax(HTTP) | 30 days |
 | `aionui-csrf-token` | ❌ | When HTTPS | Strict(HTTPS) / Lax(HTTP) | 30 days |
 
 ### Rate Limiting
@@ -527,7 +527,7 @@ Enabled via the `--local` startup flag, designed for Electron embedded scenarios
 |-------|----------|-------------------|---------|
 | Unit tests | `#[cfg(test)]` inline in each `.rs` file | None or Mock | Function-level logic verification |
 | Integration tests | `crates/<crate>/tests/` | In-memory SQLite | Service and Repository behavior verification |
-| E2E tests | `crates/aionui-app/tests/` | In-memory SQLite | Full HTTP request chain verification |
+| E2E tests | `crates/openh3-app/tests/` | In-memory SQLite | Full HTTP request chain verification |
 
 ### In-Memory Database
 
@@ -548,7 +548,7 @@ All tests requiring a database use `init_database_memory()`:
 
 ### E2E Test Pattern
 
-`aionui-app/tests/common/mod.rs` provides shared test utilities:
+`openh3-app/tests/common/mod.rs` provides shared test utilities:
 
 ```rust
 // Build the complete application
@@ -607,28 +607,28 @@ Prohibited:
 
 ### Complete Steps for Creating a New Domain Crate
 
-Using `aionui-my-feature` as an example:
+Using `openh3-my-feature` as an example:
 
 **Step 1: Create the crate and register it in the workspace**
 
-1. Create the directory `crates/aionui-my-feature/`
+1. Create the directory `crates/openh3-my-feature/`
 2. Add the workspace member in root `Cargo.toml`:
    ```toml
    members = [
        # ... existing members
-       "crates/aionui-my-feature",
+       "crates/openh3-my-feature",
    ]
    ```
 3. Register in `[workspace.dependencies]` of root `Cargo.toml`:
    ```toml
-   aionui-my-feature = { path = "crates/aionui-my-feature" }
+   openh3-my-feature = { path = "crates/openh3-my-feature" }
    ```
 4. Use `.workspace = true` for shared dependency versions within the crate
 
 **Step 2: Write the crate following the standard structure**
 
 ```
-crates/aionui-my-feature/
+crates/openh3-my-feature/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs        # Export my_feature_routes, MyFeatureService, MyFeatureRouterState
@@ -639,19 +639,19 @@ crates/aionui-my-feature/
     └── my_feature_test.rs
 ```
 
-**Step 3: If database access is needed, add to aionui-db**
+**Step 3: If database access is needed, add to openh3-db**
 
 1. Add Row model in `models/`
 2. Define Repository trait (`I` prefix) and Sqlite implementation in `repository/`
 3. Add migration file in `migrations/` (`NNN_descriptive_name.sql`)
 
-**Step 4: If API types are needed, add to aionui-api-types**
+**Step 4: If API types are needed, add to openh3-api-types**
 
-Define request/response types in `aionui-api-types` to keep API contracts centrally managed.
+Define request/response types in `openh3-api-types` to keep API contracts centrally managed.
 
-**Step 5: Wire into aionui-app**
+**Step 5: Wire into openh3-app**
 
-1. Add dependency in `aionui-app/Cargo.toml`:
+1. Add dependency in `openh3-app/Cargo.toml`:
    ```toml
    aionui-my-feature.workspace = true
    ```
@@ -693,8 +693,8 @@ Define request/response types in `aionui-api-types` to keep API contracts centra
 Before adding a new crate, confirm:
 - [ ] Crate internal structure follows the standard pattern (lib/routes/service/state)
 - [ ] Dependency direction is correct (does not depend on upper-layer or same-layer concrete implementations)
-- [ ] Repository trait defined in aionui-db, implementation uses Sqlite prefix
-- [ ] API types defined in aionui-api-types
+- [ ] Repository trait defined in openh3-db, implementation uses Sqlite prefix
+- [ ] API types defined in openh3-api-types
 - [ ] Routes use `/api/` prefix with kebab-case resource names
 - [ ] Includes corresponding test files
 - [ ] WebSocket events follow `domain.camelCaseAction` naming convention
@@ -704,14 +704,14 @@ Before adding a new crate, confirm:
 ### Managed Node Runtime
 
 Builtin ACP adapters run through the managed Node runtime in
-`crates/aionui-runtime/src/node_runtime/`. Packaged builds activate Node
+`crates/openh3-runtime/src/node_runtime/`. Packaged builds activate Node
 from the managed-resources bundle; download-mode builds install the pinned
 runtime under `{data_dir}/runtime/node`. Adapter commands carry an explicit
 Node executable and do not depend on the ambient `PATH`.
 
 ### Startup PATH Enhancement
 
-`fn main()` calls `aionui_runtime::enhance_process_path()` **before** the
+`fn main()` calls `openh3_runtime::enhance_process_path()` **before** the
 tokio runtime starts, so every downstream `which::which(...)` and
 `Command::new(...)` — including the existing spawn sites across the
 workspace — inherits an enriched `PATH`. Three layers are merged in priority
@@ -727,8 +727,8 @@ logged at `info` level).
 ### Subprocess Spawn Builder
 
 New subprocess spawn sites should go through
-`aionui_runtime::Builder::agent(program)` (for long-running agent CLIs
-whose stdio the caller owns) or `aionui_runtime::Builder::clean_cli(program)`
+`openh3_runtime::Builder::agent(program)` (for long-running agent CLIs
+whose stdio the caller owns) or `openh3_runtime::Builder::clean_cli(program)`
 (for short-lived tools whose output we parse). Both set
 `kill_on_drop(true)` and strip `NODE_OPTIONS`/`NODE_INSPECT`/`NODE_DEBUG`/
 `CLAUDECODE` so debug-profile env doesn't leak into the child.

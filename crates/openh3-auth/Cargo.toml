@@ -1,0 +1,32 @@
+[package]
+name = "openh3-auth"
+version.workspace = true
+edition.workspace = true
+
+
+[lib]
+name = "openh3_auth"
+
+[dependencies]
+async-trait = { workspace = true }
+openh3-common.workspace = true
+openh3-db.workspace = true
+openh3-api-types.workspace = true
+jsonwebtoken.workspace = true
+bcrypt.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+dashmap.workspace = true
+axum.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+getrandom.workspace = true
+base64.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+http-body-util.workspace = true
+tower = { workspace = true, features = ["util"] }
