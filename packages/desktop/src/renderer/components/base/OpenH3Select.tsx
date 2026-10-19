@@ -15,13 +15,13 @@ import React from 'react';
  */
 type NativeSelectProps = Omit<SelectProps, 'size'>;
 type NativeSelectSize = NonNullable<SelectProps['size']>;
-type AionSelectSize = NativeSelectSize | 'middle';
+type OpenH3SelectSize = NativeSelectSize | 'middle';
 
-export interface AionSelectProps extends NativeSelectProps {
+export interface OpenH3SelectProps extends NativeSelectProps {
   /** 额外的类名 / Additional class name */
   className?: string;
   /** 统一尺寸，新增 middle（32px）/ Unified size with additional "middle" (32px) */
-  size?: AionSelectSize;
+  size?: OpenH3SelectSize;
 }
 
 /**
@@ -75,42 +75,42 @@ const defaultGetPopupContainer = (): HTMLElement => {
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionSelect placeholder="请选择" style={{ width: 200 }}>
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <OpenH3Select placeholder="请选择" style={{ width: 200 }}>
+ *   <OpenH3Select.Option value="1">选项1</OpenH3Select.Option>
+ *   <OpenH3Select.Option value="2">选项2</OpenH3Select.Option>
+ * </OpenH3Select>
  *
  * // 多选 / Multiple selection
- * <AionSelect mode="multiple" placeholder="请选择多个">
- *   <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   <AionSelect.Option value="2">选项2</AionSelect.Option>
- * </AionSelect>
+ * <OpenH3Select mode="multiple" placeholder="请选择多个">
+ *   <OpenH3Select.Option value="1">选项1</OpenH3Select.Option>
+ *   <OpenH3Select.Option value="2">选项2</OpenH3Select.Option>
+ * </OpenH3Select>
  *
  * // 分组 / Grouped options
- * <AionSelect placeholder="请选择">
- *   <AionSelect.OptGroup label="分组1">
- *     <AionSelect.Option value="1">选项1</AionSelect.Option>
- *   </AionSelect.OptGroup>
- *   <AionSelect.OptGroup label="分组2">
- *     <AionSelect.Option value="2">选项2</AionSelect.Option>
- *   </AionSelect.OptGroup>
- * </AionSelect>
+ * <OpenH3Select placeholder="请选择">
+ *   <OpenH3Select.OptGroup label="分组1">
+ *     <OpenH3Select.Option value="1">选项1</OpenH3Select.Option>
+ *   </OpenH3Select.OptGroup>
+ *   <OpenH3Select.OptGroup label="分组2">
+ *     <OpenH3Select.Option value="2">选项2</OpenH3Select.Option>
+ *   </OpenH3Select.OptGroup>
+ * </OpenH3Select>
  * ```
  *
  * @see arco-override.css for theme-related styles (.aion-select)
  */
-const mapSizeToNative = (size?: AionSelectSize): NativeSelectSize | undefined => {
+const mapSizeToNative = (size?: OpenH3SelectSize): NativeSelectSize | undefined => {
   if (!size) return undefined;
   if (size === 'middle') return 'default';
   return size;
 };
 
-type AionSelectComponent = React.ForwardRefExoticComponent<AionSelectProps & React.RefAttributes<SelectHandle>> & {
+type OpenH3SelectComponent = React.ForwardRefExoticComponent<OpenH3SelectProps & React.RefAttributes<SelectHandle>> & {
   Option: typeof Select.Option;
   OptGroup: typeof Select.OptGroup;
 };
 
-const InternalSelect = React.forwardRef<SelectHandle, AionSelectProps>(
+const InternalSelect = React.forwardRef<SelectHandle, OpenH3SelectProps>(
   ({ className, getPopupContainer, size = 'middle', ...rest }, ref) => {
     const normalizedSize = mapSizeToNative(size);
     return (
@@ -125,12 +125,12 @@ const InternalSelect = React.forwardRef<SelectHandle, AionSelectProps>(
   }
 );
 
-const AionSelect = InternalSelect as AionSelectComponent;
+const OpenH3Select = InternalSelect as OpenH3SelectComponent;
 
-AionSelect.displayName = 'AionSelect';
+OpenH3Select.displayName = 'OpenH3Select';
 
 // 导出子组件 / Export sub-components
-AionSelect.Option = Select.Option;
-AionSelect.OptGroup = Select.OptGroup;
+OpenH3Select.Option = Select.Option;
+OpenH3Select.OptGroup = Select.OptGroup;
 
-export default AionSelect;
+export default OpenH3Select;

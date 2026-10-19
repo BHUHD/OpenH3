@@ -184,8 +184,8 @@ Var /GLOBAL AionUiActiveMarkerResult
 
 !macro AIONUI_VERIFY_BUNDLED_AIONCORE_RESOURCES _RUNTIME_KEY
   InitPluginsDir
-  File "/oname=$PLUGINSDIR\verify-bundled-aioncore-install.ps1" "${PROJECT_DIR}\resources\windows\support\verify-bundled-aioncore-install.ps1"
-  nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\verify-bundled-aioncore-install.ps1" -InstallDir "$INSTDIR" -RuntimeKey "${_RUNTIME_KEY}" -LogPath "$AionUiSessionLogPath"`
+  File "/oname=$PLUGINSDIR\verify-bundled-openh3-core-install.ps1" "${PROJECT_DIR}\resources\windows\support\verify-bundled-openh3-core-install.ps1"
+  nsExec::Exec `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\verify-bundled-openh3-core-install.ps1" -InstallDir "$INSTDIR" -RuntimeKey "${_RUNTIME_KEY}" -LogPath "$AionUiSessionLogPath"`
   Pop $AionUiVerifyResourceResult
 
   ${If} $AionUiVerifyResourceResult != 0

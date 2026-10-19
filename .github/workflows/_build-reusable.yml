@@ -23,8 +23,12 @@ on:
         description: 'Only upload primary installers (exe/msi/dmg/deb), skip zip/yml/blockmap'
         type: boolean
         default: false
+      openh3_core_run_id:
+        description: 'Optional OpenH3 Core Manual Build workflow run id to bundle instead of the pinned release'
+        type: string
+        default: ''
       aioncore_run_id:
-        description: 'Optional AionCore Manual Build workflow run id to bundle instead of the pinned release'
+        description: 'Deprecated alias for openh3_core_run_id'
         type: string
         default: ''
 
@@ -367,13 +371,15 @@ jobs:
           MSVS_VERSION: 2022
           GYP_MSVS_VERSION: 2022
 
-      - name: Prepare aioncore binary
+      - name: Prepare OpenH3 Core binary
         shell: bash
-        run: node scripts/prepareAioncore.js
+        run: node scripts/prepareOpenH3Core.js
         env:
-          # Version is pinned in repo-root package.json (aioncoreVersion).
-          # Set the legacy backend override only for ad-hoc compatibility builds.
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          # Version is pinned in repo-root package.json (openh3CoreVersion).
+          OPENH3_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
+          OPENH3_BACKEND_ARCH: ${{ matrix.arch }}
+          # Legacy aliases remain populated for downstream scripts.
+          AIONUI_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
           AIONUI_BACKEND_ARCH: ${{ matrix.arch }}
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -404,7 +410,8 @@ jobs:
           }
         env:
           WINDOWS_BUILD_COMMAND: ${{ matrix.command }}
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          OPENH3_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
           # Node.js memory limit for vite bundling (prevents OOM during build)
           # Node.js 内存限制，防止 vite 打包时内存不足
           NODE_OPTIONS: '--max-old-space-size=8192'
@@ -507,7 +514,8 @@ jobs:
           exit 1
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          OPENH3_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
           npm_config_arch: ${{ matrix.arch }}
           APP_ID: ${{ secrets.APP_ID }}
           appleId: ${{ secrets.APPLE_ID }}
@@ -545,7 +553,8 @@ jobs:
           command: ${{ matrix.command }}
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
-          AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          OPENH3_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
+          AIONUI_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
           npm_config_arch: ${{ matrix.arch }}
           npm_config_cache: ${{ runner.temp }}/.npm
           ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron

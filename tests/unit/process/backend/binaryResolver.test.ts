@@ -21,6 +21,7 @@ vi.mock('node:fs', () => ({
 
 const originalResourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
 const originalBackendBin = process.env.AIONUI_BACKEND_BIN;
+const originalOpenH3BackendBin = process.env.OPENH3_BACKEND_BIN;
 
 function setResourcesPath(resourcesPath: string | undefined): void {
   Object.defineProperty(process, 'resourcesPath', {
@@ -35,6 +36,11 @@ function restoreBackendBin(): void {
   } else {
     process.env.AIONUI_BACKEND_BIN = originalBackendBin;
   }
+  if (originalOpenH3BackendBin === undefined) {
+    delete process.env.OPENH3_BACKEND_BIN;
+  } else {
+    process.env.OPENH3_BACKEND_BIN = originalOpenH3BackendBin;
+  }
 }
 
 function dirEntry(name: string, isDirectory = false): ReturnType<typeof readdirSync>[number] {
@@ -48,6 +54,7 @@ describe('resolveBinaryPath', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.AIONUI_BACKEND_BIN;
+    delete process.env.OPENH3_BACKEND_BIN;
   });
 
   afterEach(() => {
@@ -65,6 +72,17 @@ describe('resolveBinaryPath', () => {
     expect(resolveBinaryPath()).toBe(overridePath);
     // Override wins before bundled/PATH lookup runs.
     expect(execSync).not.toHaveBeenCalled();
+  });
+
+  it('prefers the canonical OPENH3_BACKEND_BIN override when both names are set', () => {
+    const canonicalInput = '/custom/openh3-core';
+    const legacyInput = '/custom/aioncore';
+    const canonicalPath = resolve(canonicalInput);
+    process.env.OPENH3_BACKEND_BIN = canonicalInput;
+    process.env.AIONUI_BACKEND_BIN = legacyInput;
+    vi.mocked(existsSync).mockImplementation((path) => path === canonicalPath);
+
+    expect(resolveBinaryPath()).toBe(canonicalPath);
   });
 
   it('trims whitespace around AIONUI_BACKEND_BIN before use', () => {
@@ -119,18 +137,18 @@ describe('resolveBinaryPath', () => {
     expect(resolveBinaryPath()).toBe(resolved);
   });
 
-  it('attaches bundled path diagnostics when aioncore cannot be resolved', () => {
+  it('attaches bundled path diagnostics when the backend cannot be resolved', () => {
     const resourcesPath = '/app/resources';
     const runtimeKey = `${process.platform}-${process.arch}`;
-    const binaryName = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
-    const bundledDir = join(resourcesPath, 'bundled-aioncore');
+    const binaryName = process.platform === 'win32' ? 'openh3-core.exe' : 'openh3-core';
+    const bundledDir = join(resourcesPath, 'bundled-openh3-core');
     const runtimeDir = join(bundledDir, runtimeKey);
     const checkedBundledPath = join(runtimeDir, binaryName);
 
     setResourcesPath(resourcesPath);
     vi.mocked(existsSync).mockReturnValue(false);
     vi.mocked(readdirSync).mockImplementation((path) => {
-      if (path === resourcesPath) return [dirEntry('bundled-aioncore', true)];
+      if (path === resourcesPath) return [dirEntry('bundled-openh3-core', true)];
       if (path === runtimeDir) return [dirEntry('manifest.json')];
       return [] as ReturnType<typeof readdirSync>;
     });
@@ -138,7 +156,7 @@ describe('resolveBinaryPath', () => {
       throw new Error('not found on PATH');
     });
 
-    expect(() => resolveBinaryPath()).toThrow('Cannot find "aioncore" binary');
+    expect(() => resolveBinaryPath()).toThrow('Cannot find "openh3-core" binary');
 
     try {
       resolveBinaryPath();
@@ -152,9 +170,12 @@ describe('resolveBinaryPath', () => {
           checkedBundledPath,
           bundledDirExists: false,
           runtimeDirExists: false,
-          resourcesDirEntries: ['bundled-aioncore/'],
+          resourcesDirEntries: ['bundled-openh3-core/'],
           runtimeDirEntries: ['manifest.json'],
-          pathLookupCommand: process.platform === 'win32' ? 'where aioncore' : 'which aioncore',
+          pathLookupCommand:
+            process.platform === 'win32'
+              ? 'where openh3-core.exe && where aioncore.exe'
+              : 'which openh3-core && which aioncore',
           pathLookupError: expect.stringContaining('not found on PATH'),
         }),
       });

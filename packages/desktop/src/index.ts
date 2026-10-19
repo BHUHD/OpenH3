@@ -31,14 +31,14 @@ import { shouldRegisterBackendStartup } from './process/startup/singleInstanceGa
 import { ProcessConfig } from './process/utils/initStorage';
 import type { BackendStartupFailureInfo } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
-import { BackendLifecycleManager } from '@aionui/web-host';
+import { BackendLifecycleManager } from '@openh3/web-host';
 import { resolveBinaryPath } from '@process/backend';
 import './process/bridge/feedbackBridge';
 import { wasLaunchedAtLogin } from '@process/bridge/applicationBridge';
 import { onLanguageChanged } from './process/bridge/systemSettingsBridge';
 import { setInitialLanguage } from '@process/services/i18n';
 import { setupApplicationMenu } from './process/utils/appMenu';
-import { startWebHost } from '@aionui/web-host';
+import { startWebHost } from '@openh3/web-host';
 import { initializeZoomFactor, setupZoomForWindow } from './process/utils/zoom';
 import { hydrateWindowsProcessPath } from './process/startup/windowsPath';
 import { registerWindowsAppUserModelId } from './process/startup/windowsAppUserModelId';
@@ -53,6 +53,8 @@ import {
   clearPendingDeepLinkUrl,
   getPendingDeepLinkUrl,
   handleDeepLinkUrl,
+  isDeepLinkUrl,
+  LEGACY_PROTOCOL_SCHEME,
   PROTOCOL_SCHEME,
 } from './process/utils/deepLink';
 import {
@@ -85,8 +87,9 @@ import electronSquirrelStartup from 'electron-squirrel-startup';
 // When a second instance starts (e.g. from protocol URL), it sends its data
 // to the first instance via second-instance event, then quits.
 const isE2ETestMode = process.env.AIONUI_E2E_TEST === '1';
-const skipSingleInstanceLock = isE2ETestMode || process.env.AIONUI_MULTI_INSTANCE === '1';
-const deepLinkFromArgv = process.argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`));
+const skipSingleInstanceLock =
+  isE2ETestMode || (process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1';
+const deepLinkFromArgv = process.argv.find(isDeepLinkUrl);
 const gotTheLock = skipSingleInstanceLock ? true : app.requestSingleInstanceLock({ deepLinkUrl: deepLinkFromArgv });
 if (!gotTheLock) {
   console.warn('[OpenH3] Another instance is already running; current process will exit.');
@@ -94,9 +97,7 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
     // Prefer additionalData (reliable on all platforms), fallback to argv scan
-    const deepLinkUrl =
-      (additionalData as { deepLinkUrl?: string })?.deepLinkUrl ||
-      argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`));
+    const deepLinkUrl = (additionalData as { deepLinkUrl?: string })?.deepLinkUrl || argv.find(isDeepLinkUrl);
     if (deepLinkUrl) {
       handleDeepLinkUrl(deepLinkUrl);
     }
@@ -821,6 +822,8 @@ const handleAppReady = async (): Promise<void> => {
        * any MCP config the user copied from there could never connect.
        */
       setActiveCdpPort(bridge.port);
+      process.env.OPENH3_CDP_ACTIVE_PORT = String(bridge.port);
+      process.env.OPENH3_CDP_BRIDGE_TOKEN = bridge.token;
       process.env.AIONUI_CDP_ACTIVE_PORT = String(bridge.port);
       process.env.AIONUI_CDP_BRIDGE_TOKEN = bridge.token;
       console.log(`[CDP] Single-target bridge listening on 127.0.0.1:${bridge.port} (token required)`);
@@ -974,14 +977,14 @@ const handleAppReady = async (): Promise<void> => {
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
     try {
-      // Inside Electron (`AionUi --webui` or packaged `aionui-web` mode that
+      // Inside Electron (`AionUi --webui` or packaged `openh3-web` mode that
       // launches via the Electron shell), reuse the desktop app's data-dir so
       // that conversations / cron jobs created in any path show up everywhere.
       // Matches the desktop IPC path at line 493 above.
       const { getDataPath } = await import('./process/utils/utils');
       const { getSystemDir } = await import('./process/utils/initStorage');
       const sysDirWebUI = getSystemDir();
-      // M6: Switch to @aionui/web-host
+      // M6: Switch to @openh3/web-host
       const handle = await startWebHost({
         app: {
           version: app.getVersion(),
@@ -1113,15 +1116,16 @@ const handleAppReady = async (): Promise<void> => {
 };
 
 // ============ Protocol Registration ============
-// Register aionui:// as the default protocol client
-if (process.defaultApp) {
-  // Dev mode: need to pass execPath explicitly
-  app.setAsDefaultProtocolClient(PROTOCOL_SCHEME, process.execPath, [path.resolve(process.argv[1])]);
-} else {
-  app.setAsDefaultProtocolClient(PROTOCOL_SCHEME);
+// Register the OpenH3 scheme and retain the old scheme for existing links.
+for (const scheme of [PROTOCOL_SCHEME, LEGACY_PROTOCOL_SCHEME]) {
+  if (process.defaultApp) {
+    app.setAsDefaultProtocolClient(scheme, process.execPath, [path.resolve(process.argv[1])]);
+  } else {
+    app.setAsDefaultProtocolClient(scheme);
+  }
 }
 
-// macOS: handle aionui:// URLs via the open-url event
+// macOS: handle OpenH3 URLs via the open-url event
 app.on('open-url', (event, url) => {
   event.preventDefault();
   handleDeepLinkUrl(url);

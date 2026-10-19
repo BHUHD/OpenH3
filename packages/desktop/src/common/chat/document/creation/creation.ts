@@ -1,4 +1,11 @@
-import type { ISessionMcpServer, TProviderWithModel } from '@/common/config/storage';
+import {
+  BUILTIN_IMAGE_GEN_NAME,
+  BUILTIN_VIDEO_MEDIA_NAME,
+  isBuiltinImageGenerationName,
+  isBuiltinVideoMediaName,
+  type ISessionMcpServer,
+  type TProviderWithModel,
+} from '@/common/config/storage';
 import type { ComfyFamily, ComfyIntent, ComfyProfile } from './comfy';
 
 export type CreationKind = 'image' | 'video';
@@ -57,10 +64,21 @@ export function creationSessionServers(
   requestId?: string
 ): ISessionMcpServer[] {
   return servers.map((server) => {
-    if (!['aionui-video-media', 'aionui-image-generation'].includes(server.name) || server.transport.type !== 'stdio')
+    if (
+      (!isBuiltinVideoMediaName(server.name) && !isBuiltinImageGenerationName(server.name)) ||
+      server.transport.type !== 'stdio'
+    )
       return server;
     const env = {
       ...server.transport.env,
+      OPENH3_CREATION_KIND: request.kind,
+      OPENH3_CREATION_SOURCE: request.source,
+      OPENH3_CREATION_MODEL: request.id,
+      OPENH3_CREATION_INTENT: request.intent ?? 'generate',
+      ...(request.family ? { OPENH3_CREATION_FAMILY: request.family } : {}),
+      ...(request.profileId ? { OPENH3_CREATION_PROFILE: request.profileId } : {}),
+      ...(requestId ? { OPENH3_CREATION_REQUEST_ID: requestId } : {}),
+      // Older bundled MCP processes only understand these names.
       AIONUI_CREATION_KIND: request.kind,
       AIONUI_CREATION_SOURCE: request.source,
       AIONUI_CREATION_MODEL: request.id,
@@ -71,12 +89,18 @@ export function creationSessionServers(
     };
     return {
       ...server,
+      name: isBuiltinImageGenerationName(server.name) ? BUILTIN_IMAGE_GEN_NAME : BUILTIN_VIDEO_MEDIA_NAME,
       transport: {
         ...server.transport,
         env:
-          server.name === 'aionui-image-generation' && provider
+          isBuiltinImageGenerationName(server.name) && provider
             ? {
                 ...env,
+                OPENH3_IMG_PROVIDER_ID: provider.id,
+                OPENH3_IMG_PLATFORM: provider.platform,
+                OPENH3_IMG_BASE_URL: provider.base_url,
+                OPENH3_IMG_API_KEY: provider.api_key,
+                OPENH3_IMG_MODEL: provider.use_model ?? '',
                 AIONUI_IMG_PROVIDER_ID: provider.id,
                 AIONUI_IMG_PLATFORM: provider.platform,
                 AIONUI_IMG_BASE_URL: provider.base_url,

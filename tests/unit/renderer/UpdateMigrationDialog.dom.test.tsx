@@ -20,7 +20,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-// AionModal reads ThemeContext for font scaling; provide a minimal theme so it mounts.
+// OpenH3Modal reads ThemeContext for font scaling; provide a minimal theme so it mounts.
 vi.mock('@/renderer/hooks/context/ThemeContext', () => ({
   useThemeContext: () => ({ theme: 'light', fontScale: 1 }),
 }));
@@ -77,6 +77,6 @@ describe('UpdateMigrationDialog', () => {
     openDialog();
     await waitFor(() => expect(screen.getByText('update.migration.letter.downloadNew')).toBeTruthy());
     fireEvent.click(screen.getByText('update.migration.letter.downloadNew'));
-    expect(mocks.openExternalUrl).toHaveBeenCalledWith('https://www.aionui.com/');
+    expect(mocks.openExternalUrl).toHaveBeenCalledWith('https://github.com/BHUHD/OpenH3/releases/latest');
   });
 });

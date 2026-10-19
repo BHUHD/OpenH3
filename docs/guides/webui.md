@@ -2,7 +2,7 @@
 
 OpenH3 supports WebUI mode, allowing you to access the application through a web browser. This guide covers how to start WebUI mode on supported platforms.
 
-> Compatibility note: some commands and process paths below retain the legacy `AionUi` executable name so existing installations and upgrade detection continue to work. The product name and user-facing interface are OpenH3.
+> Compatibility note: existing installations may still expose the legacy executable, profile directory, or protocol scheme. New OpenH3 installs and all commands below use the OpenH3 names; the desktop keeps legacy detection and migration support.
 
 ## Table of Contents
 
@@ -36,10 +36,10 @@ Open **Command Prompt** or **PowerShell** and run:
 
 ```cmd
 # Using full path
-"C:\Program Files\AionUi\AionUi.exe" --webui
+"C:\Program Files\OpenH3\OpenH3.exe" --webui
 
-# Or if AionUi is in your PATH
-AionUi.exe --webui
+# Or if OpenH3 is in your PATH
+OpenH3.exe --webui
 ```
 
 ### Method 2: Create a Desktop Shortcut
@@ -47,19 +47,19 @@ AionUi.exe --webui
 1. Right-click on desktop → **New** → **Shortcut**
 2. Enter target location:
    ```
-   "C:\Program Files\AionUi\AionUi.exe" --webui
+   "C:\Program Files\OpenH3\OpenH3.exe" --webui
    ```
-3. Name it **AionUi WebUI**
+3. Name it **OpenH3 WebUI**
 4. Click **Finish**
 5. Double-click the shortcut to launch
 
 ### Method 3: Create a Batch File
 
-Create `start-aionui-webui.bat`:
+Create `start-openh3-webui.bat`:
 
 ```batch
 @echo off
-"C:\Program Files\AionUi\AionUi.exe" --webui
+"C:\Program Files\OpenH3\OpenH3.exe" --webui
 pause
 ```
 
@@ -75,26 +75,26 @@ Open **Terminal** and run:
 
 ```bash
 # Using full path
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui
+/Applications/OpenH3.app/Contents/MacOS/OpenH3 --webui
 
 # Or using open command
-open -a AionUi --args --webui
+open -a OpenH3 --args --webui
 ```
 
 ### Method 2: Create Shell Script
 
-Create `start-aionui-webui.sh`:
+Create `start-openh3-webui.sh`:
 
 ```bash
 #!/bin/bash
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui
+/Applications/OpenH3.app/Contents/MacOS/OpenH3 --webui
 ```
 
 Make it executable and run:
 
 ```bash
-chmod +x start-aionui-webui.sh
-./start-aionui-webui.sh
+chmod +x start-openh3-webui.sh
+./start-openh3-webui.sh
 ```
 
 ### Method 3: Create Automator Application
@@ -104,15 +104,15 @@ chmod +x start-aionui-webui.sh
 3. Add **Run Shell Script** action
 4. Enter:
    ```bash
-   /Applications/AionUi.app/Contents/MacOS/AionUi --webui
+   /Applications/OpenH3.app/Contents/MacOS/OpenH3 --webui
    ```
-5. Save as **AionUi WebUI.app**
+5. Save as **OpenH3 WebUI.app**
 6. Double-click to launch
 
 ### Method 4: Add to Dock
 
 1. Create an Automator app (Method 3)
-2. Drag **AionUi WebUI.app** to your Dock
+2. Drag **OpenH3 WebUI.app** to your Dock
 3. Click the Dock icon to start WebUI mode anytime
 
 ---
@@ -125,32 +125,32 @@ chmod +x start-aionui-webui.sh
 
 ```bash
 # Using system path
-aionui --webui
+openh3 --webui
 
 # Or using full path
-/opt/AionUi/aionui --webui
+/opt/OpenH3/openh3 --webui
 ```
 
 #### For AppImage
 
 ```bash
 # Make AppImage executable (first time only)
-chmod +x AionUi-*.AppImage
+chmod +x OpenH3-*.AppImage
 
 # Run with --webui flag
-./AionUi-*.AppImage --webui
+./OpenH3-*.AppImage --webui
 ```
 
 ### Method 2: Create Desktop Entry
 
-Create `~/.local/share/applications/aionui-webui.desktop`:
+Create `~/.local/share/applications/openh3-webui.desktop`:
 
 ```ini
 [Desktop Entry]
-Name=AionUi WebUI
-Comment=Start AionUi in WebUI mode
-Exec=/opt/AionUi/aionui --webui
-Icon=aionui
+Name=OpenH3 WebUI
+Comment=Start OpenH3 in WebUI mode
+Exec=/opt/OpenH3/openh3 --webui
+Icon=openh3
 Terminal=false
 Type=Application
 Categories=Utility;Office;
@@ -159,45 +159,45 @@ Categories=Utility;Office;
 Make it executable:
 
 ```bash
-chmod +x ~/.local/share/applications/aionui-webui.desktop
+chmod +x ~/.local/share/applications/openh3-webui.desktop
 ```
 
 The launcher will appear in your application menu.
 
 ### Method 3: Create Shell Script
 
-Create `~/bin/start-aionui-webui.sh`:
+Create `~/bin/start-openh3-webui.sh`:
 
 ```bash
 #!/bin/bash
-/opt/AionUi/aionui --webui
+/opt/OpenH3/openh3 --webui
 ```
 
 Make it executable:
 
 ```bash
-chmod +x ~/bin/start-aionui-webui.sh
+chmod +x ~/bin/start-openh3-webui.sh
 ```
 
 Run it:
 
 ```bash
-start-aionui-webui.sh
+start-openh3-webui.sh
 ```
 
 ### Method 4: Systemd Service (Background)
 
-Create `/etc/systemd/system/aionui-webui.service`:
+Create `/etc/systemd/system/openh3-webui.service`:
 
 ```ini
 [Unit]
-Description=AionUi WebUI Service
+Description=OpenH3 WebUI Service
 After=network.target
 
 [Service]
 Type=simple
 User=YOUR_USERNAME
-ExecStart=/opt/AionUi/aionui --webui --remote
+ExecStart=/opt/OpenH3/openh3 --webui --remote
 Restart=on-failure
 RestartSec=10
 
@@ -209,24 +209,24 @@ Enable and start the service:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable aionui-webui.service
-sudo systemctl start aionui-webui.service
+sudo systemctl enable openh3-webui.service
+sudo systemctl start openh3-webui.service
 
 # Check status
-sudo systemctl status aionui-webui.service
+sudo systemctl status openh3-webui.service
 ```
 
 ---
 
 ## Android (Termux)
 
-**Important Note**: Electron desktop mode is **not supported** on Android. However, you can run AionUi in WebUI mode using Termux with a prooted Linux environment.
+**Important Note**: Electron desktop mode is **not supported** on Android. However, you can run OpenH3 in WebUI mode using Termux with a prooted Linux environment.
 
-> **Community Contribution**: This guide is contributed by [@Manamama](https://github.com/Manamama). Special thanks for making AionUi accessible on Android devices! 🙏
+> **Community Contribution**: This guide is contributed by [@Manamama](https://github.com/Manamama). Special thanks for making OpenH3 accessible on Android devices! 🙏
 >
-> **Original Tutorial**: [Running AionUi WebUI on Android via Termux + Proot Ubuntu](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
+> **Original Tutorial**: [Running OpenH3 WebUI on Android via Termux + Proot Ubuntu](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
 >
-> **Related Issues**: [#217 - Android Support Discussion](https://github.com/iOfficeAI/AionUi/issues/217)
+> **Related Issues**: [#217 - Android Support Discussion](https://github.com/BHUHD/OpenH3/issues/217)
 
 ### Prerequisites
 
@@ -283,28 +283,28 @@ apt install -y \
     libcups2
 ```
 
-#### 4. Download and Install AionUi
+#### 4. Download and Install OpenH3
 
 ```bash
 # Download the ARM64 .deb package (replace VERSION with the actual version)
-# Check latest version at: https://github.com/iOfficeAI/AionUi/releases
-wget https://github.com/iOfficeAI/AionUi/releases/download/vVERSION/AionUi_VERSION_arm64.deb
+# Check latest version at: https://github.com/BHUHD/OpenH3/releases
+wget https://github.com/BHUHD/OpenH3/releases/download/vVERSION/OpenH3_VERSION_arm64.deb
 
 # Example (replace VERSION with the release tag, e.g. v1.5.2):
-wget https://github.com/iOfficeAI/AionUi/releases/download/vVERSION/AionUi_VERSION_arm64.deb
+wget https://github.com/BHUHD/OpenH3/releases/download/vVERSION/OpenH3_VERSION_arm64.deb
 
 # Install the package
-apt install -y ./AionUi_*.deb
+apt install -y ./OpenH3_*.deb
 
 # Verify installation
-which AionUi
+which OpenH3
 ```
 
-#### 5. Launch AionUi WebUI
+#### 5. Launch OpenH3 WebUI
 
 ```bash
-# Start AionUi in WebUI mode with no-sandbox flag
-AionUi --no-sandbox --webui
+# Start OpenH3 in WebUI mode with no-sandbox flag
+OpenH3 --no-sandbox --webui
 ```
 
 **Important**: The `--no-sandbox` flag is required in Termux/proot environments.
@@ -333,11 +333,11 @@ These errors are related to D-Bus and X server, which are not needed for WebUI m
 
 ### Remote Access on LAN
 
-To access AionUi from other devices on your local network:
+To access OpenH3 from other devices on your local network:
 
 ```bash
 # Start with --remote flag
-AionUi --no-sandbox --webui --remote
+OpenH3 --no-sandbox --webui --remote
 
 # Find your Android device's IP address
 # In Termux (outside proot):
@@ -354,23 +354,23 @@ If port 25808 is occupied:
 
 ```bash
 # Specify a different port
-AionUi --no-sandbox --webui --port 8080
+OpenH3 --no-sandbox --webui --port 8080
 ```
 
 #### Permission Denied Errors
 
 ```bash
 # Ensure the binary has execute permissions
-chmod +x /opt/AionUi/aionui
+chmod +x /opt/OpenH3/openh3
 ```
 
 #### Out of Memory
 
-AionUi requires sufficient RAM. Close other apps if you encounter memory issues.
+OpenH3 requires sufficient RAM. Close other apps if you encounter memory issues.
 
 #### Cannot Access from Browser
 
-1. Check if AionUi is running: look for "Server started" message
+1. Check if OpenH3 is running: look for "Server started" message
 2. Try using Termux's built-in browser or Chrome
 3. Clear browser cache
 
@@ -379,32 +379,32 @@ AionUi requires sufficient RAM. Close other apps if you encounter memory issues.
 1. **Use a lightweight browser** - Chrome or Firefox Focus recommended
 2. **Close background apps** - Free up RAM for better performance
 3. **Use WiFi** - More stable than mobile data for remote access
-4. **Keep device charged** - Running AionUi consumes battery
+4. **Keep device charged** - Running OpenH3 consumes battery
 
 ### Tested Environment
 
 - **Device**: Android 14
 - **Termux Version**: 0.118.0
-- **AionUi Version**: Latest release (e.g. 1.5.2)
+- **OpenH3 Version**: Latest release (e.g. 1.5.2)
 - **Proot-distro**: Ubuntu (latest)
 
 ### Creating a Startup Script
 
-For convenience, create a script to launch AionUi quickly:
+For convenience, create a script to launch OpenH3 quickly:
 
 ```bash
 # Create script in Ubuntu (proot)
-cat > ~/start-aionui.sh << 'EOF'
+cat > ~/start-openh3.sh << 'EOF'
 #!/bin/bash
-echo "Starting AionUi WebUI..."
-AionUi --no-sandbox --webui --remote
+echo "Starting OpenH3 WebUI..."
+OpenH3 --no-sandbox --webui --remote
 EOF
 
 # Make executable
-chmod +x ~/start-aionui.sh
+chmod +x ~/start-openh3.sh
 
 # Run anytime
-./start-aionui.sh
+./start-openh3.sh
 ```
 
 ### Quick Start Command (One-liner)
@@ -412,7 +412,7 @@ chmod +x ~/start-aionui.sh
 From Termux main shell:
 
 ```bash
-proot-distro login ubuntu -- bash -c "AionUi --no-sandbox --webui --remote"
+proot-distro login ubuntu -- bash -c "OpenH3 --no-sandbox --webui --remote"
 ```
 
 ### Feedback and Improvements
@@ -420,7 +420,7 @@ proot-distro login ubuntu -- bash -c "AionUi --no-sandbox --webui --remote"
 If you encounter issues or have suggestions for improving Android support:
 
 1. Check the [original community guide](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
-2. Report issues at [GitHub Issues #217](https://github.com/iOfficeAI/AionUi/issues/217)
+2. Report issues at [GitHub Issues #217](https://github.com/BHUHD/OpenH3/issues/217)
 3. Share your experience to help other Android users!
 
 ---
@@ -432,19 +432,19 @@ To allow access from other devices on your network, use the `--remote` flag:
 ### Windows
 
 ```cmd
-AionUi.exe --webui --remote
+OpenH3.exe --webui --remote
 ```
 
 ### macOS
 
 ```bash
-/Applications/AionUi.app/Contents/MacOS/AionUi --webui --remote
+/Applications/OpenH3.app/Contents/MacOS/OpenH3 --webui --remote
 ```
 
 ### Linux
 
 ```bash
-aionui --webui --remote
+openh3 --webui --remote
 ```
 
 **Security Note**: Remote mode allows network access. Use only on trusted networks. Consider setting up authentication and firewall rules for production use.
@@ -496,7 +496,7 @@ If port 3000 is already in use, the application will automatically try the next 
 
 ```cmd
 # Allow through Windows Firewall
-netsh advfirewall firewall add rule name="AionUi WebUI" dir=in action=allow protocol=TCP localport=3000
+netsh advfirewall firewall add rule name="OpenH3 WebUI" dir=in action=allow protocol=TCP localport=3000
 ```
 
 **Linux (UFW):**
@@ -506,7 +506,7 @@ sudo ufw allow 3000/tcp
 ```
 
 **macOS:**
-Go to **System Preferences** → **Security & Privacy** → **Firewall** → **Firewall Options** → Add AionUi
+Go to **System Preferences** → **Security & Privacy** → **Firewall** → **Firewall Options** → Add OpenH3
 
 ### Application Not Found
 
@@ -515,21 +515,21 @@ Go to **System Preferences** → **Security & Privacy** → **Firewall** → **F
 **Windows:**
 
 ```cmd
-where AionUi.exe
+where OpenH3.exe
 ```
 
 **macOS:**
 
 ```bash
-mdfind -name "AionUi.app"
+mdfind -name "OpenH3.app"
 ```
 
 **Linux:**
 
 ```bash
-which aionui
+which openh3
 # or
-find /opt -name "aionui" 2>/dev/null
+find /opt -name "openh3" 2>/dev/null
 ```
 
 ### View Logs
@@ -537,13 +537,13 @@ find /opt -name "aionui" 2>/dev/null
 **Windows (PowerShell):**
 
 ```powershell
-& "C:\Program Files\AionUi\AionUi.exe" --webui 2>&1 | Tee-Object -FilePath aionui.log
+& "C:\Program Files\OpenH3\OpenH3.exe" --webui 2>&1 | Tee-Object -FilePath openh3.log
 ```
 
 **macOS/Linux:**
 
 ```bash
-/path/to/aionui --webui 2>&1 | tee aionui.log
+/path/to/openh3 --webui 2>&1 | tee openh3.log
 ```
 
 ---
@@ -563,10 +563,10 @@ export AIONUI_ALLOW_REMOTE=true
 export AIONUI_HOST=0.0.0.0
 
 # Then start the application
-aionui --webui
+openh3 --webui
 
 # You can also pass the port directly via CLI
-aionui --webui --port 8080
+openh3 --webui --port 8080
 ```
 
 ---
@@ -577,9 +577,9 @@ From v1.5.0+, you can store persistent WebUI preferences in `webui.config.json` 
 
 | Platform | Location                                                 |
 | -------- | -------------------------------------------------------- |
-| Windows  | `%APPDATA%/AionUi/webui.config.json`                     |
-| macOS    | `~/Library/Application Support/AionUi/webui.config.json` |
-| Linux    | `~/.config/AionUi/webui.config.json`                     |
+| Windows  | `%APPDATA%/OpenH3/webui.config.json`                     |
+| macOS    | `~/Library/Application Support/OpenH3/webui.config.json` |
+| Linux    | `~/.config/OpenH3/webui.config.json`                     |
 
 Example file:
 
@@ -616,33 +616,33 @@ If you forgot your admin password in WebUI mode, you can reset it using the `--r
 
 ```cmd
 # Using full path
-"C:\Program Files\AionUi\AionUi.exe" --resetpass
+"C:\Program Files\OpenH3\OpenH3.exe" --resetpass
 
 # Or for a specific user
-"C:\Program Files\AionUi\AionUi.exe" --resetpass username
+"C:\Program Files\OpenH3\OpenH3.exe" --resetpass username
 ```
 
 **macOS:**
 
 ```bash
 # Using full path
-/Applications/AionUi.app/Contents/MacOS/AionUi --resetpass
+/Applications/OpenH3.app/Contents/MacOS/OpenH3 --resetpass
 
 # Or for a specific user
-/Applications/AionUi.app/Contents/MacOS/AionUi --resetpass username
+/Applications/OpenH3.app/Contents/MacOS/OpenH3 --resetpass username
 ```
 
 **Linux:**
 
 ```bash
 # Using system path
-aionui --resetpass
+openh3 --resetpass
 
 # Or for a specific user
-aionui --resetpass username
+openh3 --resetpass username
 
 # Or using full path
-/opt/AionUi/aionui --resetpass
+/opt/OpenH3/openh3 --resetpass
 ```
 
 ### What happens when you run --resetpass:
@@ -691,10 +691,10 @@ If you encounter any issues:
 2. Search [existing issues](https://github.com/BHUHD/OpenH3/issues)
 3. Create a [new issue](https://github.com/BHUHD/OpenH3/issues/new) with:
    - Your OS and version
-   - AionUi version
+   - OpenH3 version
    - Steps to reproduce
    - Error messages or logs
 
 ---
 
-**Happy using AionUi in WebUI mode!** 🚀
+**Happy using OpenH3 in WebUI mode!** 🚀

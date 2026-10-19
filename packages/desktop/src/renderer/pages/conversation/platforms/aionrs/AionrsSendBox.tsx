@@ -9,6 +9,7 @@ import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
 import { clearGuidDraftIfMatches } from '@/renderer/pages/guid/hooks/useGuidDraft';
 import type { IConversationMcpStatus } from '@/common/config/storage';
+import { mergeLoadedSkillNames } from '@/common/chat/slash/mergeSlashCommands';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
 import MobileActionSheet, {
@@ -138,7 +139,15 @@ const AionrsSendBox: React.FC<{
   const layout = useLayoutContext();
   const isMobile = Boolean(layout?.isMobile);
   const conversationContext = useConversationContextSafe();
-  const loadedSkills = conversationContext?.loadedSkills ?? [];
+  const snapshotSkills = conversationContext?.loadedSkills ?? [];
+  const { data: skillIndex, mutate: mutateSkillIndex } = useSWR('skills-index', () =>
+    ipcBridge.fs.listAvailableSkills.invoke()
+  );
+  useAddEventListener('skills.catalog.refresh', () => void mutateSkillIndex(), [mutateSkillIndex]);
+  const loadedSkills = mergeLoadedSkillNames(
+    snapshotSkills,
+    (skillIndex ?? []).filter((skill) => skill.source === 'custom' || skill.is_custom).map((skill) => skill.name)
+  );
   const loadedMcpStatuses =
     conversationContext?.loadedMcpStatuses ??
     (conversationContext?.loadedMcpServers ?? []).map<IConversationMcpStatus>((name) => ({

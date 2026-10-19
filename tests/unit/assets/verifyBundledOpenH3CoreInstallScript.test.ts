@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const scriptPath = 'resources/windows/support/verify-bundled-aioncore-install.ps1';
+const scriptPath = 'resources/windows/support/verify-bundled-openh3-core-install.ps1';
 const script = readFileSync(scriptPath, 'utf8');
 
 function writeFile(filePath: string, contents = '') {
@@ -16,7 +16,7 @@ function writeJson(filePath: string, value: unknown) {
   writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-describe('Windows bundled aioncore install verifier', () => {
+describe('Windows bundled OpenH3 Core install verifier', () => {
   it('reads managed resources manifest instead of deriving Codex platform paths', () => {
     expect(script).toContain("Join-Path $managedRoot 'manifest.json'");
     expect(script).toContain('schemaVersion');

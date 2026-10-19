@@ -11,6 +11,7 @@ import { useConversationHistoryContext } from '@/renderer/hooks/context/Conversa
 import type { TimelineSection } from '../types';
 import {
   dispatchWorkspaceExpansionChange,
+  LEGACY_WORKSPACE_EXPANSION_STORAGE_KEY,
   readExpandedWorkspaces,
   WORKSPACE_EXPANSION_STORAGE_KEY,
 } from './useWorkspaceExpansionState';
@@ -147,7 +148,9 @@ export const useConversations = () => {
   // Persist workspace expansion state
   useEffect(() => {
     try {
-      localStorage.setItem(WORKSPACE_EXPANSION_STORAGE_KEY, JSON.stringify(expandedWorkspaces));
+      const serialized = JSON.stringify(expandedWorkspaces);
+      localStorage.setItem(WORKSPACE_EXPANSION_STORAGE_KEY, serialized);
+      localStorage.setItem(LEGACY_WORKSPACE_EXPANSION_STORAGE_KEY, serialized);
     } catch {
       // ignore
     }

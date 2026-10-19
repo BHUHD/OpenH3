@@ -80,11 +80,11 @@ describe('preview surface (markdown.css) table header alignment', () => {
   it('declares text-align: start on th so the header matches the body rows', () => {
     const rules = parseRules(readFileSync(PREVIEW_CSS_PATH, 'utf8'));
 
-    const th = rules.find((rule) => normalize(selectorOf(rule)) === '.aionui-markdown :where(th)') as
-      | CSSStyleRule
-      | undefined;
+    const th = rules.find(
+      (rule) => normalize(selectorOf(rule)) === ':where(.openh3-markdown, .aionui-markdown) :where(th)'
+    ) as CSSStyleRule | undefined;
 
-    expect(th, 'markdown.css must still carry a `.aionui-markdown :where(th)` rule').toBeDefined();
+    expect(th, 'table header alignment must support both OpenH3 and legacy theme classes').toBeDefined();
     expect(th?.style.getPropertyValue('text-align')).toBe('start');
   });
 });

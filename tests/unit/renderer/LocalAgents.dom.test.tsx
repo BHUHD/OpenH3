@@ -88,7 +88,7 @@ vi.mock('@renderer/utils/platform', async () => {
 });
 
 // Keep the test focused on LocalAgents' own logic — stub heavy children.
-vi.mock('@/renderer/components/base/AionModal', () => ({ default: () => null }));
+vi.mock('@/renderer/components/base/OpenH3Modal', () => ({ default: () => null }));
 vi.mock('@renderer/pages/settings/AgentSettings/InlineAgentEditor', () => ({ default: () => null }));
 vi.mock('@renderer/pages/settings/AgentSettings/AgentHubModal', () => ({ AgentHubModal: () => null }));
 

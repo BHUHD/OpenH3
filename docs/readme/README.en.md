@@ -32,7 +32,7 @@ Local inference does not mean the entire conversation is offline. Remote provide
 
 ## Develop
 
-Install Node.js, Bun, and the matching AionCore backend using the [development guide](../contributing/development.md), then run in the repository root:
+Install Node.js, Bun, and the matching OpenH3 Core backend using the [development guide](../contributing/development.md), then run in the repository root:
 
 ```bash
 bun install --frozen-lockfile

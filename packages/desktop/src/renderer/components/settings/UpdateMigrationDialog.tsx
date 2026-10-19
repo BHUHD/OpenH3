@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import AionModal from '@renderer/components/base/AionModal';
+import OpenH3Modal from '@renderer/components/base/OpenH3Modal';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button } from '@arco-design/web-react';
 import { Down } from '@icon-park/react';
@@ -14,21 +14,26 @@ import { useTranslation } from 'react-i18next';
 // Global event that opens the migration invite letter. Manual "check for
 // updates" entry points dispatch it in the discontinued build instead of
 // running any version detection.
-export const OPEN_MIGRATION_DIALOG_EVENT = 'aionui-open-migration-dialog';
+export const OPEN_MIGRATION_DIALOG_EVENT = 'openh3-open-migration-dialog';
+export const LEGACY_OPEN_MIGRATION_DIALOG_EVENT = 'aionui-open-migration-dialog';
 
-// Official website users are guided to for the AionUi Pro download. Kept as a
+// OpenH3 release page users are guided to for the download. Kept as a
 // module constant (not i18n) — it is a URL, not translatable copy.
-const AIONUI_WEBSITE_URL = 'https://www.aionui.com/';
+const OPENH3_RELEASE_URL = 'https://github.com/BHUHD/OpenH3/releases/latest';
 
 // localStorage flag remembering that the migration invite already auto-opened
 // once on this machine. First launch of the discontinued build pops the card
 // automatically; after the user closes it, later launches stay silent and the
 // titlebar capsule becomes the re-entry point.
-const MIGRATION_INVITE_SHOWN_KEY = 'aionui.migration-invite-shown';
+const MIGRATION_INVITE_SHOWN_KEY = 'openh3.migration-invite-shown';
+const LEGACY_MIGRATION_INVITE_SHOWN_KEY = 'aionui.migration-invite-shown';
 
 const wasInviteAutoShown = (): boolean => {
   try {
-    return window.localStorage.getItem(MIGRATION_INVITE_SHOWN_KEY) === '1';
+    return (
+      window.localStorage.getItem(MIGRATION_INVITE_SHOWN_KEY) === '1' ||
+      window.localStorage.getItem(LEGACY_MIGRATION_INVITE_SHOWN_KEY) === '1'
+    );
   } catch {
     // localStorage unavailable (privacy mode / quota) — treat as already shown
     // so we never spam the dialog on every launch.
@@ -39,6 +44,7 @@ const wasInviteAutoShown = (): boolean => {
 const markInviteAutoShown = (): void => {
   try {
     window.localStorage.setItem(MIGRATION_INVITE_SHOWN_KEY, '1');
+    window.localStorage.setItem(LEGACY_MIGRATION_INVITE_SHOWN_KEY, '1');
   } catch {
     // ignore — worst case the invite auto-opens again next launch.
   }
@@ -64,7 +70,11 @@ const UpdateMigrationDialog: React.FC = () => {
   useEffect(() => {
     const handleOpen = () => setVisible(true);
     window.addEventListener(OPEN_MIGRATION_DIALOG_EVENT, handleOpen);
-    return () => window.removeEventListener(OPEN_MIGRATION_DIALOG_EVENT, handleOpen);
+    window.addEventListener(LEGACY_OPEN_MIGRATION_DIALOG_EVENT, handleOpen);
+    return () => {
+      window.removeEventListener(OPEN_MIGRATION_DIALOG_EVENT, handleOpen);
+      window.removeEventListener(LEGACY_OPEN_MIGRATION_DIALOG_EVENT, handleOpen);
+    };
   }, []);
 
   // Auto-open once on the first launch of the discontinued build. The flag is
@@ -96,14 +106,14 @@ const UpdateMigrationDialog: React.FC = () => {
   const close = () => setVisible(false);
 
   const gotoWebsite = () => {
-    void openExternalUrl(AIONUI_WEBSITE_URL).catch((error) => {
-      console.error('Failed to open AionUi Pro website:', error);
+    void openExternalUrl(OPENH3_RELEASE_URL).catch((error) => {
+      console.error('Failed to open OpenH3 release page:', error);
     });
     close();
   };
 
   return (
-    <AionModal
+    <OpenH3Modal
       variant='standard'
       visible={visible}
       onCancel={close}
@@ -192,7 +202,7 @@ const UpdateMigrationDialog: React.FC = () => {
           </div>
         )}
       </div>
-    </AionModal>
+    </OpenH3Modal>
   );
 };
 

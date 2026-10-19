@@ -7,9 +7,14 @@
 // Keep this constant local to avoid pulling in common/config/storage side effects
 // when the built-in MCP server boots in a standalone stdio process.
 export const BUILTIN_IMAGE_GEN_ID = 'builtin-image-gen';
-export const BUILTIN_IMAGE_GEN_NAME = 'aionui-image-generation';
-export const BUILTIN_IMAGE_GEN_LEGACY_NAMES = ['AionUi Image Generation', BUILTIN_IMAGE_GEN_ID] as const;
-export const BUILTIN_VIDEO_MEDIA_NAME = 'aionui-video-media';
+export const BUILTIN_IMAGE_GEN_NAME = 'openh3-image-generation';
+export const BUILTIN_IMAGE_GEN_LEGACY_NAMES = [
+  'aionui-image-generation',
+  'AionUi Image Generation',
+  BUILTIN_IMAGE_GEN_ID,
+] as const;
+export const BUILTIN_VIDEO_MEDIA_NAME = 'openh3-video-media';
+export const BUILTIN_VIDEO_MEDIA_LEGACY_NAMES = ['aionui-video-media'] as const;
 export const BUILTIN_VIDEO_MEDIA_ID = 'builtin-video-media';
 
 export function isBuiltinImageGenName(name?: string | null): boolean {
@@ -17,6 +22,14 @@ export function isBuiltinImageGenName(name?: string | null): boolean {
   return (
     name === BUILTIN_IMAGE_GEN_NAME ||
     BUILTIN_IMAGE_GEN_LEGACY_NAMES.includes(name as (typeof BUILTIN_IMAGE_GEN_LEGACY_NAMES)[number])
+  );
+}
+
+export function isBuiltinVideoMediaName(name?: string | null): boolean {
+  if (!name) return false;
+  return (
+    name === BUILTIN_VIDEO_MEDIA_NAME ||
+    BUILTIN_VIDEO_MEDIA_LEGACY_NAMES.includes(name as (typeof BUILTIN_VIDEO_MEDIA_LEGACY_NAMES)[number])
   );
 }
 

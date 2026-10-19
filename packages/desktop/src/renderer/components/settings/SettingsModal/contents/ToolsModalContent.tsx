@@ -7,15 +7,15 @@
 import type { ImageGenerationModelSetting } from '@/common/config/clientSettings';
 import { removeImageGenerationEnvKeys, resolveImageGenerationMcpEnv } from '@/common/config/imageGenerationMcpEnv';
 import { mcpService } from '@/common/adapter/ipcBridge';
-import { type IMcpServer, BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME } from '@/common/config/storage';
+import { type IMcpServer, isBuiltinImageGenerationName } from '@/common/config/storage';
 import { isImageGenSupported } from '@/common/utils/imageModelAllowlist';
 import { Divider, Form, Tooltip, Message, Modal, Switch } from '@arco-design/web-react';
 import { Help } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useConfigModelListWithImage from '@/renderer/hooks/agent/useConfigModelListWithImage';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
-import AionSelect from '@/renderer/components/base/AionSelect';
+import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
+import OpenH3Select from '@/renderer/components/base/OpenH3Select';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import AddMcpServerModal from '@/renderer/pages/settings/components/AddMcpServerModal';
 import McpServerItem from '@/renderer/pages/settings/ToolsSettings/McpServerItem';
@@ -38,7 +38,7 @@ import { useSettingsTabNavigate, useSettingsViewMode } from '../settingsViewCont
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
 const isBuiltinImageGenServer = (server: IMcpServer) =>
-  server.builtin === true && (server.id === BUILTIN_IMAGE_GEN_ID || server.name === BUILTIN_IMAGE_GEN_NAME);
+  server.builtin === true && isBuiltinImageGenerationName(server.name);
 const areEnvRecordsEqual = (a: Record<string, string>, b: Record<string, string>) => {
   const aKeys = Object.keys(a);
   const bKeys = Object.keys(b);
@@ -199,7 +199,7 @@ const ModalMcpManagementSection: React.FC<{
             {t('settings.mcpNoServersFound')}
           </div>
         ) : (
-          <AionScrollArea
+          <OpenH3ScrollArea
             className={classNames('max-h-360px', isPageMode && 'max-h-none')}
             disableOverflow={isPageMode}
           >
@@ -233,7 +233,7 @@ const ModalMcpManagementSection: React.FC<{
                 />
               ))}
             </div>
-          </AionScrollArea>
+          </OpenH3ScrollArea>
         )}
       </div>
 
@@ -488,12 +488,12 @@ const ToolsModalContent: React.FC = () => {
       {mcpMessageContext}
 
       {/* Content Area */}
-      <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+      <OpenH3ScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
         <div className='space-y-16px'>
           {/* MCP 工具配置 */}
           <div className='px-[12px] md:px-[32px] py-[24px] bg-2 rd-12px md:rd-16px flex flex-col min-h-0 border border-border-2'>
             <div className='flex-1 min-h-0'>
-              <AionScrollArea
+              <OpenH3ScrollArea
                 className={classNames('h-full', isPageMode && 'overflow-visible')}
                 disableOverflow={isPageMode}
               >
@@ -505,7 +505,7 @@ const ToolsModalContent: React.FC = () => {
                   saveMcpServers={saveMcpServers}
                   isPageMode={isPageMode}
                 />
-              </AionScrollArea>
+              </OpenH3ScrollArea>
             </div>
           </div>
           {/* 图像生成 */}
@@ -543,7 +543,7 @@ const ToolsModalContent: React.FC = () => {
                 }
               >
                 {imageGenerationModelList.length > 0 ? (
-                  <AionSelect
+                  <OpenH3Select
                     value={
                       imageGenerationModel?.id && imageGenerationModel?.use_model
                         ? `${imageGenerationModel.id}|${imageGenerationModel.use_model}`
@@ -561,15 +561,15 @@ const ToolsModalContent: React.FC = () => {
                     }}
                   >
                     {imageGenerationModelList.map(({ models, ...platform }) => (
-                      <AionSelect.OptGroup label={platform.name} key={platform.id}>
+                      <OpenH3Select.OptGroup label={platform.name} key={platform.id}>
                         {models.map((modelName) => (
-                          <AionSelect.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
+                          <OpenH3Select.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
                             {modelName}
-                          </AionSelect.Option>
+                          </OpenH3Select.Option>
                         ))}
-                      </AionSelect.OptGroup>
+                      </OpenH3Select.OptGroup>
                     ))}
-                  </AionSelect>
+                  </OpenH3Select>
                 ) : (
                   <div className='text-t-secondary flex items-center'>
                     {t('settings.noAvailable')}
@@ -615,7 +615,7 @@ const ToolsModalContent: React.FC = () => {
             </Form>
           </div>
         </div>
-      </AionScrollArea>
+      </OpenH3ScrollArea>
     </div>
   );
 };

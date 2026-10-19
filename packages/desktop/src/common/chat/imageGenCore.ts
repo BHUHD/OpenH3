@@ -16,7 +16,12 @@ import { jsonrepair } from 'jsonrepair';
 import type OpenAI from 'openai';
 import { ClientFactory, type RotatingClient } from '@/common/api/ClientFactory';
 import { OpenAIRotatingClient } from '@/common/api/OpenAIRotatingClient';
-import { imagesApiDataUrl } from './document/creation/imagesApi';
+import {
+  decodeImageDataUrl,
+  imageBytesToDataUrl,
+  imageUrlToDataUrl,
+  imagesApiDataUrl,
+} from './document/creation/imagesApi';
 import { isImagesApiProvider } from '@/common/utils/imageModelAllowlist';
 import type { TProviderWithModel } from '@/common/config/storage';
 import type { UnifiedChatCompletionResponse } from '@/common/api/RotatingApiClient';
@@ -120,13 +125,14 @@ export function getFileExtensionFromDataUrl(dataUrl: string): string {
 
 export async function saveGeneratedImage(base64Data: string, workspaceDir: string): Promise<string> {
   const timestamp = Date.now();
-  const fileExtension = getFileExtensionFromDataUrl(base64Data);
+  const decoded = decodeImageDataUrl(base64Data);
+  const canonicalDataUrl = imageBytesToDataUrl(decoded.bytes, decoded.mime);
+  const fileExtension = getFileExtensionFromDataUrl(canonicalDataUrl);
   const file_name = `img-${timestamp}${fileExtension}`;
   const resolvedDir = path.resolve(workspaceDir);
   const file_path = path.join(resolvedDir, file_name);
 
-  const base64WithoutPrefix = base64Data.replace(/^data:image\/[^;]+;base64,/, '');
-  const imageBuffer = Buffer.from(base64WithoutPrefix, 'base64');
+  const imageBuffer = Buffer.from(decoded.bytes);
 
   try {
     await fs.promises.writeFile(file_path, imageBuffer);
@@ -372,12 +378,13 @@ export async function executeImageGeneration(
 
     if (!images || images.length === 0) {
       const warningMessage = `Image generation did not produce any images.\n\nModel response: ${responseText}\n\nTip: Make sure your image generation model supports this type of request. Current model: ${provider.use_model}`;
-      return { success: true, text: warningMessage };
+      return { success: false, text: warningMessage, error: 'No image returned' };
     }
 
     const firstImage = images[0];
     if (firstImage.type === 'image_url' && firstImage.image_url?.url) {
-      const imagePath = await saveGeneratedImage(firstImage.image_url.url, resolvedWorkspaceDir);
+      const dataUrl = await imageUrlToDataUrl(firstImage.image_url.url, signal);
+      const imagePath = await saveGeneratedImage(dataUrl, resolvedWorkspaceDir);
       const relativeImagePath = path.relative(resolvedWorkspaceDir, imagePath);
 
       // Strip any inline base64 data URLs from the human-readable text before

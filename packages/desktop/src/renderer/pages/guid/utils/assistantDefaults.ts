@@ -1,4 +1,4 @@
-import type { IMcpServer } from '@/common/config/storage';
+import { isBuiltinVideoMediaName, type IMcpServer } from '@/common/config/storage';
 import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
 import { isAionrsAssistant } from '@/common/types/agent/assistantTypes';
 
@@ -69,7 +69,7 @@ export const resolveGuidAssistantDefaults = (
         ? (detail.preferences.last_mcp_ids ??
           (isAionrsAssistant(detail.engine)
             ? servers
-                .filter((server) => server.builtin && server.enabled && server.name === 'aionui-video-media')
+                .filter((server) => server.builtin && server.enabled && isBuiltinVideoMediaName(server.name))
                 .map((server) => server.id)
             : []))
         : [];

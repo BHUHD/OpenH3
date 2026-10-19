@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import AionModal from '@renderer/components/base/AionModal';
+import OpenH3Modal from '@renderer/components/base/OpenH3Modal';
 import { FEEDBACK_MODULES } from './feedbackModules';
 import { useTalkToButler } from '@/renderer/hooks/assistant/useTalkToButler';
 import { useAuth } from '@/renderer/hooks/context/AuthContext';
@@ -220,7 +220,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
     feedbackDiagnosticsContext,
   ]);
 
-  // "Solve via chat": hand the report to the AionUi Butler for on-the-spot
+  // "Solve via chat": hand the report to the OpenH3 Butler for on-the-spot
   // diagnosis instead of submitting to the team. The typed description + module
   // become a structured prompt; screenshots are uploaded to disk so they ride
   // along in the chat input (reusing the same upload path as pasted images).
@@ -339,7 +339,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
   }, [handlePaste, visible]);
 
   return (
-    <AionModal
+    <OpenH3Modal
       variant='standard'
       header={{ title: t('settings.bugReportTitle'), showClose: true }}
       visible={visible}
@@ -387,7 +387,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
       className='w-[min(600px,calc(100vw-32px))] max-w-600px'
       autoFocus={false}
       // The feedback modal is global and may be opened from inside another
-      // AionModal (e.g. the Agent editor). Arco's default z-index stacks
+      // OpenH3Modal (e.g. the Agent editor). Arco's default z-index stacks
       // modals in mount order, which leaves the feedback modal under the
       // pre-existing modal when both are open. Bump wrap+mask above the
       // standard 1001 so feedback always appears on top.
@@ -479,7 +479,7 @@ const FeedbackReportModal: React.FC<FeedbackReportModalProps> = ({
           ) : null}
         </div>
       </div>
-    </AionModal>
+    </OpenH3Modal>
   );
 };
 

@@ -8,7 +8,7 @@ This file is a decision aid, not a list of unverified download links. The candid
 2. **A reputable domestic mirror** — for example `hf-mirror.com` or another Hugging Face mirror that preserves the repository and revision path. Treat the mirror as transport only; compare the downloaded bytes and source metadata with upstream. The host must appear in the built-in trusted-host list or be explicitly approved by the product before probing.
 3. **Upstream host** — use the pinned Hugging Face, Git, Python index, or Comfy-Org URL when it is reachable and the first two sources do not provide equivalent evidence.
 
-The LLM must pass the exact candidate URLs to `aionui_comfy_environment.sources` before selecting one. A host page, search result, repository name, or same-size file is not sufficient evidence. Do not send credentials or signed query strings in a report; use a short-lived URL only for the actual approved download and keep the receipt local.
+The LLM must pass the exact candidate URLs to `openh3_comfy_environment.sources` before selecting one. A host page, search result, repository name, or same-size file is not sufficient evidence. Do not send credentials or signed query strings in a report; use a short-lived URL only for the actual approved download and keep the receipt local.
 
 ## Host-specific rules
 

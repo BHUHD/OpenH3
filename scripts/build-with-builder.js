@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Simplified build script for AionUi
+ * Simplified build script for OpenH3
  * Coordinates electron-vite (bundling) and electron-builder (packaging)
  *
  * Features:
@@ -26,6 +26,8 @@ const DMG_RETRY_DELAY_SEC = 30;
 
 // Incremental build: hash of source files to detect changes
 const INCREMENTAL_CACHE_FILE = 'out/.build-hash';
+const OPENH3_DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV = 'OPENH3_DEBUG_AUTO_UPDATE_CURRENT_VERSION';
+// Legacy environment variable retained so existing local build scripts keep working.
 const DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV = 'AIONUI_DEBUG_AUTO_UPDATE_CURRENT_VERSION';
 
 // Release signing must never silently degrade into an unsigned installer.
@@ -34,12 +36,14 @@ function windowsSigningPolicy(builderArgs, env) {
   const credentials = Boolean(
     env.WIN_CSC_LINK ||
     env.CSC_LINK ||
-    env.AIONUI_WINDOWS_CERT_SHA1 ||
+    (env.OPENH3_WINDOWS_CERT_SHA1 ?? env.AIONUI_WINDOWS_CERT_SHA1) ||
     /certificate(?:File|Sha1|SubjectName)|azureSignOptions/.test(builderArgs)
   );
   const required =
     windows &&
-    (env.AIONUI_REQUIRE_WINDOWS_SIGNING === '1' || credentials || /forceCodeSigning(?:=|\s+)true/.test(builderArgs));
+    ((env.OPENH3_REQUIRE_WINDOWS_SIGNING ?? env.AIONUI_REQUIRE_WINDOWS_SIGNING) === '1' ||
+      credentials ||
+      /forceCodeSigning(?:=|\s+)true/.test(builderArgs));
   if (!required) return { required: false, flags: '' };
   if (
     /signAndEditExecutable(?:=|\s+)false|signExecutable(?:=|\s+)false|forceCodeSigning(?:=|\s+)false|win\.sign(?:=|\s+)false/.test(
@@ -49,11 +53,11 @@ function windowsSigningPolicy(builderArgs, env) {
     throw new Error('Signed Windows builds cannot disable signing or executable editing.');
   if (!credentials)
     throw new Error(
-      'Windows release signing requires WIN_CSC_LINK/CSC_LINK, AIONUI_WINDOWS_CERT_SHA1, or configured certificate/cloud signing options.'
+      'Windows release signing requires WIN_CSC_LINK/CSC_LINK, OPENH3_WINDOWS_CERT_SHA1, or configured certificate/cloud signing options.'
     );
-  const thumbprint = env.AIONUI_WINDOWS_CERT_SHA1;
+  const thumbprint = env.OPENH3_WINDOWS_CERT_SHA1 ?? env.AIONUI_WINDOWS_CERT_SHA1;
   if (thumbprint && !/^[a-f0-9]{40}$/i.test(thumbprint))
-    throw new Error('AIONUI_WINDOWS_CERT_SHA1 must be a 40-character certificate thumbprint.');
+    throw new Error('OPENH3_WINDOWS_CERT_SHA1 must be a 40-character certificate thumbprint.');
   return {
     required: true,
     flags:
@@ -573,12 +577,14 @@ function isValidPackageVersion(value) {
 }
 
 function applyDebugAutoUpdateVersionOverride(packageJsonPath) {
-  const debugAutoUpdateCurrentVersion = process.env[DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV]?.trim();
+  const debugAutoUpdateCurrentVersion = (
+    process.env[OPENH3_DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV] ?? process.env[DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV]
+  )?.trim();
   if (!debugAutoUpdateCurrentVersion) {
     return () => {};
   }
   if (!isValidPackageVersion(debugAutoUpdateCurrentVersion)) {
-    throw new Error(`${DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV} must be a valid semver version`);
+    throw new Error(`${OPENH3_DEBUG_AUTO_UPDATE_CURRENT_VERSION_ENV} must be a valid semver version`);
   }
 
   const originalPackageJsonText = fs.readFileSync(packageJsonPath, 'utf8');
@@ -858,16 +864,16 @@ try {
     return;
   }
 
-  // 5. Prepare aioncore binary (for packaged runtime usage)
-  const { prepareAioncore } = require('../packages/shared-scripts/src/prepare-aioncore.js');
-  const { resolveAioncoreVersion } = require('./resolveAioncoreVersion.js');
+  // 5. Prepare OpenH3 Core (for packaged runtime usage)
+  const { prepareOpenH3Core } = require('../packages/shared-scripts/src/prepare-openh3-core.js');
+  const { resolveOpenH3CoreVersion } = require('./resolveOpenH3CoreVersion.js');
   const projectRoot = path.resolve(__dirname, '..');
   writeGeneratedSentryDsnInclude(projectRoot);
-  prepareAioncore({
+  prepareOpenH3Core({
     projectRoot,
     platform: process.platform,
     arch: targetArch,
-    version: resolveAioncoreVersion(projectRoot),
+    version: resolveOpenH3CoreVersion(projectRoot),
   });
 
   // 6. Prepare hub resources (index.json + extension zips for offline fallback)
@@ -943,11 +949,11 @@ try {
       const legacyAionRunning = isProcessRunningWindows('AionUi.exe');
       const electronRunning = isProcessRunningWindows('electron.exe');
       if (openH3Running || legacyAionRunning || electronRunning) {
-        console.log('⚠️  Detected running OpenH3/AionUi/Electron process. Attempting to close...');
+         console.log('⚠️  Detected running OpenH3 or legacy AionUi/Electron process. Attempting to close...');
         killWindowsProcesses(['OpenH3.exe', 'AionUi.exe', 'electron.exe']);
         cleaned = tryRemoveDir(winUnpackedDir);
         if (!cleaned) {
-          console.log('⚠️  Directory still locked. Please close any running AionUi/Electron processes and retry.');
+           console.log('⚠️  Directory still locked. Please close OpenH3 or any legacy AionUi/Electron process and retry.');
         }
       }
     }

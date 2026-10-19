@@ -60,8 +60,8 @@ interface AutoUpdateCheckParams {
   includePrerelease?: boolean;
 }
 
-const DEFAULT_REPO = 'iOfficeAI/AionUi';
-const DEFAULT_USER_AGENT = 'AionUi';
+const DEFAULT_REPO = 'pigq/OpenH3';
+const DEFAULT_USER_AGENT = 'OpenH3';
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
 const CDN_HOST = 'static.aionui.com';
 const CDN_BASE_URL = `https://${CDN_HOST}/releases`;
@@ -262,7 +262,7 @@ export const mapCdnManifestToRelease = (manifest: CdnLatestManifest, repo: strin
 };
 
 const resolveRepo = (requestRepo?: string): string => {
-  const envRepo = process.env.AIONUI_GITHUB_REPO?.trim();
+  const envRepo = (process.env.OPENH3_GITHUB_REPO || process.env.AIONUI_GITHUB_REPO)?.trim();
   const repo = (requestRepo || envRepo || DEFAULT_REPO).trim();
   return repo || DEFAULT_REPO;
 };
@@ -431,7 +431,7 @@ const sanitizeFileName = (name: string): string => {
   // Keep only base name and trim weird whitespace.
   const base = path.basename(name).trim();
   // Avoid empty names.
-  return base || `AionUi-update-${Date.now()}`;
+  return base || `OpenH3-update-${Date.now()}`;
 };
 
 const ensureUniquePath = (target: string): string => {

@@ -8,6 +8,14 @@ import type { ImageGenerationModelSetting } from './clientSettings';
 import type { IProvider } from './storage';
 
 export const IMAGE_GEN_ENV_KEYS = {
+  providerId: 'OPENH3_IMG_PROVIDER_ID',
+  platform: 'OPENH3_IMG_PLATFORM',
+  baseUrl: 'OPENH3_IMG_BASE_URL',
+  apiKey: 'OPENH3_IMG_API_KEY',
+  model: 'OPENH3_IMG_MODEL',
+} as const;
+
+export const LEGACY_IMAGE_GEN_ENV_KEYS = {
   providerId: 'AIONUI_IMG_PROVIDER_ID',
   platform: 'AIONUI_IMG_PLATFORM',
   baseUrl: 'AIONUI_IMG_BASE_URL',
@@ -48,10 +56,20 @@ function getLegacyField(
   existingEnv: Record<string, string> | undefined
 ) {
   return {
-    providerId: selection?.id || existingEnv?.[IMAGE_GEN_ENV_KEYS.providerId],
-    platform: selection?.platform || existingEnv?.[IMAGE_GEN_ENV_KEYS.platform],
-    baseUrl: selection?.base_url || existingEnv?.[IMAGE_GEN_ENV_KEYS.baseUrl],
-    model: selection?.use_model || existingEnv?.[IMAGE_GEN_ENV_KEYS.model],
+    providerId:
+      selection?.id ||
+      existingEnv?.[IMAGE_GEN_ENV_KEYS.providerId] ||
+      existingEnv?.[LEGACY_IMAGE_GEN_ENV_KEYS.providerId],
+    platform:
+      selection?.platform ||
+      existingEnv?.[IMAGE_GEN_ENV_KEYS.platform] ||
+      existingEnv?.[LEGACY_IMAGE_GEN_ENV_KEYS.platform],
+    baseUrl:
+      selection?.base_url ||
+      existingEnv?.[IMAGE_GEN_ENV_KEYS.baseUrl] ||
+      existingEnv?.[LEGACY_IMAGE_GEN_ENV_KEYS.baseUrl],
+    model:
+      selection?.use_model || existingEnv?.[IMAGE_GEN_ENV_KEYS.model] || existingEnv?.[LEGACY_IMAGE_GEN_ENV_KEYS.model],
   };
 }
 
@@ -158,7 +176,7 @@ export function resolveImageGenerationMcpEnv(
 
 export function removeImageGenerationEnvKeys(env: Record<string, string>): Record<string, string> {
   const next = { ...env };
-  Object.values(IMAGE_GEN_ENV_KEYS).forEach((key) => {
+  [...Object.values(IMAGE_GEN_ENV_KEYS), ...Object.values(LEGACY_IMAGE_GEN_ENV_KEYS)].forEach((key) => {
     delete next[key];
   });
   return next;

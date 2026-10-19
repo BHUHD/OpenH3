@@ -7,6 +7,7 @@
 import { normalizeSkillDescription, normalizeSkillDisplayName } from '@/renderer/utils/model/assistantDisplay';
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
+import { mergeLoadedSkillNames } from '@/common/chat/slash/mergeSlashCommands';
 import { iconColors } from '@/renderer/styles/colors';
 import { Popover } from '@arco-design/web-react';
 import { Lightning } from '@icon-park/react';
@@ -14,6 +15,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
+import { useAddEventListener } from '@/renderer/utils/emitter';
 
 type ConversationSkillsIndicatorProps = {
   conversation: TChatConversation | undefined;
@@ -28,10 +30,16 @@ const ConversationSkillsIndicator: React.FC<ConversationSkillsIndicatorProps> = 
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const names = (conversation?.extra as { skills?: string[] } | undefined)?.skills ?? [];
+  const snapshotNames = (conversation?.extra as { skills?: string[] } | undefined)?.skills ?? [];
 
-  const { data: skillIndex } = useSWR(names.length > 0 ? 'skills-index' : null, () =>
+  const { data: skillIndex, mutate: mutateSkillIndex } = useSWR('skills-index', () =>
     ipcBridge.fs.listAvailableSkills.invoke()
+  );
+  useAddEventListener('skills.catalog.refresh', () => void mutateSkillIndex(), [mutateSkillIndex]);
+
+  const names = mergeLoadedSkillNames(
+    snapshotNames,
+    (skillIndex ?? []).filter((skill) => skill.source === 'custom' || skill.is_custom).map((skill) => skill.name)
   );
 
   if (names.length === 0) return null;

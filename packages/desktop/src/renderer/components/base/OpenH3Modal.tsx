@@ -79,8 +79,8 @@ export interface ModalContentStyleConfig {
   maxHeight?: string | number;
 }
 
-/** AionModal 组件 Props */
-export interface AionModalProps extends Omit<ModalProps, 'title' | 'footer'> {
+/** OpenH3Modal 组件 Props */
+export interface OpenH3ModalProps extends Omit<ModalProps, 'title' | 'footer'> {
   children?: React.ReactNode;
 
   /**
@@ -111,25 +111,28 @@ export interface AionModalProps extends Omit<ModalProps, 'title' | 'footer'> {
 
 // ==================== 样式常量 / Style Constants ====================
 
-const HEADER_BASE_CLASS = 'flex items-center justify-between pb-20px';
-const TITLE_BASE_CLASS = 'text-18px font-500 text-t-primary m-0';
+const HEADER_BASE_CLASS = 'openh3-modal-header aionui-modal-header flex items-center justify-between pb-20px';
+const TITLE_BASE_CLASS = 'openh3-modal-title aionui-modal-title text-18px font-500 text-t-primary m-0';
 const CLOSE_BUTTON_CLASS =
-  'w-32px h-32px flex items-center justify-center rd-8px transition-colors duration-200 cursor-pointer border-0 bg-transparent p-0 hover:bg-2 focus:outline-none';
+  'openh3-modal-close-btn aionui-modal-close-btn w-32px h-32px flex items-center justify-center rd-8px transition-colors duration-200 cursor-pointer border-0 bg-transparent p-0 hover:bg-2 focus:outline-none';
 const FOOTER_BASE_CLASS = 'flex-shrink-0 bg-transparent';
 /** 任务型弹窗 footer 的统一分隔线 + 内边距（内容↔按钮区）。 */
 const FOOTER_DIVIDER_CLASS = 'flex-shrink-0 border-t border-solid border-[var(--bg-3)] px-24px py-16px';
 
 // ===== standard 变体：统一三段式布局 =====
 /** 标题区：上 20 / 左右 24 / 下 16，底部一条贯穿全宽的分隔线。 */
-const STD_HEADER_CLASS = 'aionui-modal-std-header flex items-start justify-between gap-16px px-24px pt-20px pb-16px';
-const STD_TITLE_CLASS = 'text-18px font-600 leading-26px text-t-primary m-0';
-const STD_SUBTITLE_CLASS = 'text-13px leading-20px text-t-secondary m-0 mt-4px';
+const STD_HEADER_CLASS =
+  'openh3-modal-std-header aionui-modal-std-header flex items-start justify-between gap-16px px-24px pt-20px pb-16px';
+const STD_TITLE_CLASS =
+  'openh3-modal-std-title aionui-modal-std-title text-18px font-600 leading-26px text-t-primary m-0';
+const STD_SUBTITLE_CLASS =
+  'openh3-modal-std-subtitle aionui-modal-std-subtitle text-13px leading-20px text-t-secondary m-0 mt-4px';
 /** 内容区布局：撑满剩余高度、超出滚动（不含内边距）。 */
-const STD_BODY_LAYOUT_CLASS = 'aionui-modal-std-body min-h-0 flex-1 overflow-y-auto';
+const STD_BODY_LAYOUT_CLASS = 'openh3-modal-std-body aionui-modal-std-body min-h-0 flex-1 overflow-y-auto';
 /** 内容区标准内边距：上下 20 / 左右 24。整栏通铺（如团队双栏）时可通过 contentStyle.padding 关闭。 */
 const STD_BODY_PADDING_CLASS = 'px-24px py-20px';
 const STD_CLOSE_BTN_CLASS =
-  'shrink-0 w-32px h-32px flex items-center justify-center rd-8px transition-colors duration-200 cursor-pointer border-0 bg-transparent p-0 text-t-secondary hover:bg-fill-2 focus:outline-none';
+  'openh3-modal-std-close-btn aionui-modal-std-close-btn shrink-0 w-32px h-32px flex items-center justify-center rd-8px transition-colors duration-200 cursor-pointer border-0 bg-transparent p-0 text-t-secondary hover:bg-fill-2 focus:outline-none';
 
 /**
  * 自定义模态框组件 / Custom modal component
@@ -147,17 +150,17 @@ const STD_CLOSE_BTN_CLASS =
  * @example
  * ```tsx
  * // 基本用法 / Basic usage
- * <AionModal visible={true} onCancel={handleClose} header="标题">
+ * <OpenH3Modal visible={true} onCancel={handleClose} header="标题">
  *   内容
- * </AionModal>
+ * </OpenH3Modal>
  *
  * // 预设尺寸 / Preset size
- * <AionModal visible={true} size="large" header="大型弹窗">
+ * <OpenH3Modal visible={true} size="large" header="大型弹窗">
  *   内容
- * </AionModal>
+ * </OpenH3Modal>
  *
  * // 自定义 header / Custom header
- * <AionModal
+ * <OpenH3Modal
  *   visible={true}
  *   header={{
  *     title: "自定义标题",
@@ -166,10 +169,10 @@ const STD_CLOSE_BTN_CLASS =
  *   }}
  * >
  *   内容
- * </AionModal>
+ * </OpenH3Modal>
  *
  * // 自定义 footer / Custom footer
- * <AionModal
+ * <OpenH3Modal
  *   visible={true}
  *   header="标题"
  *   footer={
@@ -180,7 +183,7 @@ const STD_CLOSE_BTN_CLASS =
  *   }
  * >
  *   内容
- * </AionModal>
+ * </OpenH3Modal>
  * ```
  */
 const dimensionKeys = ['width', 'minWidth', 'maxWidth', 'height', 'minHeight', 'maxHeight'] as const;
@@ -191,7 +194,7 @@ const formatDimensionValue = (value?: string | number) => {
   return typeof value === 'number' ? `${value}px` : value;
 };
 
-const AionModal: React.FC<AionModalProps> = ({
+const OpenH3Modal: React.FC<OpenH3ModalProps> = ({
   children,
   variant,
   size,
@@ -417,7 +420,7 @@ const AionModal: React.FC<AionModalProps> = ({
       const useDivider = isStandard || footerConfig.divider === true;
       const footerClassName = classNames(
         useDivider ? FOOTER_DIVIDER_CLASS : FOOTER_BASE_CLASS,
-        isStandard && 'aionui-modal-std-footer',
+        isStandard && 'openh3-modal-std-footer aionui-modal-std-footer',
         footerConfig.className
       );
       return (
@@ -437,18 +440,22 @@ const AionModal: React.FC<AionModalProps> = ({
       closable={false}
       footer={null}
       onCancel={onCancel}
-      className={classNames('aionui-modal', isStandard && 'aionui-modal-standard', className)}
+      className={classNames(
+        'openh3-modal aionui-modal',
+        isStandard && 'openh3-modal-standard aionui-modal-standard',
+        className
+      )}
       style={finalStyle}
       getPopupContainer={() => document.body}
     >
       <div
-        className={classNames('aionui-modal-wrapper', isStandard && 'flex flex-col min-h-0')}
+        className={classNames('openh3-modal-wrapper aionui-modal-wrapper', isStandard && 'flex flex-col min-h-0')}
         style={{ borderRadius: borderRadiusVal }}
       >
         {renderHeader()}
         <div
           className={classNames(
-            'aionui-modal-body-content',
+            'openh3-modal-body-content aionui-modal-body-content',
             isStandard && STD_BODY_LAYOUT_CLASS,
             // 默认套用标准内边距；调用方显式传 contentStyle.padding 时改由 inline style 生效（可为 0）
             isStandard && !stdBodyHasCustomPadding && STD_BODY_PADDING_CLASS
@@ -463,6 +470,6 @@ const AionModal: React.FC<AionModalProps> = ({
   );
 };
 
-AionModal.displayName = 'AionModal';
+OpenH3Modal.displayName = 'OpenH3Modal';
 
-export default AionModal;
+export default OpenH3Modal;

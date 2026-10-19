@@ -7,6 +7,17 @@
 import type { SlashCommandItem } from './types';
 
 /**
+ * Keep the persisted conversation snapshot while surfacing user skills that
+ * were imported after the conversation was created.
+ */
+export function mergeLoadedSkillNames(
+  loadedSkills: readonly string[] | undefined,
+  additionalSkills: readonly string[] = []
+): string[] {
+  return [...new Set([...(loadedSkills ?? []), ...additionalSkills])];
+}
+
+/**
  * Builds slash command items for the skills loaded into the current
  * conversation. Skills are inserted as `/name ` templates (never executed
  * immediately) so the user can add arguments before sending.
@@ -20,12 +31,14 @@ import type { SlashCommandItem } from './types';
 export function buildSkillSlashCommands(
   loadedSkills: readonly string[] | undefined,
   descriptionByName: ReadonlyMap<string, string>,
-  fallbackDescription: string
+  fallbackDescription: string,
+  additionalSkills: readonly string[] = []
 ): SlashCommandItem[] {
-  if (!loadedSkills || loadedSkills.length === 0) {
+  const names = mergeLoadedSkillNames(loadedSkills, additionalSkills);
+  if (names.length === 0) {
     return [];
   }
-  return loadedSkills.map((name) => ({
+  return names.map((name) => ({
     name,
     description: descriptionByName.get(name) ?? fallbackDescription,
     kind: 'template',

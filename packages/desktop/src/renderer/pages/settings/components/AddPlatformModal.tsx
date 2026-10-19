@@ -16,7 +16,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useModeModeList from '@renderer/hooks/agent/useModeModeList';
 import useProtocolDetection from '@renderer/hooks/system/useProtocolDetection';
-import AionModal from '@/renderer/components/base/AionModal';
+import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
 import {
   DEFAULT_PLATFORM_VALUE,
   MODEL_PLATFORMS,
@@ -402,7 +402,7 @@ const AddPlatformModal = ModalHOC<{
   };
 
   return (
-    <AionModal
+    <OpenH3Modal
       variant='standard'
       visible={modalProps.visible}
       onCancel={modalCtrl.close}
@@ -761,7 +761,7 @@ const AddPlatformModal = ModalHOC<{
           )}
         </Form>
       </div>
-    </AionModal>
+    </OpenH3Modal>
   );
 });
 

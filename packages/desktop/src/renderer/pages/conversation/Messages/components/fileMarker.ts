@@ -12,7 +12,7 @@
  * terminator documented on `parseFileMarker`.
  */
 
-import { AIONUI_FILES_MARKER } from '@/common/config/constants';
+import { OPENH3_FILES_MARKER } from '@/common/config/constants';
 
 export type ParsedFileMarker = {
   text: string;
@@ -74,7 +74,7 @@ export const parseFileMarker = (content: string, canParseFileMarker: boolean): P
   const lines = content.split(/\r?\n/);
   let markerLineIndex = -1;
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim() === AIONUI_FILES_MARKER) {
+    if (lines[index].trim() === OPENH3_FILES_MARKER) {
       markerLineIndex = index;
       break;
     }

@@ -28,16 +28,17 @@ const statusToBadge = (status: NormalizedToolStatus): BadgeProps['status'] => {
   }
 };
 
-const H3_STATUS_TOOL = 'aionui_h3_job_status';
-const H3_GENERATE_TOOL = 'aionui_h3_generate_video';
+const H3_STATUS_TOOL = 'openh3_h3_job_status';
+const H3_GENERATE_TOOL = 'openh3_h3_generate_video';
 
 function isH3StatusTool(item: NormalizedToolCall): boolean {
-  return item.name === H3_STATUS_TOOL;
+  return item.name.replace(/^aionui_/, 'openh3_') === H3_STATUS_TOOL;
 }
 
 function displayToolName(item: NormalizedToolCall, translate: (key: string) => string): string {
-  if (item.name === H3_STATUS_TOOL || item.name === H3_GENERATE_TOOL) return translate('conversation.h3Activity.title');
-  return item.name.startsWith('aionui_') ? 'OpenH3 tool' : item.name;
+  const name = item.name.replace(/^aionui_/, 'openh3_');
+  if (name === H3_STATUS_TOOL || name === H3_GENERATE_TOOL) return translate('conversation.h3Activity.title');
+  return /^(?:openh3|aionui)_/.test(item.name) ? 'OpenH3 tool' : item.name;
 }
 
 const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
@@ -103,7 +104,7 @@ const ToolItemDetail: React.FC<{ item: NormalizedToolCall }> = ({ item }) => {
           <span className='font-medium text-13px'>{displayName}</span>
           {displayItem.description &&
             displayItem.description !== displayItem.name &&
-            !displayItem.name.startsWith('aionui_') && (
+            !/^(?:openh3|aionui)_/.test(displayItem.name) && (
               <span className='m-l-4px opacity-80 text-13px'>{displayItem.description}</span>
             )}
         </span>

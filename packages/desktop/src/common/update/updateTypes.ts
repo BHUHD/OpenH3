@@ -35,7 +35,7 @@ export interface UpdateCheckResult {
 
 export interface UpdateCheckRequest {
   includePrerelease?: boolean;
-  /** Defaults to iOfficeAI/AionUi when omitted */
+  /** Defaults to pigq/OpenH3 when omitted. */
   repo?: string;
 }
 

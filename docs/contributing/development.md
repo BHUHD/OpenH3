@@ -4,7 +4,7 @@
 
 - **Node.js** 22–24 (`>=22 <25`)
 - **bun** — Package manager & runtime ([install](https://bun.sh))
-- **Rust stable + Cargo** — Required to build the local AionCore backend ([install](https://rustup.rs))
+- **Rust stable + Cargo** — Required to build OpenH3 Core ([install](https://rustup.rs))
 - **Python** 3.11+ (for native module compilation)
 - **FFmpeg and ffprobe** on `PATH` — Required for image and video validation tests (`sudo apt-get install ffmpeg` on Ubuntu, `brew install ffmpeg` on macOS, or `choco install ffmpeg` on Windows).
 - **prek** — PR code checker (`npm install -g @j178/prek`)
@@ -17,18 +17,18 @@ OpenH3 is maintained in one product repository, mirrored at `pigq/OpenH3` and `B
 
 Building the backend uses an upstream source checkout as a build dependency:
 
-- **AionCore** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binary: `aioncore` on macOS/Linux and `aioncore.exe` on Windows.
+- **OpenH3 Core source** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binaries: `openh3-core` (canonical) and `aioncore` (legacy compatibility).
 - **OpenH3** (`https://github.com/BHUHD/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
 
 Keep the repositories side by side when possible:
 
 ```text
 workspace/
-|-- AionCore/
+|-- OpenH3-Core/
 `-- OpenH3/
 ```
 
-The desktop development server resolves the backend from the `PATH` inherited by `bun run start`. Install AionCore first, verify the binary is discoverable in the same terminal, then start OpenH3.
+The desktop development server resolves OpenH3 Core from the `PATH` inherited by `bun run start`. Install the backend first, verify `openh3-core` is discoverable in the same terminal, then start OpenH3.
 
 ## Quick Start
 
@@ -36,55 +36,55 @@ The desktop development server resolves the backend from the `PATH` inherited by
 
 ```bash
 git clone https://github.com/BHUHD/OpenH3.git
-git clone https://github.com/iOfficeAI/AionCore.git
-git -C AionCore checkout --detach 503a87199eb978790ca77675b39c84b241535bf3
-git -C AionCore apply --check ../OpenH3/patches/openh3-core.patch
-git -C AionCore apply ../OpenH3/patches/openh3-core.patch
+git clone https://github.com/iOfficeAI/AionCore.git OpenH3-Core
+git -C OpenH3-Core checkout --detach 503a87199eb978790ca77675b39c84b241535bf3
+git -C OpenH3-Core apply --check ../OpenH3/patches/openh3-core.patch
+git -C OpenH3-Core apply ../OpenH3/patches/openh3-core.patch
 ```
 
-Use OpenH3 `main` for development. Apply the tracked patch to its exact base, rather than checking out an unmodified release tag. `aioncoreVersion` remains the upstream package version; it does not identify the OpenH3 modifications. Keep the patched checkout intact when updating OpenH3, and apply a newer patch only to a fresh checkout of its recorded base.
+Use OpenH3 `main` for development. Apply the tracked patch to its exact base, rather than checking out an unmodified release tag. `openh3CoreVersion` is the canonical package field; `aioncoreVersion` remains as a legacy fallback for older build scripts. Keep the patched checkout intact when updating OpenH3, and apply a newer patch only to a fresh checkout of its recorded base.
 
-### 2. Build and Install AionCore
+### 2. Build and Install OpenH3 Core
 
-Run these commands from the `AionCore` repository.
+Run these commands from the backend source repository.
 
 #### macOS / Linux
 
 ```bash
-cd AionCore
+cd OpenH3-Core
 cargo clean
-cargo install --path crates/aionui-app --locked
+cargo install --path crates/openh3-app --locked
 
 # Make Cargo-installed binaries visible to this shell if needed.
 export PATH="$HOME/.cargo/bin:$PATH"
 
 # Verify that OpenH3 will be able to find the backend.
-which aioncore
-aioncore --help
+which openh3-core
+openh3-core --help
 ```
 
-If `which aioncore` prints nothing, add `export PATH="$HOME/.cargo/bin:$PATH"` to your shell profile (`~/.zshrc`, `~/.bashrc`, or your shell's equivalent), open a new terminal, and verify again.
+If `which openh3-core` prints nothing, add `export PATH="$HOME/.cargo/bin:$PATH"` to your shell profile (`~/.zshrc`, `~/.bashrc`, or your shell's equivalent), open a new terminal, and verify again. The legacy `aioncore` binary remains available for existing scripts.
 
 #### Windows PowerShell
 
 ```powershell
-cd AionCore
+cd OpenH3-Core
 cargo clean
-cargo install --path crates/aionui-app --locked
+cargo install --path crates/openh3-app --locked
 
 # Make Cargo-installed binaries visible to this PowerShell session if needed.
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
 
 # Verify that OpenH3 will be able to find the backend.
-where.exe aioncore
-aioncore --help
+where.exe openh3-core
+openh3-core --help
 ```
 
-If `where.exe aioncore` prints nothing, make sure `%USERPROFILE%\.cargo\bin` is in your user `Path`, open a new PowerShell window, and verify again.
+If `where.exe openh3-core` prints nothing, make sure `%USERPROFILE%\.cargo\bin` is in your user `Path`, open a new PowerShell window, and verify again. The legacy `aioncore.exe` name remains supported.
 
 ### 3. Start OpenH3
 
-Run these commands from the `OpenH3` repository in a terminal where `aioncore` is discoverable.
+Run these commands from the `OpenH3` repository in a terminal where `openh3-core` is discoverable.
 
 ```bash
 cd OpenH3
@@ -96,32 +96,32 @@ bun install
 bun run start
 ```
 
-During startup, OpenH3 launches `aioncore` automatically and passes the backend port to the renderer. You do not need to start AionCore in a separate terminal.
+During startup, OpenH3 launches `openh3-core` automatically and passes the backend port to the renderer. You do not need to start OpenH3 Core in a separate terminal.
 
 ## Updating the Local Backend
 
 When you update OpenH3, check whether its backend patch or base changed. Prepare a fresh backend checkout with the commands above if needed, reinstall the backend binary, and restart OpenH3:
 
 ```bash
-cd ../AionCore
-cargo install --path crates/aionui-app --locked --force
+cd ../OpenH3-Core
+cargo install --path crates/openh3-app --locked --force
 
 cd ../OpenH3
 bun run start
 ```
 
-Use `--force` when rebuilding local changes with the same AionCore package version; otherwise Cargo may keep the already installed binary.
+Use `--force` when rebuilding local changes with the same OpenH3 Core package version; otherwise Cargo may keep the already installed binary.
 
 ### Package the Patched Windows Backend
 
 From the patched backend checkout, build the release binary and prepare its managed Node resources into the ignored OpenH3 runtime directory:
 
 ```powershell
-cargo build --release -p aionui-app --locked
+cargo build --release -p openh3-app --locked
 if ($LASTEXITCODE -ne 0) { throw 'Backend build failed' }
 $bundle = New-Item -ItemType Directory -Force ../OpenH3/.runtime/backend-bundle
-Copy-Item target/release/aioncore.exe $bundle.FullName -Force
-& target/release/aioncore.exe --data-dir ../OpenH3/.runtime/backend-prepare prepare-managed-resources --bundle-out "$($bundle.FullName)/managed-resources"
+Copy-Item target/release/openh3-core.exe $bundle.FullName -Force
+& target/release/openh3-core.exe --data-dir ../OpenH3/.runtime/backend-prepare prepare-managed-resources --bundle-out "$($bundle.FullName)/managed-resources"
 if ($LASTEXITCODE -ne 0) { throw 'Managed resource preparation failed' }
 $env:AIONUI_BACKEND_LOCAL_BUNDLE_DIR = $bundle.FullName
 cd ../OpenH3
@@ -132,7 +132,7 @@ The explicit local bundle is required for a package containing these backend fix
 
 ## Backend Startup Troubleshooting
 
-### `Cannot find "aioncore" binary`
+### `Cannot find "openh3-core" binary`
 
 OpenH3 cannot find the backend from the `PATH` inherited by `bun run start`.
 
@@ -140,25 +140,25 @@ Check from the same terminal where you start OpenH3:
 
 ```bash
 # macOS / Linux
-which aioncore
+which openh3-core
 
 # Windows PowerShell
-where.exe aioncore
+where.exe openh3-core
 ```
 
 If the command fails, add Cargo's binary directory to `PATH` and start OpenH3 from a new terminal.
 
-### `aioncore` Works in a Terminal but OpenH3 Still Cannot Find It
+### `openh3-core` Works in a Terminal but OpenH3 Still Cannot Find It
 
-Make sure you start `bun run start` from the same terminal environment that can run `aioncore --help`. IDE terminals and GUI-launched shells can inherit a different `PATH`; restart the IDE or launch it from a terminal after updating `PATH`.
+Make sure you start `bun run start` from the same terminal environment that can run `openh3-core --help`. IDE terminals and GUI-launched shells can inherit a different `PATH`; restart the IDE or launch it from a terminal after updating `PATH`.
 
 ### Backend Changes Do Not Show Up
 
-Quit OpenH3, reinstall AionCore with `cargo install --path crates/aionui-app --locked --force`, then start OpenH3 again. The Electron app owns the backend subprocess during development, so a running OpenH3 instance will not pick up a newly installed binary until it restarts.
+Quit OpenH3, reinstall OpenH3 Core with `cargo install --path crates/openh3-app --locked --force`, then start OpenH3 again. The Electron app owns the backend subprocess during development, so a running OpenH3 instance will not pick up a newly installed binary until it restarts.
 
 ### Windows Rust Build Errors
 
-Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After installing or changing toolchains, open a new PowerShell window and rerun the AionCore install command.
+Use the Rust MSVC toolchain and install Microsoft C++ Build Tools. After installing or changing toolchains, open a new PowerShell window and rerun the OpenH3 Core install command.
 
 ## Scripts Reference
 

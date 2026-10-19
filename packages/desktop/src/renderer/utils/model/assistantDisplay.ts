@@ -11,8 +11,8 @@ type AssistantNameSource = Pick<Assistant, 'id' | 'name' | 'name_i18n'>;
 const LEGACY_BUILTIN_SKILL_LABELS: Record<string, string> = {
   'aionui-config': 'openh3-config',
   'aionui-troubleshooting': 'openh3-troubleshooting',
-  'aionui-webui-setup': 'openh3-webui-setup',
-  'aionui-webui-public': 'openh3-webui-public',
+  'openh3-webui-setup': 'openh3-webui-setup',
+  'openh3-webui-public': 'openh3-webui-public',
 };
 
 /** Present known built-in aliases without changing persisted names or request identifiers. */
@@ -45,6 +45,7 @@ export function normalizeAssistantDisplayName(name: string | undefined | null): 
     .replace(/AionUi\s+Butler/gi, 'OpenH3 Butler')
     .replace(/AionUI\s*管家/gi, 'OpenH3 管家')
     .replace(/AionUi\s*管家/gi, 'OpenH3 管家')
+    .replace(/\bAionCore\b/gi, 'OpenH3 Core')
     .replace(/\bAionUi\b/gi, 'OpenH3');
 }
 

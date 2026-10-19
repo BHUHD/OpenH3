@@ -6,6 +6,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { BACKEND_BUNDLE_DIR_NAME, LEGACY_BACKEND_BUNDLE_DIR_NAME } from '@/common/config/productIdentity';
 
 type FileStat = {
   mtimeMs: number;
@@ -32,6 +33,7 @@ export type BackendInstallDiagnostics = {
   binaryPath?: string;
   binarySize?: number;
   bundledDirPath?: string;
+  bundledDirName?: string;
   execPath: string;
   isPackaged: boolean;
   manifestExists?: boolean;
@@ -52,7 +54,7 @@ export type BackendInstallDiagnostics = {
 };
 
 const MANIFEST_FILE_NAME = 'manifest.json';
-const BUNDLED_AIONCORE_DIR = 'bundled-aioncore';
+const BUNDLED_BACKEND_DIRS = [BACKEND_BUNDLE_DIR_NAME, LEGACY_BACKEND_BUNDLE_DIR_NAME] as const;
 
 function getString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -143,12 +145,28 @@ export function collectBackendInstallDiagnostics(
   const resourcesPath = getString(details?.resourcesPath) ?? env.resourcesPath;
   const runtimeKey = getString(details?.runtimeKey);
   const binaryName = getString(details?.binaryName);
-  const bundledDirPath = resourcesPath ? pathApi.join(resourcesPath, BUNDLED_AIONCORE_DIR) : undefined;
+  const checkedBundledPath = getString(details?.checkedBundledPath);
+  // The resolver's actual selected binary is authoritative, including when
+  // that binary is missing. A legacy profile need not have the new bundle dir.
+  const selectedBundledDirName = BUNDLED_BACKEND_DIRS.find((name) => {
+    if (!resourcesPath || !runtimeKey || !checkedBundledPath) return false;
+    const expected = pathApi.join(resourcesPath, name, runtimeKey);
+    const actual = pathApi.dirname(checkedBundledPath);
+    return platform === 'win32' ? actual.toLowerCase() === expected.toLowerCase() : actual === expected;
+  });
+  const reportedBundledDirName = getString(details?.bundledDirName);
+  const bundledDirName =
+    reportedBundledDirName &&
+    BUNDLED_BACKEND_DIRS.includes(reportedBundledDirName as (typeof BUNDLED_BACKEND_DIRS)[number])
+      ? reportedBundledDirName
+      : (selectedBundledDirName ??
+        BUNDLED_BACKEND_DIRS.find((name) => resourcesPath && stat(pathApi.join(resourcesPath, name))) ??
+        BACKEND_BUNDLE_DIR_NAME);
+  const bundledDirPath = resourcesPath ? pathApi.join(resourcesPath, bundledDirName) : undefined;
   const runtimeDirPath =
-    resourcesPath && runtimeKey ? pathApi.join(resourcesPath, BUNDLED_AIONCORE_DIR, runtimeKey) : undefined;
+    resourcesPath && runtimeKey ? pathApi.join(resourcesPath, bundledDirName, runtimeKey) : undefined;
   const binaryPath =
-    getString(details?.checkedBundledPath) ??
-    (runtimeDirPath && binaryName ? pathApi.join(runtimeDirPath, binaryName) : undefined);
+    checkedBundledPath ?? (runtimeDirPath && binaryName ? pathApi.join(runtimeDirPath, binaryName) : undefined);
   const manifestPath = runtimeDirPath ? pathApi.join(runtimeDirPath, MANIFEST_FILE_NAME) : undefined;
 
   const diagnostics: BackendInstallDiagnostics = {
@@ -163,6 +181,7 @@ export function collectBackendInstallDiagnostics(
   if (runtimeKey) diagnostics.runtimeKey = runtimeKey;
   if (binaryName) diagnostics.binaryName = binaryName;
   if (bundledDirPath) diagnostics.bundledDirPath = bundledDirPath;
+  if (reportedBundledDirName) diagnostics.bundledDirName = bundledDirName;
   if (runtimeDirPath) diagnostics.runtimeDirPath = runtimeDirPath;
   if (binaryPath) diagnostics.binaryPath = binaryPath;
   if (manifestPath) diagnostics.manifestPath = manifestPath;

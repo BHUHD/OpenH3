@@ -5,7 +5,7 @@
  */
 
 import type { IMessageAvailableCommands } from '@/common/chat/chatLib';
-import AionCollapse from '@/renderer/components/base/AionCollapse';
+import OpenH3Collapse from '@/renderer/components/base/OpenH3Collapse';
 import CollapsibleContent from '@/renderer/components/chat/CollapsibleContent';
 import { iconColors } from '@/renderer/styles/colors';
 import { HammerAndAnvil } from '@icon-park/react';
@@ -33,9 +33,9 @@ const MessageAvailableCommands: React.FC<MessageAvailableCommandsProps> = ({ mes
         </span>
       </div>
       <CollapsibleContent maxHeight={150} defaultCollapsed={true}>
-        <AionCollapse accordion bordered={false} expandIconPosition='right'>
+        <OpenH3Collapse accordion bordered={false} expandIconPosition='right'>
           {commands.map((command) => (
-            <AionCollapse.Item
+            <OpenH3Collapse.Item
               key={command.name}
               name={command.name}
               header={<span className='text-t-primary font-medium'>{command.name}</span>}
@@ -44,9 +44,9 @@ const MessageAvailableCommands: React.FC<MessageAvailableCommandsProps> = ({ mes
                 {command.description}
                 {command.hint && <span className='text-t-tertiary ms-4px'>({command.hint})</span>}
               </div>
-            </AionCollapse.Item>
+            </OpenH3Collapse.Item>
           ))}
-        </AionCollapse>
+        </OpenH3Collapse>
       </CollapsibleContent>
     </div>
   );

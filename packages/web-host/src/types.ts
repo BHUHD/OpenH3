@@ -1,4 +1,4 @@
-// Core types for @aionui/web-host (M3 interface contract, locked for M4-M8)
+// Core types for @openh3/web-host (M3 interface contract, locked for M4-M8)
 
 /**
  * App metadata injected by host environment (Electron or Node)
@@ -16,7 +16,8 @@ export type AppMetadata = {
 export type BackendBinaryResolver = () => string;
 
 /**
- * System dirs exported to the backend via AIONUI_{CACHE,WORK,LOG}_DIR env.
+ * System dirs exported to the backend via OPENH3_{CACHE,WORK,LOG}_DIR env.
+ * The launcher also emits the legacy AIONUI_* aliases for older backends.
  * Backend surfaces these on `/api/system/info`. Omit and the backend inherits
  * process.env, which may carry stale values from the parent shell — better to
  * be explicit.

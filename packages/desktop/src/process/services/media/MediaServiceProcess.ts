@@ -46,12 +46,19 @@ export class MediaServiceProcess {
       // Read at Node startup and inherited by download workers. Adds OS trust
       // to bundled/extra CAs without disabling certificate verification.
       NODE_USE_SYSTEM_CA: process.env.NODE_USE_SYSTEM_CA ?? '1',
+      OPENH3_MEDIA_PORT: String(this.port),
       AIONUI_MEDIA_PORT: String(this.port),
+      OPENH3_DATA_DIR: this.options.dataDir,
       AIONUI_DATA_DIR: this.options.dataDir,
+      OPENH3_FFMPEG_PATH: resolveMediaBinary('ffmpeg'),
+      OPENH3_FFPROBE_PATH: resolveMediaBinary('ffprobe'),
       AIONUI_FFMPEG_PATH: resolveMediaBinary('ffmpeg'),
       AIONUI_FFPROBE_PATH: resolveMediaBinary('ffprobe'),
+      OPENH3_MEDIA_UI_TOKEN: this.uiToken,
       AIONUI_MEDIA_UI_TOKEN: this.uiToken,
-      ...(this.options.bundleRoot ? { AIONUI_H3_BUNDLE_ROOT: this.options.bundleRoot } : {}),
+      ...(this.options.bundleRoot
+        ? { OPENH3_H3_BUNDLE_ROOT: this.options.bundleRoot, AIONUI_H3_BUNDLE_ROOT: this.options.bundleRoot }
+        : {}),
     };
     const start = this.options.spawnProcess ?? ((file, args, spawnOptions) => spawn(file, args, spawnOptions));
     try {

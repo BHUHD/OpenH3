@@ -52,7 +52,7 @@ async function fetchAdminUsername(): Promise<string> {
 async function maybeSeedInitialPassword(): Promise<void> {
   const port = getBackendPort();
   if (!port) {
-    throw new Error('[WebUI] Cannot start: aioncore is not running (globalThis.__backendPort unset)');
+    throw new Error('[WebUI] Cannot start: OpenH3 Core is not running (globalThis.__backendPort unset)');
   }
   const statusRes = await fetch(`http://127.0.0.1:${port}/api/auth/status`);
   if (!statusRes.ok) {

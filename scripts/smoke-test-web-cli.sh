@@ -22,20 +22,20 @@ tar -xzf "$TARBALL_PATH" -C "$TEMP_DIR"
 # 2. Verify directory structure
 echo ""
 echo "2. Verifying directory structure..."
-if [ ! -d "$TEMP_DIR/aionui-web" ]; then
-  echo "❌ Missing aionui-web directory"
+if [ ! -d "$TEMP_DIR/openh3-web" ]; then
+  echo "❌ Missing openh3-web directory"
   exit 1
 fi
 
-cd "$TEMP_DIR/aionui-web"
+cd "$TEMP_DIR/openh3-web"
 
 # New layout (bun compile standalone binary):
-#   aionui-web/
-#   ├── aionui-web           ← single compiled executable (no bin/, no dist/, no node_modules)
+#   openh3-web/
+#   ├── openh3-web           ← single compiled executable (no bin/, no dist/, no node_modules)
 #   ├── package.json         ← for version lookup
 #   ├── static/              ← SPA assets
-#   └── bundled-aioncore/<plat-arch>/...
-for dir in static bundled-aioncore; do
+#   └── bundled-openh3-core/<plat-arch>/...
+for dir in static bundled-openh3-core; do
   if [ ! -d "$dir" ]; then
     echo "❌ Missing $dir directory"
     exit 1
@@ -52,16 +52,16 @@ echo "✓ Found package.json"
 # 3. Check executable
 echo ""
 echo "3. Checking executable..."
-if [ ! -x "aionui-web" ]; then
-  echo "❌ aionui-web is not executable"
+if [ ! -x "openh3-web" ]; then
+  echo "❌ openh3-web is not executable"
   exit 1
 fi
-echo "✓ aionui-web is executable"
+echo "✓ openh3-web is executable"
 
 # 4. Test version command
 echo ""
 echo "4. Testing version command..."
-VERSION=$(./aionui-web version)
+VERSION=$(./openh3-web version)
 if [ -z "$VERSION" ]; then
   echo "❌ version command returned empty"
   exit 1
@@ -71,7 +71,7 @@ echo "✓ Version: $VERSION"
 # 5. Test backend binary
 echo ""
 echo "5. Checking backend binary..."
-BACKEND_DIR="bundled-aioncore/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/; s/x86_64/x64/')"
+BACKEND_DIR="bundled-openh3-core/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/; s/x86_64/x64/')"
 BACKEND_BINARY="$BACKEND_DIR/aioncore"
 if [ ! -x "$BACKEND_BINARY" ]; then
   echo "❌ Backend binary missing or not executable: $BACKEND_BINARY"
@@ -95,40 +95,40 @@ echo "✓ Backend binary loads on this platform"
 echo ""
 echo "6. Testing HTTP server responds with SPA index..."
 HTTP_PORT=25899
-DATA_DIR="$(mktemp -d)/aionui-web-data"
+DATA_DIR="$(mktemp -d)/openh3-web-data"
 # Full-stack start: backend is bundled, so we can also exercise /login below.
 # If the bundled backend is missing the CLI falls back to frontend-only mode
 # and later login probe is skipped.
-./aionui-web start --port "$HTTP_PORT" --data-dir "$DATA_DIR" > /tmp/aionui-web.log 2>&1 &
+./openh3-web start --port "$HTTP_PORT" --data-dir "$DATA_DIR" > /tmp/openh3-web.log 2>&1 &
 SERVER_PID=$!
 
 # Wait up to 30s for HTTP to come up. With backend spawned, first start spends
 # time on SQLite migrations on slower CI runners.
 for i in $(seq 1 30); do
-  if curl -sf "http://127.0.0.1:${HTTP_PORT}/" > /tmp/aionui-web.html 2>/dev/null; then
+  if curl -sf "http://127.0.0.1:${HTTP_PORT}/" > /tmp/openh3-web.html 2>/dev/null; then
     break
   fi
   sleep 1
 done
 
-if [ ! -s /tmp/aionui-web.html ]; then
+if [ ! -s /tmp/openh3-web.html ]; then
   kill "$SERVER_PID" 2>/dev/null || true
   wait "$SERVER_PID" 2>/dev/null || true
   echo "❌ HTTP probe failed — no response body. Server log:"
-  cat /tmp/aionui-web.log
+  cat /tmp/openh3-web.log
   exit 1
 fi
 
 # Look for the SPA shell signature — <html + <div id="root" or similar marker
-if grep -q '<html' /tmp/aionui-web.html && grep -qE '<(div id="root"|script)' /tmp/aionui-web.html; then
-  echo "✓ HTTP root returns SPA index ($(wc -c < /tmp/aionui-web.html) bytes)"
+if grep -q '<html' /tmp/openh3-web.html && grep -qE '<(div id="root"|script)' /tmp/openh3-web.html; then
+  echo "✓ HTTP root returns SPA index ($(wc -c < /tmp/openh3-web.html) bytes)"
 else
   kill "$SERVER_PID" 2>/dev/null || true
   wait "$SERVER_PID" 2>/dev/null || true
   echo "❌ HTTP root response does not look like SPA index:"
-  head -20 /tmp/aionui-web.html
+  head -20 /tmp/openh3-web.html
   echo "---server log---"
-  cat /tmp/aionui-web.log
+  cat /tmp/openh3-web.log
   exit 1
 fi
 
@@ -137,7 +137,7 @@ fi
 #    Skip when the bundled backend was unavailable — there's no /login to call.
 echo ""
 echo "7. Testing first-launch admin password seeding + login..."
-if grep -q 'Backend binary not found' /tmp/aionui-web.log; then
+if grep -q 'Backend binary not found' /tmp/openh3-web.log; then
   echo "⚠️  frontend-only mode detected (no bundled backend) — skipping login probe"
   kill "$SERVER_PID" 2>/dev/null || true
   wait "$SERVER_PID" 2>/dev/null || true
@@ -146,7 +146,7 @@ else
   # needs to finish migrations before /api/auth/status replies.
   PASSWORD=""
   for i in $(seq 1 20); do
-    PASSWORD=$(grep -oE 'Generated initial admin password: [^ ]+' /tmp/aionui-web.log | head -1 | sed 's/^Generated initial admin password: //')
+    PASSWORD=$(grep -oE 'Generated initial admin password: [^ ]+' /tmp/openh3-web.log | head -1 | sed 's/^Generated initial admin password: //')
     if [ -n "$PASSWORD" ]; then
       break
     fi
@@ -158,7 +158,7 @@ else
     wait "$SERVER_PID" 2>/dev/null || true
     echo "❌ Never saw 'Generated initial admin password: ...' in stdout."
     echo "---server log---"
-    cat /tmp/aionui-web.log
+    cat /tmp/openh3-web.log
     exit 1
   fi
   echo "✓ Captured initial admin password from stdout"
@@ -184,7 +184,7 @@ else
     echo "---body---"
     cat "$LOGIN_RESP_BODY"
     echo "---server log---"
-    cat /tmp/aionui-web.log
+    cat /tmp/openh3-web.log
     exit 1
   fi
 

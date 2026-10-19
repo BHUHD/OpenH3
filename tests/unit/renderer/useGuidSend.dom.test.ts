@@ -169,7 +169,7 @@ describe('useGuidSend', () => {
       source: 'local',
     });
     expect(payload?.extra.selected_session_mcp_servers).toHaveLength(1);
-    expect(payload?.extra.selected_session_mcp_servers[0].name).toBe('aionui-video-media');
+    expect(payload?.extra.selected_session_mcp_servers[0].name).toBe('openh3-video-media');
     const initial = JSON.parse(sessionStorage.getItem('acp_initial_message_conv-1')!);
     expect(initial.creationRequest).toEqual(payload.extra.creation_request);
     expect(initial.creationRequestId).toBe(payload.extra.creation_request.requestId);

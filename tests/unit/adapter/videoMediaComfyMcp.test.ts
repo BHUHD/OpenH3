@@ -98,6 +98,15 @@ afterEach(() => {
 });
 
 describe('generic ComfyUI MCP tools', () => {
+  it('registers OpenH3 tool names and keeps legacy pending calls on the same handlers', () => {
+    for (const [name, legacy] of registered) {
+      if (!name.startsWith('aionui_')) continue;
+      const canonical = registered.get(name.replace(/^aionui_/, 'openh3_'));
+      expect(canonical, name).toBeDefined();
+      expect(canonical!.schema).toBe(legacy.schema);
+      expect(canonical!.callback).toBe(legacy.callback);
+    }
+  });
   it('exposes inspection, profile, installation and job tools without an authorization action', () => {
     expect([...registered.keys()]).toEqual(
       expect.arrayContaining([
@@ -272,12 +281,12 @@ describe('generic ComfyUI MCP tools', () => {
     });
     const generated = await invoke('aionui_h3_generate_video', { prompt: 'A ball' });
     expect(generated.isError).toBe(true);
-    expect(generated.content[0].text).toContain('aionui_comfy_generate');
+    expect(generated.content[0].text).toContain('openh3_comfy_generate');
     expect(fetchMock).toHaveBeenCalledOnce();
     respond({ profiles: [candidate], selection: { family: 'h3', intent: 'install' } });
     const installed = await invoke('aionui_h3_install_video_model', { action: 'request' });
     expect(installed.isError).toBe(true);
-    expect(installed.content[0].text).toContain('aionui_comfy_install');
+    expect(installed.content[0].text).toContain('openh3_comfy_install');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls.every(([url]) => new URL(url).pathname === '/api/comfy/profiles')).toBe(true);
   });

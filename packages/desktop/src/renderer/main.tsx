@@ -78,6 +78,16 @@ import 'uno.css';
 import './styles/arco-override.css';
 import './styles/themes/index.css';
 import './styles/markdown.css';
+import { migrateLegacyStorageKeys } from '@/common/config/storageKeys';
+
+// Move browser-only preferences to the OpenH3 namespace without deleting the
+// old keys. Existing profiles remain readable and future writes use canonical
+// names.
+try {
+  migrateLegacyStorageKeys();
+} catch {
+  // localStorage may be unavailable during a restricted WebView bootstrap.
+}
 
 // Config service — kick off initialization before i18n / theme modules load,
 // so their startup paths (which await configService.whenReady()) observe the

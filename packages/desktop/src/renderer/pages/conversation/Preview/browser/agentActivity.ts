@@ -26,7 +26,7 @@
  */
 export { BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
 
-import { BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
+import { BUILTIN_BROWSER_MCP_LEGACY_NAMES, BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
 
 /**
  * 工具执行中的状态。
@@ -48,7 +48,14 @@ type ToolGroupEntry = {
 
 const isBrowserMcpEntry = (entry: ToolGroupEntry): boolean => {
   const details = entry.confirmationDetails as { type?: string; server_name?: string } | undefined;
-  if (details?.type === 'mcp' && details.server_name === BUILTIN_BROWSER_MCP_NAME) return true;
+  if (
+    details?.type === 'mcp' &&
+    (details.server_name === BUILTIN_BROWSER_MCP_NAME ||
+      BUILTIN_BROWSER_MCP_LEGACY_NAMES.includes(
+        details.server_name as (typeof BUILTIN_BROWSER_MCP_LEGACY_NAMES)[number]
+      ))
+  )
+    return true;
 
   /**
    * 兜底按工具名前缀匹配：不同引擎对 MCP 工具的命名方式不一致，有的会带
@@ -61,6 +68,8 @@ const isBrowserMcpEntry = (entry: ToolGroupEntry): boolean => {
    */
   const name = entry.name;
   if (typeof name === 'string' && name.startsWith(`${BUILTIN_BROWSER_MCP_NAME}__`)) return true;
+  if (typeof name === 'string' && BUILTIN_BROWSER_MCP_LEGACY_NAMES.some((legacy) => name.startsWith(`${legacy}__`)))
+    return true;
 
   return false;
 };

@@ -294,16 +294,16 @@ function recordPrepareCall(options) {
 }
 
 Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === './prepareAioncore' || request.endsWith('/prepareAioncore')) {
+  if (request.endsWith('/prepareAioncore') || request.endsWith('/prepareAioncore.js') || request.endsWith('/prepareOpenH3Core') || request.endsWith('/prepareOpenH3Core.js')) {
     return recordPrepareCall;
   }
 
-  if (request.endsWith('packages/shared-scripts/src/prepare-aioncore.js')) {
-    return { prepareAioncore: recordPrepareCall };
+  if (request.endsWith('packages/shared-scripts/src/prepare-aioncore.js') || request.endsWith('packages/shared-scripts/src/prepare-openh3-core.js')) {
+    return { prepareAioncore: recordPrepareCall, prepareOpenH3Core: recordPrepareCall };
   }
 
-  if (request === './resolveAioncoreVersion.js' || request.endsWith('/resolveAioncoreVersion.js')) {
-    return { resolveAioncoreVersion: () => 'v-test' };
+  if (request.endsWith('/resolveAioncoreVersion.js') || request.endsWith('/resolveOpenH3CoreVersion.js')) {
+    return { resolveAioncoreVersion: () => 'v-test', resolveOpenH3CoreVersion: () => 'v-test' };
   }
 
   return originalLoad.call(this, request, parent, isMain);

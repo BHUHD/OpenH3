@@ -25,6 +25,14 @@ afterEach(() => {
 });
 const id = '8ca61811-cd38-4d15-b24b-44fb30175eaa';
 const message = { type: 'tool_call', content: { name: 'aionui_h3_job_status', output: JSON.stringify({ id }) } };
+it('recognizes canonical OpenH3 tool results alongside old chat records', () => {
+  expect(
+    h3ToolJobIds([
+      message,
+      { type: 'tool_call', content: { name: 'openh3_h3_generate_video', output: JSON.stringify({ id }) } },
+    ])
+  ).toEqual([id]);
+});
 it('deduplicates known H3 jobs and ignores malformed or unrelated tool output', () => {
   expect(
     h3ToolJobIds([
@@ -32,6 +40,9 @@ it('deduplicates known H3 jobs and ignores malformed or unrelated tool output', 
       message,
       { type: 'text', content: message.content },
       { type: 'tool_call', content: { name: 'other', output: JSON.stringify({ id }) } },
+      { type: 'tool_call', content: {} },
+      { type: 'tool_call', content: null },
+      { type: 'tool_call', content: { name: 7, output: JSON.stringify({ id }) } },
       { type: 'tool_call', content: { name: 'aionui_h3_job_status', output: 'incomplete' } },
     ])
   ).toEqual([id]);

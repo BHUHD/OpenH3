@@ -30,4 +30,4 @@ Current evidence remains incomplete for the existing bundled binary. Keep the Al
 
 ## Design Principles
 
-Preserve the existing AionUi Arco components, semantic colors, typography and keyboard accessibility. Add task-specific media controls rather than a new editor shell. Keep file references explicit, source media unchanged, and error/capability states honest. No marketing hero, decorative panels or mandatory full timeline. These principles follow the approved plan and existing repository conventions; no new brand is introduced.
+Preserve the existing Arco components, semantic colors, typography and keyboard accessibility. Add task-specific media controls rather than a new editor shell. Keep file references explicit, source media unchanged, and error/capability states honest. No marketing hero, decorative panels or mandatory full timeline. These principles follow the approved plan and existing repository conventions; the product brand is OpenH3.

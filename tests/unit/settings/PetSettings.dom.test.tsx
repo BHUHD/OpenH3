@@ -40,7 +40,7 @@ vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => true,
 }));
 
-vi.mock('@/renderer/components/base/AionScrollArea', () => ({
+vi.mock('@/renderer/components/base/OpenH3ScrollArea', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 

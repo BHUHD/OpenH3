@@ -26,7 +26,10 @@ import { OPEN_MIGRATION_DIALOG_EVENT } from './UpdateMigrationDialog';
 
 type AvailableOutcome = Extract<CheckUpdateOutcome, { kind: 'available' }>;
 
-export const UPDATE_AVAILABLE_EVENT = 'aionui-update-available';
+export const UPDATE_AVAILABLE_EVENT = 'openh3-update-available';
+export const LEGACY_UPDATE_AVAILABLE_EVENT = 'aionui-update-available';
+export const OPEN_UPDATE_MODAL_EVENT = 'openh3-open-update-modal';
+export const LEGACY_OPEN_UPDATE_MODAL_EVENT = 'aionui-open-update-modal';
 
 declare const __APP_VERSION__: string;
 
@@ -241,29 +244,46 @@ export const useUpdateNotificationController = () => {
   );
 
   useEffect(() => {
+    const handledOpenDetails = new WeakSet<object>();
     const removeOpenListener = ipcBridge.update.open.on((evt) => {
       openUpdateNotification(evt?.source ?? 'menu', true);
     });
     const handleWindowOpen = (evt: Event) => {
-      const source = (evt as CustomEvent<{ source?: UpdateNotificationOpenSource }>).detail?.source ?? 'about';
+      const detail = (evt as CustomEvent<{ source?: UpdateNotificationOpenSource }>).detail;
+      // Active code emits canonical and legacy events together. Handle the
+      // shared detail object only once while still accepting legacy-only input.
+      if (detail && typeof detail === 'object') {
+        if (handledOpenDetails.has(detail)) return;
+        handledOpenDetails.add(detail);
+      }
+      const source = detail?.source ?? 'about';
       openUpdateNotification(source, true);
     };
-    window.addEventListener('aionui-open-update-modal', handleWindowOpen);
+    window.addEventListener(OPEN_UPDATE_MODAL_EVENT, handleWindowOpen);
+    window.addEventListener(LEGACY_OPEN_UPDATE_MODAL_EVENT, handleWindowOpen);
 
     // The About button runs its own check and only reveals the card when an
     // update is actually available, handing over the already-fetched outcome.
+    const handledAvailableOutcomes = new WeakSet<object>();
     const handleAvailable = (evt: Event) => {
       const outcome = (evt as CustomEvent<AvailableOutcome>).detail;
+      if (outcome && typeof outcome === 'object') {
+        if (handledAvailableOutcomes.has(outcome)) return;
+        handledAvailableOutcomes.add(outcome);
+      }
       if (outcome?.kind === 'available') {
         presentAvailableOutcome(outcome);
       }
     };
     window.addEventListener(UPDATE_AVAILABLE_EVENT, handleAvailable);
+    window.addEventListener(LEGACY_UPDATE_AVAILABLE_EVENT, handleAvailable);
 
     return () => {
       removeOpenListener();
-      window.removeEventListener('aionui-open-update-modal', handleWindowOpen);
+      window.removeEventListener(OPEN_UPDATE_MODAL_EVENT, handleWindowOpen);
+      window.removeEventListener(LEGACY_OPEN_UPDATE_MODAL_EVENT, handleWindowOpen);
       window.removeEventListener(UPDATE_AVAILABLE_EVENT, handleAvailable);
+      window.removeEventListener(LEGACY_UPDATE_AVAILABLE_EVENT, handleAvailable);
     };
   }, [openUpdateNotification, presentAvailableOutcome]);
 

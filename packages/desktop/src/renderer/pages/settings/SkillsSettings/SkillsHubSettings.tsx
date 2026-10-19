@@ -12,9 +12,10 @@ import SkillUsedByStack, { getAssistantsUsingSkill } from './SkillUsedByStack';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import SettingsPageHeader from '../components/SettingsPageHeader';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
-import { AionSearchInput } from '@/renderer/components/base';
+import { OpenH3SearchInput } from '@/renderer/components/base';
 import { formatDateTime } from '@/renderer/services/i18n/format';
 import { buildSkillImportNotice, getSkillImportErrorMessage } from './skillImportMessages';
+import { emitter } from '@/renderer/utils/emitter';
 
 // Skill 信息类型 / Skill info type
 interface SkillInfo {
@@ -273,6 +274,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
       }
       if (notice.importedNames.length > 0) {
         setSearchQuery('');
+        emitter.emit('skills.catalog.refresh');
         void fetchData();
       } else if (notice.type !== 'success') {
         void fetchData();
@@ -287,6 +289,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     try {
       await ipcBridge.fs.deleteSkill.invoke({ skill_name: skillName });
       Message.success(t('settings.skillsHub.deleteSuccess', { defaultValue: 'Skill deleted' }));
+      emitter.emit('skills.catalog.refresh');
       void fetchData();
     } catch (error) {
       console.error('Failed to delete skill:', error);
@@ -360,6 +363,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           Message.error(t('settings.skillsHub.deleteError', { defaultValue: 'Error deleting skill' }));
         }
         exitBatchMode();
+        if (successCount > 0) emitter.emit('skills.catalog.refresh');
         void fetchData();
       },
     });
@@ -699,7 +703,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   };
 
   const searchBox = (testId: string) => (
-    <AionSearchInput
+    <OpenH3SearchInput
       className='shrink-0 w-[200px] hidden md:flex'
       data-testid={testId}
       placeholder={t('settings.skillsHub.searchPlaceholder', { defaultValue: 'Search skills...' })}

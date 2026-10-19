@@ -6,8 +6,8 @@ import { delimiter, dirname, join } from 'node:path';
 const {
   getActionsArtifactName,
   getActionsArtifactMissingMessage,
-  prepareAioncore,
-} = require('../../../packages/shared-scripts/src/prepare-aioncore');
+  prepareOpenH3Core,
+} = require('../../../packages/shared-scripts/src/prepare-openh3-core');
 
 const posixFakeToolchainIt = process.platform === 'win32' ? it.skip : it;
 
@@ -52,7 +52,7 @@ printf 'archive' > "$out"
     join(binDir, 'gh'),
     `#!/usr/bin/env bash
 cat <<'JSON'
-{"artifacts":[{"id":123,"name":"aioncore-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip"}]}
+ {"artifacts":[{"id":123,"name":"openh3-core-manual-linux-x64","archive_download_url":"https://example.invalid/artifact.zip"}]}
 JSON
 `
   );
@@ -103,32 +103,32 @@ afterEach(() => {
   rmSync(join(tmpdir(), 'aioncore-prepare-actions', '123'), { recursive: true, force: true });
 });
 
-describe('prepare-aioncore GitHub Actions artifact resolver', () => {
+describe('prepare-openh3-core GitHub Actions artifact resolver', () => {
   it.each([
-    ['win32', 'x64', 'aioncore-manual-windows-x64'],
-    ['win32', 'arm64', 'aioncore-manual-windows-arm64'],
-    ['darwin', 'x64', 'aioncore-manual-macos-x64'],
-    ['darwin', 'arm64', 'aioncore-manual-macos-arm64'],
-    ['linux', 'x64', 'aioncore-manual-linux-x64'],
-    ['linux', 'arm64', 'aioncore-manual-linux-arm64'],
+    ['win32', 'x64', 'openh3-core-manual-windows-x64'],
+    ['win32', 'arm64', 'openh3-core-manual-windows-arm64'],
+    ['darwin', 'x64', 'openh3-core-manual-macos-x64'],
+    ['darwin', 'arm64', 'openh3-core-manual-macos-arm64'],
+    ['linux', 'x64', 'openh3-core-manual-linux-x64'],
+    ['linux', 'arm64', 'openh3-core-manual-linux-arm64'],
   ])('maps %s-%s to %s', (platform, arch, artifactName) => {
     expect(getActionsArtifactName(platform, arch)).toBe(artifactName);
   });
 
-  it('explains which AionCore manual artifact is missing for the requested platform', () => {
+  it('explains which OpenH3 Core manual artifact is missing for the requested platform', () => {
     expect(
       getActionsArtifactMissingMessage({
         runId: '27319522909',
         platform: 'win32',
         arch: 'x64',
-        expectedArtifactName: 'aioncore-manual-windows-x64',
-        availableArtifactNames: ['aioncore-manual-macos-arm64', 'aioncore-manual-linux-x64'],
+        expectedArtifactName: 'openh3-core-manual-windows-x64',
+        availableArtifactNames: ['openh3-core-manual-macos-arm64', 'openh3-core-manual-linux-x64'],
       })
     ).toBe(
       [
-        'AionCore run 27319522909 does not contain artifact [ aioncore-manual-windows-x64 ] required for [ win32-x64 ].',
-        'Available artifacts: aioncore-manual-macos-arm64, aioncore-manual-linux-x64.',
-        'Re-run AionCore Manual Build with platform [ windows-x64 ] or all.',
+        'OpenH3 Core run 27319522909 does not contain artifact [ openh3-core-manual-windows-x64 ] required for [ win32-x64 ].',
+        'Available artifacts: openh3-core-manual-macos-arm64, openh3-core-manual-linux-x64.',
+        'Re-run OpenH3 Core Manual Build with platform [ windows-x64 ] or all.',
       ].join(' ')
     );
   });
@@ -144,7 +144,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
 
     try {
       expect(() =>
-        prepareAioncore({
+        prepareOpenH3Core({
           projectRoot: join(tmp, 'project'),
           platform: 'linux',
           arch: 'x64',
@@ -166,7 +166,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
 
     try {
       expect(() =>
-        prepareAioncore({
+        prepareOpenH3Core({
           projectRoot: join(tmp, 'project'),
           platform: 'linux',
           arch: 'x64',
@@ -191,7 +191,7 @@ describe('prepare-aioncore GitHub Actions artifact resolver', () => {
 
     try {
       expect(() =>
-        prepareAioncore({
+        prepareOpenH3Core({
           projectRoot: join(tmp, 'project'),
           platform: 'linux',
           arch: 'x64',

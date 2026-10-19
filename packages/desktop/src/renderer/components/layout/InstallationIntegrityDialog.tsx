@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type FeedbackEventTags, submitFeedbackReport } from '@/renderer/services/feedback/submitFeedbackReport';
 
-const AIONUI_DOWNLOAD_URL = 'https://www.aionui.com/';
+const OPENH3_DOWNLOAD_URL = 'https://github.com/BHUHD/OpenH3/releases/latest';
 const INSTALLATION_INTEGRITY_REPORT_FLUSH_TIMEOUT_MS = 2000;
 
 type InstallationIntegrityDialogKind =
@@ -35,7 +35,7 @@ export type InstallationIntegrityDiagnostics = {
 };
 
 export function openDownloadLatest(): void {
-  window.open(AIONUI_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
+  window.open(OPENH3_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
 }
 
 /**

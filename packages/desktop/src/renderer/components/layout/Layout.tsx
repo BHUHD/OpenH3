@@ -5,6 +5,10 @@
  */
 
 import { ipcBridge } from '@/common';
+import {
+  LEGACY_OPEN_UPDATE_MODAL_EVENT,
+  OPEN_UPDATE_MODAL_EVENT,
+} from '@/renderer/components/settings/useUpdateNotificationController';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import { PRODUCT_NAME } from '@/common/config/productIdentity';
 import openh3Logo from '@renderer/assets/logos/brand/openh3-logo.png';
@@ -332,7 +336,9 @@ const Layout: React.FC<{
 
     // Handle check update request from tray / 托盘请求检查更新
     const handleCheckUpdate = () => {
-      window.dispatchEvent(new CustomEvent('aionui-open-update-modal', { detail: { source: 'tray' } }));
+      const detail = { source: 'tray' } as const;
+      window.dispatchEvent(new CustomEvent(OPEN_UPDATE_MODAL_EVENT, { detail }));
+      window.dispatchEvent(new CustomEvent(LEGACY_OPEN_UPDATE_MODAL_EVENT, { detail }));
     };
 
     // Listen for tray events / 监听托盘事件

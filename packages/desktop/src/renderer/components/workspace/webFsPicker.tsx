@@ -23,7 +23,8 @@ import { useTranslation } from 'react-i18next';
 import type { PickerEntry as Entry } from './webFsPickerUtils';
 import { matchesFilters, normalizeEntry, parentOf, sortEntries } from './webFsPickerUtils';
 
-const LAST_DIR_KEY = 'aionui:web-fs-picker:last-dir';
+const LAST_DIR_KEY = 'openh3:web-fs-picker:last-dir';
+const LEGACY_LAST_DIR_KEY = 'aionui:web-fs-picker:last-dir';
 
 type PickerProps = {
   options: ShowOpenOptions;
@@ -73,6 +74,7 @@ export const WebFsPicker: React.FC<PickerProps> = ({ options, onDone }) => {
         setSelected([]);
         try {
           localStorage.setItem(LAST_DIR_KEY, dir);
+          localStorage.setItem(LEGACY_LAST_DIR_KEY, dir);
         } catch {
           /* storage unavailable — non-fatal */
         }
@@ -93,7 +95,7 @@ export const WebFsPicker: React.FC<PickerProps> = ({ options, onDone }) => {
     const resolveStart = async (): Promise<string> => {
       if (options?.defaultPath) return options.defaultPath;
       try {
-        const last = localStorage.getItem(LAST_DIR_KEY);
+        const last = localStorage.getItem(LAST_DIR_KEY) ?? localStorage.getItem(LEGACY_LAST_DIR_KEY);
         if (last) return last;
       } catch {
         /* ignore */

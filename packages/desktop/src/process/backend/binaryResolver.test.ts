@@ -38,18 +38,18 @@ describe('resolveBinaryPath', () => {
     setResourcesPath(originalResourcesPath);
   });
 
-  it('attaches bundled path diagnostics when aioncore cannot be resolved', () => {
+  it('attaches bundled path diagnostics when the backend cannot be resolved', () => {
     const resourcesPath = '/app/resources';
     const runtimeKey = `${process.platform}-${process.arch}`;
-    const binaryName = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
-    const bundledDir = join(resourcesPath, 'bundled-aioncore');
+    const binaryName = process.platform === 'win32' ? 'openh3-core.exe' : 'openh3-core';
+    const bundledDir = join(resourcesPath, 'bundled-openh3-core');
     const runtimeDir = join(bundledDir, runtimeKey);
     const checkedBundledPath = join(runtimeDir, binaryName);
 
     setResourcesPath(resourcesPath);
     vi.mocked(existsSync).mockReturnValue(false);
     vi.mocked(readdirSync).mockImplementation((path) => {
-      if (path === resourcesPath) return [dirEntry('bundled-aioncore', true)];
+      if (path === resourcesPath) return [dirEntry('bundled-openh3-core', true)];
       if (path === runtimeDir) return [dirEntry('manifest.json')];
       return [] as ReturnType<typeof readdirSync>;
     });
@@ -57,7 +57,7 @@ describe('resolveBinaryPath', () => {
       throw new Error('not found on PATH');
     });
 
-    expect(() => resolveBinaryPath()).toThrow('Cannot find "aioncore" binary');
+    expect(() => resolveBinaryPath()).toThrow('Cannot find "openh3-core" binary');
 
     try {
       resolveBinaryPath();
@@ -71,12 +71,32 @@ describe('resolveBinaryPath', () => {
           checkedBundledPath,
           bundledDirExists: false,
           runtimeDirExists: false,
-          resourcesDirEntries: ['bundled-aioncore/'],
+          resourcesDirEntries: ['bundled-openh3-core/'],
           runtimeDirEntries: ['manifest.json'],
-          pathLookupCommand: process.platform === 'win32' ? 'where aioncore' : 'which aioncore',
+          pathLookupCommand:
+            process.platform === 'win32'
+              ? 'where openh3-core.exe && where aioncore.exe'
+              : 'which openh3-core && which aioncore',
           pathLookupError: expect.stringContaining('not found on PATH'),
         }),
       });
     }
+  });
+
+  it('falls back to the legacy bundled backend name for existing installations', () => {
+    const resourcesPath = '/app/resources';
+    const runtimeKey = `${process.platform}-${process.arch}`;
+    const legacyBinaryName = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+    const legacyRuntimeDir = join(resourcesPath, 'bundled-aioncore', runtimeKey);
+
+    setResourcesPath(resourcesPath);
+    vi.mocked(readdirSync).mockImplementation((path) => {
+      if (path === resourcesPath) return [dirEntry('bundled-aioncore', true)];
+      if (path === legacyRuntimeDir) return [dirEntry(legacyBinaryName)];
+      return [] as ReturnType<typeof readdirSync>;
+    });
+    vi.mocked(existsSync).mockImplementation((path) => path === join(legacyRuntimeDir, legacyBinaryName));
+
+    expect(resolveBinaryPath()).toBe(join(legacyRuntimeDir, legacyBinaryName));
   });
 });

@@ -1,5 +1,5 @@
-import { startWebHost, startStaticServer } from '@aionui/web-host';
-import type { WebHostHandle, StaticServerHandle } from '@aionui/web-host';
+import { startWebHost, startStaticServer } from '@openh3/web-host';
+import type { WebHostHandle, StaticServerHandle } from '@openh3/web-host';
 import { setTimeout as delay } from 'node:timers/promises';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,7 +12,7 @@ import { ensureAdminPassword } from './ensureAdminPassword.js';
 //   openh3-web/
 //   ├── openh3-web              ← bun-compiled standalone binary (process.execPath)
 //   ├── package.json             ← for runtime version lookup
-//   ├── bundled-aioncore/<plat-arch>/aioncore[.exe]
+//   ├── bundled-openh3-core/<plat-arch>/openh3-core[.exe]
 //   └── static/                  ← SPA assets
 //
 // Under `bun build --compile`, import.meta.url resolves to a virtual /$bunfs/
@@ -49,7 +49,9 @@ const isPackaged = (() => {
   return ['openh3-web', 'openh3-web.exe', 'aionui-web', 'aionui-web.exe'].includes(exeName);
 })();
 
-const BACKEND_BINARY = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+const BACKEND_BINARIES =
+  process.platform === 'win32' ? ['openh3-core.exe', 'aioncore.exe'] : ['openh3-core', 'aioncore'];
+const BUNDLE_DIRS = ['bundled-openh3-core', 'bundled-aioncore'];
 const DEFAULT_PORT = 25808;
 const RESET_COMMAND = isPackaged ? 'openh3-web resetpass' : 'bun run resetpass';
 
@@ -76,11 +78,16 @@ function parseArgs(argv: string[]): { command: string; flags: Map<string, string
 function resolveBackendBinary(flags: Map<string, string | true>): string {
   const override = flags.get('backend-bin');
   if (typeof override === 'string') return path.resolve(override);
-  const envOverride = process.env.AIONUI_BACKEND_BIN;
+  const envOverride = process.env.OPENH3_BACKEND_BIN || process.env.AIONUI_BACKEND_BIN;
   if (envOverride) return path.resolve(envOverride);
   const platArch = `${process.platform}-${process.arch}`;
-  const bundled = path.join(cliRoot, 'bundled-aioncore', platArch, BACKEND_BINARY);
-  return bundled;
+  for (const bundleDir of BUNDLE_DIRS) {
+    for (const binaryName of BACKEND_BINARIES) {
+      const bundled = path.join(cliRoot, bundleDir, platArch, binaryName);
+      if (fs.existsSync(bundled)) return bundled;
+    }
+  }
+  return path.join(cliRoot, BUNDLE_DIRS[0], platArch, BACKEND_BINARIES[0]);
 }
 
 function resolveStaticDir(flags: Map<string, string | true>): string {
@@ -92,7 +99,7 @@ function resolveStaticDir(flags: Map<string, string | true>): string {
 function resolveDataDir(flags: Map<string, string | true>): string {
   const override = flags.get('data-dir');
   if (typeof override === 'string') return path.resolve(override);
-  const envOverride = process.env.AIONUI_DATA_DIR;
+  const envOverride = process.env.OPENH3_DATA_DIR || process.env.AIONUI_DATA_DIR;
   if (envOverride) return path.resolve(envOverride);
   const dir = path.join(os.homedir(), '.openh3-web');
   const legacyDir = path.join(os.homedir(), '.aionui-web');
@@ -109,7 +116,7 @@ function resolveDataDir(flags: Map<string, string | true>): string {
 function resolveLogDir(flags: Map<string, string | true>, dataDir: string): string {
   const override = flags.get('log-dir');
   if (typeof override === 'string') return path.resolve(override);
-  const envOverride = process.env.AIONUI_LOG_DIR;
+  const envOverride = process.env.OPENH3_LOG_DIR || process.env.AIONUI_LOG_DIR;
   if (envOverride) return path.resolve(envOverride);
   return path.join(dataDir, 'logs');
 }
@@ -117,14 +124,14 @@ function resolveLogDir(flags: Map<string, string | true>, dataDir: string): stri
 function resolvePort(flags: Map<string, string | true>): number {
   const cli = flags.get('port');
   if (typeof cli === 'string' && /^\d+$/.test(cli)) return Number(cli);
-  const env = process.env.AIONUI_PORT ?? process.env.PORT;
+  const env = process.env.OPENH3_PORT ?? process.env.AIONUI_PORT ?? process.env.PORT;
   if (env && /^\d+$/.test(env)) return Number(env);
   return DEFAULT_PORT;
 }
 
 function resolveAllowRemote(flags: Map<string, string | true>): boolean {
   if (flags.has('remote')) return true;
-  const env = process.env.AIONUI_ALLOW_REMOTE ?? process.env.AIONUI_REMOTE;
+  const env = process.env.OPENH3_ALLOW_REMOTE ?? process.env.AIONUI_ALLOW_REMOTE ?? process.env.AIONUI_REMOTE;
   if (!env) return false;
   return ['1', 'true', 'yes', 'on'].includes(env.trim().toLowerCase());
 }
@@ -179,7 +186,7 @@ async function runStart(flags: Map<string, string | true>): Promise<void> {
     console.warn('⚠️  Backend binary not found — starting in FRONTEND-ONLY mode.');
     console.warn(`   Missing: ${backendBin}`);
     console.warn('   The web UI will load but API calls will fail until a backend is available.');
-    console.warn('   To enable backend: download aioncore and set AIONUI_BACKEND_BIN.');
+    console.warn('   To enable backend: provide OpenH3 Core and set OPENH3_BACKEND_BIN.');
     console.warn('');
 
     const handle = await startStaticServer({
@@ -288,7 +295,7 @@ async function runResetPassword(flags: Map<string, string | true>): Promise<void
   const backendBin = resolveBackendBinary(flags);
   if (!fs.existsSync(backendBin)) {
     console.error(`[openh3-web] backend binary not found: ${backendBin}`);
-    console.error('  hint: pass --backend-bin <path> or set AIONUI_BACKEND_BIN');
+    console.error('  hint: pass --backend-bin <path> or set OPENH3_BACKEND_BIN');
     process.exit(1);
   }
   const dataDir = resolveDataDir(flags);
@@ -404,8 +411,8 @@ Options for resetpass:
   --backend-bin <path>    Override backend binary path
 
 Environment variables:
-  AIONUI_PORT, AIONUI_ALLOW_REMOTE, AIONUI_DATA_DIR, AIONUI_LOG_DIR,
-  AIONUI_BACKEND_BIN, AIONUI_OPEN_BROWSER
+  OPENH3_PORT, OPENH3_ALLOW_REMOTE, OPENH3_DATA_DIR, OPENH3_LOG_DIR,
+  OPENH3_BACKEND_BIN, OPENH3_OPEN_BROWSER (AIONUI_* aliases are supported)
 `);
     return;
   }

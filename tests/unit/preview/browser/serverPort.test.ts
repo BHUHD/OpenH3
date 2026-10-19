@@ -12,6 +12,12 @@ import {
 } from '@/process/resources/builtinMcp/browserServerPort';
 
 describe('resolveBrowserUrl', () => {
+  it('prefers the canonical OpenH3 inherited port', () => {
+    expect(resolveBrowserUrl({ env: { OPENH3_CDP_ACTIVE_PORT: '61622', AIONUI_CDP_ACTIVE_PORT: '9230' } })).toBe(
+      'http://127.0.0.1:61622'
+    );
+  });
+
   it('builds the URL from the port inherited down the process tree', () => {
     expect(resolveBrowserUrl({ env: { AIONUI_CDP_ACTIVE_PORT: '9230' } })).toBe('http://127.0.0.1:9230');
   });
@@ -49,6 +55,12 @@ describe('resolveBrowserUrl', () => {
 });
 
 describe('resolveBridgeToken', () => {
+  it('prefers the canonical OpenH3 inherited token', () => {
+    expect(
+      resolveBridgeToken({ env: { OPENH3_CDP_BRIDGE_TOKEN: 'openh3-token', AIONUI_CDP_BRIDGE_TOKEN: 'legacy' } })
+    ).toBe('openh3-token');
+  });
+
   it('returns the token inherited from the process tree', () => {
     expect(resolveBridgeToken({ env: { AIONUI_CDP_BRIDGE_TOKEN: 'abc123' } })).toBe('abc123');
   });

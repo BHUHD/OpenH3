@@ -35,7 +35,11 @@ export function initApplicationBridgeCore(): void {
     if (oldDir.cacheDir !== safeCacheDir) {
       await copyDirectoryRecursively(oldDir.cacheDir, safeCacheDir);
     }
-    await ProcessEnv.set('aionui.dir', { cacheDir: safeCacheDir, workDir: safeWorkDir, logDir: safeLogDir });
+    const systemDir = { cacheDir: safeCacheDir, workDir: safeWorkDir, logDir: safeLogDir };
+    // Write both keys. New OpenH3 code reads the canonical key, while older
+    // desktop builds still read `aionui.dir` from the same profile.
+    await ProcessEnv.set('openh3.dir', systemDir);
+    await ProcessEnv.set('aionui.dir', systemDir);
   });
 
   ipcBridge.application.getPath.provider(({ name }) => {

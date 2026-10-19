@@ -28,7 +28,7 @@ export async function startBackendOrExit(options: StartBackendOrExitOptions): Pr
     if (isBackendStartupCancelledError(error)) {
       return { ok: false };
     }
-    options.logError?.('[OpenH3] Failed to start aioncore:', error);
+    options.logError?.('[OpenH3] Failed to start OpenH3 Core:', error);
     await options.captureFailure(error);
     if (options.exitOnFailure ?? true) {
       options.exitApp(1);

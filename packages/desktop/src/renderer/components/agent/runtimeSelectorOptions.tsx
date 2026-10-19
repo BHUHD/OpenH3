@@ -5,7 +5,7 @@
  */
 
 import type { AcpConfigSetStatus, AcpDerivedOption } from '@/renderer/hooks/agent/useAcpConfigOptions';
-import AionInlineSearchInput from '@/renderer/components/base/AionInlineSearchInput';
+import OpenH3InlineSearchInput from '@/renderer/components/base/OpenH3InlineSearchInput';
 import { Menu, Tooltip } from '@arco-design/web-react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -145,7 +145,7 @@ export const RuntimeSelectorModelList: React.FC<{
     <>
       {showSearch ? (
         <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }}>
-          <AionInlineSearchInput
+          <OpenH3InlineSearchInput
             value={query}
             onChange={setQuery}
             placeholder={t('agent.model.searchPlaceholder', { defaultValue: 'Search models' })}

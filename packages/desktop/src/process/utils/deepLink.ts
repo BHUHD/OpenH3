@@ -7,18 +7,29 @@
 import type { BrowserWindow } from 'electron';
 import { ipcBridge } from '@/common';
 
-export const PROTOCOL_SCHEME = 'aionui';
+export const PROTOCOL_SCHEME = 'openh3';
+export const LEGACY_PROTOCOL_SCHEME = 'aionui';
+const SUPPORTED_PROTOCOL_SCHEMES = new Set([PROTOCOL_SCHEME, LEGACY_PROTOCOL_SCHEME]);
+
+export const isDeepLinkUrl = (value: string): boolean => {
+  try {
+    return SUPPORTED_PROTOCOL_SCHEMES.has(new URL(value).protocol.slice(0, -1));
+  } catch {
+    return false;
+  }
+};
 
 /**
- * Parse an aionui:// URL into action and params.
+ * Parse an OpenH3 deep-link URL into action and params.
  * Supports two formats:
- *   1. aionui://add-provider?base_url=xxx&api_key=xxx
- *   2. aionui://provider/add?v=1&data=<base64 JSON>  (one-api / new-api style)
+ *   1. openh3://add-provider?base_url=xxx&api_key=xxx
+ *   2. openh3://provider/add?v=1&data=<base64 JSON>  (one-api / new-api style)
+ * The legacy aionui:// scheme is accepted by the same parser for migration.
  */
 export const parseDeepLinkUrl = (url: string): { action: string; params: Record<string, string> } | null => {
   try {
     const parsed = new URL(url);
-    if (parsed.protocol !== `${PROTOCOL_SCHEME}:`) return null;
+    if (!SUPPORTED_PROTOCOL_SCHEMES.has(parsed.protocol.slice(0, -1))) return null;
 
     const hostname = parsed.hostname || '';
     const pathname = parsed.pathname.replace(/^\/+/, '');
@@ -49,7 +60,7 @@ export const parseDeepLinkUrl = (url: string): { action: string; params: Record<
 };
 
 let mainWindowRef: BrowserWindow | null = null;
-let pendingDeepLinkUrl: string | null = process.argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`)) || null;
+let pendingDeepLinkUrl: string | null = process.argv.find(isDeepLinkUrl) || null;
 
 export const setDeepLinkMainWindow = (win: BrowserWindow): void => {
   mainWindowRef = win;

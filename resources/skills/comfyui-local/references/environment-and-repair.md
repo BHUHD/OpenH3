@@ -2,7 +2,7 @@
 
 ## Probe the runtime that will run the graph
 
-Start with `aionui_comfy_environment`. Reuse the registered profile's paths and check tool results before supplementing missing fields. For an install or a repair that may download files, pass the exact immutable model, node, package, or workflow URLs in `sources` and read the returned `network` object. A nonzero process exit, missing command, permission error, timeout, missing source result, or `NETWORK_*` issue is incomplete evidence, not evidence of no accelerator or a usable mirror. Avoid searching every disk; inspect configured roots and user-named locations first. A cold plan may record a CPU route only when the selected graph/runtime explicitly supports CPU and the plan uses its CPU launch mode; otherwise GPU/kernel evidence is required.
+Start with `openh3_comfy_environment`. Reuse the registered profile's paths and check tool results before supplementing missing fields. For an install or a repair that may download files, pass the exact immutable model, node, package, or workflow URLs in `sources` and read the returned `network` object. A nonzero process exit, missing command, permission error, timeout, missing source result, or `NETWORK_*` issue is incomplete evidence, not evidence of no accelerator or a usable mirror. Avoid searching every disk; inspect configured roots and user-named locations first. A cold plan may record a CPU route only when the selected graph/runtime explicitly supports CPU and the plan uses its CPU launch mode; otherwise GPU/kernel evidence is required.
 
 Collect an evidence record:
 
@@ -53,7 +53,7 @@ Run a small graph that exercises the intended path: text generation, image editi
 
 Media checks decode distributed video frames, reject frozen/blank output, and compare explicitly bound dimensions/duration. Declare `native-audio` only when the graph promises generated audio; its smoke output must include a decodable audio stream. These checks establish technical execution, not prompt fidelity or edit preservation, which still require reviewing the actual result. Failure results expose `diagnosticLogPath` for bounded local startup/execution evidence; read that file rather than inferring a dependency fix from a generic error code.
 
-Explicit `aionui_comfy_profiles` revalidation requires `smokeInput` and returns a background validation job, not an immediately verified profile. Preserve its `comfyJobId` and `validation: true`; the UI observes progress. After success, check the updated profile and relevant output before generating. Cancelling or failing that validation does not prove readiness.
+Explicit `openh3_comfy_profiles` revalidation requires `smokeInput` and returns a background validation job, not an immediately verified profile. Preserve its `comfyJobId` and `validation: true`; the UI observes progress. After success, check the updated profile and relevant output before generating. Cancelling or failing that validation does not prove readiness.
 
 Cache large-file validation by path, size, modification metadata, and recorded hash. Invalidate it after changes or a corruption diagnosis. The registered profile is the reusable unit. Revalidation should target changed/failed assets and the selected workflow rather than silently choosing another set.
 
@@ -71,6 +71,6 @@ Cache large-file validation by path, size, modification metadata, and recorded h
 | WebSocket timeout/disconnect             | Query the existing prompt ID's queue/history before resubmitting                                                | Reattach or retrieve outputs; avoid duplicating a still-running job                                                                                                                                                                           |
 | Download partial/wrong data              | Inspect HTTP status, expected size/hash, HTML/error body, partial-file ownership                                | Resume only a matching partial file or replace that component through a consented repair plan                                                                                                                                                 |
 
-Repair requests use `aionui_comfy_install` with `repair: true`, a full replacement snapshot, and the same request/consent/start contract. State the exact affected profile and components. Preserve the known-good set and outputs. Do not stop another application's GPU process, clear another user's queue, or alter an unrelated environment as an automatic repair step.
+Repair requests use `openh3_comfy_install` with `repair: true`, a full replacement snapshot, and the same request/consent/start contract. State the exact affected profile and components. Preserve the known-good set and outputs. Do not stop another application's GPU process, clear another user's queue, or alter an unrelated environment as an automatic repair step.
 
 After repair, revalidate the affected profile and record the result before reporting it fixed. If the diagnosis is still incomplete, report the concrete missing evidence rather than repeatedly downloading or changing models.

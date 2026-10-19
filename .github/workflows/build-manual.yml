@@ -30,8 +30,13 @@ on:
         required: false
         type: boolean
         default: false
+      openh3_core_run_id:
+        description: 'Optional OpenH3 Core Manual Build workflow run id to bundle instead of the pinned release'
+        required: false
+        type: string
+        default: ''
       aioncore_run_id:
-        description: 'Optional AionCore Manual Build workflow run id to bundle instead of the pinned release'
+        description: 'Deprecated alias for openh3_core_run_id'
         required: false
         type: string
         default: ''
@@ -87,7 +92,7 @@ jobs:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       ref: ${{ inputs.branch }}
       skip_code_quality: ${{ inputs.skip_code_quality }}
-      aioncore_run_id: ${{ inputs.aioncore_run_id }}
+      openh3_core_run_id: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
       append_commit_hash: true
       upload_installers_only: true
     secrets: inherit

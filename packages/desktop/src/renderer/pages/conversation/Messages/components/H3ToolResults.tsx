@@ -22,9 +22,10 @@ export function h3ToolJobIds(messages: Array<{ type: string; content: unknown }>
       }
       continue;
     }
-    if (message.type !== 'tool_call') continue;
     const content = message.content as IMessageToolCall['content'];
-    if (!['aionui_h3_generate_video', 'aionui_h3_job_status'].includes(content.name)) continue;
+    if (!content || typeof content.name !== 'string') continue;
+    if (!['openh3_h3_generate_video', 'openh3_h3_job_status'].includes(content.name.replace(/^aionui_/, 'openh3_')))
+      continue;
     try {
       const output = typeof content.output === 'string' ? JSON.parse(content.output) : content.output;
       // Tool output is untrusted: only use a job identifier; fetch authoritative resources locally.

@@ -71,7 +71,7 @@ function resolveBackendBinary(): string {
   const projectRoot = process.cwd();
   const candidates = [
     process.env.AIONUI_BACKEND_BINARY,
-    path.join(projectRoot, '../aionCore/target/debug/aioncore'),
+    path.join(projectRoot, '../aioncore/target/debug/openh3-core'),
     path.join(os.homedir(), '.cargo', 'bin', 'aioncore'),
   ].filter((value): value is string => Boolean(value));
 
@@ -85,7 +85,7 @@ function resolveBackendBinary(): string {
 }
 
 function schemaPath(): string {
-  return path.join(process.cwd(), '../aionCore/crates/aionui-db/migrations/001_initial_schema.sql');
+  return path.join(process.cwd(), '../aioncore/crates/openh3-db/migrations/001_initial_schema.sql');
 }
 
 function querySqliteValue(dataDir: string, sql: string): string {

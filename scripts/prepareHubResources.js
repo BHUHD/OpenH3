@@ -7,8 +7,8 @@
  * Called during the build pipeline before electron-builder runs.
  *
  * Environment variables:
- *   AIONUI_HUB_TAG    - Git tag to fetch from (default: 'dist-latest')
- *   AIONUI_HUB_SKIP   - Set to '1' to skip hub resource preparation
+ *   OPENH3_HUB_TAG    - Git tag to fetch from (legacy AIONUI_HUB_TAG accepted)
+ *   OPENH3_HUB_SKIP   - Set to '1' to skip hub resource preparation
  */
 
 const fs = require('fs');
@@ -19,9 +19,11 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const HUB_DIR = path.join(PROJECT_ROOT, 'resources', 'hub');
 
 const DEFAULT_TAG = 'dist-latest';
+const HUB_TAG = process.env.OPENH3_HUB_TAG || process.env.AIONUI_HUB_TAG || DEFAULT_TAG;
+const HUB_SKIP = process.env.OPENH3_HUB_SKIP || process.env.AIONUI_HUB_SKIP;
 const BASE_URLS = [
-  `https://raw.githubusercontent.com/iOfficeAI/AionHub/${process.env.AIONUI_HUB_TAG || DEFAULT_TAG}/`,
-  `https://cdn.jsdelivr.net/gh/iOfficeAI/AionHub@${process.env.AIONUI_HUB_TAG || DEFAULT_TAG}/`,
+  `https://raw.githubusercontent.com/iOfficeAI/AionHub/${HUB_TAG}/`,
+  `https://cdn.jsdelivr.net/gh/iOfficeAI/AionHub@${HUB_TAG}/`,
 ];
 
 // ---------------------------------------------------------------------------
@@ -94,12 +96,12 @@ function downloadUrl(url, destPath) {
 // ---------------------------------------------------------------------------
 
 async function prepareHubResources() {
-  if (process.env.AIONUI_HUB_SKIP === '1') {
-    console.log('[hub] Skipping hub resource preparation (AIONUI_HUB_SKIP=1)');
+  if (HUB_SKIP === '1') {
+    console.log('[hub] Skipping hub resource preparation (OPENH3_HUB_SKIP=1)');
     return { skipped: true };
   }
 
-  const tag = process.env.AIONUI_HUB_TAG || DEFAULT_TAG;
+  const tag = HUB_TAG;
   console.log(`[hub] Preparing hub resources from tag: ${tag}`);
 
   // Clean and create target directory

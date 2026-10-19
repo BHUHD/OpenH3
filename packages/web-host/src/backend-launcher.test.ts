@@ -229,12 +229,15 @@ describe('buildSpawnArgs', () => {
 });
 
 describe('buildSpawnEnv', () => {
-  it('merges process.env with AIONUI_* dir vars', () => {
+  it('merges process.env with canonical and legacy dir vars', () => {
     const env = buildSpawnEnv({
       cacheDir: '/c',
       workDir: '/w',
       logDir: '/l',
     });
+    expect(env.OPENH3_CACHE_DIR).toBe('/c');
+    expect(env.OPENH3_WORK_DIR).toBe('/w');
+    expect(env.OPENH3_LOG_DIR).toBe('/l');
     expect(env.AIONUI_CACHE_DIR).toBe('/c');
     expect(env.AIONUI_WORK_DIR).toBe('/w');
     expect(env.AIONUI_LOG_DIR).toBe('/l');
@@ -258,7 +261,15 @@ describe('buildSpawnEnv', () => {
   });
 
   it('strips PREBUILDS_ONLY and injects no dir vars when no dir config is provided', () => {
-    const keys = ['PREBUILDS_ONLY', 'AIONUI_CACHE_DIR', 'AIONUI_WORK_DIR', 'AIONUI_LOG_DIR'] as const;
+    const keys = [
+      'PREBUILDS_ONLY',
+      'OPENH3_CACHE_DIR',
+      'OPENH3_WORK_DIR',
+      'OPENH3_LOG_DIR',
+      'AIONUI_CACHE_DIR',
+      'AIONUI_WORK_DIR',
+      'AIONUI_LOG_DIR',
+    ] as const;
     const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
     process.env.PREBUILDS_ONLY = '1';
     // Dir vars may be inherited from a dev shell; clear them so the assertion
@@ -269,6 +280,9 @@ describe('buildSpawnEnv', () => {
     try {
       const env = buildSpawnEnv();
       expect(env).not.toHaveProperty('PREBUILDS_ONLY');
+      expect(env).not.toHaveProperty('OPENH3_CACHE_DIR');
+      expect(env).not.toHaveProperty('OPENH3_WORK_DIR');
+      expect(env).not.toHaveProperty('OPENH3_LOG_DIR');
       expect(env).not.toHaveProperty('AIONUI_CACHE_DIR');
       expect(env).not.toHaveProperty('AIONUI_WORK_DIR');
       expect(env).not.toHaveProperty('AIONUI_LOG_DIR');
@@ -316,8 +330,8 @@ describe('findAvailablePort', () => {
 
       expect(port).toBe(40404);
       expect(createServer).toHaveBeenCalledTimes(2);
-      expect(infoSpy).toHaveBeenCalledWith('[aioncore] skipped fetch-blocked backend port 1720');
-      expect(infoSpy).toHaveBeenCalledWith('[aioncore] selected backend port 40404 after 2 attempts');
+      expect(infoSpy).toHaveBeenCalledWith('[OpenH3 Core] skipped fetch-blocked backend port 1720');
+      expect(infoSpy).toHaveBeenCalledWith('[OpenH3 Core] selected backend port 40404 after 2 attempts');
     } finally {
       infoSpy.mockRestore();
     }
@@ -454,6 +468,9 @@ describe('BackendLifecycleManager.start (success path)', () => {
       expect(opts.env.AIONUI_CACHE_DIR).toBe('/c');
       expect(opts.env.AIONUI_WORK_DIR).toBe('/w');
       expect(opts.env.AIONUI_LOG_DIR).toBe('/l');
+      expect(opts.env.OPENH3_CACHE_DIR).toBe('/c');
+      expect(opts.env.OPENH3_WORK_DIR).toBe('/w');
+      expect(opts.env.OPENH3_LOG_DIR).toBe('/l');
       expect((spawnCall[2] as { detached?: boolean }).detached).toBe(process.platform !== 'win32');
       expect(mkdirSync).toHaveBeenCalledWith('/db/path', { recursive: true });
       expect(mkdirSync).toHaveBeenCalledWith('/log/dir', { recursive: true });
@@ -462,7 +479,7 @@ describe('BackendLifecycleManager.start (success path)', () => {
 
       expect(fetchSpy).toHaveBeenCalled();
       expect(infoSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[aioncore] health ready on port 55555 after 1 attempts, elapsed_ms=')
+        expect.stringContaining('[OpenH3 Core] health ready on port 55555 after 1 attempts, elapsed_ms=')
       );
     } finally {
       fetchSpy.mockRestore();
@@ -1304,7 +1321,7 @@ describe('BackendLifecycleManager crash restart', () => {
     (child1 as unknown as EventEmitter).emit('exit', 1, 'SIGABRT');
     await new Promise((r) => setTimeout(r, 1_200));
 
-    expect(warnSpy).toHaveBeenCalledWith('[aioncore] child exited unexpectedly; scheduling restart', {
+    expect(warnSpy).toHaveBeenCalledWith('[OpenH3 Core] child exited unexpectedly; scheduling restart', {
       exitCode: 1,
       signal: 'SIGABRT',
       port: 65303,
@@ -1361,7 +1378,7 @@ describe('BackendLifecycleManager crash restart', () => {
     mgr.handleCrash(1, 'SIGABRT');
 
     expect(mgr.status).toBe('error');
-    expect(errorSpy).toHaveBeenCalledWith('[aioncore] child exited unexpectedly; restart limit exceeded', {
+    expect(errorSpy).toHaveBeenCalledWith('[OpenH3 Core] child exited unexpectedly; restart limit exceeded', {
       exitCode: 1,
       signal: 'SIGABRT',
       port: 0,

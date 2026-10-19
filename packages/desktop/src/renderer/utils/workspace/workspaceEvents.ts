@@ -1,6 +1,11 @@
-export const WORKSPACE_TOGGLE_EVENT = 'aionui-workspace-toggle';
-export const WORKSPACE_STATE_EVENT = 'aionui-workspace-state';
-export const WORKSPACE_HAS_FILES_EVENT = 'aionui-workspace-has-files';
+export const WORKSPACE_TOGGLE_EVENT = 'openh3-workspace-toggle';
+export const WORKSPACE_STATE_EVENT = 'openh3-workspace-state';
+export const WORKSPACE_HAS_FILES_EVENT = 'openh3-workspace-has-files';
+
+/** Legacy event names kept for extensions shipped before the OpenH3 rename. */
+export const LEGACY_WORKSPACE_TOGGLE_EVENT = 'aionui-workspace-toggle';
+export const LEGACY_WORKSPACE_STATE_EVENT = 'aionui-workspace-state';
+export const LEGACY_WORKSPACE_HAS_FILES_EVENT = 'aionui-workspace-has-files';
 
 export interface WorkspaceStateDetail {
   collapsed: boolean;
@@ -26,12 +31,16 @@ export function dispatchWorkspaceToggleEvent(): boolean {
   if (typeof window === 'undefined') return false;
   const event = new CustomEvent(WORKSPACE_TOGGLE_EVENT, { cancelable: true });
   window.dispatchEvent(event);
-  return event.defaultPrevented;
+  const legacyEvent = new CustomEvent(LEGACY_WORKSPACE_TOGGLE_EVENT, { cancelable: true });
+  window.dispatchEvent(legacyEvent);
+  return event.defaultPrevented || legacyEvent.defaultPrevented;
 }
 
 export function dispatchWorkspaceStateEvent(collapsed: boolean) {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent<WorkspaceStateDetail>(WORKSPACE_STATE_EVENT, { detail: { collapsed } }));
+  const detail = { collapsed };
+  window.dispatchEvent(new CustomEvent<WorkspaceStateDetail>(WORKSPACE_STATE_EVENT, { detail }));
+  window.dispatchEvent(new CustomEvent<WorkspaceStateDetail>(LEGACY_WORKSPACE_STATE_EVENT, { detail }));
 }
 
 /**
@@ -44,9 +53,7 @@ export function dispatchWorkspaceHasFilesEvent(
   isInitial: boolean
 ) {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(
-    new CustomEvent<WorkspaceHasFilesDetail>(WORKSPACE_HAS_FILES_EVENT, {
-      detail: { hasFiles, conversation_id, isInitial },
-    })
-  );
+  const detail = { hasFiles, conversation_id, isInitial };
+  window.dispatchEvent(new CustomEvent<WorkspaceHasFilesDetail>(WORKSPACE_HAS_FILES_EVENT, { detail }));
+  window.dispatchEvent(new CustomEvent<WorkspaceHasFilesDetail>(LEGACY_WORKSPACE_HAS_FILES_EVENT, { detail }));
 }

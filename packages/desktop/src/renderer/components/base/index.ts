@@ -4,46 +4,33 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/**
- * AionUi 基础组件库统一导出 / AionUi base components unified exports
- *
- * 提供所有基础组件和类型的统一导出入口
- * Provides unified export entry for all base components and types
- */
+/** OpenH3 base components. Legacy exports remain available to extensions. */
+export { default as OpenH3Modal, default as AionModal, MODAL_SIZES } from './OpenH3Modal';
+export { default as OpenH3Collapse, default as AionCollapse } from './OpenH3Collapse';
+export { default as OpenH3Select, default as AionSelect } from './OpenH3Select';
+export { default as OpenH3ScrollArea, default as AionScrollArea } from './OpenH3ScrollArea';
+export { default as OpenH3Steps, default as AionSteps } from './OpenH3Steps';
+export { default as OpenH3SearchInput, default as AionSearchInput } from './OpenH3SearchInput';
+export { default as OpenH3InlineSearchInput, default as AionInlineSearchInput } from './OpenH3InlineSearchInput';
 
-// ==================== 组件导出 / Component Exports ====================
-
-export { default as AionModal } from './AionModal';
-export { default as AionCollapse } from './AionCollapse';
-export { default as AionSelect } from './AionSelect';
-export { default as AionScrollArea } from './AionScrollArea';
-export { default as AionSteps } from './AionSteps';
-export { default as AionSearchInput } from './AionSearchInput';
-export { default as AionInlineSearchInput } from './AionInlineSearchInput';
-
-// ==================== 类型导出 / Type Exports ====================
-
-// AionModal 类型 / AionModal types
 export type {
   ModalSize,
   ModalHeaderConfig,
   ModalFooterConfig,
   ModalContentStyleConfig,
-  AionModalProps,
-} from './AionModal';
-export { MODAL_SIZES } from './AionModal';
-
-// AionCollapse 类型 / AionCollapse types
-export type { AionCollapseProps, AionCollapseItemProps } from './AionCollapse';
-
-// AionSelect 类型 / AionSelect types
-export type { AionSelectProps } from './AionSelect';
-
-// AionSteps 类型 / AionSteps types
-export type { AionStepsProps } from './AionSteps';
-
-// AionSearchInput 类型 / AionSearchInput types
-export type { AionSearchInputProps } from './AionSearchInput';
-
-// AionInlineSearchInput 类型 / AionInlineSearchInput types
-export type { AionInlineSearchInputProps } from './AionInlineSearchInput';
+  OpenH3ModalProps,
+  OpenH3ModalProps as AionModalProps,
+} from './OpenH3Modal';
+export type {
+  OpenH3CollapseProps,
+  OpenH3CollapseItemProps,
+  OpenH3CollapseProps as AionCollapseProps,
+  OpenH3CollapseItemProps as AionCollapseItemProps,
+} from './OpenH3Collapse';
+export type { OpenH3SelectProps, OpenH3SelectProps as AionSelectProps } from './OpenH3Select';
+export type { OpenH3StepsProps, OpenH3StepsProps as AionStepsProps } from './OpenH3Steps';
+export type { OpenH3SearchInputProps, OpenH3SearchInputProps as AionSearchInputProps } from './OpenH3SearchInput';
+export type {
+  OpenH3InlineSearchInputProps,
+  OpenH3InlineSearchInputProps as AionInlineSearchInputProps,
+} from './OpenH3InlineSearchInput';

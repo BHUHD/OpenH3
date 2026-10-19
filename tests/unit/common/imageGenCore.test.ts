@@ -193,6 +193,14 @@ describe('saveGeneratedImage', () => {
 
     expect(filePath.startsWith(pathResolve(ws))).toBe(true);
   });
+
+  it('should reject data that is base64-shaped but not an image', async () => {
+    const ws = createWorkspace();
+
+    await expect(saveGeneratedImage('data:image/png;base64,bm90LWltYWdl', ws)).rejects.toThrow(
+      'recognized image format'
+    );
+  });
 });
 
 describe('executeImageGeneration', () => {

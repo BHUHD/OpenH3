@@ -35,9 +35,9 @@
     },
     "intentSummary": "本地模型任務：{{model}} · {{intent}}。目標設定：{{profile}}。請保持該模型家族與任務意圖，先制定具體的 ComfyUI 方案並等待我確認後再安裝。安裝任務不需要生成參數。",
     "prompts": {
-      "install": "幫我在本地安裝 {{family}}，透過 ComfyUI 使用。先檢查顯示卡、記憶體、磁碟、網路與現有環境，推薦適合的固定模型版本及量化方案，並選擇與該模型家族任務匹配的 ComfyUI 工作流程，列出所需節點、模型、編碼器與 VAE。優先尋找可證明與固定版本完全一致的魔搭或可靠中國內地鏡像副本，固定來源、版本與 SHA-256，說明下載大小、安裝位置、斷點續傳方式與驗證步驟，等我確認後再開始安裝。 呼叫 aionui_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "repair": "檢查並修復我的本地 {{family}} 模型設定 {{profile}}。檢查環境、模型元件、自訂節點與工作流程，說明修復方案，等我確認後再修改，並以小規模生成測試驗證。 Use aionui_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "install-other": "幫我為 {{family}} 安裝其他版本或量化方案。先檢查硬體與已有設定，提出獨立設定、固定來源與驗證方案，等我確認後再安裝，並保留目前可用設定。 呼叫 aionui_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each aionui_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+      "install": "幫我在本地安裝 {{family}}，透過 ComfyUI 使用。先檢查顯示卡、記憶體、磁碟、網路與現有環境，推薦適合的固定模型版本及量化方案，並選擇與該模型家族任務匹配的 ComfyUI 工作流程，列出所需節點、模型、編碼器與 VAE。優先尋找可證明與固定版本完全一致的魔搭或可靠中國內地鏡像副本，固定來源、版本與 SHA-256，說明下載大小、安裝位置、斷點續傳方式與驗證步驟，等我確認後再開始安裝。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "repair": "檢查並修復我的本地 {{family}} 模型設定 {{profile}}。檢查環境、模型元件、自訂節點與工作流程，說明修復方案，等我確認後再修改，並以小規模生成測試驗證。 Use openh3_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
+      "install-other": "幫我為 {{family}} 安裝其他版本或量化方案。先檢查硬體與已有設定，提出獨立設定、固定來源與驗證方案，等我確認後再安裝，並保留目前可用設定。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
     },
     "operation": {
       "title": "ComfyUI 模型方案",
@@ -51,7 +51,7 @@
       "source": "來源",
       "unavailable": "本地模型服務暫時無法使用。",
       "completedHint": "驗證通過，可在本地模型選擇器中使用。",
-      "continueRequest": "我已確認此 ComfyUI 模型方案。請呼叫 aionui_comfy_install，action=start，operationId={{id}}，使用儲存的模型家族、版本、量化方案與參數繼續此已授權任務，不要建立其他安裝任務。",
+      "continueRequest": "我已確認此 ComfyUI 模型方案。請呼叫 openh3_comfy_install，action=start，operationId={{id}}，使用儲存的模型家族、版本、量化方案與參數繼續此已授權任務，不要建立其他安裝任務。",
       "states": {
         "awaiting-consent": "等待確認",
         "authorized": "已確認，等待助手",
@@ -128,7 +128,7 @@
       },
       "title": "安裝 MiniMax H3 並繼續創作",
       "open": "檢視安裝內容",
-      "continueRequest": "我已在安裝視窗確認模型授權及所需硬體選項。請呼叫 aionui_h3_install_video_model，action=start，operationId={{id}}，繼續原始影片生成請求，不要重新提交或變更參數。",
+      "continueRequest": "我已在安裝視窗確認模型授權及所需硬體選項。請呼叫 openh3_h3_install_video_model，action=start，operationId={{id}}，繼續原始影片生成請求，不要重新提交或變更參數。",
       "continue": "讓助手繼續",
       "cancelRequest": "取消創作請求"
     },

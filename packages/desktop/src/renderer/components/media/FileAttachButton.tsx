@@ -14,7 +14,8 @@ import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { FileService } from '@/renderer/services/FileService';
 import type { FileMetadata } from '@/renderer/services/FileService';
-import { emitter } from '@/renderer/utils/emitter';
+import { mergeLoadedSkillNames } from '@/common/chat/slash/mergeSlashCommands';
+import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -89,13 +90,18 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [mcpOpen, setMcpOpen] = useState(false);
 
-  const skillNames = loadedSkills ?? conversationContext?.loadedSkills ?? [];
+  const snapshotSkillNames = loadedSkills ?? conversationContext?.loadedSkills ?? [];
   const mcpStatuses = buildLoadedMcpStatuses(
     loadedMcpStatuses ?? conversationContext?.loadedMcpStatuses,
     conversationContext?.loadedMcpServers
   );
-  const { data: skillIndex } = useSWR(skillNames.length > 0 ? 'skills-index' : null, () =>
+  const { data: skillIndex, mutate: mutateSkillIndex } = useSWR('skills-index', () =>
     ipcBridge.fs.listAvailableSkills.invoke()
+  );
+  useAddEventListener('skills.catalog.refresh', () => void mutateSkillIndex(), [mutateSkillIndex]);
+  const skillNames = mergeLoadedSkillNames(
+    snapshotSkillNames,
+    (skillIndex ?? []).filter((skill) => skill.source === 'custom' || skill.is_custom).map((skill) => skill.name)
   );
   const descriptionByName = new Map((skillIndex ?? []).map((s) => [s.name, s.description]));
 

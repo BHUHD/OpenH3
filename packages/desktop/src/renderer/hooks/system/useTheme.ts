@@ -15,11 +15,26 @@ import { LIGHT_THEME_ID } from '@/common/theme/constants';
 import type { Theme } from '@/common/theme/types';
 import { useCallback, useEffect, useState } from 'react';
 
-const APPEARANCE_CACHE_KEY = '__aionui_theme';
+const APPEARANCE_CACHE_KEY = '__openh3_theme';
+const LEGACY_APPEARANCE_CACHE_KEY = '__aionui_theme';
 
 function cacheAppearance(theme: Theme): void {
   try {
     localStorage.setItem(APPEARANCE_CACHE_KEY, theme.appearance);
+    // Keep the legacy cache warm for an older client opened against the same
+    // profile. The OpenH3 key remains authoritative for this client.
+    localStorage.setItem(LEGACY_APPEARANCE_CACHE_KEY, theme.appearance);
+  } catch {
+    /* noop */
+  }
+}
+
+function migrateAppearanceCache(): void {
+  try {
+    if (localStorage.getItem(APPEARANCE_CACHE_KEY) === null) {
+      const legacy = localStorage.getItem(LEGACY_APPEARANCE_CACHE_KEY);
+      if (legacy !== null) localStorage.setItem(APPEARANCE_CACHE_KEY, legacy);
+    }
   } catch {
     /* noop */
   }
@@ -31,6 +46,7 @@ function getPersistedActiveId(): string {
 
 async function initActiveTheme(): Promise<Theme> {
   try {
+    migrateAppearanceCache();
     await configService.whenReady();
     const activeId = getPersistedActiveId();
     const userThemes = (configService.get('theme.userThemes') as Theme[]) ?? [];

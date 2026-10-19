@@ -13,7 +13,7 @@ import { useAgentLogos, resolveAgentAvatar } from '@/renderer/utils/model/agentL
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
 import type { AvailableBackend } from './types';
 import { filterAssistantEditorBackends } from './assistantUtils';
-import { AionInlineSearchInput } from '@/renderer/components/base';
+import { OpenH3InlineSearchInput } from '@/renderer/components/base';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
 import { Avatar, Select, Tag } from '@arco-design/web-react';
 import { Info, Robot } from '@icon-park/react';
@@ -469,7 +469,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
                 showAgentSearch ? (
                   <div>
                     <div className='px-6px pt-4px pb-6px' style={{ background: 'var(--color-bg-popup)' }}>
-                      <AionInlineSearchInput
+                      <OpenH3InlineSearchInput
                         value={agentQuery}
                         onChange={setAgentQuery}
                         placeholder={t('settings.assistantSearchAgent', { defaultValue: 'Search agents' })}

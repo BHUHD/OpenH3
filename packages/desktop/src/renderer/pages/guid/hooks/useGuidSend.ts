@@ -6,7 +6,12 @@
 
 import { ipcBridge } from '@/common';
 import { type ChatFileRef, chatFileRefPath } from '@/common/types/chatFile';
-import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
+import {
+  isBuiltinImageGenerationName,
+  isBuiltinVideoMediaName,
+  type IMcpServer,
+  type TProviderWithModel,
+} from '@/common/config/storage';
 import {
   creationMessage,
   creationSessionServers,
@@ -73,7 +78,7 @@ export type GuidSendResult = {
 };
 
 /**
- * Hook that manages the send logic for ACP and Aion CLI conversations.
+ * Hook that manages the send logic for ACP and OpenH3 Core conversations.
  */
 export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
   const {
@@ -203,14 +208,13 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const requiresCreationBinding = creationRequest?.source === 'local';
     const creationSnapshot = creationRequest ? { ...creationRequest, requestId: creationRequestId! } : undefined;
     if (creationRequest) {
-      const requiredName =
-        requiresCreationBinding || creationRequest.kind === 'video' ? 'aionui-video-media' : 'aionui-image-generation';
-      let required = availableMcpServers.find((server) => server.builtin && server.name === requiredName);
+      const wantsVideoMedia = requiresCreationBinding || creationRequest.kind === 'video';
+      const matchesRequired = (server: IMcpServer) =>
+        server.builtin &&
+        (wantsVideoMedia ? isBuiltinVideoMediaName(server.name) : isBuiltinImageGenerationName(server.name));
+      let required = availableMcpServers.find(matchesRequired);
       // First-load migrations can register the builtin tools after Guid mounts.
-      if (!required)
-        required = (await ensureBackendMcpCatalog()).allServers.find(
-          (server) => server.builtin && server.name === requiredName
-        );
+      if (!required) required = (await ensureBackendMcpCatalog()).allServers.find(matchesRequired);
       if (!required) {
         Message.error(t('guid.creation.toolsUnavailable'));
         return false;
@@ -333,7 +337,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         await navigate(`/conversation/${conversation.id}`);
         return true;
       } catch (error: unknown) {
-        console.error('Failed to create Aion CLI conversation:', error);
+        console.error('Failed to create OpenH3 Core conversation:', error);
         throw error;
       }
     }

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { mkdirSync as _mkdirSync, existsSync, readdirSync, readFileSync, renameSync } from 'fs';
+import { mkdirSync as _mkdirSync, constants, copyFileSync, existsSync, readdirSync, readFileSync } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { getPlatformServices } from '@/common/platform';
@@ -37,13 +37,38 @@ type ArchitectureType = 'x64' | 'arm64' | 'ia32' | 'arm';
 const nodePath = path;
 
 const STORAGE_PATH = {
+  config: 'openh3-config.txt',
+  chatMessage: 'openh3-chat-message.txt',
+  chat: 'openh3-chat.txt',
+  env: '.openh3-env',
+  assistants: 'assistants',
+  skills: 'skills',
+  cronSkills: 'cron-skills',
+};
+
+/** Keep the original files as upgrade backups. Never overwrite a canonical
+ * file, including when another process creates it during migration. */
+const LEGACY_STORAGE_PATH = {
   config: 'aionui-config.txt',
   chatMessage: 'aionui-chat-message.txt',
   chat: 'aionui-chat.txt',
   env: '.aionui-env',
-  assistants: 'assistants',
-  skills: 'skills',
-  cronSkills: 'cron-skills',
+} as const;
+
+const resolveStorageFile = (dir: string, canonicalName: string, legacyName: string): string => {
+  const canonicalPath = path.join(dir, canonicalName);
+  const legacyPath = path.join(dir, legacyName);
+  if (!existsSync(canonicalPath) && existsSync(legacyPath)) {
+    try {
+      _mkdirSync(path.dirname(canonicalPath), { recursive: true });
+      copyFileSync(legacyPath, canonicalPath, constants.COPYFILE_EXCL);
+    } catch {
+      // Another process may still hold the legacy file. Reading it is safer
+      // than silently starting with an empty store.
+      return existsSync(canonicalPath) ? canonicalPath : legacyPath;
+    }
+  }
+  return canonicalPath;
 };
 
 /** Legacy builtin-skills cache directory, cleaned up at startup after the
@@ -118,7 +143,11 @@ const WriteFile = async (file_path: string, data: string) => {
  *
  * The on-disk format stays base64(encodeURIComponent(JSON)) for backward compat.
  */
-const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: string) => {
+const JsonFileBuilder = <S extends object = Record<string, unknown>>(sourcePath: string | (() => string)) => {
+  // Resolve only on first access, after startup has copied legacy profiles.
+  // Pin that result so a store cannot switch backing files during a session.
+  let resolvedPath: string | undefined;
+  const getFilePath = () => (resolvedPath ??= typeof sourcePath === 'function' ? sourcePath() : sourcePath);
   // -- encoding helpers (unchanged, keeps backward compat) --
   const encode = (data: unknown) => btoa(encodeURIComponent(String(data)));
   const decode = (base64: string) => decodeURIComponent(atob(base64));
@@ -128,6 +157,7 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
 
   const loadSync = (): S => {
     try {
+      const file_path = getFilePath();
       const raw = readFileSync(file_path).toString();
       if (!raw || raw.trim() === '') return {} as S;
       const decoded = decode(raw);
@@ -153,6 +183,7 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
   let writeChain: Promise<unknown> = Promise.resolve();
 
   const persist = (): Promise<S> => {
+    const file_path = getFilePath();
     const data = cache ?? ({} as S);
     const encoded = encode(JSON.stringify(data));
     // Write once, branch the promise: writeChain stays resolved (so one
@@ -216,6 +247,7 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
         mkdirSync(dir);
       }
       // Backup: copy the file then remove original
+      const file_path = getFilePath();
       const doCopy = () => fs.copyFile(file_path, fullName).then(() => fs.rm(file_path, { recursive: true }));
       const backupOp = writeChain.then(doCopy);
       writeChain = backupOp.catch(() => {});
@@ -230,55 +262,61 @@ const JsonFileBuilder = <S extends object = Record<string, unknown>>(file_path: 
   };
 };
 
-const envFile = JsonFileBuilder<IEnvStorageRefer>(path.join(getHomePage(), STORAGE_PATH.env));
+const envFile = JsonFileBuilder<IEnvStorageRefer>(() =>
+  resolveStorageFile(getHomePage(), STORAGE_PATH.env, LEGACY_STORAGE_PATH.env)
+);
 
-const dirConfig = envFile.getSync('aionui.dir');
+// Prefer the canonical record while retaining the legacy key for existing
+// profiles. The value is read once during bootstrap, matching the previous
+// storage behavior and avoiding a path switch halfway through startup.
+const getDirConfig = () => envFile.getSync('openh3.dir') ?? envFile.getSync('aionui.dir');
 
-const cacheDir = dirConfig?.cacheDir || getHomePage();
+let resolvedCacheDir: string | undefined;
+const getCacheDir = () => (resolvedCacheDir ??= getDirConfig()?.cacheDir || getHomePage());
 
-const configFile = JsonFileBuilder<ILegacyConfigStorageRefer>(path.join(cacheDir, STORAGE_PATH.config));
+const configFile = JsonFileBuilder<ILegacyConfigStorageRefer>(() =>
+  resolveStorageFile(getCacheDir(), STORAGE_PATH.config, LEGACY_STORAGE_PATH.config)
+);
 type ConversationHistoryData = Record<string, TMessage[]>;
 
-const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(path.join(cacheDir, STORAGE_PATH.chatMessage));
-const _chatFile = JsonFileBuilder<IChatConversationRefer>(path.join(cacheDir, STORAGE_PATH.chat));
+const _chatMessageFile = JsonFileBuilder<ConversationHistoryData>(() =>
+  resolveStorageFile(getCacheDir(), STORAGE_PATH.chatMessage, LEGACY_STORAGE_PATH.chatMessage)
+);
+const _chatFile = JsonFileBuilder<IChatConversationRefer>(() =>
+  resolveStorageFile(getCacheDir(), STORAGE_PATH.chat, LEGACY_STORAGE_PATH.chat)
+);
 
 const chatFile = _chatFile;
 
 const buildMessageListStorage = (conversation_id: string, dir: string) => {
   const historyDir = path.join(dir, 'openh3-chat-history');
-  const legacyHistoryDir = path.join(dir, 'aionui-chat-history');
-  let activeHistoryDir = historyDir;
-  if (!existsSync(historyDir) && existsSync(legacyHistoryDir)) {
-    try {
-      renameSync(legacyHistoryDir, historyDir);
-    } catch {
-      // Keep reading the legacy history when another process still owns it.
-      activeHistoryDir = legacyHistoryDir;
-    }
-  }
-  const fullName = path.join(activeHistoryDir, conversation_id + '.txt');
-  if (!existsSync(fullName)) {
-    mkdirSync(activeHistoryDir);
-  }
-  return JsonFileBuilder<TMessage[]>(path.join(activeHistoryDir, conversation_id + '.txt'));
+  mkdirSync(historyDir);
+  return JsonFileBuilder<TMessage[]>(() =>
+    resolveStorageFile(
+      dir,
+      path.join('openh3-chat-history', conversation_id + '.txt'),
+      path.join('aionui-chat-history', conversation_id + '.txt')
+    )
+  );
 };
 
-const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string) => {
+const conversationHistoryProxy = (options: typeof _chatMessageFile, directory: () => string) => {
   return {
     ...options,
     async set(key: string, data: TMessage[]) {
       const conversation_id = key;
-      const storage = buildMessageListStorage(conversation_id, dir);
+      const storage = buildMessageListStorage(conversation_id, directory());
       return await storage.setJson(data);
     },
     async get(key: string): Promise<TMessage[]> {
       const conversation_id = key;
-      const storage = buildMessageListStorage(conversation_id, dir);
+      const storage = buildMessageListStorage(conversation_id, directory());
       const data = await storage.toJson();
       if (Array.isArray(data)) return data;
       return [];
     },
     backup(conversation_id: string) {
+      const dir = directory();
       const storage = buildMessageListStorage(conversation_id, dir);
       const historyDir = path.join(dir, 'openh3-chat-history');
       const activeHistoryDir = existsSync(historyDir) ? historyDir : path.join(dir, 'aionui-chat-history');
@@ -287,14 +325,14 @@ const conversationHistoryProxy = (options: typeof _chatMessageFile, dir: string)
   };
 };
 
-const chatMessageFile = conversationHistoryProxy(_chatMessageFile, cacheDir);
+const chatMessageFile = conversationHistoryProxy(_chatMessageFile, getCacheDir);
 
 /**
  * 获取助手规则目录路径
  * Get assistant rules directory path
  */
 const getAssistantsDir = () => {
-  return path.join(cacheDir, STORAGE_PATH.assistants);
+  return path.join(getCacheDir(), STORAGE_PATH.assistants);
 };
 
 /**
@@ -302,7 +340,7 @@ const getAssistantsDir = () => {
  * Get skills scripts directory path
  */
 const getSkillsDir = () => {
-  return path.join(cacheDir, STORAGE_PATH.skills);
+  return path.join(getCacheDir(), STORAGE_PATH.skills);
 };
 
 /**
@@ -310,7 +348,7 @@ const getSkillsDir = () => {
  * Each cron job gets its own subdirectory: {cronSkillsDir}/{job_id}/SKILL.md
  */
 const getCronSkillsDir = () => {
-  return path.join(cacheDir, STORAGE_PATH.cronSkills);
+  return path.join(getCacheDir(), STORAGE_PATH.cronSkills);
 };
 
 /**
@@ -319,7 +357,7 @@ const getCronSkillsDir = () => {
  * corpus. Failures are swallowed — at worst a stale copy lingers on disk.
  */
 const cleanupLegacyBuiltinSkillsDir = () => {
-  const legacyDir = path.join(cacheDir, LEGACY_BUILTIN_SKILLS_DIR);
+  const legacyDir = path.join(getCacheDir(), LEGACY_BUILTIN_SKILLS_DIR);
   if (!existsSync(legacyDir)) return;
   fs.rm(legacyDir, { recursive: true, force: true })
     .then(() => console.log('[OpenH3] Cleaned up legacy builtin-skills cache'))
@@ -331,8 +369,8 @@ const cleanupLegacyBuiltinSkillsDir = () => {
 /**
  * Ensure user-facing config directories exist. Built-in assistant rules and
  * skill files are now owned by the backend (see
- * `crates/aionui-app/assets/builtin-assistants/` and
- * `crates/aionui-app/assets/builtin-skills/`) — neither is synced from
+ * `crates/openh3-app/assets/builtin-assistants/` and
+ * `crates/openh3-app/assets/builtin-skills/`) — neither is synced from
  * renderer resources anymore.
  */
 const ensureAssistantDirs = async (): Promise<void> => {
@@ -392,7 +430,7 @@ const initStorage = async () => {
   mark('4. MCP config initialization skipped');
 
   // 5. Ensure assistant-related directories exist. Built-in assistant records
-  //    now live in the backend SQLite catalog (see aionui-assistant crate) and
+  //    now live in the backend SQLite catalog (see openh3-assistant crate) and
   //    are no longer seeded into ConfigStorage. User-authored rule md files
   //    continue to live under `{cacheDir}/assistants/` until the one-shot
   //    migration (T3b) imports them into the backend.
@@ -440,11 +478,12 @@ export const ProcessChatMessage = chatMessageFile;
 export const ProcessEnv = envFile;
 
 export const getSystemDir = () => {
+  const dirConfig = getDirConfig();
   // electron-log writes to the platform-standard logs directory
   const logDir = dirConfig?.logDir || getPlatformServices().paths.getLogsDir();
 
   return {
-    cacheDir: cacheDir,
+    cacheDir: getCacheDir(),
     // getDataPath() returns CLI-safe path (symlink on macOS) to avoid spaces
     // getDataPath() 返回 CLI 安全路径（macOS 上的符号链接）以避免空格问题
     workDir: dirConfig?.workDir || getDataPath(),

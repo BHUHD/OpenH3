@@ -11,14 +11,20 @@ import { ipcBridge } from '@/common';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import { shouldEnableAssistantByDefault } from '@/common/types/agent/assistantDefaults';
 import type { ImageGenerationModelSetting } from '@/common/config/clientSettings';
-import { BUILTIN_BROWSER_MCP_NAME } from '@/common/config/constants';
+import { BUILTIN_BROWSER_MCP_NAME, isBuiltinBrowserMcpName } from '@/common/config/constants';
 import {
   removeImageGenerationEnvKeys,
   resolveImageGenerationMcpEnv,
   type ImageGenerationMcpEnvResolveResult,
 } from '@/common/config/imageGenerationMcpEnv';
-import { BUILTIN_IMAGE_GEN_NAME, type IMcpServer, type IProvider } from '@/common/config/storage';
-import { BUILTIN_VIDEO_MEDIA_NAME } from '../resources/builtinMcp/constants';
+import {
+  BUILTIN_IMAGE_GEN_NAME,
+  BUILTIN_VIDEO_MEDIA_NAME,
+  isBuiltinImageGenerationName,
+  isBuiltinVideoMediaName,
+  type IMcpServer,
+  type IProvider,
+} from '@/common/config/storage';
 import { getBuiltinMcpScriptPath, type ProcessConfig as ProcessConfigType } from './initStorage';
 import { migrateAssistantsToBackend } from './migrateAssistants';
 import { provisionVideoProvider, DEFAULT_VIDEO_GATEWAY_URL } from './videoProviderPreset';
@@ -351,14 +357,22 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
   const imageConfigSource = resolveImageGenerationMigrationConfigSource(backendPrefs, fileImageConfig);
   const existing = await mcpService.listServers.invoke();
   const existingByName = new Map((existing ?? []).map((server) => [server.name, server]));
-  const existingImageServer = existingByName.get(BUILTIN_IMAGE_GEN_NAME);
+  const existingImageServer = existing?.find((server) => isBuiltinImageGenerationName(server.name));
   const existingImageEnv =
     existingImageServer?.transport.type === 'stdio' ? existingImageServer.transport.env : undefined;
   const imageEnvResolution = resolveImageGenerationMcpEnv(imageConfig, providers, existingImageEnv);
   logImageGenerationEnvResolution(imageEnvResolution, 'bootstrap');
   const imageServer = buildBuiltinImageGenerationServer(imageEnvResolution, imageConfig);
   const defaultServers = buildDefaultMcpServers();
-  const missing = [...defaultServers, imageServer].filter((server) => !existingByName.has(server.name));
+  const hasBuiltinServer = (server: McpImportServer) =>
+    existing?.some((candidate) =>
+      server.name === BUILTIN_IMAGE_GEN_NAME
+        ? isBuiltinImageGenerationName(candidate.name)
+        : server.name === BUILTIN_VIDEO_MEDIA_NAME
+          ? isBuiltinVideoMediaName(candidate.name)
+          : candidate.name === server.name
+    );
+  const missing = [...defaultServers, imageServer].filter((server) => !hasBuiltinServer(server));
   let imageServerUpdated = false;
 
   if (missing.length > 0) {
@@ -427,6 +441,8 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
       await mcpService.updateServer.invoke({
         id: existingImageServer.id,
         data: {
+          name: BUILTIN_IMAGE_GEN_NAME,
+          builtin: true,
           transport: updatedTransport,
           original_json,
         },
@@ -439,6 +455,17 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
       existingImageServer.id,
       imageEnvResolution.reason
     );
+  }
+
+  // Rename legacy built-in media records in place. The server id, enabled
+  // state, transport and user settings remain intact, so existing sessions
+  // continue to resolve while new records use only the OpenH3 name.
+  const existingVideoServer = existing?.find((server) => isBuiltinVideoMediaName(server.name));
+  if (existingVideoServer && existingVideoServer.name !== BUILTIN_VIDEO_MEDIA_NAME) {
+    await mcpService.updateServer.invoke({
+      id: existingVideoServer.id,
+      data: { name: BUILTIN_VIDEO_MEDIA_NAME, builtin: true },
+    });
   }
 
   /**
@@ -456,7 +483,7 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
    * is decided by name, it is never re-inserted, leaving the browser tools broken with
    * no self-heal. Reconcile against the real path on every startup instead.
    */
-  const existingBrowserServer = existing.find((server) => server.name === BUILTIN_BROWSER_MCP_NAME);
+  const existingBrowserServer = existing.find((server) => isBuiltinBrowserMcpName(server.name));
   let browserServerUpdated = false;
   if (existingBrowserServer) {
     const desiredBrowserServer = buildBuiltinBrowserServer();
@@ -475,9 +502,18 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
       await mcpService.updateServer.invoke({
         id: existingBrowserServer.id,
         data: {
+          name: BUILTIN_BROWSER_MCP_NAME,
+          builtin: true,
           transport: desiredBrowserServer.transport,
           original_json: desiredBrowserServer.original_json,
         },
+      });
+      browserServerUpdated = true;
+    } else if (existingBrowserServer.name !== BUILTIN_BROWSER_MCP_NAME) {
+      // Rename legacy records in place without touching enabled state or user data.
+      await mcpService.updateServer.invoke({
+        id: existingBrowserServer.id,
+        data: { name: BUILTIN_BROWSER_MCP_NAME, builtin: true },
       });
       browserServerUpdated = true;
     }

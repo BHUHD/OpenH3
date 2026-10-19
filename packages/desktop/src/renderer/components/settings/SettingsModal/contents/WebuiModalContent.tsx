@@ -8,8 +8,8 @@ import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { shell, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import { configService } from '@/common/config/configService';
-import AionModal from '@/renderer/components/base/AionModal';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
+import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
 import { useTalkToButler } from '@/renderer/hooks/assistant/useTalkToButler';
 import ChannelDingTalkLogo from '@/renderer/assets/channel-logos/dingtalk.svg';
 import ChannelDiscordLogo from '@/renderer/assets/channel-logos/discord.svg';
@@ -558,20 +558,20 @@ const WebuiModalContent: React.FC = () => {
   if (!isDesktop) {
     return (
       <div className='flex flex-col h-full w-full'>
-        <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+        <OpenH3ScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
           <div className='space-y-16px'>
             <h2 className='text-20px font-500 text-t-primary m-0'>{t('settings.channels', 'Channels')}</h2>
             <Suspense fallback={<div className='text-13px text-t-secondary'>{t('common.loading')}</div>}>
               <ChannelModalContentLazy />
             </Suspense>
           </div>
-        </AionScrollArea>
+        </OpenH3ScrollArea>
       </div>
     );
   }
 
   const webuiPanel = (
-    <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+    <OpenH3ScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
       <div className='space-y-12px px-[12px] md:px-[28px]'>
         {/* 标题 / Title */}
         <h2 className='text-20px font-500 text-t-primary m-0'>WebUI</h2>
@@ -797,7 +797,7 @@ const WebuiModalContent: React.FC = () => {
           )}
         </div>
       </div>
-    </AionScrollArea>
+    </OpenH3ScrollArea>
   );
 
   return (
@@ -858,7 +858,7 @@ const WebuiModalContent: React.FC = () => {
         </div>
       )}
 
-      <AionModal
+      <OpenH3Modal
         visible={setUsernameModalVisible}
         onCancel={() => setSetUsernameModalVisible(false)}
         onOk={handleSetNewUsername}
@@ -908,10 +908,10 @@ const WebuiModalContent: React.FC = () => {
             <Input placeholder={t('settings.webui.newUsernamePlaceholder')} />
           </Form.Item>
         </Form>
-      </AionModal>
+      </OpenH3Modal>
 
       {/* 设置新密码弹窗 / Set New Password Modal */}
-      <AionModal
+      <OpenH3Modal
         visible={setPasswordModalVisible}
         onCancel={() => setSetPasswordModalVisible(false)}
         onOk={handleSetNewPassword}
@@ -949,7 +949,7 @@ const WebuiModalContent: React.FC = () => {
             <Input.Password placeholder={t('settings.webui.confirmPasswordPlaceholder')} />
           </Form.Item>
         </Form>
-      </AionModal>
+      </OpenH3Modal>
     </div>
   );
 };

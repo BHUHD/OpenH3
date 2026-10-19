@@ -20,7 +20,7 @@ type ButlerDiagnoseButtonProps = {
 /**
  * Inline "ask the Butler" chip shown next to FeedbackButton on error surfaces.
  * Instead of filing a report, it routes the user to the home chat with the
- * AionUi Butler selected and a diagnosis prompt (including the error text)
+ * OpenH3 Butler selected and a diagnosis prompt (including the error text)
  * pre-filled — the same flow as the report modal's "Solve via chat" action.
  */
 const ButlerDiagnoseButton: React.FC<ButlerDiagnoseButtonProps> = ({ errorText, className }) => {

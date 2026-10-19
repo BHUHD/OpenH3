@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { executeImageGeneration } from '@/common/chat/imageGenCore';
+import { imageUrlToDataUrl } from '@/common/chat/document/creation/imagesApi';
 import type { TProviderWithModel } from '@/common/config/storage';
 
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
@@ -100,5 +101,39 @@ describe('creation images API', () => {
     reply = { data: [] };
     const result = await executeImageGeneration({ prompt: 'a cat' }, provider, workspace);
     expect(result.success).toBe(false);
+  });
+
+  it('rejects malformed base64 instead of writing a fake image file', async () => {
+    reply = { data: [{ b64_json: 'not-an-image' }] };
+    const result = await executeImageGeneration({ prompt: 'a cat' }, provider, workspace);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('base64');
+  });
+
+  it('rejects image URLs that embed credentials before downloading', async () => {
+    await expect(imageUrlToDataUrl('http://user:secret@127.0.0.1/image.png')).rejects.toThrow(
+      'Image URL must not contain credentials'
+    );
+    expect(requests).toHaveLength(0);
+  });
+
+  it('does not follow redirects while downloading image results', async () => {
+    server.close();
+    server = createServer((req, res) => {
+      if (req.url === '/redirect') {
+        res.writeHead(302, { location: '/output.png' });
+        res.end();
+        return;
+      }
+      res.writeHead(200, { 'content-type': 'image/png' });
+      res.end(Buffer.from(png, 'base64'));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Missing test server port');
+
+    await expect(imageUrlToDataUrl(`http://127.0.0.1:${address.port}/redirect`)).rejects.toThrow(
+      'Image download failed'
+    );
   });
 });

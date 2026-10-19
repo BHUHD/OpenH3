@@ -53,8 +53,8 @@ WEB_CLI_FILES=()
 while IFS= read -r file; do
   WEB_CLI_FILES+=("$file")
 done < <(find "$ARTIFACTS_DIR" -type f \( \
-  -name "aionui-web-*.tar.gz" -o \
-  -name "aionui-web-*.tar.gz.sha256" \
+  -name "openh3-web-*.tar.gz" -o \
+  -name "openh3-web-*.tar.gz.sha256" \
 \) | sort)
 
 WEB_CLI_DUPS=$(for file in "${WEB_CLI_FILES[@]}"; do basename "$file"; done | sort | uniq -d || true)
@@ -159,7 +159,7 @@ WEB_PLATFORMS=(
 )
 
 for plat in "${WEB_PLATFORMS[@]}"; do
-  tarball="aionui-web-${VERSION}-${plat}.tar.gz"
+  tarball="openh3-web-${VERSION}-${plat}.tar.gz"
   if [ ! -f "$OUTPUT_DIR/$tarball" ]; then
     echo "::error::Missing web-cli tarball: $tarball"
     MISSING=1

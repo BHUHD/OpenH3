@@ -8,7 +8,9 @@ const {
   verifyModuleBinary,
   getModulesToRebuild,
 } = require('./rebuildNativeModules');
-const { verifyBundledAioncoreResources } = require('../packages/shared-scripts/src/verify-bundled-aioncore-resources');
+const {
+  verifyBundledOpenH3CoreResources,
+} = require('../packages/shared-scripts/src/verify-bundled-openh3-core-resources');
 
 /**
  * afterPack hook for electron-builder
@@ -23,7 +25,7 @@ function resolveResourcesDir(electronPlatformName, appOutDir, packager) {
 }
 
 function verifyBundledResources(resourcesDir, electronPlatformName, targetArch) {
-  const result = verifyBundledAioncoreResources({
+  const result = verifyBundledOpenH3CoreResources({
     resourcesDir,
     electronPlatformName,
     targetArch,

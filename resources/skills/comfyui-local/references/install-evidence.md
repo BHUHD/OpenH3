@@ -8,7 +8,7 @@ For every model, encoder, VAE, LoRA, node repository, Python package, and workfl
 
 - artifact class and role in the API graph;
 - authoritative repository, immutable revision/path, license, expected bytes, and SHA-256;
-- candidate transports and their batch number in `aionui_comfy_environment.sources` (no more than 12 URLs per call);
+- candidate transports and their batch number in `openh3_comfy_environment.sources` (no more than 12 URLs per call);
 - per-source reachability, redirect, Range/content-length result, and mirror identity/digest evidence;
 - local path, resume receipt, and post-download size/hash result;
 - loader/node schema compatibility and the profile/workflow fingerprint.

@@ -44,6 +44,7 @@ import { chatFileRefPath, uploadFileRef } from '@/common/types/chatFile';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import { appendSpeechTranscript } from '@/renderer/hooks/system/useSpeechInput';
 import { useLiveTranscriptInsertion } from '@/renderer/hooks/system/useLiveTranscriptInsertion';
+import { useAddEventListener } from '@/renderer/utils/emitter';
 import { ArrowRightUp } from '@icon-park/react';
 import { Button, ConfigProvider } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -101,8 +102,8 @@ const GuidPage: React.FC = () => {
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [guidSelectedMcpServerIds, setGuidSelectedMcpServerIds] = useState<string[] | undefined>(undefined);
 
-  useEffect(() => {
-    ipcBridge.fs.listAvailableSkills
+  const refreshSkills = useCallback(() => {
+    void ipcBridge.fs.listAvailableSkills
       .invoke()
       .then((availableSkills) => {
         setAllSkills(
@@ -116,6 +117,9 @@ const GuidPage: React.FC = () => {
       })
       .catch(() => setAllSkills([]));
   }, []);
+
+  useEffect(refreshSkills, [refreshSkills]);
+  useAddEventListener('skills.catalog.refresh', refreshSkills, [refreshSkills]);
 
   useEffect(() => {
     void ensureBackendMcpCatalog()

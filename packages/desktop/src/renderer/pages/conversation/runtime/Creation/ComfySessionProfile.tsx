@@ -3,7 +3,7 @@ import { Button, Select } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import useSWR, { mutate } from 'swr';
 import { ipcBridge } from '@/common';
-import type { ISessionMcpServer, TChatConversation } from '@/common/config/storage';
+import { isBuiltinVideoMediaName, type ISessionMcpServer, type TChatConversation } from '@/common/config/storage';
 import { creationSessionServers, type CreationRequest } from '@/common/chat/document/creation/creation';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
 import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
@@ -67,9 +67,9 @@ function LocalProfileSelector({ conversation, snapshot }: { conversation: TChatC
     try {
       if (legacy) {
         let servers = extra.session_mcp_servers ?? [];
-        if (!servers.some((server) => server.name === 'aionui-video-media')) {
+        if (!servers.some((server) => isBuiltinVideoMediaName(server.name))) {
           const required = (await ensureBackendMcpCatalog()).allServers.find(
-            (server) => server.builtin && server.name === 'aionui-video-media'
+            (server) => server.builtin && isBuiltinVideoMediaName(server.name)
           );
           if (!required) throw new Error(t('guid.creation.toolsUnavailable'));
           servers = [...servers, toSessionMcpServer(required)];

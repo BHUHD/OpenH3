@@ -1,3 +1,4 @@
+import { registerProductTool } from './toolAliases';
 import { h3AgentSnapshot, h3GenerationSpecSchema, type H3Job } from '@/common/chat/document/h3Job';
 import {
   comfyGenerationInputSchema,
@@ -11,7 +12,9 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { BUILTIN_VIDEO_MEDIA_NAME } from './constants';
 
-const port = () => Number(process.env.AIONUI_MEDIA_PORT ?? 33002);
+const envValue = (canonical: string, legacy: string): string | undefined =>
+  process.env[canonical] ?? process.env[legacy];
+const port = () => Number(envValue('OPENH3_MEDIA_PORT', 'AIONUI_MEDIA_PORT') ?? 33002);
 class MediaServiceError extends Error {
   constructor(
     message: string,
@@ -41,7 +44,7 @@ async function call(path: string, init?: RequestInit): Promise<unknown> {
 }
 
 function creationRequestId(): string {
-  const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+  const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
   if (!requestId?.trim()) throw new Error('CREATION_REQUEST_CONTEXT_MISSING');
   return requestId;
 }
@@ -59,12 +62,12 @@ function toolError(prefix: string, error: unknown) {
 }
 
 async function guardLegacyH3Submission(): Promise<void> {
-  const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+  const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
   if (!requestId?.trim()) return;
   const result = (await call(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as { selection?: unknown };
   if (result.selection) {
     throw new Error(
-      'COMFY_REGISTERED_PROFILE_REQUIRED: use comfyui-local and aionui_comfy_install/aionui_comfy_generate for the current selection; historical H3 tools are for earlier jobs'
+      'COMFY_REGISTERED_PROFILE_REQUIRED: use comfyui-local and openh3_comfy_install/openh3_comfy_generate for the current selection; historical H3 tools are for earlier jobs'
     );
   }
   throw new Error('COMFY_SELECTION_CONTEXT_MISSING: inspect the current creation selection before submitting');
@@ -75,7 +78,7 @@ async function main() {
     { name: BUILTIN_VIDEO_MEDIA_NAME, version: '1.0.0' },
     {
       instructions:
-        'Use the comfyui-local skill for local H3, Qwen-Edit, and Z-Image environment selection, installation, repair, and generation. Respect the current registered profile and session selection. aionui_comfy_install request shows a complete pinned plan for UI consent; only start after the UI authorizes that operation. Never authorize on behalf of the user. Generate only with a verified registered profile through aionui_comfy_generate; generation needs no installation plan. The client displays operations and job outputs and monitors them independently. End your turn after submission; do not repeatedly poll or resubmit. Historical H3 tools remain available for existing jobs.',
+        'Use the comfyui-local skill for local H3, Qwen-Edit, and Z-Image environment selection, installation, repair, and generation. Respect the current registered profile and session selection. openh3_comfy_install request shows a complete pinned plan for UI consent; only start after the UI authorizes that operation. Never authorize on behalf of the user. Generate only with a verified registered profile through openh3_comfy_generate; generation needs no installation plan. The client displays operations and job outputs and monitors them independently. End your turn after submission; do not repeatedly poll or resubmit. Historical H3 tools remain available for existing jobs.',
     }
   );
   const spec = {
@@ -85,8 +88,9 @@ async function main() {
     startSeconds: z.number().nonnegative().optional(),
     endSeconds: z.number().positive().optional(),
   };
-  server.tool(
-    'aionui_comfy_environment',
+  registerProductTool(
+    server,
+    'openh3_comfy_environment',
     'Inspect the actual local OS, hardware, Python, accelerator, kernels, network, and selected ComfyUI environment before planning installation or repair. Optional root/python/baseUrl select the runtime; pass exact immutable model or workflow URLs as sources to test reachability, HTTP Range support, and content length without downloading. Failed or incomplete probes require diagnosis; they do not prove unsupported hardware. This tool does not install or download anything.',
     {
       root: comfyProfileSchema.shape.environment.shape.root.optional(),
@@ -109,8 +113,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_comfy_profiles',
+  registerProductTool(
+    server,
+    'openh3_comfy_profiles',
     'List registered local profiles and the authoritative current session selection; register a discovered pinned component set; or revalidate with a required representative smokeInput. Revalidation submits a background validation job and returns comfyJobId, job, and validation:true; the UI monitors it. Registration never proves verification. Prefer an existing compatible verified profile and keep a component set atomic. No repeated full scans on the normal generation path.',
     {
       action: z.enum(['list', 'register', 'revalidate']),
@@ -121,7 +126,7 @@ async function main() {
     async ({ action, profile, profileId, smokeInput }) => {
       try {
         if (action === 'list') {
-          const optionalRequestId = process.env.AIONUI_CREATION_REQUEST_ID?.trim();
+          const optionalRequestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID')?.trim();
           const query = optionalRequestId ? `?${new URLSearchParams({ requestId: optionalRequestId })}` : '';
           return toolResult(await call(`/api/comfy/profiles${query}`));
         }
@@ -143,8 +148,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_comfy_install',
+  registerProductTool(
+    server,
+    'openh3_comfy_install',
     'Prepare or manage a full pinned local ComfyUI installation/repair plan. request returns comfyOperationId and a reviewable UI card without installing. The user must authorize that exact plan in the application UI before start; the LLM cannot authorize. start/status/cancel require the same operationId and current request context. No original generation spec is required. The UI follows progress; end your turn after request/start.',
     {
       action: z.enum(['request', 'start', 'status', 'cancel']),
@@ -172,8 +178,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_comfy_generate',
+  registerProductTool(
+    server,
+    'openh3_comfy_generate',
     'Generate an image or video through the currently selected verified registered local ComfyUI profile. Pass profileId and input only; no install plan or repeated environment scan. The service checks the session selection, family, intent, profile state, and input bindings. Preserve the chosen model and source; never silently switch models or cloud. Returns comfyJobId for the client to monitor; end your turn after submission.',
     { profileId: z.string().min(1), input: comfyGenerationInputSchema },
     async ({ profileId, input }) => {
@@ -188,8 +195,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_comfy_job_status',
+  registerProductTool(
+    server,
+    'openh3_comfy_job_status',
     'Get one snapshot of an existing local ComfyUI image/video job and its output artifacts. Use the saved jobId; a disconnection does not imply the job stopped. The UI monitors ongoing jobs, so do not poll repeatedly or automatically submit a replacement.',
     { jobId: z.string().min(1) },
     async ({ jobId }) => {
@@ -203,8 +211,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_comfy_cancel_job',
+  registerProductTool(
+    server,
+    'openh3_comfy_cancel_job',
     'Cancel an existing local ComfyUI image/video job when the user requests cancellation. Do not resubmit it automatically or interrupt unrelated jobs.',
     { jobId: z.string().min(1) },
     async ({ jobId }) => {
@@ -219,8 +228,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_install_video_model',
+  registerProductTool(
+    server,
+    'openh3_h3_install_video_model',
     'Prepare an installation card after the user chooses to install local MiniMax H3. request preserves the generation spec and returns creationOperationId. The user accepts terms/hardware in the existing installer UI; never accept on their behalf. start requires that saved UI confirmation and the same operationId. The background service installs then continues this original request automatically. End your turn after either action.',
     {
       action: z.enum(['request', 'start']),
@@ -230,9 +240,11 @@ async function main() {
     async ({ action, spec, operationId }) => {
       try {
         await guardLegacyH3Submission();
-        if (process.env.AIONUI_CREATION_SOURCE === 'cloud') throw new Error('CREATION_LOCAL_MODEL_NOT_SELECTED');
-        if (process.env.AIONUI_CREATION_KIND === 'image') throw new Error('CREATION_VIDEO_NOT_SELECTED');
-        const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
+        if (envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') === 'cloud')
+          throw new Error('CREATION_LOCAL_MODEL_NOT_SELECTED');
+        if (envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') === 'image')
+          throw new Error('CREATION_VIDEO_NOT_SELECTED');
+        const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
         if (!requestId) throw new Error('CREATION_REQUEST_CONTEXT_MISSING');
         if (action === 'request' && !spec) throw new Error('CREATION_GENERATION_SPEC_REQUIRED');
         if (action === 'start' && !operationId) throw new Error('CREATION_OPERATION_REQUIRED');
@@ -265,8 +277,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_video_process',
+  registerProductTool(
+    server,
+    'openh3_video_process',
     'Process a local video according to the user request. Use probe to inspect/decode, extract-frame for a still image, extract-audio for an audio track, or transcode for a new video copy. Never overwrite the source file.',
     spec,
     async (input) => {
@@ -290,8 +303,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_video_job_status',
+  registerProductTool(
+    server,
+    'openh3_video_job_status',
     'Query the status and progress of a previously created video processing job.',
     { jobId: z.string().min(1) },
     async ({ jobId }) => {
@@ -314,8 +328,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_generate_video',
+  registerProductTool(
+    server,
+    'openh3_h3_generate_video',
     'Generate a short video with the local MiniMax H3 runtime. Leave mode as auto: no references routes to text-to-video; one image routes to first-frame video; two images route to first-and-last-frame video; three or more images, or any video/audio reference, routes to multimodal Ref2VA. The tool queues a job and returns its id; end your turn after submission. The UI monitors the job independently; do not poll in a loop or automatically resubmit failures.',
     {
       prompt: z.string().min(1).max(20_000),
@@ -341,7 +356,7 @@ async function main() {
     async (input) => {
       try {
         await guardLegacyH3Submission();
-        if (process.env.AIONUI_CREATION_SOURCE === 'cloud')
+        if (envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') === 'cloud')
           return {
             isError: true,
             content: [
@@ -351,7 +366,8 @@ async function main() {
               },
             ],
           };
-        if (process.env.AIONUI_CREATION_KIND === 'image') throw new Error('CREATION_VIDEO_NOT_SELECTED');
+        if (envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') === 'image')
+          throw new Error('CREATION_VIDEO_NOT_SELECTED');
         const result = await call('/api/h3/jobs', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -371,8 +387,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_runtime_status',
+  registerProductTool(
+    server,
+    'openh3_h3_runtime_status',
     'Inspect whether the local offline MiniMax H3 runtime, model assets, and pinned ComfyUI nodes are ready before generating.',
     {},
     async () => {
@@ -391,8 +408,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_queue_status',
+  registerProductTool(
+    server,
+    'openh3_h3_queue_status',
     'Inspect the local ComfyUI queue before starting or diagnosing a long H3 generation. This is read-only.',
     {},
     async () => {
@@ -406,8 +424,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_free_memory',
+  registerProductTool(
+    server,
+    'openh3_h3_free_memory',
     'Ask the local ComfyUI runtime to release cached model memory before a new H3 job. It never interrupts a running job.',
     { unloadModels: z.boolean().optional() },
     async ({ unloadModels }) => {
@@ -434,8 +453,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_acceleration_status',
+  registerProductTool(
+    server,
+    'openh3_h3_acceleration_status',
     'Inspect the optional H3 acceleration backend. The product safely falls back to dense attention when Triton or compatible Python development files are unavailable.',
     {},
     async () => {
@@ -457,8 +477,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_job_status',
+  registerProductTool(
+    server,
+    'openh3_h3_job_status',
     'Query a local MiniMax H3 generation job and its output resources. activity describes backend node execution, not overall completion. progress is not an overall percentage for running jobs. Report activity.value/max only as current-node progress; without activity say overall progress is unknown. An unchanged timestamp cannot prove the task is advancing or stuck. Cancel ends generation, not resumable pause. Respect stopPolling and nextAction: end your turn after this snapshot. Never automatically retry or submit a replacement for failed or remoteUncertain jobs.',
     { jobId: z.string().min(1) },
     async ({ jobId }) => {
@@ -481,8 +502,9 @@ async function main() {
       }
     }
   );
-  server.tool(
-    'aionui_h3_cancel_job',
+  registerProductTool(
+    server,
+    'openh3_h3_cancel_job',
     'Cancel a local H3 job or confirm remote termination for a failed remoteUncertain job. A cancellation acknowledgement alone does not prove termination. Do not loop on this tool.',
     { jobId: z.string().min(1) },
     async ({ jobId }) => {

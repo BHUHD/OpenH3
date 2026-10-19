@@ -22,6 +22,7 @@ type SpeechInputButtonProps = {
 };
 
 let activeSpeechInputOwner: symbol | null = null;
+const LEGACY_SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT = 'aionui:speech-to-text-config-changed';
 
 const SpeechMicIcon = () => (
   <svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' aria-hidden='true'>
@@ -137,10 +138,12 @@ const SpeechInputButton: React.FC<SpeechInputButtonProps> = ({ onLiveTranscript,
 
     void syncSpeechToTextEnabled();
     window.addEventListener(SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT, handleConfigChanged);
+    window.addEventListener(LEGACY_SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT, handleConfigChanged);
 
     return () => {
       cancelled = true;
       window.removeEventListener(SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT, handleConfigChanged);
+      window.removeEventListener(LEGACY_SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT, handleConfigChanged);
     };
   }, []);
 

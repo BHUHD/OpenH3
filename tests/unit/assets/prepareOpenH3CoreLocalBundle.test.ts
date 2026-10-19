@@ -8,17 +8,17 @@ const childProcess = require('node:child_process');
 const execute = vi.spyOn(childProcess, 'execFileSync').mockImplementation(() => {
   throw new Error('Unexpected external process for an explicit local bundle');
 });
-const { prepareAioncore } = require('../../../packages/shared-scripts/src/prepare-aioncore');
+const { prepareOpenH3Core } = require('../../../packages/shared-scripts/src/prepare-openh3-core');
 afterAll(() => execute.mockRestore());
 
-describe('prepare-aioncore local bundle input', () => {
+describe('prepare-openh3-core local bundle input', () => {
   it.each([
     { version: 'v0.2.2', inPlace: true },
     { version: 'latest', inPlace: true },
     { version: 'v0.2.2', inPlace: false },
   ])('uses the explicit local bundle for $version (inPlace: $inPlace)', ({ version, inPlace }) => {
     const tmp = mkdtempSync(join(tmpdir(), 'openh3-local-bundle-'));
-    const target = join(tmp, 'resources', 'bundled-aioncore', 'win32-x64');
+    const target = join(tmp, 'resources', 'bundled-openh3-core', 'win32-x64');
     const bundle = inPlace ? target : join(tmp, 'bundle');
     const managed = join(bundle, 'managed-resources');
     mkdirSync(join(managed, 'node', 'runtime'), { recursive: true });
@@ -37,14 +37,13 @@ describe('prepare-aioncore local bundle input', () => {
     process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR = bundle;
     execute.mockClear();
     try {
-      const result = prepareAioncore({ projectRoot: tmp, platform: 'win32', arch: 'x64', version });
+      const result = prepareOpenH3Core({ projectRoot: tmp, platform: 'win32', arch: 'x64', version });
       expect(result.sourceType).toBe('local-bundle');
-      for (const root of [bundle, target]) {
-        expect(readFileSync(join(root, 'aioncore.exe'), 'utf8')).toBe('verified-local-runtime');
-        expect(readFileSync(join(root, 'managed-resources', 'node', 'runtime', 'node.exe'), 'utf8')).toBe(
-          'bundled-node'
-        );
-      }
+      expect(readFileSync(join(bundle, 'aioncore.exe'), 'utf8')).toBe('verified-local-runtime');
+      expect(readFileSync(join(target, 'openh3-core.exe'), 'utf8')).toBe('verified-local-runtime');
+      expect(readFileSync(join(target, 'managed-resources', 'node', 'runtime', 'node.exe'), 'utf8')).toBe(
+        'bundled-node'
+      );
       expect(execute).not.toHaveBeenCalled();
     } finally {
       if (previous === undefined) delete process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR;
@@ -62,7 +61,7 @@ describe('prepare-aioncore local bundle input', () => {
     process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR = join(tmp, 'missing');
     execute.mockClear();
     try {
-      expect(() => prepareAioncore({ projectRoot: tmp, platform: 'win32', arch: 'x64', version: 'v0.2.2' })).toThrow(
+      expect(() => prepareOpenH3Core({ projectRoot: tmp, platform: 'win32', arch: 'x64', version: 'v0.2.2' })).toThrow(
         /Local backend bundle is incomplete or missing/
       );
       expect(readFileSync(join(bundle, 'aioncore.exe'), 'utf8')).toBe('previous-runtime');
@@ -85,7 +84,7 @@ describe('prepare-aioncore local bundle input', () => {
     process.env.AIONUI_BACKEND_LOCAL_BUNDLE_DIR = localBundle;
     try {
       expect(() =>
-        prepareAioncore({
+        prepareOpenH3Core({
           projectRoot,
           platform: 'win32',
           arch: 'x64',

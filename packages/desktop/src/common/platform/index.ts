@@ -9,7 +9,7 @@ let _services: IPlatformServices | null = null;
  * Centralised so that every call-site stays in sync.
  */
 export function getDevAppName(): string {
-  const isMultiInstance = process.env.AIONUI_MULTI_INSTANCE === '1';
+  const isMultiInstance = (process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1';
   return isMultiInstance ? 'OpenH3-Dev-2' : 'OpenH3-Dev';
 }
 
@@ -53,7 +53,7 @@ export function getPlatformServices(): IPlatformServices {
           const appDataDir = app.getPath('appData');
           const legacyName = app.isPackaged
             ? 'AionUi'
-            : process.env.AIONUI_MULTI_INSTANCE === '1'
+            : (process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1'
               ? 'AionUi-Dev-2'
               : 'AionUi-Dev';
           const legacyPath = path.join(appDataDir, legacyName);

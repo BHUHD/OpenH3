@@ -1,3 +1,4 @@
+import { registerProductTool } from './toolAliases';
 /**
  * @license
  * Copyright 2025 AionUi (aionui.com)
@@ -32,13 +33,20 @@ type CreationSelection = {
 };
 
 async function comfyRequest(endpoint: string, body?: unknown): Promise<unknown> {
-  const response = await fetch(`http://127.0.0.1:${Number(process.env.AIONUI_MEDIA_PORT ?? 33002)}${endpoint}`, {
-    ...(body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(45_000),
-  });
+  const response = await fetch(
+    `http://127.0.0.1:${Number(process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002)}${endpoint}`,
+    {
+      ...(body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(45_000),
+    }
+  );
   const data = await response.json();
   if (!response.ok) throw new Error((data as { error?: string }).error ?? `MEDIA_SERVICE_HTTP_${response.status}`);
   return data;
+}
+
+function envValue(canonical: string, legacy: string): string | undefined {
+  return process.env[canonical] ?? process.env[legacy];
 }
 
 async function localImageGeneration(
@@ -67,10 +75,10 @@ async function localImageGeneration(
 
 // Read provider config from environment variables
 function getProviderFromEnv(): TProviderWithModel | null {
-  const platform = process.env.AIONUI_IMG_PLATFORM;
-  const base_url = process.env.AIONUI_IMG_BASE_URL;
-  const api_key = process.env.AIONUI_IMG_API_KEY;
-  const model = process.env.AIONUI_IMG_MODEL;
+  const platform = envValue('OPENH3_IMG_PLATFORM', 'AIONUI_IMG_PLATFORM');
+  const base_url = envValue('OPENH3_IMG_BASE_URL', 'AIONUI_IMG_BASE_URL');
+  const api_key = envValue('OPENH3_IMG_API_KEY', 'AIONUI_IMG_API_KEY');
+  const model = envValue('OPENH3_IMG_MODEL', 'AIONUI_IMG_MODEL');
 
   if (!platform || !model) {
     return null;
@@ -92,103 +100,110 @@ async function main() {
     version: '1.0.0',
   });
 
-  server.tool(
-    'aionui_image_generation',
-    'Generate or edit images using the user-selected source and model. For a local creation session, use its currently selected verified registered ComfyUI image profile and the comfyui-local skill; this tool queues a generic ComfyUI job and returns comfyJobId. Local inputs must be local image paths. For cloud sessions, use the configured provider. Pass all user-provided image inputs. Never silently switch source/model or install a missing local profile; prepare installation separately through aionui_comfy_install and UI consent. The client monitors queued local jobs; end your turn after submission.',
-    {
-      prompt: z
-        .string()
-        .describe(
-          'The generation description or image-edit instruction. Preserve the requested local model and source image roles.'
-        ),
-      image_uris: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Optional: Array of paths to existing local image files or HTTP/HTTPS URLs to edit/modify. Examples: ["test.jpg", "https://example.com/img.png"]. For single image, use array format: ["test.jpg"]. Relative paths are resolved against the current working directory.'
-        ),
-    },
-    async ({ prompt, image_uris }) => {
-      const requestId = process.env.AIONUI_CREATION_REQUEST_ID;
-      let resolvedCloudSelection = false;
-      if (requestId?.trim()) {
-        try {
-          const result = (await comfyRequest(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as {
-            profiles: ComfyProfile[];
-            selection?: CreationSelection;
-          };
-          const selection = result.selection;
-          if (!selection) throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
-          if (selection.kind === 'video' || selection.family === 'h3') throw new Error('CREATION_IMAGE_NOT_SELECTED');
-          if (selection.intent !== 'generate') throw new Error('CREATION_GENERATION_NOT_SELECTED');
-          if (selection.source === 'local' || selection.family || selection.profileId) {
-            return await localImageGeneration(prompt, image_uris, requestId, result.profiles, selection);
+  const registerImageGenerationTool = (name: string) =>
+    registerProductTool(
+      server,
+      name,
+      'Generate or edit images using the user-selected source and model. For a local creation session, use its currently selected verified registered ComfyUI image profile and the comfyui-local skill; this tool queues a generic ComfyUI job and returns comfyJobId. Local inputs must be local image paths. For cloud sessions, use the configured provider. Pass all user-provided image inputs. Never silently switch source/model or install a missing local profile; prepare installation separately through openh3_comfy_install and UI consent. The client monitors queued local jobs; end your turn after submission.',
+      {
+        prompt: z
+          .string()
+          .describe(
+            'The generation description or image-edit instruction. Preserve the requested local model and source image roles.'
+          ),
+        image_uris: z
+          .array(z.string())
+          .optional()
+          .describe(
+            'Optional: Array of paths to existing local image files or HTTP/HTTPS URLs to edit/modify. Examples: ["test.jpg", "https://example.com/img.png"]. For single image, use array format: ["test.jpg"]. Relative paths are resolved against the current working directory.'
+          ),
+      },
+      async ({ prompt, image_uris }) => {
+        const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
+        let resolvedCloudSelection = false;
+        if (requestId?.trim()) {
+          try {
+            const result = (await comfyRequest(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as {
+              profiles: ComfyProfile[];
+              selection?: CreationSelection;
+            };
+            const selection = result.selection;
+            if (!selection) throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
+            if (selection.kind === 'video' || selection.family === 'h3') throw new Error('CREATION_IMAGE_NOT_SELECTED');
+            if (selection.intent !== 'generate') throw new Error('CREATION_GENERATION_NOT_SELECTED');
+            if (selection.source === 'local' || selection.family || selection.profileId) {
+              return await localImageGeneration(prompt, image_uris, requestId, result.profiles, selection);
+            }
+            if (selection.source !== 'cloud') throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
+            resolvedCloudSelection = true;
+          } catch (error) {
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text' as const,
+                  text: `Local image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+                },
+              ],
+            };
           }
-          if (selection.source !== 'cloud') throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
-          resolvedCloudSelection = true;
-        } catch (error) {
+        }
+        if (!resolvedCloudSelection && envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') === 'video')
+          return {
+            isError: true,
+            content: [
+              { type: 'text' as const, text: 'The user selected video generation. Ask before switching to an image.' },
+            ],
+          };
+        if (!resolvedCloudSelection && envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') === 'local') {
           return {
             isError: true,
             content: [
               {
                 type: 'text' as const,
-                text: `Local image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+                text: 'CREATION_REQUEST_CONTEXT_MISSING: local generation requires a bound creation session and selected verified ComfyUI profile. Use the comfyui-local skill to prepare or select that profile.',
               },
             ],
           };
         }
-      }
-      if (!resolvedCloudSelection && process.env.AIONUI_CREATION_KIND === 'video')
-        return {
-          isError: true,
-          content: [
-            { type: 'text' as const, text: 'The user selected video generation. Ask before switching to an image.' },
-          ],
-        };
-      if (!resolvedCloudSelection && process.env.AIONUI_CREATION_SOURCE === 'local') {
-        return {
-          isError: true,
-          content: [
-            {
-              type: 'text' as const,
-              text: 'CREATION_REQUEST_CONTEXT_MISSING: local generation requires a bound creation session and selected verified ComfyUI profile. Use the comfyui-local skill to prepare or select that profile.',
-            },
-          ],
-        };
-      }
-      const provider = getProviderFromEnv();
-      if (!provider) {
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: 'Error: Image generation model not configured. Please select an image generation model in Settings > Tools.',
-            },
-          ],
-          isError: true,
-        };
-      }
+        const provider = getProviderFromEnv();
+        if (!provider) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: 'Error: Image generation model not configured. Please select an image generation model in Settings > Tools.',
+              },
+            ],
+            isError: true,
+          };
+        }
 
-      const proxy = process.env.AIONUI_IMG_PROXY || undefined;
-      // Trusted workspace root: the MCP server inherits the agent process cwd,
-      // which the backend sets to the conversation workspace. Never accept a
-      // workspace path from the model (path traversal boundary).
-      const workspaceDir = process.cwd();
+        const proxy = envValue('OPENH3_IMG_PROXY', 'AIONUI_IMG_PROXY') || undefined;
+        // Trusted workspace root: the MCP server inherits the agent process cwd,
+        // which the backend sets to the conversation workspace. Never accept a
+        // workspace path from the model (path traversal boundary).
+        const workspaceDir = process.cwd();
 
-      const result = await executeImageGeneration({ prompt, image_uris }, provider, workspaceDir, proxy);
+        const result = await executeImageGeneration({ prompt, image_uris }, provider, workspaceDir, proxy);
 
-      if (!result.success) {
+        if (!result.success) {
+          return {
+            content: [{ type: 'text' as const, text: result.text }],
+            isError: true,
+          };
+        }
+
         return {
           content: [{ type: 'text' as const, text: result.text }],
-          isError: true,
         };
       }
+    );
 
-      return {
-        content: [{ type: 'text' as const, text: result.text }],
-      };
-    }
-  );
+  registerImageGenerationTool('openh3_image_generation');
+  // Keep the old tool name available to existing skills and assistant
+  // snapshots. Both names execute the same provider-bound implementation.
+  registerImageGenerationTool('openh3_image_generation');
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

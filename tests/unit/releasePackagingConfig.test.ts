@@ -98,6 +98,9 @@ describe('release packaging configuration', () => {
     expect(manifest).toContain('"short_name": "OpenH3"');
     expect(identity).toContain("LEGACY_PRODUCT_NAME = 'AionUi'");
     expect(builder).toContain('appId: com.openh3.app');
+    expect(builder).toContain('owner: pigq');
+    expect(builder).toContain('repo: OpenH3');
+    expect(builder).toContain('      - openh3');
   });
 
   it('ships the user-approved OpenH3 logo source and transparent wordmark', () => {

@@ -423,6 +423,7 @@ export const useAssistantEditor = ({
         if (skillsToImport.length > 0) {
           const skillsList = await ipcBridge.fs.listAvailableSkills.invoke();
           setAvailableSkills(skillsList);
+          emitter.emit('skills.catalog.refresh');
         }
       }
 

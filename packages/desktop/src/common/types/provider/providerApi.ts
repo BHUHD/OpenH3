@@ -8,7 +8,7 @@
  * Wire-contract types for `/api/providers/*`.
  *
  * Direct mirror of the Rust types in
- * `crates/aionui-api-types/src/provider.rs`. Keep in sync with the
+ * `crates/openh3-api-types/src/provider.rs`. Keep in sync with the
  * backend spec.
  */
 

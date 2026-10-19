@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2026 OpenH3
  * SPDX-License-Identifier: Apache-2.0
  *
  * Pure Bun CLI — launches the WebUI (backend + static server + auth) without
@@ -14,8 +14,9 @@
  *   AIONUI_DATA_DIR       : override userData path (default Electron-compatible)
  *   AIONUI_LOG_DIR        : override log dir (default <dataDir>/logs)
  *   AIONUI_STATIC_DIR     : override static dir (default out/renderer)
- *   AIONUI_BACKEND_BIN    : absolute path to aioncore binary (else PATH lookup)
- *   AIONUI_BACKEND_BUNDLED_DIR : dir containing bundled-aioncore/<plat-arch>/binary
+ *   OPENH3_BACKEND_BIN    : absolute path to the OpenH3 Core binary (else PATH lookup)
+ *   OPENH3_BACKEND_BUNDLED_DIR : dir containing bundled-openh3-core/<plat-arch>/binary
+ *   AIONUI_*              : legacy aliases accepted for existing scripts
  *   AIONUI_OPEN_BROWSER   : "1"/"true" to force open, "0"/"false" to disable
  */
 
@@ -24,16 +25,22 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startWebHost } from '@aionui/web-host';
+import { startWebHost } from '@openh3/web-host';
 import { openBrowserUrl, shouldAutoOpenBrowser } from '../packages/web-cli/src/browser.js';
 
 // Aligned with packages/desktop/src/common/config/constants.ts WEBUI_DEFAULT_PORT.
 const DEFAULT_PORT = (() => {
   if (process.env.NODE_ENV === 'production') return 25808;
-  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 25810;
+  if ((process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1') return 25810;
   return 25809;
 })();
-const BACKEND_BINARY = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
+const BACKEND_BINARIES =
+  process.platform === 'win32' ? ['openh3-core.exe', 'aioncore.exe'] : ['openh3-core', 'aioncore'];
+const BUNDLE_DIRS = ['bundled-openh3-core', 'bundled-aioncore'];
+
+function envValue(canonical: string, legacy: string): string | undefined {
+  return process.env[canonical] || process.env[legacy];
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..');
@@ -48,7 +55,7 @@ const getFlag = (name: string): string | undefined => {
 };
 
 /**
- * Resolve the directory where aioncore persists its SQLite DB.
+ * Resolve the directory where OpenH3 Core persists its SQLite DB.
  *
  * `bun run webui` runs **independently of the Electron desktop app** — it must
  * work on hosts that never installed AionUi.app, and its default work dir must
@@ -79,14 +86,18 @@ const getFlag = (name: string): string | undefined => {
  * `bun run webui` just follows it.
  */
 function resolveBackendDataDir(): string {
-  const override = getFlag('--data-dir') ?? process.env.AIONUI_DATA_DIR;
+  const override = getFlag('--data-dir') ?? envValue('OPENH3_DATA_DIR', 'AIONUI_DATA_DIR');
   if (override && override.trim().length > 0) {
     const resolved = path.resolve(override);
     fs.mkdirSync(resolved, { recursive: true });
     return resolved;
   }
   const suffix =
-    process.env.NODE_ENV === 'production' ? '' : process.env.AIONUI_MULTI_INSTANCE === '1' ? '-dev-2' : '-dev';
+    process.env.NODE_ENV === 'production'
+      ? ''
+      : (process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1'
+        ? '-dev-2'
+        : '-dev';
   const dir = path.join(os.homedir(), `.openh3-web${suffix}`);
   const legacyDir = path.join(os.homedir(), `.aionui-web${suffix}`);
   if (!fs.existsSync(dir) && fs.existsSync(legacyDir)) {
@@ -109,20 +120,22 @@ function parseBoolean(v: string | undefined): boolean {
 function resolvePort(): number {
   const cli = getFlag('--port');
   if (cli && /^\d+$/.test(cli)) return Number(cli);
-  const env = process.env.AIONUI_PORT ?? process.env.PORT;
+  const env = process.env.OPENH3_PORT ?? process.env.AIONUI_PORT ?? process.env.PORT;
   if (env && /^\d+$/.test(env)) return Number(env);
   return DEFAULT_PORT;
 }
 
 function resolveAllowRemote(): boolean {
   if (has('--remote')) return true;
-  const host = process.env.AIONUI_HOST?.trim();
+  const host = (process.env.OPENH3_HOST ?? process.env.AIONUI_HOST)?.trim();
   if (host && ['0.0.0.0', '::', '::0'].includes(host)) return true;
-  return parseBoolean(process.env.AIONUI_ALLOW_REMOTE ?? process.env.AIONUI_REMOTE);
+  return parseBoolean(process.env.OPENH3_ALLOW_REMOTE ?? process.env.AIONUI_ALLOW_REMOTE ?? process.env.AIONUI_REMOTE);
 }
 
 function resolveStaticDir(): string {
-  if (process.env.AIONUI_STATIC_DIR) return process.env.AIONUI_STATIC_DIR;
+  if (process.env.OPENH3_STATIC_DIR || process.env.AIONUI_STATIC_DIR) {
+    return process.env.OPENH3_STATIC_DIR ?? process.env.AIONUI_STATIC_DIR!;
+  }
   const candidate = path.join(repoRoot, 'out', 'renderer');
   if (fs.existsSync(path.join(candidate, 'index.html'))) return candidate;
   throw new Error(`Renderer assets not found at ${candidate}. Run "bun run package" first, or set AIONUI_STATIC_DIR.`);
@@ -137,8 +150,8 @@ function resolveStaticDir(): string {
  */
 function runPackageIfNeeded(): void {
   if (has('--no-build')) return;
-  if (parseBoolean(process.env.AIONUI_NO_BUILD)) return;
-  if (process.env.AIONUI_STATIC_DIR) return;
+  if (parseBoolean(process.env.OPENH3_NO_BUILD ?? process.env.AIONUI_NO_BUILD)) return;
+  if (process.env.OPENH3_STATIC_DIR || process.env.AIONUI_STATIC_DIR) return;
   console.log('[webui] running "bun run package" to refresh out/renderer (pass --no-build to skip)...');
   const start = Date.now();
   execSync('bun run package', { cwd: repoRoot, stdio: 'inherit' });
@@ -146,23 +159,33 @@ function runPackageIfNeeded(): void {
 }
 
 function resolveBackendBinary(): string {
-  if (process.env.AIONUI_BACKEND_BIN) return process.env.AIONUI_BACKEND_BIN;
+  const override = envValue('OPENH3_BACKEND_BIN', 'AIONUI_BACKEND_BIN');
+  if (override) return override;
 
-  const bundledBase = process.env.AIONUI_BACKEND_BUNDLED_DIR ?? path.join(repoRoot, 'resources', 'bundled-aioncore');
   const runtimeKey = `${process.platform}-${process.arch}`;
-  const bundled = path.join(bundledBase, runtimeKey, BACKEND_BINARY);
-  if (fs.existsSync(bundled)) return bundled;
+  const configuredBase = envValue('OPENH3_BACKEND_BUNDLED_DIR', 'AIONUI_BACKEND_BUNDLED_DIR');
+  const bundleBases = configuredBase
+    ? [configuredBase]
+    : BUNDLE_DIRS.map((dir) => path.join(repoRoot, 'resources', dir));
+  for (const bundleBase of bundleBases) {
+    for (const binaryName of BACKEND_BINARIES) {
+      const bundled = path.join(bundleBase, runtimeKey, binaryName);
+      if (fs.existsSync(bundled)) return bundled;
+    }
+  }
 
-  try {
-    const cmd = process.platform === 'win32' ? `where ${BACKEND_BINARY}` : `which ${BACKEND_BINARY}`;
-    const found = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
-    if (found && fs.existsSync(found)) return found;
-  } catch {
-    // fall through
+  for (const binaryName of BACKEND_BINARIES) {
+    try {
+      const cmd = process.platform === 'win32' ? `where ${binaryName}` : `which ${binaryName}`;
+      const found = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim().split(/\r?\n/)[0];
+      if (found && fs.existsSync(found)) return found;
+    } catch {
+      // Try the next canonical/legacy binary name.
+    }
   }
 
   throw new Error(
-    `Cannot find "${BACKEND_BINARY}". Set AIONUI_BACKEND_BIN, put it on PATH, or place it at ${bundled}.`
+    `Cannot find OpenH3 Core. Set OPENH3_BACKEND_BIN, put openh3-core on PATH, or provide an OpenH3 Core bundle.`
   );
 }
 
@@ -225,7 +248,7 @@ async function main(): Promise<void> {
   const workDir = resolveBackendDataDir();
   const staticDir = resolveStaticDir();
   const backendBin = resolveBackendBinary();
-  const logDir = process.env.AIONUI_LOG_DIR ?? path.join(workDir, 'logs');
+  const logDir = process.env.OPENH3_LOG_DIR ?? process.env.AIONUI_LOG_DIR ?? path.join(workDir, 'logs');
 
   console.log('[webui] work dir   :', workDir);
   console.log('[webui] static dir :', staticDir);

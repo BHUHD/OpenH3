@@ -195,12 +195,12 @@ export function getFileExtension(file_name: string): string {
   return lastDotIndex > -1 ? file_name.substring(lastDotIndex).toLowerCase() : '';
 }
 
-import { AIONUI_TIMESTAMP_REGEX } from '@/common/config/constants';
+import { OPENH3_TIMESTAMP_REGEX } from '@/common/config/constants';
 import { formatByteSize } from '@/renderer/services/i18n/format';
 
 // 清理AionUI时间戳后缀，返回原始文件名
 export function cleanAionUITimestamp(file_name: string): string {
-  return file_name.replace(AIONUI_TIMESTAMP_REGEX, '$1');
+  return file_name.replace(OPENH3_TIMESTAMP_REGEX, '$1');
 }
 
 // 从文件路径获取清理后的文件名（用于UI显示）

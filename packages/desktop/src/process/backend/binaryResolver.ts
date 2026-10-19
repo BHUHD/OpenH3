@@ -1,25 +1,32 @@
 /**
- * Resolve the aioncore binary path.
+ * Resolve the OpenH3 backend binary path.
  *
  * Search order:
- *  1. AIONUI_BACKEND_BIN env override (path, resolved to absolute)
- *  2. Bundled with app (production)
- *  3. System PATH
+ *  1. OPENH3_BACKEND_BIN, then the legacy AIONUI_BACKEND_BIN override
+ *  2. The canonical bundled directory, then the legacy bundled directory
+ *  3. `openh3-core` on PATH, then the legacy `aioncore` name
  */
 
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
+import {
+  BACKEND_BINARY_ENV_VARS,
+  BACKEND_BINARY_NAME,
+  BACKEND_BUNDLE_DIR_NAME,
+  LEGACY_BACKEND_BINARY_NAMES,
+  LEGACY_BACKEND_BUNDLE_DIR_NAME,
+} from '@/common/config/productIdentity';
 
-const BINARY_NAME = 'aioncore';
-const BIN_ENV_VAR = 'AIONUI_BACKEND_BIN';
 const MAX_DIR_ENTRIES = 20;
 const MAX_LOOKUP_TEXT_LENGTH = 1000;
 
 type BackendBinaryResolveDiagnostics = {
   envOverridePath?: string;
+  envOverrideVariable?: string;
   envOverrideExists?: boolean;
   resourcesPath?: string;
+  bundledDirName?: string;
   runtimeKey: string;
   binaryName: string;
   checkedBundledPath?: string;
@@ -42,8 +49,12 @@ class BackendBinaryResolveError extends Error {
   }
 }
 
-function getBinaryName(): string {
-  return process.platform === 'win32' ? `${BINARY_NAME}.exe` : BINARY_NAME;
+function getBinaryName(baseName = BACKEND_BINARY_NAME): string {
+  return process.platform === 'win32' ? `${baseName}.exe` : baseName;
+}
+
+function getBinaryNames(): string[] {
+  return [BACKEND_BINARY_NAME, ...LEGACY_BACKEND_BINARY_NAMES].map(getBinaryName);
 }
 
 function getRuntimeKey(): string {
@@ -65,7 +76,7 @@ function trimLookupText(text: string): string {
 }
 
 /**
- * Resolve the aioncore binary path.
+ * Resolve the OpenH3 backend binary path.
  * Returns the absolute path to the binary, or throws if not found.
  */
 export function resolveBinaryPath(): string {
@@ -74,26 +85,30 @@ export function resolveBinaryPath(): string {
   const diagnostics: BackendBinaryResolveDiagnostics = {
     runtimeKey,
     binaryName,
-    pathLookupCommand: process.platform === 'win32' ? `where ${BINARY_NAME}` : `which ${BINARY_NAME}`,
+    pathLookupCommand: getBinaryNames()
+      .map((name) => (process.platform === 'win32' ? `where ${name}` : `which ${name}`))
+      .join(' && '),
   };
 
   const override = envOverridePath(diagnostics);
   if (override) return override;
 
-  const bundled = bundledPath(runtimeKey, binaryName, diagnostics);
+  const bundled = bundledPath(runtimeKey, diagnostics);
   if (bundled) return bundled;
 
   const fromPath = resolveFromSystemPATH(diagnostics);
   if (fromPath) return fromPath;
 
   throw new BackendBinaryResolveError(
-    `Cannot find "${BINARY_NAME}" binary. Checked bundled location and system PATH.`,
+    `Cannot find "${BACKEND_BINARY_NAME}" binary. Checked legacy "${LEGACY_BACKEND_BINARY_NAMES.join(
+      ', '
+    )}" names, bundled locations, and system PATH.`,
     diagnostics
   );
 }
 
 /**
- * Honor the AIONUI_BACKEND_BIN env override.
+ * Honor the canonical or legacy backend binary env override.
  * The value is resolved to an absolute path (relative to process.cwd) so it
  * survives the backend launcher spawning with a different working directory.
  * Returns the path when it points at an existing file. When the variable is
@@ -101,44 +116,56 @@ export function resolveBinaryPath(): string {
  * silently falling back to the bundled or PATH binary.
  */
 function envOverridePath(diagnostics: BackendBinaryResolveDiagnostics): string | null {
-  const raw = process.env[BIN_ENV_VAR]?.trim();
-  if (!raw) return null;
+  const configured = BACKEND_BINARY_ENV_VARS.map((variable) => ({ variable, raw: process.env[variable]?.trim() })).find(
+    (entry) => entry.raw
+  );
+  if (!configured?.raw) return null;
 
+  const { variable, raw } = configured;
   const absolute = resolve(raw);
   diagnostics.envOverridePath = absolute;
+  diagnostics.envOverrideVariable = variable;
   const exists = existsSync(absolute);
   diagnostics.envOverrideExists = exists;
   if (exists) return absolute;
 
   throw new BackendBinaryResolveError(
-    `${BIN_ENV_VAR} is set to "${raw}" but no file exists at "${absolute}".`,
+    `${variable} is set to "${raw}" but no file exists at "${absolute}".`,
     diagnostics
   );
 }
 
 /**
  * Check bundled binary in resources directory.
- * Layout: bundled-aioncore/{platform}-{arch}/aioncore[.exe]
+ * Layout: bundled-openh3-core/{platform}-{arch}/openh3-core[.exe]
+ * Legacy packages use bundled-aioncore/{platform}-{arch}/aioncore[.exe].
  */
-function bundledPath(
-  runtimeKey: string,
-  binaryName: string,
-  diagnostics: BackendBinaryResolveDiagnostics
-): string | null {
+function bundledPath(runtimeKey: string, diagnostics: BackendBinaryResolveDiagnostics): string | null {
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   if (!resourcesPath) return null;
   diagnostics.resourcesPath = resourcesPath;
 
-  const bundledDir = join(resourcesPath, 'bundled-aioncore');
-  const runtimeDir = join(bundledDir, runtimeKey);
-  const candidate = join(runtimeDir, binaryName);
-  diagnostics.checkedBundledPath = candidate;
-  diagnostics.bundledDirExists = existsSync(bundledDir);
-  diagnostics.runtimeDirExists = existsSync(runtimeDir);
+  const bundleDirs = [BACKEND_BUNDLE_DIR_NAME, LEGACY_BACKEND_BUNDLE_DIR_NAME];
+  const binaryNames = getBinaryNames();
   diagnostics.resourcesDirEntries = listDirEntries(resourcesPath);
-  diagnostics.runtimeDirEntries = listDirEntries(runtimeDir);
 
-  if (existsSync(candidate)) return candidate;
+  for (const bundleDir of bundleDirs) {
+    const bundledDir = join(resourcesPath, bundleDir);
+    const runtimeDir = join(bundledDir, runtimeKey);
+    diagnostics.bundledDirExists = diagnostics.bundledDirExists || existsSync(bundledDir);
+    diagnostics.runtimeDirExists = diagnostics.runtimeDirExists || existsSync(runtimeDir);
+    const runtimeEntries = listDirEntries(runtimeDir);
+    diagnostics.runtimeDirEntries = diagnostics.runtimeDirEntries ?? runtimeEntries;
+
+    for (const binaryName of binaryNames) {
+      const candidate = join(runtimeDir, binaryName);
+      diagnostics.checkedBundledPath ??= candidate;
+      if (existsSync(candidate)) {
+        diagnostics.bundledDirName = bundleDir;
+        return candidate;
+      }
+    }
+  }
   return null;
 }
 
@@ -146,15 +173,19 @@ function bundledPath(
  * Try to find the binary on the system PATH.
  */
 function resolveFromSystemPATH(diagnostics: BackendBinaryResolveDiagnostics): string | null {
-  try {
-    const result = execSync(diagnostics.pathLookupCommand, { encoding: 'utf-8', timeout: 5000 }).trim();
-    diagnostics.pathLookupResult = trimLookupText(result);
-    const firstMatch = result.split(/\r?\n/).find((line) => line.trim());
-    if (firstMatch && existsSync(firstMatch.trim())) return firstMatch.trim();
-  } catch (error) {
-    diagnostics.pathLookupError = error instanceof Error ? trimLookupText(error.message) : String(error);
-    return null;
+  const errors: string[] = [];
+  for (const binaryName of getBinaryNames()) {
+    const command = process.platform === 'win32' ? `where ${binaryName}` : `which ${binaryName}`;
+    try {
+      const result = execSync(command, { encoding: 'utf-8', timeout: 5000 }).trim();
+      diagnostics.pathLookupResult = trimLookupText([diagnostics.pathLookupResult, result].filter(Boolean).join('\n'));
+      const firstMatch = result.split(/\r?\n/).find((line) => line.trim());
+      if (firstMatch && existsSync(firstMatch.trim())) return firstMatch.trim();
+    } catch (error) {
+      errors.push(error instanceof Error ? trimLookupText(error.message) : String(error));
+    }
   }
+  if (errors.length > 0) diagnostics.pathLookupError = errors.join('\n').slice(0, MAX_LOOKUP_TEXT_LENGTH);
   return null;
 }
 

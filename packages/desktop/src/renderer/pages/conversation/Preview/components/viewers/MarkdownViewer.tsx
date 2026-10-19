@@ -358,7 +358,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         ) : (
           // 预览模式：react-markdown + KaTeX / Preview mode: react-markdown + KaTeX
           <div
-            className='aionui-markdown'
+            className='openh3-markdown'
             style={{
               wordWrap: 'break-word',
               overflowWrap: 'break-word',

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 
-export const WORKSPACE_EXPANSION_STORAGE_KEY = 'aionui_workspace_expansion';
-export const WORKSPACE_EXPANSION_EVENT = 'aionui:workspace-expansion-changed';
+export const WORKSPACE_EXPANSION_STORAGE_KEY = 'openh3_workspace_expansion';
+export const LEGACY_WORKSPACE_EXPANSION_STORAGE_KEY = 'aionui_workspace_expansion';
+export const WORKSPACE_EXPANSION_EVENT = 'openh3:workspace-expansion-changed';
+export const LEGACY_WORKSPACE_EXPANSION_EVENT = 'aionui:workspace-expansion-changed';
 
 type WorkspaceExpansionChangeDetail = {
   expandedWorkspaces: string[];
@@ -13,7 +15,9 @@ export const readExpandedWorkspaces = (): string[] => {
   }
 
   try {
-    const stored = localStorage.getItem(WORKSPACE_EXPANSION_STORAGE_KEY);
+    const stored =
+      localStorage.getItem(WORKSPACE_EXPANSION_STORAGE_KEY) ??
+      localStorage.getItem(LEGACY_WORKSPACE_EXPANSION_STORAGE_KEY);
     if (!stored) {
       return [];
     }
@@ -30,11 +34,9 @@ export const dispatchWorkspaceExpansionChange = (expandedWorkspaces: string[]): 
     return;
   }
 
-  window.dispatchEvent(
-    new CustomEvent<WorkspaceExpansionChangeDetail>(WORKSPACE_EXPANSION_EVENT, {
-      detail: { expandedWorkspaces },
-    })
-  );
+  const detail = { expandedWorkspaces };
+  window.dispatchEvent(new CustomEvent<WorkspaceExpansionChangeDetail>(WORKSPACE_EXPANSION_EVENT, { detail }));
+  window.dispatchEvent(new CustomEvent<WorkspaceExpansionChangeDetail>(LEGACY_WORKSPACE_EXPANSION_EVENT, { detail }));
 };
 
 export const useWorkspaceExpansionState = (): string[] => {
@@ -47,7 +49,7 @@ export const useWorkspaceExpansionState = (): string[] => {
     };
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === WORKSPACE_EXPANSION_STORAGE_KEY) {
+      if (event.key === WORKSPACE_EXPANSION_STORAGE_KEY || event.key === LEGACY_WORKSPACE_EXPANSION_STORAGE_KEY) {
         setExpandedWorkspaces(readExpandedWorkspaces());
       }
     };

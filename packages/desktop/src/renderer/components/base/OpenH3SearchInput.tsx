@@ -9,16 +9,16 @@ import classNames from 'classnames';
 import type { CSSProperties, InputHTMLAttributes, Ref } from 'react';
 import React, { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import styles from './AionSearchInput.module.css';
+import styles from './OpenH3SearchInput.module.css';
 
 /**
- * AionSearchInput —— 全局统一搜索框
+ * OpenH3SearchInput —— 全局统一搜索框
  *
  * 样式基准取自会话记录搜索面板：搜索图标 + 输入框 + 圆形清除按钮，
  * 38px 高、10px 圆角、focus 主色描边。各调用处只需传 placeholder 文案，
  * 搜索逻辑（过滤、防抖、结果展示）仍由调用方持有 —— 本组件只负责外观与录入。
  */
-export type AionSearchInputProps = {
+export type OpenH3SearchInputProps = {
   /** 当前输入值（受控） */
   value: string;
   /** 值变化回调，返回最新字符串 */
@@ -43,7 +43,7 @@ export type AionSearchInputProps = {
   >;
 };
 
-const AionSearchInput = forwardRef<HTMLInputElement, AionSearchInputProps>((props, ref) => {
+const OpenH3SearchInput = forwardRef<HTMLInputElement, OpenH3SearchInputProps>((props, ref) => {
   const {
     value,
     onChange,
@@ -96,6 +96,6 @@ const AionSearchInput = forwardRef<HTMLInputElement, AionSearchInputProps>((prop
   );
 });
 
-AionSearchInput.displayName = 'AionSearchInput';
+OpenH3SearchInput.displayName = 'OpenH3SearchInput';
 
-export default AionSearchInput;
+export default OpenH3SearchInput;

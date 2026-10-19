@@ -1,17 +1,17 @@
-# @aionui/web-host
+# @openh3/web-host
 
-WebUI host package for AionUi - zero Electron dependency.
+WebUI host package for OpenH3 - zero Electron dependency.
 
 ## Responsibilities
 
-- **backend-launcher**: spawn or reuse existing aioncore process
+- **backend-launcher**: spawn or reuse the OpenH3 Core process
 - **static-server**: serve out/renderer SPA + reverse proxy /api and /ws to backend
 - **auth**: password reset, change, verify, config I/O (bcrypt + session)
 
 ## Usage
 
 ```ts
-import { startWebHost } from '@aionui/web-host';
+import { startWebHost } from '@openh3/web-host';
 
 const handle = await startWebHost({
   app: {

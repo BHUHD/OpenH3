@@ -27,7 +27,7 @@
     "generate:openh3-icons": "node scripts/generate-openh3-icons.mjs",
     "dev": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "start": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
-    "start:multi": "cross-env AIONUI_MULTI_INSTANCE=1 electron-vite dev --config packages/desktop/electron.vite.config.ts",
+    "start:multi": "cross-env OPENH3_MULTI_INSTANCE=1 electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "cli": "electron-vite dev --config packages/desktop/electron.vite.config.ts",
     "webui": "tsx scripts/webui.ts",
     "webui:remote": "tsx scripts/webui.ts --remote",
@@ -47,7 +47,7 @@
     "build-mac:arm64": "node scripts/build-with-builder.js arm64 --mac --arm64",
     "build-mac:x64": "node scripts/build-with-builder.js x64 --mac --x64",
     "build-win:arm64": "node scripts/build-with-builder.js arm64 --win --arm64",
-    "build-win:x64:signed": "cross-env AIONUI_REQUIRE_WINDOWS_SIGNING=1 node scripts/build-with-builder.js x64 --win --x64",
+    "build-win:x64:signed": "cross-env OPENH3_REQUIRE_WINDOWS_SIGNING=1 node scripts/build-with-builder.js x64 --win --x64",
     "build-win:x64": "node scripts/build-with-builder.js x64 --win --x64",
     "build-win:x64:fast": "cross-env ELECTRON_BUILDER_COMPRESSION_LEVEL=1 node scripts/build-with-builder.js x64 --win --x64 --config.win.signExecutable=false",
     "build-win:x64:debug-versions": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-fast-debug-versions.ps1",
@@ -81,7 +81,6 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.18.2",
-    "@aionui/web-host": "workspace:*",
     "@anthropic-ai/sdk": "^0.71.2",
     "@arco-design/web-react": "^2.66.1",
     "@aws-sdk/client-bedrock": "^3.987.0",
@@ -108,6 +107,7 @@
     "@lezer/highlight": "^1.2.3",
     "@modelcontextprotocol/sdk": "^1.20.0",
     "@monaco-editor/react": "^4.7.0",
+    "@openh3/web-host": "workspace:*",
     "@sentry/electron": "^7.10.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
@@ -270,6 +270,7 @@
   "electronRebuild": {
     "electronVersion": "^37.3.1"
   },
+  "openh3CoreVersion": "v0.2.2",
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },

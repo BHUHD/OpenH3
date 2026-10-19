@@ -6,12 +6,12 @@ import { normalizeAssistantDisplayName } from '@/renderer/utils/model/assistantD
 import { isOpenH3NativeAgent } from '@/renderer/utils/model/agentLogo';
 
 describe('OpenH3 branding boundaries', () => {
-  it('normalizes legacy product labels without changing AionCore identifiers', () => {
+  it('normalizes legacy product display labels', () => {
     expect(normalizeAssistantDisplayName('Aion CLI')).toBe('OpenH3 CLI');
     expect(normalizeAssistantDisplayName('AionUi CLI')).toBe('OpenH3 CLI');
     expect(normalizeAssistantDisplayName('AionUi Butler')).toBe('OpenH3 Butler');
     expect(normalizeAssistantDisplayName('AionUi')).toBe('OpenH3');
-    expect(normalizeAssistantDisplayName('AionCore')).toBe('AionCore');
+    expect(normalizeAssistantDisplayName('AionCore')).toBe('OpenH3 Core');
   });
 
   it('recognizes the native OpenH3 agent even when the backend still serves the legacy icon', () => {

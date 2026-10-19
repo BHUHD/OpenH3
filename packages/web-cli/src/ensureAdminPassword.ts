@@ -3,7 +3,7 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * On first tarball launch, the aioncore's SQLite `users` table holds the
+ * On first tarball launch, OpenH3 Core's SQLite `users` table holds the
  * seeded `system_default_user` row with an empty password_hash. We probe
  * /api/auth/status; if `needs_setup === true`, ask the backend to generate and
  * persist a random password via POST /api/webui/reset-password and print it to
@@ -27,7 +27,7 @@ export type EnsureAdminPasswordDeps = {
 };
 
 export type EnsureAdminPasswordOptions = {
-  /** 127.0.0.1 port where aioncore listens (from WebHostHandle.backendPort). */
+  /** 127.0.0.1 port where OpenH3 Core listens (from WebHostHandle.backendPort). */
   backendPort: number;
   /** Total wait budget for /api/auth/status coming up. Default: 15s. */
   statusTimeoutMs?: number;
@@ -35,7 +35,7 @@ export type EnsureAdminPasswordOptions = {
   statusPollIntervalMs?: number;
   /**
    * Command to show in fallback hints ("Forgot the password? Run ..."). Varies
-   * by launch context — packaged tarball = `aionui-web resetpass`, in-repo dev
+   * by launch context — packaged tarball = `openh3-web resetpass`, in-repo dev
    * = `bun run resetpass`. Defaults to the packaged form.
    */
   resetCommand?: string;
@@ -101,14 +101,14 @@ export async function ensureAdminPassword(
 ): Promise<void> {
   const timeoutMs = opts.statusTimeoutMs ?? 15_000;
   const intervalMs = opts.statusPollIntervalMs ?? 500;
-  const resetCmd = opts.resetCommand ?? 'aionui-web resetpass';
+  const resetCmd = opts.resetCommand ?? 'openh3-web resetpass';
   const base = `http://127.0.0.1:${opts.backendPort}`;
 
   let status: AuthStatus;
   try {
     status = await waitForStatus(deps, `${base}/api/auth/status`, timeoutMs, intervalMs);
   } catch (err) {
-    deps.warn(`[aionui-web] could not verify admin credentials: ${err instanceof Error ? err.message : String(err)}`);
+    deps.warn(`[openh3-web] could not verify admin credentials: ${err instanceof Error ? err.message : String(err)}`);
     return;
   }
 
@@ -116,28 +116,28 @@ export async function ensureAdminPassword(
 
   if (!needsSetup) {
     const username = await fetchAdminUsername(deps, opts.backendPort);
-    deps.log(`[aionui-web] Log in with username "${username}". Forgot the password? Run \`${resetCmd}\`.`);
+    deps.log(`[openh3-web] Log in with username "${username}". Forgot the password? Run \`${resetCmd}\`.`);
     return;
   }
 
   try {
     const resetRes = await deps.fetch(`${base}/api/webui/reset-password`, { method: 'POST' });
     if (!resetRes.ok) {
-      deps.warn(`[aionui-web] /api/webui/reset-password returned ${resetRes.status} — run \`${resetCmd}\``);
+      deps.warn(`[openh3-web] /api/webui/reset-password returned ${resetRes.status} — run \`${resetCmd}\``);
       return;
     }
     const payload = (await resetRes.json()) as ResetPasswordResponse;
     const newPassword = payload.data?.new_password ?? payload.new_password;
     if (!newPassword) {
-      deps.warn(`[aionui-web] /api/webui/reset-password returned no new_password — run \`${resetCmd}\``);
+      deps.warn(`[openh3-web] /api/webui/reset-password returned no new_password — run \`${resetCmd}\``);
       return;
     }
     const username = await fetchAdminUsername(deps, opts.backendPort);
-    deps.log(`[aionui-web] Generated initial admin password: ${newPassword}`);
-    deps.log(`[aionui-web] Log in with username "${username}" and change it from the UI.`);
+    deps.log(`[openh3-web] Generated initial admin password: ${newPassword}`);
+    deps.log(`[openh3-web] Log in with username "${username}" and change it from the UI.`);
   } catch (err) {
     deps.warn(
-      `[aionui-web] failed to seed initial admin password: ${err instanceof Error ? err.message : String(err)}`
+      `[openh3-web] failed to seed initial admin password: ${err instanceof Error ? err.message : String(err)}`
     );
   }
 }

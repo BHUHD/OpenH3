@@ -29,7 +29,8 @@ import i18next from 'i18next';
  * because "first time" means first time on this machine — restarting the app must
  * not show it again.
  */
-const FIRST_USE_STORAGE_KEY = 'aionui_agent_browser_first_use_notified';
+const FIRST_USE_STORAGE_KEY = 'openh3_agent_browser_first_use_notified';
+const LEGACY_FIRST_USE_STORAGE_KEY = 'aionui_agent_browser_first_use_notified';
 
 /**
  * 进程内标记，防止同一次会话里连续的工具调用重复弹提示。
@@ -44,7 +45,9 @@ let notifiedThisSession = false;
 const hasNotified = (): boolean => {
   if (notifiedThisSession) return true;
   try {
-    return localStorage.getItem(FIRST_USE_STORAGE_KEY) === '1';
+    return (
+      localStorage.getItem(FIRST_USE_STORAGE_KEY) === '1' || localStorage.getItem(LEGACY_FIRST_USE_STORAGE_KEY) === '1'
+    );
   } catch {
     // localStorage 不可用时宁可不提示，也不要每次都弹
     // If localStorage is unavailable, prefer never notifying over notifying always.
@@ -56,6 +59,7 @@ const rememberNotified = (): void => {
   notifiedThisSession = true;
   try {
     localStorage.setItem(FIRST_USE_STORAGE_KEY, '1');
+    localStorage.setItem(LEGACY_FIRST_USE_STORAGE_KEY, '1');
   } catch {
     // Non-critical: the in-process guard still prevents repeats this session.
   }

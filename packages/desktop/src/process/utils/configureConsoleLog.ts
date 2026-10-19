@@ -69,7 +69,7 @@ log.transports.file.level = FILE_LOG_LEVEL;
 log.transports.file.maxSize = FILE_SIZE_LIMIT;
 log.transports.console.level = app.isPackaged ? false : CONSOLE_LOG_LEVEL;
 
-const BACKEND_PREFIX = '[aioncore]';
+const BACKEND_PREFIXES = ['[OpenH3 Core]', '[aioncore]'] as const;
 
 // Strip ANSI escape sequences from a string.
 const ANSI_RE = new RegExp(String.raw`\u001B\[[0-9;]*m`, 'g');
@@ -97,13 +97,15 @@ function parseTracingLine(raw: string): { level: string; body: string } {
 // resolve the log level, and keep them in the shared log file.
 log.hooks.push((message, _transport) => {
   const first = message.data[0];
-  if (typeof first !== 'string' || !first.startsWith(BACKEND_PREFIX)) return message;
+  if (typeof first !== 'string') return message;
+  const backendPrefix = BACKEND_PREFIXES.find((prefix) => first.startsWith(prefix));
+  if (!backendPrefix) return message;
 
-  const raw = first.slice(BACKEND_PREFIX.length + 1);
+  const raw = first.slice(backendPrefix.length + 1);
   const { level, body } = parseTracingLine(raw);
   const resolved = level as typeof message.level;
 
-  return { ...message, level: resolved, data: [`${BACKEND_PREFIX} ${body}`, ...message.data.slice(1)] };
+  return { ...message, level: resolved, data: [`${backendPrefix} ${body}`, ...message.data.slice(1)] };
 });
 
 // Patch global console so every console.log/warn/error from any module

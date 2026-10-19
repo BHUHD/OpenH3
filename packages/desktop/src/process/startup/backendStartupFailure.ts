@@ -5,6 +5,7 @@
  */
 
 import type { BackendStartupFailureInfo } from '@/common/types/platform/electron';
+import { BACKEND_BUNDLE_DIR_NAME, LEGACY_BACKEND_BUNDLE_DIR_NAME } from '@/common/config/productIdentity';
 
 type ErrorWithDetails = Error & {
   details?: {
@@ -23,6 +24,7 @@ type ErrorWithDetails = Error & {
     runtimeDirExists?: unknown;
     resourcesDirEntries?: unknown;
     runtimeDirEntries?: unknown;
+    bundledDirName?: unknown;
     packageArch?: unknown;
     deviceArch?: unknown;
     expectedDownloadArch?: unknown;
@@ -132,11 +134,20 @@ function classifyIncompleteInstallation(details: ErrorWithDetails['details']): B
   const hasPackagedApp = resourcesDirEntries.some((entry) => PACKAGED_APP_MARKER_ENTRIES.has(entry));
   if (!hasPackagedApp) return undefined;
 
-  const missingBundledAioncoreDir = !resourcesDirEntries.includes('bundled-aioncore/');
+  const bundledDirNames = new Set([`${BACKEND_BUNDLE_DIR_NAME}/`, `${LEGACY_BACKEND_BUNDLE_DIR_NAME}/`]);
+  const reportedBundledDirName = typeof details.bundledDirName === 'string' ? `${details.bundledDirName}/` : undefined;
+  const bundledDirName =
+    reportedBundledDirName && bundledDirNames.has(reportedBundledDirName)
+      ? reportedBundledDirName
+      : (resourcesDirEntries.find((entry) => bundledDirNames.has(entry)) ??
+        (typeof details.binaryName === 'string' && /^aioncore(?:\.exe)?$/i.test(details.binaryName)
+          ? `${LEGACY_BACKEND_BUNDLE_DIR_NAME}/`
+          : `${BACKEND_BUNDLE_DIR_NAME}/`));
+  const missingBundledAioncoreDir = !resourcesDirEntries.some((entry) => bundledDirNames.has(entry));
   const missingRuntimeDir = details.runtimeDirExists === false && typeof details.runtimeKey === 'string';
-  const missingResources = missingBundledAioncoreDir ? ['bundled-aioncore/'] : [];
+  const missingResources = missingBundledAioncoreDir ? [bundledDirName] : [];
   if (details.runtimeDirExists === false && typeof details.runtimeKey === 'string') {
-    missingResources.push(`bundled-aioncore/${details.runtimeKey}/`);
+    missingResources.push(`${bundledDirName}${details.runtimeKey}/`);
   }
   const runtimeDirEntries = getStringArray(details.runtimeDirEntries);
   const missingManagedResourcesDir =
@@ -145,7 +156,7 @@ function classifyIncompleteInstallation(details: ErrorWithDetails['details']): B
     runtimeDirEntries !== undefined &&
     !runtimeDirEntries.includes('managed-resources/');
   if (missingManagedResourcesDir && typeof details.runtimeKey === 'string') {
-    missingResources.push(`bundled-aioncore/${details.runtimeKey}/managed-resources/`);
+    missingResources.push(`${bundledDirName}${details.runtimeKey}/managed-resources/`);
   }
   const missingRuntimeBinary =
     details.runtimeDirExists === true &&
@@ -154,7 +165,7 @@ function classifyIncompleteInstallation(details: ErrorWithDetails['details']): B
     runtimeDirEntries !== undefined &&
     !runtimeDirEntries.includes(details.binaryName);
   if (missingRuntimeBinary && typeof details.runtimeKey === 'string' && typeof details.binaryName === 'string') {
-    missingResources.push(`bundled-aioncore/${details.runtimeKey}/${details.binaryName}`);
+    missingResources.push(`${bundledDirName}${details.runtimeKey}/${details.binaryName}`);
   }
 
   if (missingResources.length === 0) return undefined;

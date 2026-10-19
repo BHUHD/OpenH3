@@ -7,7 +7,7 @@
 import { ipcBridge } from '@/common';
 import type { IGpuStatus, IStartOnBootStatus } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
-import AionScrollArea from '@/renderer/components/base/AionScrollArea';
+import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
 import LanguageSwitcher from '@/renderer/components/settings/LanguageSwitcher';
 import { useCrossSessionMessageEnabled } from '@/renderer/hooks/chat/useCrossSessionMessageEnabled';
@@ -499,7 +499,7 @@ const SystemModalContent: React.FC = () => {
     <div className='flex flex-col h-full w-full'>
       {modalContextHolder}
 
-      <AionScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+      <OpenH3ScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
         <div className='space-y-16px'>
           {isDesktop && <H3EnvironmentContent />}
           <div className='px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-12px'>
@@ -580,7 +580,7 @@ const SystemModalContent: React.FC = () => {
           {/* Developer settings: DevTools + CDP (only visible in dev mode) */}
           <DevSettings />
         </div>
-      </AionScrollArea>
+      </OpenH3ScrollArea>
     </div>
   );
 };

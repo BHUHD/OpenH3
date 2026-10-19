@@ -9,7 +9,8 @@ import { DEEPGRAM_SPEECH_MODEL_PRESETS, OPENAI_SPEECH_MODEL_PRESETS } from './sp
 
 export type StreamCapability = 'supported' | 'unsupported' | 'unknown';
 
-const STORAGE_KEY = 'aionui.sttStreamUnsupported';
+const STORAGE_KEY = 'openh3.sttStreamUnsupported';
+const LEGACY_STORAGE_KEY = 'aionui.sttStreamUnsupported';
 
 // ---------------------------------------------------------------------------
 // Capability matrix
@@ -91,7 +92,7 @@ const streamMemoryEntry = (config: SpeechToTextConfig): string => {
 
 const readMemory = (): string[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as string[]) : [];
@@ -102,7 +103,9 @@ const readMemory = (): string[] => {
 
 const writeMemory = (entries: string[]): void => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    const serialized = JSON.stringify(entries);
+    localStorage.setItem(STORAGE_KEY, serialized);
+    localStorage.setItem(LEGACY_STORAGE_KEY, serialized);
   } catch {
     // Silently no-op (SSR, locked storage, quota exceeded).
   }
@@ -125,6 +128,7 @@ export const rememberStreamUnsupported = (config: SpeechToTextConfig): void => {
 export const clearStreamMemory = (): void => {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     // Silently no-op.
   }

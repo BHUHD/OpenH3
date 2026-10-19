@@ -8,20 +8,20 @@ import { Search } from '@icon-park/react';
 import classNames from 'classnames';
 import type { CSSProperties, InputHTMLAttributes, Ref } from 'react';
 import React, { forwardRef } from 'react';
-import styles from './AionInlineSearchInput.module.css';
+import styles from './OpenH3InlineSearchInput.module.css';
 
 /**
- * AionInlineSearchInput —— 下拉列表专用的轻量搜索框
+ * OpenH3InlineSearchInput —— 下拉列表专用的轻量搜索框
  *
  * 样式基准取自首页 Project 选择下拉曾用的搜索框：浅灰填充、无边框、8px 圆角、
  * 放大镜图标 + 透明输入框，柔和紧凑，适合“点击展开的下拉列表”顶部内嵌使用。
- * 与 AionSearchInput（34px 描边、focus 主色环，适合常驻搜索栏）区分：
- * 常驻列表用 AionSearchInput，点击触发展开的下拉列表用本组件。
+ * 与 OpenH3SearchInput（34px 描边、focus 主色环，适合常驻搜索栏）区分：
+ * 常驻列表用 OpenH3SearchInput，点击触发展开的下拉列表用本组件。
  *
- * API 与 AionSearchInput 对齐（value/onChange/placeholder），只负责外观与录入，
+ * API 与 OpenH3SearchInput 对齐（value/onChange/placeholder），只负责外观与录入，
  * 过滤/防抖等逻辑仍由调用方持有。
  */
-export type AionInlineSearchInputProps = {
+export type OpenH3InlineSearchInputProps = {
   /** 当前输入值（受控） */
   value: string;
   /** 值变化回调，返回最新字符串 */
@@ -42,7 +42,7 @@ export type AionInlineSearchInputProps = {
   >;
 };
 
-const AionInlineSearchInput = forwardRef<HTMLInputElement, AionInlineSearchInputProps>((props, ref) => {
+const OpenH3InlineSearchInput = forwardRef<HTMLInputElement, OpenH3InlineSearchInputProps>((props, ref) => {
   const { value, onChange, placeholder, className, style, autoFocus, disabled, wrapTestId, inputProps } = props;
 
   return (
@@ -63,6 +63,6 @@ const AionInlineSearchInput = forwardRef<HTMLInputElement, AionInlineSearchInput
   );
 });
 
-AionInlineSearchInput.displayName = 'AionInlineSearchInput';
+OpenH3InlineSearchInput.displayName = 'OpenH3InlineSearchInput';
 
-export default AionInlineSearchInput;
+export default OpenH3InlineSearchInput;

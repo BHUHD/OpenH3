@@ -53,7 +53,11 @@ import type { ConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSendBo
 import { chatFileRefPath } from '@/common/types/chatFile';
 import VideoImportButton from '@/renderer/pages/conversation/Preview/components/Video/VideoImportButton';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
-import { buildSkillSlashCommands, mergeSlashCommands } from '@/common/chat/slash/mergeSlashCommands';
+import {
+  buildSkillSlashCommands,
+  mergeLoadedSkillNames,
+  mergeSlashCommands,
+} from '@/common/chat/slash/mergeSlashCommands';
 import React, { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -629,19 +633,24 @@ const SendBox: React.FC<{
     return commands;
   }, [conversationContext?.conversation_id, enableBtw, onSlashBuiltinCommand, t]);
 
-  // Skills loaded into this conversation are also invokable via slash. We reuse
-  // the global skills index (shared SWR key `skills-index`) purely to attach a
-  // human-readable description; the loadedSkills snapshot decides which appear.
+  // Skills loaded into this conversation are also invokable via slash. The
+  // backend refreshes existing conversations with current user skills, so the
+  // persisted snapshot is supplemented with imported custom skills here too.
   const loadedSkills = conversationContext?.loadedSkills;
-  const { data: skillIndex } = useSWR(loadedSkills && loadedSkills.length > 0 ? 'skills-index' : null, () =>
+  const { data: skillIndex, mutate: mutateSkillIndex } = useSWR('skills-index', () =>
     ipcBridge.fs.listAvailableSkills.invoke()
   );
+  useAddEventListener('skills.catalog.refresh', () => void mutateSkillIndex(), [mutateSkillIndex]);
   const skillSlashCommands = useMemo<SlashCommandItem[]>(() => {
     const descriptionByName = new Map((skillIndex ?? []).map((s) => [s.name, s.description]));
+    const importedSkillNames = (skillIndex ?? [])
+      .filter((skill) => skill.source === 'custom' || skill.is_custom)
+      .map((skill) => skill.name);
     return buildSkillSlashCommands(
       loadedSkills,
       descriptionByName,
-      t('conversation.skills.slashHint', { defaultValue: 'Skill' })
+      t('conversation.skills.slashHint', { defaultValue: 'Skill' }),
+      importedSkillNames
     );
   }, [loadedSkills, skillIndex, t]);
 

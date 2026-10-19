@@ -21,7 +21,7 @@ import { getJobAgentMeta } from './jobAgentMeta';
 import { useAgentLogos } from '@renderer/utils/model/agentLogo';
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
-import { AionSearchInput } from '@/renderer/components/base';
+import { OpenH3SearchInput } from '@/renderer/components/base';
 import SettingsPageHeader from '@/renderer/pages/settings/components/SettingsPageHeader';
 import { Attention, Robot } from '@icon-park/react';
 
@@ -133,7 +133,7 @@ const ScheduledTasksPage: React.FC = () => {
             actions={
               <>
                 {!isMobile && (
-                  <AionSearchInput
+                  <OpenH3SearchInput
                     className='shrink-0 w-[200px] hidden md:flex'
                     data-testid='input-search-scheduled-tasks'
                     placeholder={t('cron.page.searchPlaceholder', { defaultValue: 'Search tasks...' })}

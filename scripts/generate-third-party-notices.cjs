@@ -107,7 +107,9 @@ function visitManagedResources(directory, depth = 0) {
     else visitManagedResources(child, depth + 1);
   }
 }
-visitManagedResources(path.join(root, 'resources/bundled-aioncore'));
+for (const managedRoot of ['bundled-openh3-core', 'bundled-aioncore']) {
+  visitManagedResources(path.join(root, 'resources', managedRoot));
+}
 // Platform-specific Sentry packages are the binaries of the exact-version CLI.
 for (const item of packages.values()) {
   if (item.name.startsWith('@sentry/cli-') && item.documents.length === 0) {
@@ -167,7 +169,7 @@ if (fs.existsSync(asarPath)) {
   }
 }
 const uncovered = [...packaged]
-  .filter(([id]) => !packages.has(id) && !id.startsWith('@aionui/'))
+  .filter(([id]) => !packages.has(id) && !id.startsWith('@openh3/'))
   .map(([, item]) => item);
 const intro = [
   'OpenH3 — Third-party npm license notices',

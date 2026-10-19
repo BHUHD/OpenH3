@@ -14,8 +14,8 @@ function readConfiguredRoot(dataDir?: string): string | undefined {
   }
 }
 
-export function resolveH3BundleRoot(dataDir = process.env.AIONUI_DATA_DIR): string {
-  const configured = process.env.AIONUI_H3_BUNDLE_ROOT?.trim();
+export function resolveH3BundleRoot(dataDir = process.env.OPENH3_DATA_DIR ?? process.env.AIONUI_DATA_DIR): string {
+  const configured = (process.env.OPENH3_H3_BUNDLE_ROOT ?? process.env.AIONUI_H3_BUNDLE_ROOT)?.trim();
   if (configured) return path.resolve(configured);
   const persisted = readConfiguredRoot(dataDir);
   if (persisted) return path.resolve(persisted);

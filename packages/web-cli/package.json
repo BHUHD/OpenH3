@@ -1,11 +1,12 @@
 {
-  "name": "@aionui/web-cli",
+  "name": "@openh3/web-cli",
   "version": "1.9.26",
   "private": true,
-  "description": "AionUi WebUI CLI - standalone web runtime (no Electron)",
+  "description": "OpenH3 WebUI CLI - standalone web runtime (no Electron)",
   "license": "Apache-2.0",
   "bin": {
-    "aionui-web": "./bin/aionui-web.js"
+    "aionui-web": "./bin/openh3-web.js",
+    "openh3-web": "./bin/openh3-web.js"
   },
   "type": "module",
   "exports": {
@@ -17,8 +18,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@aionui/shared-scripts": "workspace:*",
-    "@aionui/web-host": "workspace:*"
+    "@openh3/shared-scripts": "workspace:*",
+    "@openh3/web-host": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

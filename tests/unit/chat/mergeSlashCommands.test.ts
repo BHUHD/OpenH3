@@ -23,6 +23,31 @@ describe('buildSkillSlashCommands', () => {
     expect(buildSkillSlashCommands([], new Map(), 'Skill')).toEqual([]);
   });
 
+  it('surfaces newly imported user skills in an existing conversation', () => {
+    const commands = buildSkillSlashCommands([], new Map([['apiyi-image-generation', 'Generate images']]), 'Skill', [
+      'apiyi-image-generation',
+    ]);
+
+    expect(commands).toEqual([
+      {
+        name: 'apiyi-image-generation',
+        description: 'Generate images',
+        kind: 'template',
+        source: 'skill',
+        selectionBehavior: 'insert',
+      },
+    ]);
+  });
+
+  it('merges imported user skills without duplicating the conversation snapshot', () => {
+    const commands = buildSkillSlashCommands(['apiyi-image-generation'], new Map(), 'Skill', [
+      'apiyi-image-generation',
+      'comfyui-local',
+    ]);
+
+    expect(commands.map((command) => command.name)).toEqual(['apiyi-image-generation', 'comfyui-local']);
+  });
+
   it('maps each loaded skill to an insert-style template command', () => {
     const commands = buildSkillSlashCommands(['cron', 'officecli'], new Map([['cron', 'Scheduled tasks']]), 'Skill');
 

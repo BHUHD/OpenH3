@@ -10,7 +10,7 @@ import * as path from 'path';
 import { networkInterfaces } from 'os';
 import { getSystemDir } from './initStorage';
 import { httpRequest } from '@/common/adapter/httpBridge';
-import { startWebHost, type WebHostHandle } from '@aionui/web-host';
+import { startWebHost, type WebHostHandle } from '@openh3/web-host';
 import { getDataPath } from './utils';
 
 const WEBUI_CONFIG_FILE = 'webui.config.json';
@@ -130,7 +130,7 @@ export const saveUserWebUIConfig = async (config: WebUIUserConfig): Promise<void
 //   production -> 25808, dev -> 25809, multi-instance dev -> 25810
 const DEFAULT_WEBUI_PORT = (() => {
   if (process.env.NODE_ENV === 'production') return 25808;
-  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 25810;
+  if ((process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1') return 25810;
   return 25809;
 })();
 
@@ -141,7 +141,7 @@ export const resolveWebUIPort = (
   const cliPort = parsePortValue(getSwitchValue('port') ?? getSwitchValue('webui-port'));
   if (cliPort) return cliPort;
 
-  const envPort = parsePortValue(process.env.AIONUI_PORT ?? process.env.PORT);
+  const envPort = parsePortValue(process.env.OPENH3_PORT ?? process.env.AIONUI_PORT ?? process.env.PORT);
   if (envPort) return envPort;
 
   const configPort = parsePortValue(config.port);
@@ -151,8 +151,10 @@ export const resolveWebUIPort = (
 };
 
 export const resolveRemoteAccess = (config: WebUIUserConfig, isRemoteMode: boolean): boolean => {
-  const envRemote = parseBooleanEnv(process.env.AIONUI_ALLOW_REMOTE || process.env.AIONUI_REMOTE);
-  const hostHint = process.env.AIONUI_HOST?.trim();
+  const envRemote = parseBooleanEnv(
+    process.env.OPENH3_ALLOW_REMOTE || process.env.AIONUI_ALLOW_REMOTE || process.env.AIONUI_REMOTE
+  );
+  const hostHint = (process.env.OPENH3_HOST ?? process.env.AIONUI_HOST)?.trim();
   const hostRequestsRemote = hostHint ? ['0.0.0.0', '::', '::0'].includes(hostHint) : false;
   const configRemote = config.allowRemote === true;
 
@@ -229,7 +231,7 @@ export async function startDesktopWebUI(opts: { port?: number; allowRemote?: boo
   // Spawning a second backend here would race the first on the same SQLite file.
   const backendPort = (globalThis as typeof globalThis & { __backendPort?: number }).__backendPort;
   if (!backendPort) {
-    throw new Error('[WebUI] Cannot start: aioncore is not running (globalThis.__backendPort unset)');
+    throw new Error('[WebUI] Cannot start: OpenH3 Core is not running (globalThis.__backendPort unset)');
   }
 
   const handle = await startWebHost({

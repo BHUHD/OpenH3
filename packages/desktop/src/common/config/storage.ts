@@ -114,6 +114,13 @@ export interface ILegacyConfigStorageRefer extends IConfigStorageRefer {
 }
 
 export interface IEnvStorageRefer {
+  /** Canonical OpenH3 system-directory record. */
+  'openh3.dir'?: {
+    workDir: string;
+    cacheDir: string;
+    logDir?: string;
+  };
+  /** Legacy record retained so upgrades can read existing profiles. */
   'aionui.dir': {
     workDir: string;
     cacheDir: string;
@@ -125,7 +132,15 @@ export interface IEnvStorageRefer {
  * Conversation source type - identifies where the conversation was created
  * 会话来源类型 - 标识会话创建的来源
  */
-export type ConversationSource = 'aionui' | 'telegram' | 'lark' | 'dingtalk' | 'weixin' | 'wecom' | (string & {});
+export type ConversationSource =
+  | 'openh3'
+  | 'aionui'
+  | 'telegram'
+  | 'lark'
+  | 'dingtalk'
+  | 'weixin'
+  | 'wecom'
+  | (string & {});
 
 export type TChatConversationStatus = 'pending' | 'running' | 'finished';
 export type TConversationRuntimeStateKind =
@@ -170,7 +185,7 @@ interface IChatConversation<T, Extra> {
   model: TProviderWithModel;
   status?: TChatConversationStatus | undefined;
   runtime?: TConversationRuntimeSummary;
-  /** 会话来源，默认为 aionui / Conversation source, defaults to aionui */
+  /** 会话来源，默认为 openh3；aionui 是旧版本值 / defaults to openh3; aionui is legacy */
   source?: ConversationSource;
   /** Channel chat isolation ID (e.g. user:xxx, group:xxx) */
   channel_chat_id?: string;
@@ -374,7 +389,7 @@ export type TChatConversation =
   // open historical rows with type='gemini' (message history is served
   // by the shared messages table). The backend factory rejects any
   // attempt to resume this conversation — see
-  // AionCore/crates/aionui-common/src/enums.rs and factory.rs.
+  // OpenH3 Core/crates/openh3-common/src/enums.rs and factory.rs.
   // Every field is optional because legacy rows shape-varies across
   // several older Gemini-runtime versions.
   | Omit<
@@ -652,8 +667,34 @@ export interface IConversationMcpStatus {
 
 /** Stable ID for the built-in image generation MCP server */
 export const BUILTIN_IMAGE_GEN_ID = 'builtin-image-gen';
-export const BUILTIN_IMAGE_GEN_NAME = 'aionui-image-generation';
-export const BUILTIN_IMAGE_GEN_LEGACY_NAMES = ['AionUi Image Generation', BUILTIN_IMAGE_GEN_ID] as const;
+/** Canonical OpenH3 name written to new MCP records. */
+export const BUILTIN_IMAGE_GEN_NAME = 'openh3-image-generation';
+/** Names accepted while loading records created by older OpenH3 builds. */
+export const BUILTIN_IMAGE_GEN_LEGACY_NAMES = [
+  'aionui-image-generation',
+  'AionUi Image Generation',
+  BUILTIN_IMAGE_GEN_ID,
+] as const;
+
+export const BUILTIN_VIDEO_MEDIA_ID = 'builtin-video-media';
+export const BUILTIN_VIDEO_MEDIA_NAME = 'openh3-video-media';
+export const BUILTIN_VIDEO_MEDIA_LEGACY_NAMES = ['aionui-video-media'] as const;
+
+export function isBuiltinImageGenerationName(name?: string | null): boolean {
+  return Boolean(
+    name &&
+    (name === BUILTIN_IMAGE_GEN_NAME ||
+      BUILTIN_IMAGE_GEN_LEGACY_NAMES.includes(name as (typeof BUILTIN_IMAGE_GEN_LEGACY_NAMES)[number]))
+  );
+}
+
+export function isBuiltinVideoMediaName(name?: string | null): boolean {
+  return Boolean(
+    name &&
+    (name === BUILTIN_VIDEO_MEDIA_NAME ||
+      BUILTIN_VIDEO_MEDIA_LEGACY_NAMES.includes(name as (typeof BUILTIN_VIDEO_MEDIA_LEGACY_NAMES)[number]))
+  );
+}
 
 export interface IMcpTool {
   name: string;

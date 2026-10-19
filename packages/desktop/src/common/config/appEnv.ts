@@ -8,7 +8,8 @@ import { getPlatformServices } from '@/common/platform';
 
 /**
  * Returns baseName unchanged in release builds, or baseName + '-dev' in dev builds.
- * When AIONUI_MULTI_INSTANCE=1, appends '-2' to isolate the second dev instance.
+ * When OPENH3_MULTI_INSTANCE=1 (legacy AIONUI_MULTI_INSTANCE is also accepted),
+ * appends '-2' to isolate the second dev instance.
  * Used to isolate symlink and directory names between environments.
  *
  * @example
@@ -18,6 +19,6 @@ import { getPlatformServices } from '@/common/platform';
  */
 export function getEnvAwareName(baseName: string): string {
   if (getPlatformServices().paths.isPackaged() === true) return baseName;
-  const suffix = process.env.AIONUI_MULTI_INSTANCE === '1' ? '-dev-2' : '-dev';
+  const suffix = (process.env.OPENH3_MULTI_INSTANCE ?? process.env.AIONUI_MULTI_INSTANCE) === '1' ? '-dev-2' : '-dev';
   return `${baseName}${suffix}`;
 }

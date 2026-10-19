@@ -84,6 +84,7 @@ try {
       'Uninstall AionUi.exe',
       'resources\app.asar',
       'resources\app-update.yml',
+      'resources\bundled-openh3-core\win32-x64\openh3-core.exe',
       'resources\bundled-aioncore\win32-x64\aioncore.exe'
     )
     $known = @(

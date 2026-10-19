@@ -1,4 +1,4 @@
-# Pre-commit configuration for AionUi
+# Pre-commit configuration for OpenH3
 # Ensures local checks match CI checks (TypeScript, Oxlint, Oxfmt)
 #
 # Installation:

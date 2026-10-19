@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Typography, Tooltip, Link } from '@arco-design/web-react';
 import { IconDownload, IconRefresh } from '@arco-design/web-react/icon';
 import { useTranslation } from 'react-i18next';
-import AionModal from '@/renderer/components/base/AionModal';
+import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
 import { useHubAgents } from '@/renderer/hooks/agent/useHubAgents';
 import type { IHubAgentItem } from '@/common/types/agent/hub';
 import { resolveAgentAvatar, useAgentLogos } from '@renderer/utils/model/agentLogo';
@@ -14,15 +14,16 @@ interface AgentHubModalProps {
   onCancel: () => void;
 }
 
-const AION_HUB_REPO_URL = 'https://github.com/iOfficeAI/AionHub';
+// External catalog repository; its upstream URL is not a product identifier.
+const AGENT_CATALOG_REPO_URL = 'https://github.com/iOfficeAI/AionHub';
 
 export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel }) => {
   const { t } = useTranslation();
   const logos = useAgentLogos();
   const { agents, loading, error, install, retryInstall, update } = useHubAgents();
   const actionButtonClassName = '!min-w-80px !rounded-9px !px-10px';
-  const openAionHubRepo = () => {
-    void openExternalUrl(AION_HUB_REPO_URL).catch(console.error);
+  const openCatalogRepo = () => {
+    void openExternalUrl(AGENT_CATALOG_REPO_URL).catch(console.error);
   };
 
   const renderActionBtn = (agent: IHubAgentItem) => {
@@ -84,7 +85,7 @@ export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel 
   };
 
   return (
-    <AionModal
+    <OpenH3Modal
       variant='standard'
       header={{ title: t('settings.agentManagement.installFromMarket'), showClose: true }}
       visible={visible}
@@ -101,9 +102,9 @@ export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel 
               defaultValue: 'Want a new Agent listed here?',
             })}
           </Typography.Text>
-          <Link className='text-12px leading-18px' onClick={openAionHubRepo}>
+          <Link className='text-12px leading-18px' onClick={openCatalogRepo}>
             {t('settings.agentManagement.marketContributionAction', {
-              defaultValue: 'Open a PR on AionHub',
+              defaultValue: 'Open a PR on GitHub',
             })}
           </Link>
         </div>
@@ -176,6 +177,6 @@ export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel 
           </div>
         )}
       </div>
-    </AionModal>
+    </OpenH3Modal>
   );
 };

@@ -14,7 +14,10 @@ import { isElectronDesktop, openExternalUrl } from '@/renderer/utils/platform';
 import FeedbackReportModal from './FeedbackReportModal';
 import { ipcBridge } from '@/common';
 import { getIncludePrerelease, runUpdateCheck } from '@/renderer/components/settings/checkForUpdatesShared';
-import { UPDATE_AVAILABLE_EVENT } from '@/renderer/components/settings/useUpdateNotificationController';
+import {
+  LEGACY_UPDATE_AVAILABLE_EVENT,
+  UPDATE_AVAILABLE_EVENT,
+} from '@/renderer/components/settings/useUpdateNotificationController';
 import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
 import { OPEN_MIGRATION_DIALOG_EVENT } from '@/renderer/components/settings/UpdateMigrationDialog';
 import openh3Logo from '@/renderer/assets/logos/brand/openh3-logo.png';
@@ -100,6 +103,9 @@ const AboutModalContent: React.FC = () => {
         // Only reveal the bottom-right card once an update is confirmed; hand
         // over the already-fetched outcome so the card skips the checking flash.
         window.dispatchEvent(new CustomEvent(UPDATE_AVAILABLE_EVENT, { detail: outcome }));
+        // Keep the pre-OpenH3 event available to older renderer extensions and
+        // sessions while new code consumes the canonical event above.
+        window.dispatchEvent(new CustomEvent(LEGACY_UPDATE_AVAILABLE_EVENT, { detail: outcome }));
       } else if (outcome.kind === 'upToDate') {
         Message.info(t('update.alreadyLatest'));
       } else {

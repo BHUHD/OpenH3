@@ -10,8 +10,8 @@ describe('OpenH3 skill presentation', () => {
     const label = normalize as (name: string) => string;
     expect(label('aionui-config')).toBe('openh3-config');
     expect(label('aionui-troubleshooting')).toBe('openh3-troubleshooting');
-    expect(label('aionui-webui-setup')).toBe('openh3-webui-setup');
-    expect(label('aionui-webui-public')).toBe('openh3-webui-public');
+    expect(label('openh3-webui-setup')).toBe('openh3-webui-setup');
+    expect(label('openh3-webui-public')).toBe('openh3-webui-public');
     expect(label('apiyi-image-generation')).toBe('apiyi-image-generation');
     expect(label('aionui-custom-notes')).toBe('aionui-custom-notes');
     expect(label('toString')).toBe('toString');

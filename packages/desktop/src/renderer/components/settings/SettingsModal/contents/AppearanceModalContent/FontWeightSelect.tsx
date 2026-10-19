@@ -6,7 +6,7 @@
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import AionSelect from '@/renderer/components/base/AionSelect';
+import OpenH3Select from '@/renderer/components/base/OpenH3Select';
 import { FONT_WEIGHT_TIERS, SYSTEM_FONT_WEIGHT } from '@/common/config/fontWeights';
 
 type FontWeightSelectProps = {
@@ -36,7 +36,7 @@ const FontWeightSelect: React.FC<FontWeightSelectProps> = ({ value, onChange }) 
   }, [t]);
 
   return (
-    <AionSelect
+    <OpenH3Select
       className='w-140px'
       value={value}
       onChange={(next) => onChange(typeof next === 'string' ? next : SYSTEM_FONT_WEIGHT)}

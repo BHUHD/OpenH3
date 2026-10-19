@@ -17,8 +17,11 @@
       // Synchronously restore theme appearance from localStorage to prevent theme flash
       (function () {
         try {
-          var theme = localStorage.getItem('__aionui_theme');
-          if (theme) document.documentElement.setAttribute('data-theme', theme);
+          var theme = localStorage.getItem('__openh3_theme') || localStorage.getItem('__aionui_theme');
+          if (theme) {
+            localStorage.setItem('__openh3_theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+          }
         } catch (e) {}
       })();
     </script>
@@ -38,7 +41,7 @@
     <script>
       // Set arco-theme on body synchronously
       try {
-        var t = localStorage.getItem('__aionui_theme');
+        var t = localStorage.getItem('__openh3_theme') || localStorage.getItem('__aionui_theme');
         if (t) document.body.setAttribute('arco-theme', t);
       } catch (e) {}
     </script>
