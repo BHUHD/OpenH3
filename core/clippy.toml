@@ -1,0 +1,3 @@
+disallowed-types = [
+    { path = "openh3_common::ApiError", reason = "ApiError is an HTTP/API boundary error; map crate-owned errors to it only in routes or middleware." },
+]

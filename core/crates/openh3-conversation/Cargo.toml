@@ -1,0 +1,46 @@
+[package]
+name = "openh3-conversation"
+version.workspace = true
+edition.workspace = true
+
+
+[lib]
+name = "openh3_conversation"
+
+[dependencies]
+openh3-common.workspace = true
+openh3-db.workspace = true
+openh3-project.workspace = true
+openh3-api-types.workspace = true
+openh3-realtime.workspace = true
+openh3-auth.workspace = true
+openh3-ai-agent.workspace = true
+openh3-extension.workspace = true
+openh3-mcp.workspace = true
+openh3-runtime.workspace = true
+axum.workspace = true
+base64.workspace = true
+chrono.workspace = true
+regex.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tower.workspace = true
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+sqlx.workspace = true
+# Enable the `AgentInstance::Mock` variant so tests can build fake agents
+# through the trait-object escape hatch without spawning real CLI processes.
+openh3-ai-agent = { workspace = true, features = ["test-support"] }
+# Force-kill convergence tests (force_kill_convergence.rs) build a real
+# `AgentInstance::Session` over a fake `SessionBackend`, so they need the session
+# crate's trait + test doubles. Dev-only; never shipped.
+openh3-session = { workspace = true, features = ["test-support"] }
+futures-util = { workspace = true }
+async-trait.workspace = true

@@ -1,0 +1,34 @@
+[package]
+name = "openh3-session-message"
+version.workspace = true
+edition.workspace = true
+
+
+[lib]
+name = "openh3_session_message"
+
+[dependencies]
+openh3-api-types.workspace = true
+openh3-common.workspace = true
+openh3-conversation.workspace = true
+openh3-db.workspace = true
+openh3-ai-agent.workspace = true
+openh3-project.workspace = true
+openh3-realtime.workspace = true
+openh3-auth.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+tower.workspace = true
+# Enables the `AgentInstance::Mock` variant so the delivery and e2e tests can
+# build busy fake agents through the trait-object escape hatch instead of
+# spawning real CLIs. Same reason `openh3-team` pulls it in.
+openh3-ai-agent = { workspace = true, features = ["test-support"] }

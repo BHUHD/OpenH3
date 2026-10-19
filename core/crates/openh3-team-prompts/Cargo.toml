@@ -1,0 +1,13 @@
+[package]
+name = "openh3-team-prompts"
+version.workspace = true
+edition.workspace = true
+
+
+[lib]
+name = "openh3_team_prompts"
+
+[dependencies]
+openh3-api-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true

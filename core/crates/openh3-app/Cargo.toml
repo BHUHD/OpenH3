@@ -1,0 +1,100 @@
+[package]
+name = "openh3-app"
+version.workspace = true
+edition.workspace = true
+exclude = ["data/**"]
+
+[[bin]]
+name = "openh3-core"
+path = "src/main.rs"
+
+[[bin]]
+name = "aioncore"
+path = "src/legacy_main.rs"
+
+[lib]
+name = "openh3_app"
+
+[features]
+default = ["telegram", "lark", "dingtalk", "weixin", "slack", "discord"]
+telegram = ["openh3-channel/telegram"]
+lark = ["openh3-channel/lark"]
+dingtalk = ["openh3-channel/dingtalk"]
+weixin = ["openh3-channel/weixin"]
+slack = ["openh3-channel/slack"]
+discord = ["openh3-channel/discord"]
+
+[dependencies]
+openh3-common.workspace = true
+openh3-assets.workspace = true
+openh3-db.workspace = true
+openh3-api-types.workspace = true
+openh3-realtime.workspace = true
+openh3-auth.workspace = true
+openh3-system.workspace = true
+openh3-file.workspace = true
+openh3-office.workspace = true
+openh3-shell.workspace = true
+openh3-ai-agent.workspace = true
+openh3-session.workspace = true
+openh3-session-message.workspace = true
+openh3-skill-runtime.workspace = true
+openh3-mcp.workspace = true
+openh3-conversation.workspace = true
+openh3-extension.workspace = true
+openh3-channel.workspace = true
+openh3-team.workspace = true
+openh3-team-prompts.workspace = true
+openh3-cron.workspace = true
+openh3-project.workspace = true
+openh3-sidebar.workspace = true
+openh3-assistant.workspace = true
+openh3-runtime.workspace = true
+openh3-process.workspace = true
+aion-config.workspace = true
+axum.workspace = true
+chrono.workspace = true
+dirs.workspace = true
+dunce.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+tracing.workspace = true
+tracing-appender.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+reqwest.workspace = true
+rmcp = { version = "1.5", features = ["server", "transport-io", "schemars"] }
+anyhow.workspace = true
+async-trait.workspace = true
+rpassword.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+] }
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+openh3-api-types.workspace = true
+openh3-realtime.workspace = true
+# Enable the `AgentInstance::Mock` variant so tests can build fake agents
+# through the trait-object escape hatch without spawning real CLI processes.
+openh3-ai-agent = { workspace = true, features = ["test-support"] }
+base64.workspace = true
+git2.workspace = true
+http-body-util.workspace = true
+rust_xlsxwriter.workspace = true
+sqlx = { workspace = true, features = ["migrate"] }
+tempfile = "3"
+tower = { workspace = true, features = ["util"] }
+tokio-tungstenite.workspace = true
+futures-util.workspace = true
+wiremock = "0.6"

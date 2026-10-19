@@ -1,0 +1,29 @@
+[package]
+name = "openh3-skill-runtime"
+version.workspace = true
+edition.workspace = true
+
+
+[lib]
+name = "openh3_skill_runtime"
+
+[dependencies]
+openh3-api-types.workspace = true
+openh3-common.workspace = true
+openh3-db.workspace = true
+openh3-extension.workspace = true
+openh3-ai-agent.workspace = true
+async-trait.workspace = true
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+sqlx.workspace = true
+tempfile = "3"
+tokio = { workspace = true, features = ["test-util"] }
+tower.workspace = true
+http-body-util.workspace = true
