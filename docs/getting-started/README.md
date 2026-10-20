@@ -4,7 +4,7 @@
 
 ## 1. 安装应用
 
-先阅读[系统要求](system-requirements.md)。Windows x64 用户从 [Releases](https://github.com/BHUHD/OpenH3/releases) 下载 Alpha 安装包，核对版本说明和 SHA256；当前通过 Releases 手动更新。开发者使用[源码环境指南](../contributing/development.md)。
+先阅读[系统要求](system-requirements.md)。Windows x64 用户从 [Releases](https://github.com/pigq/OpenH3/releases) 下载 Alpha 安装包，核对版本说明和 SHA256；当前通过 Releases 手动更新。开发者使用[源码环境指南](../contributing/development.md)。
 
 ## 2. 准备对话模型
 

@@ -119,12 +119,12 @@ const AboutModalContent: React.FC = () => {
   const linkItems: LinkItem[] = [
     {
       title: t('settings.helpDocumentation'),
-      url: 'https://github.com/BHUHD/OpenH3/wiki',
+      url: 'https://github.com/pigq/OpenH3/wiki',
       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
     },
     {
       title: t('settings.updateLog'),
-      url: 'https://github.com/BHUHD/OpenH3/releases',
+      url: 'https://github.com/pigq/OpenH3/releases',
       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
     },
     {
@@ -139,7 +139,7 @@ const AboutModalContent: React.FC = () => {
     },
     {
       title: t('settings.officialWebsite'),
-      url: 'https://github.com/BHUHD/OpenH3',
+      url: 'https://github.com/pigq/OpenH3',
       icon: <Right theme='outline' size='16' className='rtl-mirror' />,
     },
   ];
@@ -167,7 +167,7 @@ const AboutModalContent: React.FC = () => {
               <div
                 className='text-t-primary cursor-pointer hover:text-t-secondary transition-colors p-4px'
                 onClick={() =>
-                  openLink('https://github.com/BHUHD/OpenH3').catch((error) =>
+                  openLink('https://github.com/pigq/OpenH3').catch((error) =>
                     console.error('Failed to open link:', error)
                   )
                 }

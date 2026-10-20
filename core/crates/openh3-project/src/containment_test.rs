@@ -1,23 +1,33 @@
 use super::*;
 use crate::canonical::canonicalize;
 
+#[cfg(windows)]
+const ROOT_URI: &str = "file:///C:/work/proj";
+#[cfg(not(windows))]
+const ROOT_URI: &str = "file:///work/proj";
+
 fn root() -> Canonical {
-    canonicalize("file:///work/proj").unwrap()
+    canonicalize(ROOT_URI).unwrap()
 }
 
 #[test]
 fn resolves_normal_child_path() {
     let r = resolve_relative(&root(), "src/main.rs", FileOp::Read).unwrap();
     assert_eq!(r.relative_path, "src/main.rs");
-    assert_eq!(r.resource_uri, "file:///work/proj/src/main.rs");
-    assert_eq!(r.absolute_path.unwrap().to_string_lossy(), "/work/proj/src/main.rs");
+    assert_eq!(r.resource_uri, format!("{ROOT_URI}/src/main.rs"));
+    let expected = if cfg!(windows) {
+        PathBuf::from(r"c:\work\proj\src\main.rs")
+    } else {
+        PathBuf::from("/work/proj/src/main.rs")
+    };
+    assert_eq!(r.absolute_path.unwrap(), expected);
 }
 
 #[test]
 fn empty_relative_is_root_itself() {
     let r = resolve_relative(&root(), "", FileOp::Browse).unwrap();
     assert_eq!(r.relative_path, "");
-    assert_eq!(r.resource_uri, "file:///work/proj");
+    assert_eq!(r.resource_uri, ROOT_URI);
 }
 
 #[test]

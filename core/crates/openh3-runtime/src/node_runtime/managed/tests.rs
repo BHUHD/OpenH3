@@ -222,18 +222,7 @@ async fn persistent_npm_version_failure_still_reports_bundled_resource_invalid()
 async fn managed_runtime_validation_uses_real_commands() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().join("node-v24.11.0-test");
-    let bin = root.join("bin");
-    std::fs::create_dir_all(&bin).unwrap();
-
-    let node = bin.join("node");
-    std::fs::write(&node, "#!/bin/sh\necho v24.11.0\n").unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(&node).unwrap().permissions();
-        perms.set_mode(0o755);
-        std::fs::set_permissions(&node, perms).unwrap();
-    }
+    write_file(&root.join(platform_spec().unwrap().executable));
 
     let err = validate_managed_runtime(&root, None).await.unwrap_err();
     assert!(err.to_string().to_ascii_lowercase().contains("npm"));
@@ -461,11 +450,14 @@ fn managed_runtime_checksum_verification_detects_mismatch() {
 fn managed_runtime_injects_npm_state_under_runtime_root() {
     let tmp = tempfile::tempdir().unwrap();
     let root = tmp.path().join("node-v24.11.0-test");
-    let bin = root.join("bin");
-    std::fs::create_dir_all(&bin).unwrap();
-    std::fs::write(bin.join("node"), b"").unwrap();
-    std::fs::write(bin.join("npm"), b"").unwrap();
-    std::fs::write(bin.join("npx"), b"").unwrap();
+    let paths = if cfg!(windows) {
+        ["node.exe", "npm.cmd", "npx.cmd"]
+    } else {
+        ["bin/node", "bin/npm", "bin/npx"]
+    };
+    for relative in paths {
+        write_file(&root.join(relative));
+    }
 
     let runtime = runtime_from_root(&root, ResolvedNodeSource::Managed).expect("runtime");
     let env: std::collections::HashMap<_, _> = runtime

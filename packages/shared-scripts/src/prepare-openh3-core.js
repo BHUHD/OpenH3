@@ -3,9 +3,10 @@
  *
  * Resolution order:
  *  1. Explicit local bundle from OPENH3_BACKEND_LOCAL_BUNDLE_DIR (no fallback)
- *  2. GitHub Actions artifact download when OPENH3_BACKEND_RUN_ID is set
- *  3. GitHub release download (requires version or defaults to "latest")
- *  4. Local binary fallback from OPENH3_BACKEND_LOCAL_BINARY
+ *  2. Build the in-repository Core source (default in a monorepo checkout)
+ *  3. GitHub Actions artifact download when OPENH3_BACKEND_RUN_ID is set
+ *  4. GitHub release download (requires version or defaults to "latest")
+ *  5. Local binary fallback from OPENH3_BACKEND_LOCAL_BINARY
  *
  * Output: {projectRoot}/resources/bundled-openh3-core/{platform}-{arch}/
  *   - openh3-core[.exe]
@@ -89,6 +90,46 @@ function ensureExecutableMode(filePath) {
   try {
     fs.chmodSync(filePath, 0o755);
   } catch {}
+}
+
+function buildLocalOpenH3Core(projectRoot, platform, arch) {
+  if (platform !== process.platform || arch !== process.arch) {
+    throw new Error(
+      `Local Core builds require the host target (${process.platform}-${process.arch}), not ${platform}-${arch}. ` +
+        'Use OPENH3_BACKEND_LOCAL_BUNDLE_DIR for cross-architecture packaging.'
+    );
+  }
+
+  const coreRoot = path.join(projectRoot, 'core');
+  const manifestPath = path.join(coreRoot, 'Cargo.toml');
+  if (!fs.existsSync(manifestPath)) {
+    throw new Error(`In-repository OpenH3 Core source is missing: ${manifestPath}`);
+  }
+
+  console.log(`  Building OpenH3 Core from ${path.relative(projectRoot, coreRoot)} with Cargo`);
+  const output = execFileSync(
+    'cargo',
+    ['build', '--manifest-path', manifestPath, '--release', '-p', 'openh3-app', '--locked', '--message-format=json'],
+    { cwd: coreRoot, stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
+  );
+  // Cargo owns the output location, including CARGO_TARGET_DIR and build.target.
+  // Read this build's artifact instead of potentially copying a stale default.
+  const artifact = output
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .find(
+      (message) =>
+        message.reason === 'compiler-artifact' &&
+        message.target?.name === 'openh3-core' &&
+        message.target.kind.includes('bin') &&
+        message.executable
+    );
+  const binaryPath = artifact?.executable;
+  if (!binaryPath || !fs.existsSync(binaryPath) || !fs.statSync(binaryPath).isFile()) {
+    throw new Error('Cargo completed without reporting an OpenH3 Core executable.');
+  }
+  return binaryPath;
 }
 
 function writeJson(filePath, payload) {
@@ -545,11 +586,25 @@ function prepareOpenH3Core(options) {
   const runtimeKey = `${platform}-${arch}`;
   const actionsRunId = getEnv('OPENH3_BACKEND_RUN_ID', 'AIONUI_BACKEND_RUN_ID');
   const localBundleDir = getEnv('OPENH3_BACKEND_LOCAL_BUNDLE_DIR', 'AIONUI_BACKEND_LOCAL_BUNDLE_DIR');
+  const sourceOverride = getEnv('OPENH3_CORE_SOURCE', 'AIONUI_CORE_SOURCE').toLowerCase();
+  if (sourceOverride && !['local', 'release'].includes(sourceOverride)) {
+    throw new Error('OPENH3_CORE_SOURCE must be local or release.');
+  }
+  // A normal monorepo build must include the Core changes in this checkout.
+  // Explicit artifact/version/binary overrides retain the split-repo workflow.
+  const localCoreSource =
+    sourceOverride ||
+    (fs.existsSync(path.join(projectRoot, 'core', 'Cargo.toml')) &&
+    !actionsRunId &&
+    !getEnv('OPENH3_BACKEND_VERSION', 'AIONUI_BACKEND_VERSION') &&
+    !getEnv('OPENH3_BACKEND_LOCAL_BINARY', 'AIONUI_BACKEND_LOCAL_BINARY')
+      ? 'local'
+      : 'release');
 
   let tag = null;
   if (!actionsRunId) {
     // Resolve the actual version tag — release asset filenames include the tag.
-    if (version === 'latest' && !localBundleDir) {
+    if (version === 'latest' && !localBundleDir && localCoreSource !== 'local') {
       const resolved = resolveLatestTag();
       if (!resolved) {
         throw new Error('Failed to resolve the latest OpenH3 Core release tag from GitHub API');
@@ -634,8 +689,15 @@ function prepareOpenH3Core(options) {
   let sourceDetail = {};
   let tempDir = null;
 
-  // 1. Download from GitHub Actions artifacts when manual build run id is provided.
-  if (actionsRunId) {
+  // 1. Build from the Core source included in this monorepo when requested.
+  if (localCoreSource === 'local') {
+    sourcePath = buildLocalOpenH3Core(projectRoot, platform, arch);
+    sourceType = 'local-source';
+    sourceDetail = { path: path.relative(projectRoot, sourcePath) };
+  }
+
+  // 2. Download from GitHub Actions artifacts when manual build run id is provided.
+  if (!sourcePath && actionsRunId) {
     const result = downloadAndExtractActionsArtifact(platform, arch, actionsRunId);
     sourcePath = result.binaryPath;
     tempDir = result.tempDir;
@@ -648,7 +710,7 @@ function prepareOpenH3Core(options) {
     console.log(`  Downloaded from GitHub Actions artifact`);
   }
 
-  // 2. Download from GitHub releases.
+  // 3. Download from GitHub releases.
   if (!sourcePath && tag) {
     try {
       const result = downloadAndExtract(platform, arch, tag);
@@ -662,7 +724,7 @@ function prepareOpenH3Core(options) {
     }
   }
 
-  // 3. Use an explicitly supplied local cache when network download is unavailable.
+  // 4. Use an explicitly supplied local cache when network download is unavailable.
   if (!sourcePath) {
     const localBinary = getEnv('OPENH3_BACKEND_LOCAL_BINARY', 'AIONUI_BACKEND_LOCAL_BINARY');
     if (localBinary) {
@@ -685,13 +747,11 @@ function prepareOpenH3Core(options) {
     ensureExecutableMode(targetBinaryPath);
     const bundledManagedResourcesDir = prepareManagedResources(targetBinaryPath, targetDir);
 
-    // The release tag is the authoritative version — the aioncore
-    // binary does not expose a --version flag (it has --app-version which
-    // takes a value, not a self-report).
+    // Record the selected source rather than inferring provenance from the binary.
     const manifest = {
       platform,
       arch,
-      version: tag || `actions-run-${actionsRunId}`,
+      version: localCoreSource === 'local' ? 'local' : tag || (actionsRunId ? `actions-run-${actionsRunId}` : 'local'),
       generatedAt: new Date().toISOString(),
       sourceType,
       source: sourceDetail,

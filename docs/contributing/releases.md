@@ -1,6 +1,6 @@
 # Release guide / 发布指南
 
-公开安装包和校验文件放在 [GitHub Releases](https://github.com/BHUHD/OpenH3/releases)，不提交到源码树。
+公开安装包和校验文件放在主仓库 [GitHub Releases](https://github.com/pigq/OpenH3/releases)，不提交到源码树；`BHUHD/OpenH3` 只作为同一项目的镜像。
 
 ## 当前 Alpha
 

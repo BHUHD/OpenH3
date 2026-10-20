@@ -11,8 +11,8 @@ import { Message, Switch, Tooltip } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-const SKILLS_MARKET_DETAILS_ZH = 'https://github.com/BHUHD/OpenH3';
-const SKILLS_MARKET_DETAILS_EN = 'https://github.com/BHUHD/OpenH3';
+const SKILLS_MARKET_DETAILS_ZH = 'https://github.com/pigq/OpenH3';
+const SKILLS_MARKET_DETAILS_EN = 'https://github.com/pigq/OpenH3';
 
 const SkillsMarketBanner: React.FC = () => {
   const { t, i18n } = useTranslation();

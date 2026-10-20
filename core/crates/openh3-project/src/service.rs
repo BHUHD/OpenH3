@@ -502,3 +502,32 @@ fn runtime_status_of(folder: &FolderRow) -> (RuntimeStatus, Option<String>) {
         },
     }
 }
+
+#[cfg(test)]
+mod service_test {
+    use super::*;
+    use openh3_db::{SqliteProjectStore, init_database_memory};
+
+    #[tokio::test]
+    async fn blank_canonical_basename_has_no_default_display_name() {
+        let db = init_database_memory().await.expect("db");
+        let store: Arc<dyn IProjectStore> = Arc::new(SqliteProjectStore::new(db.pool().clone()));
+        let service = ProjectService::new(store, std::env::temp_dir());
+        let uri = if cfg!(windows) {
+            "file:///C:/openh3/%20%20%20"
+        } else {
+            "file:///openh3/%20%20%20"
+        };
+        let canonical = canonical::canonicalize(uri).expect("canonical uri");
+        let folder = FolderRow {
+            folder_id: "folder".to_owned(),
+            resource_uri: uri.to_owned(),
+            resource_canonical: canonical.as_str().to_owned(),
+            created_at: 0,
+            updated_at: 0,
+        };
+
+        let dto = service.build_folder_dto(&folder);
+        assert_eq!(dto.default_display_name, None);
+    }
+}

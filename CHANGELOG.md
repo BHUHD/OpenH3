@@ -24,4 +24,4 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Release notes
 
-See [GitHub Releases](https://github.com/BHUHD/OpenH3/releases) for version-specific notes and the [release guide](docs/contributing/releases.md) for the publishing process. Provider credentials, model weights, LoRAs, converted checkpoints, and workflow assets are not included in source or builds unless their release rights are documented.
+See [GitHub Releases](https://github.com/pigq/OpenH3/releases) for version-specific notes and the [release guide](docs/contributing/releases.md) for the publishing process. Provider credentials, model weights, LoRAs, converted checkpoints, and workflow assets are not included in source or builds unless their release rights are documented.

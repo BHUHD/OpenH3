@@ -2957,7 +2957,7 @@ async fn conversation_cron_routes_reject_missing_headers_unclaimed_and_wrong_use
         .unwrap();
     assert_eq!(missing_header.status(), StatusCode::BAD_REQUEST);
     let body = String::from_utf8(to_bytes(missing_header.into_body(), usize::MAX).await.unwrap().to_vec()).unwrap();
-    assert!(body.contains("x-aionui-user-id"));
+    assert!(body.contains("x-openh3-user-id"));
 
     let unclaimed = app
         .clone()

@@ -5,7 +5,7 @@
 //! keyset paging continuity, and the ScopeGone 404.
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
@@ -93,7 +93,7 @@ async fn insert_conv(pool: &SqlitePool, user: &str, id: &str, project_id: Option
 
 /// A conversation whose workspace lives in `extra.$.workspace`.
 async fn insert_conv_ws(pool: &SqlitePool, user: &str, id: &str, workspace: &str, updated_at: i64) {
-    let extra = serde_json::json!({ "workspace": workspace }).to_string();
+    let extra = serde_json::json!({ "workspace": fixture_path(workspace) }).to_string();
     insert_conv(pool, user, id, None, &extra, updated_at).await;
 }
 
@@ -128,7 +128,7 @@ async fn insert_team(
     .bind(id)
     .bind(user)
     .bind(id)
-    .bind(workspace)
+    .bind(fixture_path(workspace).to_string_lossy().as_ref())
     .bind(project_id)
     .bind(updated_at)
     .bind(updated_at)
@@ -177,13 +177,23 @@ async fn insert_temp_project(pool: &SqlitePool, user: &str, project_id: &str) {
 
 // -- Assertion helpers -------------------------------------------------------
 
+fn fixture_path(path: &str) -> PathBuf {
+    if cfg!(windows) && path.starts_with('/') {
+        std::env::temp_dir()
+            .join("openh3-sidebar-fixtures")
+            .join(path.trim_start_matches('/'))
+    } else {
+        PathBuf::from(path)
+    }
+}
+
 fn canon_of(path: &str) -> String {
-    let uri = canonical::to_file_uri(Path::new(path)).unwrap();
+    let uri = canonical::to_file_uri(&fixture_path(path)).unwrap();
     canonical::canonicalize(&uri).unwrap().as_str().to_owned()
 }
 
 fn file_uri(path: &str) -> String {
-    canonical::to_file_uri(Path::new(path)).unwrap()
+    canonical::to_file_uri(&fixture_path(path)).unwrap()
 }
 
 fn conv_ids(items: &[SidebarItem]) -> Vec<String> {
@@ -368,7 +378,7 @@ async fn dangling_project_id_falls_through_to_path() {
     .await;
     // project_id points at a project that does not exist -> treat as NULL, then
     // classify by workspace path (which merges onto proj-std).
-    let extra = serde_json::json!({ "workspace": "/repo/std" }).to_string();
+    let extra = serde_json::json!({ "workspace": fixture_path("/repo/std") }).to_string();
     insert_conv(pool, USER, "ghost", Some("no-such-proj"), &extra, 80).await;
 
     let resp = fx

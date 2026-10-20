@@ -384,19 +384,19 @@ fn si_7_builtin_image_gen_injection() {
     let builtin = &session_servers[1];
     match builtin {
         AcpSessionMcpServer::Stdio { name, command, env, .. } => {
-            assert_eq!(name, "aionui-image-generation");
+            assert_eq!(name, "openh3-image-generation");
             assert_eq!(command, "/usr/local/bin/aionui-img-gen");
 
             // Verify all 6 env vars are present
             assert_eq!(env.len(), 6);
 
             let env_map: HashMap<&str, &str> = env.iter().map(|p| (p.name.as_str(), p.value.as_str())).collect();
-            assert_eq!(env_map["AIONUI_IMG_MODEL"], "dall-e-3");
-            assert_eq!(env_map["AIONUI_IMG_API_URL"], "https://api.openai.com/v1");
-            assert_eq!(env_map["AIONUI_IMG_API_KEY"], "sk-test-key");
-            assert_eq!(env_map["AIONUI_IMG_SIZE"], "1024x1024");
-            assert_eq!(env_map["AIONUI_IMG_QUALITY"], "hd");
-            assert_eq!(env_map["AIONUI_IMG_STYLE"], "natural");
+            assert_eq!(env_map["OPENH3_IMG_MODEL"], "dall-e-3");
+            assert_eq!(env_map["OPENH3_IMG_API_URL"], "https://api.openai.com/v1");
+            assert_eq!(env_map["OPENH3_IMG_API_KEY"], "sk-test-key");
+            assert_eq!(env_map["OPENH3_IMG_SIZE"], "1024x1024");
+            assert_eq!(env_map["OPENH3_IMG_QUALITY"], "hd");
+            assert_eq!(env_map["OPENH3_IMG_STYLE"], "natural");
         }
         _ => panic!("expected Stdio variant for builtin"),
     }

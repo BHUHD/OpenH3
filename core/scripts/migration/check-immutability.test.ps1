@@ -147,6 +147,20 @@ try {
     Add-Content -LiteralPath (Join-Path $renamedRepo "crates/openh3-db/migrations/001_initial_schema.sql") -Value "-- forbidden edit after rename"
     Invoke-InRepo $renamedRepo 1 "Existing migration files from main must not be modified or deleted" @{ AIONCORE_MIGRATION_BASE_REF = "main" }
 
+    $nestedRepo = New-CaseRepo "monorepo"
+    Push-Location $nestedRepo
+    try {
+        New-Item -ItemType Directory -Path "core" | Out-Null
+        Invoke-Native git mv crates core/crates
+        Invoke-Native git commit -qm "nested Core baseline"
+        Invoke-Native git branch -f main HEAD
+        Add-Content -LiteralPath "core/crates/openh3-db/migrations/001_initial_schema.sql" -Value "-- forbidden edit"
+    } finally {
+        Pop-Location
+    }
+    Invoke-InRepo $nestedRepo 1 "Existing migration files from main must not be modified or deleted" @{ AIONCORE_MIGRATION_BASE_REF = "main" }
+    Invoke-InRepo (Join-Path $nestedRepo "core") 1 "Existing migration files from main must not be modified or deleted" @{ AIONCORE_MIGRATION_BASE_REF = "main" }
+
     Write-Output "Migration immutability script tests passed"
 } finally {
     Remove-Item -LiteralPath $tmpdir -Recurse -Force

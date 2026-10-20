@@ -2,13 +2,13 @@
 
 **Create local AI video through conversation.** Let an agent orchestrate H3 / ComfyUI, track execution, and preview the result.
 
-[简体中文](../../README.md) · [Download Alpha](https://github.com/BHUHD/OpenH3/releases) · [Documentation](../README.md) · [Issues](https://github.com/BHUHD/OpenH3/issues) · [Contribute](../../CONTRIBUTING.md)
+[简体中文](../../README.md) · [Download Alpha](https://github.com/pigq/OpenH3/releases) · [Documentation](../README.md) · [Issues](https://github.com/pigq/OpenH3/issues) · [Contribute](../../CONTRIBUTING.md)
 
 ![A reference image becomes a video inside OpenH3](../assets/openh3-demo.gif)
 
 ## Get started
 
-1. Download the Windows x64 installer from [Releases](https://github.com/BHUHD/OpenH3/releases). Read the version-specific checksums and known issues.
+1. Download the Windows x64 installer from [Releases](https://github.com/pigq/OpenH3/releases). Read the version-specific checksums and known issues.
 2. Follow [Getting started](../getting-started/README.md) to set up a conversation provider and the local H3 / ComfyUI runtime.
 3. Attach an image and ask: “Generate a five-second shot from this image, preserve the subject, and preview the result.”
 
@@ -49,4 +49,4 @@ QQ community: **790631169** ([QR code](../assets/openh3-qq-group.png)). Use publ
 
 OpenH3 builds on [AionUi](https://github.com/iOfficeAI/AionUi), preserving upstream attribution. Application source uses [Apache-2.0](../../LICENSE); third-party components, models, and workflows have their own terms. Read the [notices](../../resources/third-party-licenses/NOTICE.OpenH3.txt) and [source offer](../../resources/third-party-licenses/SOURCE-OFFER.md).
 
-The official entry point is [BHUHD/OpenH3](https://github.com/BHUHD/OpenH3). Copies in the personal repository use the same documentation and feedback destination.
+The primary repository is [pigq/OpenH3](https://github.com/pigq/OpenH3); [BHUHD/OpenH3](https://github.com/BHUHD/OpenH3) mirrors the same project.

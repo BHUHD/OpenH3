@@ -59,14 +59,19 @@ mod tests {
 
         std::fs::create_dir_all(node_root.join("bin")).unwrap();
         std::fs::create_dir_all(npm_root.join("bin")).unwrap();
-        std::fs::write(node_root.join("bin/node"), b"").unwrap();
-        std::fs::write(node_root.join("bin/npx"), b"").unwrap();
-        std::fs::write(npm_root.join("bin/npm"), b"").unwrap();
+        let [node_relative, npm_relative, npx_relative] = if cfg!(windows) {
+            ["node.exe", "npm.cmd", "npx.cmd"]
+        } else {
+            ["bin/node", "bin/npm", "bin/npx"]
+        };
+        std::fs::write(node_root.join(node_relative), b"").unwrap();
+        std::fs::write(node_root.join(npx_relative), b"").unwrap();
+        std::fs::write(npm_root.join(npm_relative), b"").unwrap();
 
         let err = validate_same_root(
-            &node_root.join("bin/node"),
-            &npm_root.join("bin/npm"),
-            &node_root.join("bin/npx"),
+            &node_root.join(node_relative),
+            &npm_root.join(npm_relative),
+            &node_root.join(npx_relative),
         )
         .unwrap_err();
 

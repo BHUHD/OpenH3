@@ -2,6 +2,9 @@
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
+if [[ -d "$repo_root/core/crates/openh3-db/migrations" ]]; then
+    repo_root="$repo_root/core"
+fi
 cd "$repo_root"
 
 duplicate_versions="$(

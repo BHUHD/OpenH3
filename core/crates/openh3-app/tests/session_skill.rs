@@ -35,7 +35,7 @@ fn the_skill_declares_the_name_the_resolver_will_discover() {
 fn the_skill_documents_every_wired_session_subcommand() {
     let body = skill_body();
     for descriptor in openh3_api_types::session_tool_descriptors() {
-        let command = format!("\"$AIONUI_HELPER_BIN\" session {}", descriptor.cli_command.join(" "));
+        let command = format!("\"$OPENH3_HELPER_BIN\" session {}", descriptor.cli_command.join(" "));
         assert!(
             body.contains(&command),
             "the skill must document `{command}` (advertised by {})",
@@ -73,9 +73,9 @@ fn the_skill_states_the_non_negotiable_rules() {
     assert!(body.contains("`to` must be a conversation id"), "{body}");
     assert!(body.contains("Names are not addresses"), "{body}");
     assert!(body.contains("there is no broadcast"), "{body}");
-    // Never touch AIONUI_* env vars.
+    // Never touch OPENH3_* env vars.
     assert!(
-        body.contains("Never pass, inline, export, echo, or set any `AIONUI_...` environment variable"),
+        body.contains("Never pass, inline, export, echo, or set any `OPENH3_...` environment variable"),
         "{body}"
     );
     // Team conversations use the team surface instead (spec §9.2).
@@ -109,10 +109,10 @@ fn the_skill_points_at_capabilities_only_as_a_fallback() {
     // CAPABILITIES command, and their order is unchanged (send still first), so
     // the agent never needs a round trip to send its first message.
     let send_at = body
-        .find("\n\"$AIONUI_HELPER_BIN\" session send-message")
+        .find("\n\"$OPENH3_HELPER_BIN\" session send-message")
         .expect("the skill must carry a copyable send command");
     let capabilities_at = body
-        .find("\n\"$AIONUI_HELPER_BIN\" session capabilities")
+        .find("\n\"$OPENH3_HELPER_BIN\" session capabilities")
         .expect("the skill must carry a copyable capabilities fallback command");
     assert!(
         send_at < capabilities_at,

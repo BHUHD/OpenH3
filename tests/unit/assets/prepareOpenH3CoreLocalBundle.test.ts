@@ -52,6 +52,79 @@ describe('prepare-openh3-core local bundle input', () => {
     }
   });
 
+  it.each([
+    { sourceMode: 'local', version: 'v0.2.2' },
+    { sourceMode: undefined, version: 'latest' },
+  ])('builds the in-repository Core with source mode $sourceMode and version $version', ({ sourceMode, version }) => {
+    const tmp = mkdtempSync(join(tmpdir(), 'openh3-local-source-'));
+    const coreRoot = join(tmp, 'core');
+    const platform = process.platform;
+    const arch = process.arch;
+    const binaryName = platform === 'win32' ? 'openh3-core.exe' : 'openh3-core';
+    const nodeName = platform === 'win32' ? 'node.exe' : 'node';
+    const target = join(tmp, 'resources', 'bundled-openh3-core', `${platform}-${arch}`);
+    mkdirSync(coreRoot, { recursive: true });
+    writeFileSync(join(coreRoot, 'Cargo.toml'), '[workspace]\nmembers = []\n');
+    const previousSource = process.env.OPENH3_CORE_SOURCE;
+    const previousBundle = process.env.OPENH3_BACKEND_LOCAL_BUNDLE_DIR;
+    if (sourceMode === undefined) delete process.env.OPENH3_CORE_SOURCE;
+    else process.env.OPENH3_CORE_SOURCE = sourceMode;
+    delete process.env.OPENH3_BACKEND_LOCAL_BUNDLE_DIR;
+    const originalExec = execute.getMockImplementation();
+    execute.mockImplementation((command, _args) => {
+      if (command === 'cargo') {
+        const customTarget = join(tmp, 'custom-target', 'host-triple', 'release');
+        const binaryPath = join(customTarget, binaryName);
+        mkdirSync(customTarget, { recursive: true });
+        writeFileSync(binaryPath, 'local-source-runtime');
+        const staleTarget = join(coreRoot, 'target', 'release');
+        mkdirSync(staleTarget, { recursive: true });
+        writeFileSync(join(staleTarget, binaryName), 'stale-runtime');
+        return (
+          JSON.stringify({
+            reason: 'compiler-artifact',
+            target: { name: 'openh3-core', kind: ['bin'] },
+            executable: binaryPath,
+          }) + '\n'
+        );
+      }
+      if (String(command).endsWith(binaryName)) {
+        const managed = join(target, 'managed-resources');
+        mkdirSync(join(managed, 'node', 'runtime'), { recursive: true });
+        writeFileSync(join(managed, 'node', 'runtime', nodeName), 'bundled-node');
+        writeFileSync(
+          join(managed, 'manifest.json'),
+          JSON.stringify({
+            schemaVersion: 2,
+            runtimeKey: `${platform}-${arch}`,
+            node: { version: '24.11.0', root: 'node/runtime', executable: nodeName },
+            clis: [],
+          })
+        );
+        return Buffer.from('');
+      }
+      return originalExec?.(command, _args);
+    });
+    try {
+      const result = prepareOpenH3Core({ projectRoot: tmp, platform, arch, version });
+      expect(result.sourceType).toBe('local-source');
+      expect(readFileSync(join(target, binaryName), 'utf8')).toBe('local-source-runtime');
+      expect(JSON.parse(readFileSync(join(target, 'manifest.json'), 'utf8')).version).toBe('local');
+    } finally {
+      if (previousSource === undefined) delete process.env.OPENH3_CORE_SOURCE;
+      else process.env.OPENH3_CORE_SOURCE = previousSource;
+      if (previousBundle === undefined) delete process.env.OPENH3_BACKEND_LOCAL_BUNDLE_DIR;
+      else process.env.OPENH3_BACKEND_LOCAL_BUNDLE_DIR = previousBundle;
+      execute.mockImplementation(
+        originalExec ??
+          (() => {
+            throw new Error('Unexpected external process');
+          })
+      );
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a missing explicit bundle without deleting the previous runtime or downloading a replacement', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'openh3-missing-bundle-'));
     const bundle = join(tmp, 'resources', 'bundled-aioncore', 'win32-x64');

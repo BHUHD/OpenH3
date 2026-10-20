@@ -32,7 +32,7 @@ import {
   type AgentAvailabilityFilter,
 } from './agentFilters';
 
-const LOCAL_AGENT_SETUP_GUIDE_URL = 'https://github.com/BHUHD/OpenH3';
+const LOCAL_AGENT_SETUP_GUIDE_URL = 'https://github.com/pigq/OpenH3';
 
 const LocalAgents: React.FC = () => {
   const { t, i18n } = useTranslation();

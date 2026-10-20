@@ -4,6 +4,9 @@ $repoRoot = (git rev-parse --show-toplevel)
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+if (Test-Path -LiteralPath (Join-Path $repoRoot "core/crates/openh3-db/migrations")) {
+    $repoRoot = Join-Path $repoRoot "core"
+}
 Set-Location $repoRoot
 
 $migrationDir = Join-Path $repoRoot "crates/openh3-db/migrations"

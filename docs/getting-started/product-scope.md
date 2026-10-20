@@ -2,7 +2,7 @@
 
 ## Release Position
 
-OpenH3 is currently a technical preview Alpha. The official source and feedback entry point is [BHUHD/OpenH3](https://github.com/BHUHD/OpenH3). Product-facing branding does not change legacy runtime compatibility identifiers.
+OpenH3 is currently a technical preview Alpha. The official source and feedback entry point is [pigq/OpenH3](https://github.com/pigq/OpenH3). Product-facing branding does not change legacy runtime compatibility identifiers.
 
 ## Users and Purpose
 

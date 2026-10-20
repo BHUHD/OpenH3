@@ -72,13 +72,17 @@ echo "✓ Version: $VERSION"
 echo ""
 echo "5. Checking backend binary..."
 BACKEND_DIR="bundled-openh3-core/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/; s/x86_64/x64/')"
-BACKEND_BINARY="$BACKEND_DIR/aioncore"
+BACKEND_BINARY="$BACKEND_DIR/openh3-core"
+if [ ! -x "$BACKEND_BINARY" ]; then
+  # Keep smoke coverage for older bundles created before the Core rename.
+  BACKEND_BINARY="$BACKEND_DIR/aioncore"
+fi
 if [ ! -x "$BACKEND_BINARY" ]; then
   echo "❌ Backend binary missing or not executable: $BACKEND_BINARY"
   exit 1
 fi
-# aioncore has no --version flag. Read the pinned version from manifest.json
-# (which prepareAioncore writes at pack time) and use --help to confirm the
+# Read the selected source version from the manifest written at pack time.
+# Use --help to confirm the
 # binary loads successfully on this platform's GLIBC / libstdc++ / etc.
 if [ -f "$BACKEND_DIR/manifest.json" ]; then
   BACKEND_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$BACKEND_DIR/manifest.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')

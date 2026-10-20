@@ -45,6 +45,15 @@ const ALLOWED_IMAGE_HOSTS: &[&str] = &[
     "repository-images.githubusercontent.com",
 ];
 
+/// Return a client-facing relative path with stable POSIX separators.
+///
+/// Relative paths are serialized into API responses and persisted events, so
+/// they must not vary with the host operating system's separator.
+fn portable_relative_path(path: &Path) -> String {
+    let value = path.to_string_lossy().into_owned();
+    if cfg!(windows) { value.replace('\\', "/") } else { value }
+}
+
 /// Placeholder SVG returned when remote image fetching fails.
 const PLACEHOLDER_SVG: &str = concat!(
     "<svg xmlns=\"http://www.w3.org/2000/svg\" ",
@@ -142,7 +151,7 @@ fn build_dir_tree_sync(dir: &Path, root: &Path) -> Result<Vec<DirOrFile>, FileEr
         let name = entry.file_name().to_string_lossy().into_owned();
 
         let full_path = strip_verbatim_prefix(&path.to_string_lossy());
-        let relative_path = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned();
+        let relative_path = portable_relative_path(path.strip_prefix(root).unwrap_or(&path));
 
         let is_dir = metadata.is_dir();
 
@@ -189,7 +198,7 @@ fn read_children_sync(dir: &Path, root: &Path) -> Result<Vec<DirOrFile>, FileErr
         let name = entry.file_name().to_string_lossy().into_owned();
 
         let full_path = strip_verbatim_prefix(&path.to_string_lossy());
-        let relative_path = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned();
+        let relative_path = portable_relative_path(path.strip_prefix(root).unwrap_or(&path));
 
         children.push(DirOrFile {
             name,
@@ -246,7 +255,7 @@ fn list_workspace_files_sync(root: &Path) -> Result<Vec<WorkspaceFlatFile>, File
             .unwrap_or_default();
 
         let full_path = strip_verbatim_prefix(&path.to_string_lossy());
-        let relative_path = path.strip_prefix(root).unwrap_or(path).to_string_lossy().into_owned();
+        let relative_path = portable_relative_path(path.strip_prefix(root).unwrap_or(path));
 
         files.push(WorkspaceFlatFile {
             name,
@@ -737,11 +746,11 @@ impl crate::traits::IFileService for FileService {
 
         // Compute relative path from workspace
         let workspace_path = Path::new(workspace);
-        let relative_path = canonical
-            .strip_prefix(std::fs::canonicalize(workspace_path).unwrap_or_else(|_| workspace_path.to_path_buf()))
-            .unwrap_or(&canonical)
-            .to_string_lossy()
-            .into_owned();
+        let relative_path = portable_relative_path(
+            canonical
+                .strip_prefix(std::fs::canonicalize(workspace_path).unwrap_or_else(|_| workspace_path.to_path_buf()))
+                .unwrap_or(&canonical),
+        );
 
         // Build and broadcast contentUpdate event
         let content = String::from_utf8(data.to_vec()).ok();

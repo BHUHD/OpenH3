@@ -17,6 +17,9 @@ fn init_repo(dir: &Path) -> Repository {
     let mut cfg = repo.config().expect("config");
     cfg.set_str("user.name", "scm test").expect("set name");
     cfg.set_str("user.email", "scm@test.local").expect("set email");
+    // Fixture bytes must not depend on the developer's global Git settings.
+    cfg.set_bool("core.autocrlf", false).expect("disable autocrlf");
+    cfg.set_str("core.eol", "lf").expect("set fixture line endings");
     repo
 }
 

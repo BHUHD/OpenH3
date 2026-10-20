@@ -261,36 +261,34 @@ impl AionrsAgentManager {
             .collect();
 
         let mut engine = result.engine;
-        if !is_resume {
-            if let Err(e) = engine.init_session(&provider_label, &workspace, Some(&conversation_id)) {
-                // A concurrent/repeated builder may have initialized this
-                // conversation between load and init. Reusing that persisted
-                // session is safe; genuine storage failures still reject the
-                // agent so we never run while claiming persistence exists.
-                if e.to_string().contains("already exists") {
-                    // The engine has no current_session after init_session
-                    // fails. Continuing here would make the first turn appear
-                    // healthy while every later save silently has nothing to
-                    // persist. Let the factory reload the session and build a
-                    // resumed engine instead.
-                    warn!(
-                        conversation_id = %conversation_id,
-                        error = %ErrorChain(&*e),
-                        "Aionrs session initialization raced with another builder"
-                    );
-                    return Err(AgentError::internal(format!(
-                        "Aionrs session initialization raced: session already exists: {e}"
-                    )));
-                } else {
-                    error!(
-                        conversation_id = %conversation_id,
-                        error = %ErrorChain(&*e),
-                        "Failed to initialize Aionrs session"
-                    );
-                    return Err(AgentError::internal(format!(
-                        "Aionrs session initialization failed: {e}"
-                    )));
-                }
+        if !is_resume && let Err(e) = engine.init_session(&provider_label, &workspace, Some(&conversation_id)) {
+            // A concurrent/repeated builder may have initialized this
+            // conversation between load and init. Reusing that persisted
+            // session is safe; genuine storage failures still reject the
+            // agent so we never run while claiming persistence exists.
+            if e.to_string().contains("already exists") {
+                // The engine has no current_session after init_session
+                // fails. Continuing here would make the first turn appear
+                // healthy while every later save silently has nothing to
+                // persist. Let the factory reload the session and build a
+                // resumed engine instead.
+                warn!(
+                    conversation_id = %conversation_id,
+                    error = %ErrorChain(&*e),
+                    "Aionrs session initialization raced with another builder"
+                );
+                return Err(AgentError::internal(format!(
+                    "Aionrs session initialization raced: session already exists: {e}"
+                )));
+            } else {
+                error!(
+                    conversation_id = %conversation_id,
+                    error = %ErrorChain(&*e),
+                    "Failed to initialize Aionrs session"
+                );
+                return Err(AgentError::internal(format!(
+                    "Aionrs session initialization failed: {e}"
+                )));
             }
         }
 

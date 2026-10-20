@@ -24,7 +24,7 @@ on:
         type: boolean
         default: false
       openh3_core_run_id:
-        description: 'Optional OpenH3 Core Manual Build workflow run id to bundle instead of the pinned release'
+        description: 'Optional OpenH3 Core Manual Build workflow run id to bundle instead of this checkout'
         type: string
         default: ''
       aioncore_run_id:
@@ -60,6 +60,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -72,6 +77,15 @@ jobs:
       - name: Check Prettier formatting
         run: bun run format:check
 
+      - name: Check OpenH3 Core formatting
+        run: bun run core:fmt:check
+
+      - name: Check OpenH3 Core workspace
+        run: bun run core:check
+
+      - name: Test OpenH3 Core workspace
+        run: bun run core:test
+
       - name: TypeScript type check
         run: bunx tsc --noEmit
 
@@ -81,11 +95,18 @@ jobs:
       - name: Run unit tests
         run: bunx vitest run
 
+  linux-core:
+    if: contains(inputs.matrix, 'linux-') && !inputs.openh3_core_run_id && !inputs.aioncore_run_id
+    uses: ./.github/workflows/_build-linux-core.yml
+    with:
+      ref: ${{ inputs.ref }}
+      artifact_prefix: desktop-linux-core
+
   build:
     name: Build ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    needs: code-quality
-    if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') }}
+    needs: [code-quality, linux-core]
+    if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') && (needs.linux-core.result == 'success' || needs.linux-core.result == 'skipped') }}
 
     outputs:
       commit-short: ${{ steps.commit.outputs.short }}
@@ -122,6 +143,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Setup Rust for the bundled Core
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
 
       # Restore Electron/Electron-Builder caches before any build-related install
       - name: Cache Electron artifacts
@@ -371,11 +397,30 @@ jobs:
           MSVS_VERSION: 2022
           GYP_MSVS_VERSION: 2022
 
+      - name: Download compatible Linux Core from this checkout
+        if: runner.os == 'Linux' && !inputs.openh3_core_run_id && !inputs.aioncore_run_id
+        uses: actions/download-artifact@v6
+        with:
+          name: desktop-linux-core-${{ matrix.arch }}
+          path: ${{ runner.temp }}/openh3-linux-core
+
+      - name: Prepare compatible Linux Core bundle
+        if: runner.os == 'Linux' && !inputs.openh3_core_run_id && !inputs.aioncore_run_id
+        shell: bash
+        run: |
+          bundle="$RUNNER_TEMP/openh3-linux-bundle"
+          mkdir -p "$bundle"
+          tar -xzf "$RUNNER_TEMP/openh3-linux-core/linux-core.tar.gz" -C "$bundle"
+          test "$(cat "$bundle/source-commit")" = "$(git rev-parse HEAD)"
+          "$bundle/openh3-core" --data-dir "$RUNNER_TEMP/openh3-prepare-data" prepare-managed-resources --bundle-out "$bundle/managed-resources"
+          echo "OPENH3_BACKEND_LOCAL_BUNDLE_DIR=$bundle" >> "$GITHUB_ENV"
+
       - name: Prepare OpenH3 Core binary
         shell: bash
         run: node scripts/prepareOpenH3Core.js
         env:
-          # Version is pinned in repo-root package.json (openh3CoreVersion).
+          # Normal builds compile core/ from this checkout. Explicit run ids
+          # remain supported for compatibility with external Core artifacts.
           OPENH3_BACKEND_RUN_ID: ${{ inputs.openh3_core_run_id || inputs.aioncore_run_id }}
           OPENH3_BACKEND_ARCH: ${{ matrix.arch }}
           # Legacy aliases remain populated for downstream scripts.

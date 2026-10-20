@@ -4,56 +4,40 @@
 
 - **Node.js** 22–24 (`>=22 <25`)
 - **bun** — Package manager & runtime ([install](https://bun.sh))
-- **Rust stable + Cargo** — Required to build OpenH3 Core ([install](https://rustup.rs))
+- **Rust + Cargo** — Required to build OpenH3 Core; `core/rust-toolchain.toml` pins its toolchain ([install](https://rustup.rs))
 - **Python** 3.11+ (for native module compilation)
 - **FFmpeg and ffprobe** on `PATH` — Required for image and video validation tests (`sudo apt-get install ffmpeg` on Ubuntu, `brew install ffmpeg` on macOS, or `choco install ffmpeg` on Windows).
 - **prek** — PR code checker (`npm install -g @j178/prek`)
 
 On Windows, install the Rust MSVC toolchain. If Rust compilation fails because native build tools are missing, install **Microsoft C++ Build Tools** from the Visual Studio installer, then reopen your terminal.
 
+Windows x64 installers also require the separate `ffmpeg.exe` and `ffprobe.exe` files in `resources/ffmpeg/win32-x64/`. Extract them from the distributor's [7.1.1 essentials archive](https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-essentials_build.zip) and verify the hashes recorded in [SOURCE-OFFER.md](../../resources/third-party-licenses/SOURCE-OFFER.md). These large binaries are ignored by Git; installing media tools on `PATH` does not populate the packaging directory.
+
 ## Repository Layout
 
-OpenH3 is maintained in one product repository, mirrored at `pigq/OpenH3` and `BHUHD/OpenH3`. The complete OpenH3 Core changes are stored in [`patches/openh3-core.patch`](../../patches/openh3-core.patch), against the fixed upstream commit recorded in the [patch notes](../../patches/README.md#openh3-core-source).
+OpenH3 is maintained in one product repository, mirrored at `pigq/OpenH3` and `BHUHD/OpenH3`. The desktop client and Rust Core now live in this checkout: `packages/desktop` contains the Electron client and `core/` contains the backend runtime, database, Skill runtime, MCP, extensions and channels.
 
-Building the backend uses an upstream source checkout as a build dependency:
-
-- **OpenH3 Core source** (`https://github.com/iOfficeAI/AionCore.git`) builds the local backend binaries: `openh3-core` (canonical) and `aioncore` (legacy compatibility).
-- **OpenH3** (`https://github.com/BHUHD/OpenH3.git`) starts the Electron desktop app and launches the backend binary automatically.
-
-Keep the repositories side by side when possible:
-
-```text
-workspace/
-|-- OpenH3-Core/
-`-- OpenH3/
-```
-
-The desktop development server resolves OpenH3 Core from the `PATH` inherited by `bun run start`. Install the backend first, verify `openh3-core` is discoverable in the same terminal, then start OpenH3.
+The old split checkout is no longer required. Existing installed binaries and data remain compatible: the canonical binary is `openh3-core`, while `aioncore` remains available as a legacy binary name for older scripts and installations.
 
 ## Quick Start
 
-### 1. Clone OpenH3 and Prepare the Backend Source
+### 1. Clone OpenH3
 
 ```bash
-git clone https://github.com/BHUHD/OpenH3.git
-git clone https://github.com/iOfficeAI/AionCore.git OpenH3-Core
-git -C OpenH3-Core checkout --detach 503a87199eb978790ca77675b39c84b241535bf3
-git -C OpenH3-Core apply --check ../OpenH3/patches/openh3-core.patch
-git -C OpenH3-Core apply ../OpenH3/patches/openh3-core.patch
+git clone https://github.com/pigq/OpenH3.git
 ```
-
-Use OpenH3 `main` for development. Apply the tracked patch to its exact base, rather than checking out an unmodified release tag. `openh3CoreVersion` is the canonical package field; `aioncoreVersion` remains as a legacy fallback for older build scripts. Keep the patched checkout intact when updating OpenH3, and apply a newer patch only to a fresh checkout of its recorded base.
 
 ### 2. Build and Install OpenH3 Core
 
-Run these commands from the backend source repository.
+Run these commands from the OpenH3 repository root.
 
 #### macOS / Linux
 
 ```bash
-cd OpenH3-Core
-cargo clean
+cd OpenH3
+cd core
 cargo install --path crates/openh3-app --locked
+cd ..
 
 # Make Cargo-installed binaries visible to this shell if needed.
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -68,9 +52,11 @@ If `which openh3-core` prints nothing, add `export PATH="$HOME/.cargo/bin:$PATH"
 #### Windows PowerShell
 
 ```powershell
-cd OpenH3-Core
-cargo clean
+cd OpenH3
+cd core
 cargo install --path crates/openh3-app --locked
+if ($LASTEXITCODE -ne 0) { throw 'Backend install failed' }
+cd ..
 
 # Make Cargo-installed binaries visible to this PowerShell session if needed.
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
@@ -100,35 +86,37 @@ During startup, OpenH3 launches `openh3-core` automatically and passes the backe
 
 ## Updating the Local Backend
 
-When you update OpenH3, check whether its backend patch or base changed. Prepare a fresh backend checkout with the commands above if needed, reinstall the backend binary, and restart OpenH3:
+When you update OpenH3 Core, rebuild it from the same checkout and restart OpenH3:
 
 ```bash
-cd ../OpenH3-Core
+cd core
 cargo install --path crates/openh3-app --locked --force
-
-cd ../OpenH3
+cd ..
 bun run start
 ```
 
 Use `--force` when rebuilding local changes with the same OpenH3 Core package version; otherwise Cargo may keep the already installed binary.
 
-### Package the Patched Windows Backend
+### Package a Local Windows Backend Bundle
 
-From the patched backend checkout, build the release binary and prepare its managed Node resources into the ignored OpenH3 runtime directory:
+From the OpenH3 checkout, build the release binary and prepare its managed Node resources into the ignored OpenH3 runtime directory:
 
 ```powershell
-cargo build --release -p openh3-app --locked
+bun run core:build
 if ($LASTEXITCODE -ne 0) { throw 'Backend build failed' }
-$bundle = New-Item -ItemType Directory -Force ../OpenH3/.runtime/backend-bundle
-Copy-Item target/release/openh3-core.exe $bundle.FullName -Force
-& target/release/openh3-core.exe --data-dir ../OpenH3/.runtime/backend-prepare prepare-managed-resources --bundle-out "$($bundle.FullName)/managed-resources"
+$bundle = New-Item -ItemType Directory -Force .runtime/backend-bundle
+Copy-Item core/target/release/openh3-core.exe $bundle.FullName -Force
+& core/target/release/openh3-core.exe --data-dir .runtime/backend-prepare prepare-managed-resources --bundle-out "$($bundle.FullName)/managed-resources"
 if ($LASTEXITCODE -ne 0) { throw 'Managed resource preparation failed' }
 $env:AIONUI_BACKEND_LOCAL_BUNDLE_DIR = $bundle.FullName
-cd ../OpenH3
 npm run build-win:x64
 ```
 
-The explicit local bundle is required for a package containing these backend fixes. The builder validates it and stops on invalid input; it does not silently substitute an upstream download. Keep the bundle outside generated packaging output, or use the exact output directory in place. Overlapping parent/child source and output directories are rejected.
+Packaging builds `core/` from the current checkout by default. `bun run core:build:local-bundle` explicitly prepares that local bundle. Cross-architecture packaging requires a prebuilt bundle through `OPENH3_BACKEND_LOCAL_BUNDLE_DIR`. To select a historical release, set `OPENH3_CORE_SOURCE=release` and `OPENH3_BACKEND_VERSION` explicitly.
+
+Linux CI builds the same checkout separately with the Core release compatibility toolchain: x64 on Ubuntu 22.04 and ARM64 using the pinned cross image in `core/Cross.toml`. Both binaries pass the existing GLIBC ceiling check before desktop and Web CLI jobs consume them. Native local Linux builds inherit the host's GLIBC requirements.
+
+When an explicit local bundle is supplied, the builder validates it and stops on invalid input; it does not silently substitute an upstream download. Keep the bundle outside generated packaging output, or use the exact output directory in place. Overlapping parent/child source and output directories are rejected.
 
 ## Backend Startup Troubleshooting
 
@@ -154,7 +142,7 @@ Make sure you start `bun run start` from the same terminal environment that can 
 
 ### Backend Changes Do Not Show Up
 
-Quit OpenH3, reinstall OpenH3 Core with `cargo install --path crates/openh3-app --locked --force`, then start OpenH3 again. The Electron app owns the backend subprocess during development, so a running OpenH3 instance will not pick up a newly installed binary until it restarts.
+Quit OpenH3, reinstall OpenH3 Core by running `cargo install --path crates/openh3-app --locked --force` inside `core/`, then start OpenH3 again. Running Cargo inside `core/` selects its pinned Rust toolchain. The Electron app owns the backend subprocess during development, so a running OpenH3 instance will not pick up a newly installed binary until it restarts.
 
 ### Windows Rust Build Errors
 

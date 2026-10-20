@@ -83,4 +83,18 @@ printf '%s\n' '-- modified with explicit override' >> "$override_repo/crates/ope
 run_in_repo "$override_repo" 0 "skipping migration immutability check" \
     env AIONCORE_MIGRATION_BASE_REF=main AIONCORE_ALLOW_MAIN_MIGRATION_EDIT=1 bash "$script"
 
+nested_repo="$(init_case_repo monorepo)"
+(
+    cd "$nested_repo"
+    mkdir core
+    git mv crates core/crates
+    git commit -qm "nested Core baseline"
+    git branch -f main HEAD
+)
+printf '%s\n' '-- forbidden edit' >> "$nested_repo/core/crates/openh3-db/migrations/001_initial_schema.sql"
+run_in_repo "$nested_repo" 1 "Existing migration files from main must not be modified or deleted" \
+    env AIONCORE_MIGRATION_BASE_REF=main bash "$script"
+run_in_repo "$nested_repo/core" 1 "Existing migration files from main must not be modified or deleted" \
+    env AIONCORE_MIGRATION_BASE_REF=main bash "$script"
+
 echo "Migration immutability script tests passed"

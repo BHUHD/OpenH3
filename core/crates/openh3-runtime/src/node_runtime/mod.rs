@@ -480,20 +480,42 @@ mod tests {
     }
 
     fn fake_managed_runtime(root: &std::path::Path) -> ResolvedNodeRuntime {
-        let bin = root.join("bin");
+        let bin = if cfg!(windows) {
+            root.to_path_buf()
+        } else {
+            root.join("bin")
+        };
         fs::create_dir_all(&bin).expect("create runtime bin");
-        write_executable(&bin.join("node"), "#!/bin/sh\necho v24.11.0\n");
-        write_executable(&bin.join("npm"), "#!/bin/sh\necho 24.11.0\n");
-        write_executable(&bin.join("npx"), "#!/bin/sh\necho 24.11.0\n");
+        let [node, npm, npx] = if cfg!(windows) {
+            ["node.exe", "npm.cmd", "npx.cmd"]
+        } else {
+            ["node", "npm", "npx"]
+        };
+        let script = if cfg!(windows) {
+            "@echo off\r\necho v24.11.0\r\n"
+        } else {
+            "#!/bin/sh\necho v24.11.0\n"
+        };
+        #[cfg(windows)]
+        {
+            let installed_node =
+                crate::resolve_command_path("node").expect("Node.js must be installed for runtime tests");
+            fs::copy(installed_node, bin.join(node)).expect("copy native Node.js fixture");
+        }
+        #[cfg(not(windows))]
+        write_executable(&bin.join(node), script);
+        for tool in [npm, npx] {
+            write_executable(&bin.join(tool), script);
+        }
 
         ResolvedNodeRuntime {
             source: ResolvedNodeSource::Managed,
             root: root.to_path_buf(),
             version: semver::Version::new(0, 0, 0),
-            node_path: bin.join("node"),
-            npm_path: bin.join("npm"),
+            node_path: bin.join(node),
+            npm_path: bin.join(npm),
             npm_args_prefix: vec![],
-            npx_path: bin.join("npx"),
+            npx_path: bin.join(npx),
             npx_args_prefix: vec![],
             env: vec![],
         }

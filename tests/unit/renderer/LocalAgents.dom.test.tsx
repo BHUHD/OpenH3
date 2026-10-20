@@ -290,7 +290,7 @@ describe('LocalAgents', () => {
 
     fireEvent.click(screen.getByText('settings.agentManagement.localAgentsSetupLink'));
 
-    expect(openExternalUrl).toHaveBeenCalledWith('https://github.com/BHUHD/OpenH3');
+    expect(openExternalUrl).toHaveBeenCalledWith('https://github.com/pigq/OpenH3');
   });
 
   it('binds assistants to managed agents by agent_id instead of runtime backend', () => {

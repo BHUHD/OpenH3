@@ -171,10 +171,10 @@ pub async fn rebuild_view(
     tokio::fs::create_dir_all(&native_root).await?;
     tokio::fs::create_dir_all(&skills_dir).await?;
     let native_skills = native_root.join(SKILLS_SUBDIR);
-    if !tokio::fs::try_exists(&native_skills).await.unwrap_or(false) {
-        if let Err(error) = create_symlink(&skills_dir, &native_skills).await {
-            warn!(conversation_id = %conversation_id, error = %error, "skill_view: native compatibility link failed");
-        }
+    if !tokio::fs::try_exists(&native_skills).await.unwrap_or(false)
+        && let Err(error) = create_symlink(&skills_dir, &native_skills).await
+    {
+        warn!(conversation_id = %conversation_id, error = %error, "skill_view: native compatibility link failed");
     }
     tokio::fs::write(
         view.join(PLUGIN_MANIFEST_DIR).join(PLUGIN_MANIFEST_FILE),

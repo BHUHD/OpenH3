@@ -11,5 +11,5 @@
   "quoteProps": "as-needed",
   "jsxSingleQuote": true,
   "bracketSameLine": false,
-  "ignorePatterns": ["mobile/**"]
+  "ignorePatterns": ["mobile/**", "core/**"]
 }

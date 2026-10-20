@@ -1,0 +1,68 @@
+name: Build Linux Core with release compatibility
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        default: ''
+      artifact_prefix:
+        type: string
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, target: x86_64-unknown-linux-gnu, glibc: GLIBC_2.34 }
+          - { arch: arm64, target: aarch64-unknown-linux-gnu, glibc: GLIBC_2.30 }
+    env:
+      CROSS_GIT_REV: '29d00c7803f221f1b3f35e561b03792368fb8339'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+          shared-key: monorepo-linux-${{ matrix.target }}-ubuntu-22.04-${{ matrix.glibc }}-${{ env.CROSS_GIT_REV }}
+
+      - name: Install pinned ARM64 cross toolchain
+        if: matrix.arch == 'arm64'
+        run: |
+          docker pull ghcr.io/cross-rs/aarch64-unknown-linux-gnu@sha256:99e041b94e7d4f31477c6ddede176688562c3762ba3833b75de3316100afc39d
+          cargo install cross --git https://github.com/cross-rs/cross --rev "$CROSS_GIT_REV" --locked
+
+      - name: Build Core from this checkout and verify GLIBC
+        working-directory: core
+        env:
+          CORE_ARCH: ${{ matrix.arch }}
+          CORE_TARGET: ${{ matrix.target }}
+          GLIBC_MAX: ${{ matrix.glibc }}
+        run: |
+          if [[ "$CORE_ARCH" == arm64 ]]; then
+            cross build --release --locked --target "$CORE_TARGET" -p openh3-app
+          else
+            cargo build --release --locked --target "$CORE_TARGET" -p openh3-app
+          fi
+          bash scripts/check-glibc-baseline.sh "target/$CORE_TARGET/release/openh3-core" "$GLIBC_MAX"
+          mkdir -p ../linux-core
+          cp "target/$CORE_TARGET/release/openh3-core" ../linux-core/
+          git rev-parse HEAD > ../linux-core/source-commit
+          tar -czf ../linux-core.tar.gz -C ../linux-core .
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ inputs.artifact_prefix }}-${{ matrix.arch }}
+          path: linux-core.tar.gz
+          if-no-files-found: error
+          retention-days: 7

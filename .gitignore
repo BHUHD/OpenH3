@@ -207,6 +207,7 @@ docs/superpowers/
 resources/bundled-bun
 resources/bundled-openh3-core
 resources/bundled-aioncore
+core/target/
 resources/hub
 resources/ffmpeg/win32-*/ffmpeg.exe
 resources/ffmpeg/win32-*/ffprobe.exe

@@ -77,6 +77,6 @@ describe('UpdateMigrationDialog', () => {
     openDialog();
     await waitFor(() => expect(screen.getByText('update.migration.letter.downloadNew')).toBeTruthy());
     fireEvent.click(screen.getByText('update.migration.letter.downloadNew'));
-    expect(mocks.openExternalUrl).toHaveBeenCalledWith('https://github.com/BHUHD/OpenH3/releases/latest');
+    expect(mocks.openExternalUrl).toHaveBeenCalledWith('https://github.com/pigq/OpenH3/releases/latest');
   });
 });

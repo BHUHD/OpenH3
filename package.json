@@ -3,9 +3,9 @@
   "version": "2.2.2",
   "description": "OpenH3 local-first video Agent with image and video interaction.",
   "keywords": [],
-  "homepage": "https://github.com/BHUHD/OpenH3#readme",
+  "homepage": "https://github.com/pigq/OpenH3#readme",
   "bugs": {
-    "url": "https://github.com/BHUHD/OpenH3/issues"
+    "url": "https://github.com/pigq/OpenH3/issues"
   },
   "license": "Apache-2.0",
   "author": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BHUHD/OpenH3.git"
+    "url": "https://github.com/pigq/OpenH3.git"
   },
   "workspaces": [
     "packages/*"
@@ -22,6 +22,11 @@
   "scripts": {
     "video:doctor": "tsx packages/desktop/src/process/services/runtime/doctorCli.ts",
     "h3:offline-plan": "tsx scripts/h3-offline-plan.ts",
+    "core:check": "cd core && cargo check --workspace",
+    "core:test": "cd core && cargo test --workspace",
+    "core:fmt:check": "cd core && cargo fmt --all -- --check",
+    "core:build": "cd core && cargo build --release -p openh3-app --locked",
+    "core:build:local-bundle": "cross-env OPENH3_CORE_SOURCE=local node scripts/prepareOpenH3Core.js",
     "audit:open-source-release": "node scripts/open-source-release-audit.js",
     "licenses:generate": "node scripts/generate-third-party-notices.cjs",
     "generate:openh3-icons": "node scripts/generate-openh3-icons.mjs",

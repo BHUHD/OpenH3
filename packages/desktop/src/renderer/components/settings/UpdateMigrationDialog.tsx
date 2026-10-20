@@ -19,7 +19,7 @@ export const LEGACY_OPEN_MIGRATION_DIALOG_EVENT = 'aionui-open-migration-dialog'
 
 // OpenH3 release page users are guided to for the download. Kept as a
 // module constant (not i18n) — it is a URL, not translatable copy.
-const OPENH3_RELEASE_URL = 'https://github.com/BHUHD/OpenH3/releases/latest';
+const OPENH3_RELEASE_URL = 'https://github.com/pigq/OpenH3/releases/latest';
 
 // localStorage flag remembering that the migration invite already auto-opened
 // once on this machine. First launch of the discontinued build pops the card

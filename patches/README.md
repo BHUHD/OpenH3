@@ -6,9 +6,9 @@ The patch adds a macOS compatibility wrapper that uses system `zip` when creatin
 
 Do not delete this directory independently of `package.json` and `bun.lock`. The tracked patch is retained unchanged in this documentation cleanup.
 
-## OpenH3 Core source
+## OpenH3 Core source (historical patch)
 
-`openh3-core.patch` contains the complete backend changes used by this OpenH3 client, including imported-skill discovery in existing conversations, native Skill execution, configuration helpers, and product presentation. Both OpenH3 mirrors carry this same patch; a separate backend fork is not required to retain these changes.
+`openh3-core.patch` is retained as a reproducibility record for the pre-monorepo split checkout. The complete backend changes are now versioned directly under [`../core/`](../core/); new development must edit `core/` and must not apply this patch to a second checkout. The patch remains useful for auditing how the original OpenH3 Core tree was derived.
 
 - Upstream: `https://github.com/iOfficeAI/AionCore.git`
 - Base commit: `503a87199eb978790ca77675b39c84b241535bf3`

@@ -949,11 +949,13 @@ try {
       const legacyAionRunning = isProcessRunningWindows('AionUi.exe');
       const electronRunning = isProcessRunningWindows('electron.exe');
       if (openH3Running || legacyAionRunning || electronRunning) {
-         console.log('⚠️  Detected running OpenH3 or legacy AionUi/Electron process. Attempting to close...');
+        console.log('⚠️  Detected running OpenH3 or legacy AionUi/Electron process. Attempting to close...');
         killWindowsProcesses(['OpenH3.exe', 'AionUi.exe', 'electron.exe']);
         cleaned = tryRemoveDir(winUnpackedDir);
         if (!cleaned) {
-           console.log('⚠️  Directory still locked. Please close OpenH3 or any legacy AionUi/Electron process and retry.');
+          console.log(
+            '⚠️  Directory still locked. Please close OpenH3 or any legacy AionUi/Electron process and retry.'
+          );
         }
       }
     }

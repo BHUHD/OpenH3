@@ -103,6 +103,117 @@ describe('release packaging configuration', () => {
     expect(builder).toContain('      - openh3');
   });
 
+  it('migrates existing Linux protocol handlers while preserving the legacy desktop-file ID', () => {
+    const installer = readProjectFile('scripts/install-ubuntu.sh');
+
+    expect(installer).toContain('local legacy_desktop_file="${desktop_dir}/aionui.desktop"');
+    expect(installer).toContain('Name=AionUi (Legacy)');
+    expect(installer).toContain('NoDisplay=true');
+    expect(installer).toContain('Exec=/usr/bin/OpenH3 --no-sandbox %U');
+    expect(installer).toContain('xdg-mime default openh3.desktop x-scheme-handler/openh3');
+    expect(installer).toContain('xdg-mime default openh3.desktop x-scheme-handler/aionui');
+  });
+
+  itWithBashAndNode('manages a legacy manual WebUI process and preserves an unrelated reused PID', () => {
+    const installer = readProjectFile('scripts/install-ubuntu.sh');
+    const manager = installer.split("<< 'SCRIPT_EOF'\n")[1]?.split('\nSCRIPT_EOF')[0];
+    expect(manager).toBeDefined();
+
+    const result = spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -e
+task_dir=$(mktemp -d)
+trap 'rm -rf "$task_dir"' EXIT
+eval "$OPENH3_TEST_MANAGER"
+PIDFILE="$task_dir/openh3.pid"
+LEGACY_PIDFILE="$task_dir/aionui.pid"
+trace="$task_dir/trace"
+kill() { [ "$1" = '-0' ] || echo "kill $*" >> "$trace"; }
+ps() { echo "$OPENH3_TEST_PROCESS"; }
+pkill() { echo "pkill $*" >> "$trace"; }
+sleep() { :; }
+echo 424242 > "$LEGACY_PIDFILE"
+status > "$task_dir/status"
+grep -q '424242' "$task_dir/status"
+stop
+[ ! -e "$LEGACY_PIDFILE" ]
+grep -q 'kill 424242' "$trace"
+grep -q 'pkill -f AionUi --webui' "$trace"
+
+echo 424242 > "$LEGACY_PIDFILE"
+OPENH3_TEST_PROCESS='unrelated-server'
+: > "$trace"
+if stop; then exit 1; fi
+[ -f "$LEGACY_PIDFILE" ]
+[ ! -s "$trace" ]
+if start; then exit 1; fi
+[ -f "$LEGACY_PIDFILE" ]
+[ ! -s "$trace" ]
+`,
+      ],
+      {
+        cwd: projectRoot,
+        env: { ...process.env, OPENH3_TEST_MANAGER: manager, OPENH3_TEST_PROCESS: '/usr/bin/AionUi --webui' },
+        encoding: 'utf8',
+      }
+    );
+
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  });
+
+  itWithBashAndNode('downloads x64 assets with an amd64 fallback and keeps ARM64 package names', () => {
+    const result = spawnSync(
+      'bash',
+      [
+        '-c',
+        `set -e
+source <(sed '$d' scripts/install-ubuntu.sh)
+task_dir=$(mktemp -d)
+trap 'rm -rf "$task_dir"' EXIT
+trace="$task_dir/downloads"
+mktemp() { command mktemp -d "$task_dir/download.XXXXXX"; }
+uname() { echo "$OPENH3_TEST_ARCH"; }
+curl() {
+    local url="\${!#}" output=''
+    echo "$url" >> "$trace"
+    [[ "$url" != *linux-x64.deb ]] || return 22
+    while [ "$#" -gt 0 ]; do
+        if [ "$1" = '-o' ]; then shift; output="$1"; fi
+        shift
+    done
+    printf 'fixture-deb' > "$output"
+}
+OPENH3_VERSION=2.2.2
+OPENH3_TEST_ARCH=x86_64
+detect_arch
+resolve_version
+[ "$DEB_ARCH" = amd64 ]
+[ "$RELEASE_ARCH" = x64 ]
+download_deb
+[ "$(wc -l < "$trace")" -eq 2 ]
+grep -q 'OpenH3-2.2.2-linux-x64.deb' "$trace"
+grep -q 'OpenH3-2.2.2-linux-amd64.deb' "$trace"
+[ -s "$DEB_PATH" ]
+
+: > "$trace"
+OPENH3_TEST_ARCH=aarch64
+detect_arch
+resolve_version
+[ "$DEB_ARCH" = arm64 ]
+[ "$RELEASE_ARCH" = arm64 ]
+download_deb
+[ "$(wc -l < "$trace")" -eq 1 ]
+grep -q 'OpenH3-2.2.2-linux-arm64.deb' "$trace"
+[ -s "$DEB_PATH" ]
+`,
+      ],
+      { cwd: projectRoot, encoding: 'utf8' }
+    );
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+  });
+
   it('ships the user-approved OpenH3 logo source and transparent wordmark', () => {
     const source = resolve(projectRoot, 'packages/desktop/src/renderer/assets/logos/brand/openh3-logo-source.png');
     const wordmark = resolve(projectRoot, 'packages/desktop/src/renderer/assets/logos/brand/openh3-logo.png');
@@ -183,7 +294,7 @@ describe('release packaging configuration', () => {
       });
       expect(createResult.status).toBe(0);
 
-      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'AionUi-1.0.0-mac-arm64.zip'), { force: true });
+      rmSync(resolve(artifactsDir, 'macos-build-arm64', 'OpenH3-1.0.0-mac-arm64.zip'), { force: true });
 
       const prepareResult = spawnSync('bash', ['scripts/prepare-release-assets.sh', artifactsDir, outputDir], {
         cwd: projectRoot,

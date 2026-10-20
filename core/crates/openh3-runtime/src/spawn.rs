@@ -458,7 +458,13 @@ mod tests {
             preview.contains("hello"),
             "preview should include args prefix: {preview}"
         );
-        assert!(preview.contains("NO_COLOR=\"1\"") || preview.contains("NO_COLOR=1"));
+        assert!(
+            builder
+                .inner
+                .as_std()
+                .get_envs()
+                .any(|(key, value)| { key == OsStr::new("NO_COLOR") && value == Some(OsStr::new("1")) })
+        );
     }
 
     #[test]
@@ -469,19 +475,36 @@ mod tests {
             .args(["x", "--flag", "with space"]);
 
         let preview = format!("{b}");
+        let command = b.inner.as_std();
+        assert_eq!(command.get_current_dir(), Some(Path::new("/tmp/work dir")));
+        assert!(
+            command
+                .get_envs()
+                .any(|(key, value)| { key == OsStr::new("FOO") && value == Some(OsStr::new("bar baz")) })
+        );
+        for removed in ["NODE_OPTIONS", "CLAUDECODE"] {
+            assert!(
+                command
+                    .get_envs()
+                    .any(|(key, value)| key == OsStr::new(removed) && value.is_none())
+            );
+        }
         // Format inherited from std Command Debug: `cd "..." && env -u X K=V "prog" "args"...`
-        assert!(
-            preview.starts_with(r#"cd "/tmp/work dir" &&"#),
-            "missing cwd prefix: {preview}"
-        );
-        assert!(preview.contains("env "), "expected env section: {preview}");
-        assert!(preview.contains(r#"FOO="bar baz""#), "FOO missing: {preview}");
-        // strip_pollution unsets these
-        assert!(
-            preview.contains("-u NODE_OPTIONS"),
-            "missing -u NODE_OPTIONS: {preview}"
-        );
-        assert!(preview.contains("-u CLAUDECODE"), "missing -u CLAUDECODE: {preview}");
+        #[cfg(unix)]
+        {
+            assert!(
+                preview.starts_with(r#"cd "/tmp/work dir" &&"#),
+                "missing cwd prefix: {preview}"
+            );
+            assert!(preview.contains("env "), "expected env section: {preview}");
+            assert!(preview.contains(r#"FOO="bar baz""#), "FOO missing: {preview}");
+            // strip_pollution unsets these
+            assert!(
+                preview.contains("-u NODE_OPTIONS"),
+                "missing -u NODE_OPTIONS: {preview}"
+            );
+            assert!(preview.contains("-u CLAUDECODE"), "missing -u CLAUDECODE: {preview}");
+        }
         assert!(
             preview.contains(r#""/usr/local/bin/node""#),
             "program missing: {preview}"

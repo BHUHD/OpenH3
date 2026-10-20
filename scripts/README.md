@@ -20,16 +20,16 @@ Packaging requires platform-specific build tools and runtime downloads. See the 
 
 ## Script map
 
-| Area                        | Entry points and purpose                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Desktop packaging           | `build-with-builder.js` coordinates electron-vite, MCP bundling, runtime preparation and electron-builder; `afterPack.js` and `afterSign.js` provide packaging hooks.     |
+| Area                        | Entry points and purpose                                                                                                                                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop packaging           | `build-with-builder.js` coordinates electron-vite, MCP bundling, runtime preparation and electron-builder; `afterPack.js` and `afterSign.js` provide packaging hooks.                                                                     |
 | Dependencies                | `postinstall.js`, `rebuildNativeModules.js`, `prepareOpenH3Core.js`, `resolveOpenH3CoreVersion.js` and `prepareHubResources.js` prepare native modules and bundled resources. Legacy AionCore-named wrappers remain for older automation. |
-| Runtime workers             | `media-service.ts` and `h3-install-worker.ts` are application build entrypoints, not disposable diagnostics.                                                              |
-| Web distribution            | `webui.ts`, `resetpass.ts`, `pack-web-cli.js`, `install-web.sh` and `install-ubuntu.sh` support WebUI and server installation.                                            |
-| Release verification        | `prepare-release-assets.sh`, `verify-release-assets.sh`, `open-source-release-audit.js` and the license scripts prepare and inspect release materials.                    |
-| Installer checks            | `smoke-installer-*`, `smoke-test-*` and `verify-installer-jsonl.ps1` exercise installer and distribution behavior; read their prerequisites before running.               |
-| Performance and diagnostics | `benchmark-startup.ts`, `benchmark-acp-startup.ts`, `run-benchmarks.ts`, `dev-bootstrap.mjs` and `packaged-launch.mjs` provide reusable development tools.                |
-| Assets and localization     | `generate-openh3-icons.mjs`, `generate-i18n-types.js` and `check-i18n.js` maintain generated application assets and translation types.                                    |
+| Runtime workers             | `media-service.ts` and `h3-install-worker.ts` are application build entrypoints, not disposable diagnostics.                                                                                                                              |
+| Web distribution            | `webui.ts`, `resetpass.ts`, `pack-web-cli.js`, `install-web.sh` and `install-ubuntu.sh` support WebUI and server installation.                                                                                                            |
+| Release verification        | `prepare-release-assets.sh`, `verify-release-assets.sh`, `open-source-release-audit.js` and the license scripts prepare and inspect release materials.                                                                                    |
+| Installer checks            | `smoke-installer-*`, `smoke-test-*` and `verify-installer-jsonl.ps1` exercise installer and distribution behavior; read their prerequisites before running.                                                                               |
+| Performance and diagnostics | `benchmark-startup.ts`, `benchmark-acp-startup.ts`, `run-benchmarks.ts`, `dev-bootstrap.mjs` and `packaged-launch.mjs` provide reusable development tools.                                                                                |
+| Assets and localization     | `generate-openh3-icons.mjs`, `generate-i18n-types.js` and `check-i18n.js` maintain generated application assets and translation types.                                                                                                    |
 
 `build-fast-debug-versions.ps1` and `build-fast-debug-worktrees.ps1` support local version-comparison builds. `create-mock-release-artifacts.sh` creates fixtures for release-script validation. Neither produces production release evidence.
 

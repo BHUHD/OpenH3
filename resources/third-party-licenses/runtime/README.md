@@ -7,13 +7,13 @@ application under `resources/`.
 
 ## Components included in the package
 
-| Component                 | Version  | License / notice                                                                                                                   | Upstream source                                           |
-| ------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Component                 | Version  | License / notice                                                                                                                      | Upstream source                                    |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | OpenH3 Core runtime       | v0.2.2   | Apache License 2.0; source URL and build manifest are recorded in `resources/bundled-openh3-core/win32-x64/manifest.json`             | https://github.com/pigq/OpenH3/releases/tag/v0.2.2 |
-| Node.js runtime           | v24.11.0 | MIT and bundled third-party notices in `resources/bundled-openh3-core/win32-x64/managed-resources/node/node-v24.11.0-win-x64/LICENSE` | https://nodejs.org/download/release/v24.11.0/             |
-| npm CLI                   | v11.6.1  | Artistic License 2.0 and dependency notices in the npm package metadata under the bundled Node installation                        | https://github.com/npm/cli/tree/v11.6.1                   |
-| Corepack                  | v0.34.0  | MIT; license file is included in the bundled Node installation under `node_modules/corepack/LICENSE.md`                            | https://github.com/nodejs/corepack/tree/v0.34.0           |
-| FFmpeg (essentials build) | 7.1.1    | GPL-3.0; see `resources/ffmpeg/LICENSE` and `resources/ffmpeg/README.txt`                                                          | https://github.com/FFmpeg/FFmpeg/commit/db69d06eee        |
+| Node.js runtime           | v24.11.0 | MIT and bundled third-party notices in `resources/bundled-openh3-core/win32-x64/managed-resources/node/node-v24.11.0-win-x64/LICENSE` | https://nodejs.org/download/release/v24.11.0/      |
+| npm CLI                   | v11.6.1  | Artistic License 2.0 and dependency notices in the npm package metadata under the bundled Node installation                           | https://github.com/npm/cli/tree/v11.6.1            |
+| Corepack                  | v0.34.0  | MIT; license file is included in the bundled Node installation under `node_modules/corepack/LICENSE.md`                               | https://github.com/nodejs/corepack/tree/v0.34.0    |
+| FFmpeg (essentials build) | 7.1.1    | GPL-3.0; see `resources/ffmpeg/LICENSE` and `resources/ffmpeg/README.txt`                                                             | https://github.com/FFmpeg/FFmpeg/commit/db69d06eee |
 
 The adjacent `LICENSE.*` files are unmodified copies of the shipped Node,
 npm and Corepack license files and the AionCore v0.2.2 root LICENSE. Node's

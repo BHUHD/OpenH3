@@ -226,7 +226,7 @@ sudo systemctl status openh3-webui.service
 >
 > **Original Tutorial**: [Running OpenH3 WebUI on Android via Termux + Proot Ubuntu](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
 >
-> **Related Issues**: [#217 - Android Support Discussion](https://github.com/BHUHD/OpenH3/issues/217)
+> **Related Issues**: [#217 - Android Support Discussion](https://github.com/pigq/OpenH3/issues/217)
 
 ### Prerequisites
 
@@ -287,14 +287,14 @@ apt install -y \
 
 ```bash
 # Download the ARM64 .deb package (replace VERSION with the actual version)
-# Check latest version at: https://github.com/BHUHD/OpenH3/releases
-wget https://github.com/BHUHD/OpenH3/releases/download/vVERSION/OpenH3_VERSION_arm64.deb
+# Check latest version at: https://github.com/pigq/OpenH3/releases
+wget https://github.com/pigq/OpenH3/releases/download/vVERSION/OpenH3-VERSION-linux-arm64.deb
 
 # Example (replace VERSION with the release tag, e.g. v1.5.2):
-wget https://github.com/BHUHD/OpenH3/releases/download/vVERSION/OpenH3_VERSION_arm64.deb
+wget https://github.com/pigq/OpenH3/releases/download/vVERSION/OpenH3-VERSION-linux-arm64.deb
 
 # Install the package
-apt install -y ./OpenH3_*.deb
+apt install -y ./OpenH3-*-linux-arm64.deb
 
 # Verify installation
 which OpenH3
@@ -420,7 +420,7 @@ proot-distro login ubuntu -- bash -c "OpenH3 --no-sandbox --webui --remote"
 If you encounter issues or have suggestions for improving Android support:
 
 1. Check the [original community guide](https://gist.github.com/Manamama/b4f903c279b5e73bdad4c2c0a58d5ddd)
-2. Report issues at [GitHub Issues #217](https://github.com/BHUHD/OpenH3/issues/217)
+2. Report issues at [GitHub Issues #217](https://github.com/pigq/OpenH3/issues/217)
 3. Share your experience to help other Android users!
 
 ---
@@ -679,7 +679,7 @@ npm run resetpass -- username
 
 - [Main README](../../README.md)
 - [中文说明](../../README.md)
-- [GitHub Issues](https://github.com/BHUHD/OpenH3/issues)
+- [GitHub Issues](https://github.com/pigq/OpenH3/issues)
 
 ---
 
@@ -688,8 +688,8 @@ npm run resetpass -- username
 If you encounter any issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section
-2. Search [existing issues](https://github.com/BHUHD/OpenH3/issues)
-3. Create a [new issue](https://github.com/BHUHD/OpenH3/issues/new) with:
+2. Search [existing issues](https://github.com/pigq/OpenH3/issues)
+3. Create a [new issue](https://github.com/pigq/OpenH3/issues/new) with:
    - Your OS and version
    - OpenH3 version
    - Steps to reproduce

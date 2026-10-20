@@ -71,17 +71,23 @@ jobs:
       - name: Run unit tests
         run: bunx vitest run
 
+  linux-core:
+    uses: ./.github/workflows/_build-linux-core.yml
+    with:
+      ref: ${{ inputs.ref }}
+      artifact_prefix: web-linux-core
+
   pack-web-cli:
     name: Pack web-cli ${{ matrix.platform }}-${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
-    needs: code-quality
-    if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') }}
+    needs: [code-quality, linux-core]
+    if: ${{ always() && (inputs.skip_code_quality || needs.code-quality.result == 'success') && needs.linux-core.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - { platform: darwin, arch: arm64, os: macos-14 }
-          - { platform: darwin, arch: x64, os: macos-14 }
+          - { platform: darwin, arch: x64, os: macos-15-intel }
           - { platform: linux, arch: x64, os: ubuntu-latest }
           - { platform: linux, arch: arm64, os: ubuntu-24.04-arm }
           - { platform: win32, arch: x64, os: windows-2022 }
@@ -117,13 +123,36 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
+      - name: Setup Rust for the bundled Core
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.95.0'
+
+      - name: Download compatible Linux Core from this checkout
+        if: matrix.platform == 'linux'
+        uses: actions/download-artifact@v6
+        with:
+          name: web-linux-core-${{ matrix.arch }}
+          path: ${{ runner.temp }}/openh3-linux-core
+
+      - name: Prepare compatible Linux Core bundle
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          bundle="$RUNNER_TEMP/openh3-linux-bundle"
+          mkdir -p "$bundle"
+          tar -xzf "$RUNNER_TEMP/openh3-linux-core/linux-core.tar.gz" -C "$bundle"
+          test "$(cat "$bundle/source-commit")" = "$(git rev-parse HEAD)"
+          "$bundle/openh3-core" --data-dir "$RUNNER_TEMP/openh3-prepare-data" prepare-managed-resources --bundle-out "$bundle/managed-resources"
+          echo "OPENH3_BACKEND_LOCAL_BUNDLE_DIR=$bundle" >> "$GITHUB_ENV"
+
       - name: Pack web-cli tarball
         shell: bash
         run: node scripts/pack-web-cli.js
         env:
           PACK_PLATFORM: ${{ matrix.platform }}
           PACK_ARCH: ${{ matrix.arch }}
-          # Version is pinned in repo-root package.json (aioncoreVersion).
+          # Compile the Core from the same checkout as the Web CLI.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload tarball artifact

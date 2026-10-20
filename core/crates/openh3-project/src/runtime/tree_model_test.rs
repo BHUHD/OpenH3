@@ -222,7 +222,7 @@ async fn apply_is_idempotent_when_nothing_changed() {
 }
 
 #[tokio::test]
-async fn apply_synthesizes_rename_for_same_inode() {
+async fn apply_reconciles_renamed_file_per_platform_identity() {
     let (mut tree, dir) = real_tree();
     std::fs::write(dir.path().join("old.txt"), b"x").unwrap();
     let c = canon(dir.path());
@@ -231,13 +231,24 @@ async fn apply_synthesizes_rename_for_same_inode() {
     std::fs::rename(dir.path().join("old.txt"), dir.path().join("new.txt")).unwrap();
 
     let delta = tree.apply(c.as_str(), Hint::All).await.unwrap().expect("changes");
-    assert_eq!(
-        delta.changes,
-        vec![Change::Renamed {
-            from: "old.txt".to_owned(),
-            to: "new.txt".to_owned()
-        }]
-    );
+    #[cfg(unix)]
+    let expected = vec![Change::Renamed {
+        from: "old.txt".to_owned(),
+        to: "new.txt".to_owned(),
+    }];
+    // The local provider reports inode 0 on non-Unix platforms, so a real
+    // rename must be represented by an exact added/removed pair instead.
+    #[cfg(not(unix))]
+    let expected = vec![
+        Change::Added {
+            name: "new.txt".to_owned(),
+            kind: Kind::File,
+        },
+        Change::Removed {
+            name: "old.txt".to_owned(),
+        },
+    ];
+    assert_eq!(delta.changes, expected);
 }
 
 #[tokio::test]

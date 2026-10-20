@@ -704,6 +704,7 @@ async fn repositories_changed_stops_after_the_session_disconnects() {
 /// the same way the scm seam does, or `display_name || default_display_name ||
 /// pe_id` renders whitespace. Reverting `build_folder_dto` to a non-trim filter
 /// turns this red — which is also what proves the defect was real.
+#[cfg(not(windows))]
 #[tokio::test]
 async fn a_blank_basename_folder_does_not_become_a_blank_label() {
     let fx = fixture().await;

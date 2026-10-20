@@ -170,11 +170,23 @@ async fn sse_401_returns_needs_auth() {
 
 #[tokio::test]
 async fn stdio_timeout_returns_timeout_error() {
-    // Use `sleep` which produces no stdout — our protocol read will block
+    // Use a platform-native command which produces no stdout — our protocol
+    // read will block until the connection-test timeout fires.
+    #[cfg(windows)]
+    let (command, args) = (
+        "powershell".to_owned(),
+        vec![
+            "-NoProfile".to_owned(),
+            "-Command".to_owned(),
+            "Start-Sleep -Seconds 60".to_owned(),
+        ],
+    );
+    #[cfg(not(windows))]
+    let (command, args) = ("sleep".to_owned(), vec!["60".to_owned()]);
     let svc = make_service_with_timeout(Duration::from_secs(1));
     let transport = McpServerTransport::Stdio {
-        command: "sleep".into(),
-        args: vec!["60".into()],
+        command,
+        args,
         env: HashMap::new(),
     };
 
@@ -288,10 +300,17 @@ async fn http_custom_headers_are_sent() {
 async fn stdio_with_args_spawns_correctly() {
     // Use echo as a simple command that exits immediately
     // Since echo doesn't speak MCP, we expect a protocol error (not a spawn error)
+    #[cfg(windows)]
+    let (command, args) = (
+        "cmd".to_owned(),
+        vec!["/C".to_owned(), "echo".to_owned(), "hello".to_owned()],
+    );
+    #[cfg(not(windows))]
+    let (command, args) = ("echo".to_owned(), vec!["hello".to_owned()]);
     let svc = make_service_with_timeout(Duration::from_secs(3));
     let transport = McpServerTransport::Stdio {
-        command: "echo".into(),
-        args: vec!["hello".into()],
+        command,
+        args,
         env: HashMap::new(),
     };
 
