@@ -2,6 +2,8 @@
 
 import BetterSqlite3 from 'better-sqlite3';
 import type Database from 'better-sqlite3';
+import path from 'node:path';
+import { getPlatformServices } from '@/common/platform';
 import type { ISqliteDriver, IStatement } from './ISqliteDriver';
 
 class BetterSqlite3Statement implements IStatement {
@@ -24,7 +26,22 @@ export class BetterSqlite3Driver implements ISqliteDriver {
   private db: Database.Database;
 
   constructor(dbPath: string) {
-    this.db = new BetterSqlite3(dbPath);
+    const appPath = getPlatformServices().paths.getAppPath();
+    // afterPack rebuilds this binary after the ASAR file list has been sealed.
+    // Load its physical path directly; bindings cannot discover new ASAR entries.
+    const options = appPath?.endsWith('.asar')
+      ? {
+          nativeBinding: path.join(
+            `${appPath}.unpacked`,
+            'node_modules',
+            'better-sqlite3',
+            'build',
+            'Release',
+            'better_sqlite3.node'
+          ),
+        }
+      : undefined;
+    this.db = new BetterSqlite3(dbPath, options);
   }
 
   prepare(sql: string): IStatement {
