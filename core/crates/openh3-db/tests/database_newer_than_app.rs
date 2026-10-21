@@ -131,7 +131,9 @@ async fn build_line_ending_fixture(path: &std::path::Path, through: i64, mixed: 
         .filter(|m| m.version <= through)
         .map(|m| {
             let lf = m.sql.replace("\r\n", "\n");
-            let sql = if mixed && m.version % 2 == 0 {
+            let sql = if mixed && m.version == 45 {
+                format!("{}\r\n", lf.trim_end_matches('\n'))
+            } else if mixed && m.version % 2 == 0 {
                 lf
             } else {
                 lf.replace('\n', "\r\n")

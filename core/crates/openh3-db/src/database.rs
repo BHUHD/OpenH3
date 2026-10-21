@@ -29,6 +29,14 @@ static DB_MIGRATOR: Migrator = sqlx::migrate!();
 // Historical special-case for the MCP schema reconciliation fallback.
 // Keep this pinned to migration version 7 even as newer migrations land.
 const MCP_SCHEMA_RECONCILIATION_MIGRATION_VERSION: i64 = 7;
+// Migration 045 in the pre-monorepo AionCore source had one CRLF line ending
+// at EOF and LF elsewhere. Pin its exact historical SQLx SHA-384 checksum.
+const LEGACY_MIXED_EOL_MIGRATION_VERSION: i64 = 45;
+const LEGACY_MIXED_EOL_MIGRATION_CHECKSUM: [u8; 48] = [
+    0x82, 0x93, 0x4d, 0xc4, 0xf1, 0x69, 0x37, 0xc9, 0xe1, 0x8b, 0xca, 0x3c, 0x2e, 0xbb, 0xde, 0x1a, 0xcb, 0x2d, 0xe2,
+    0xef, 0x1b, 0x7e, 0x62, 0x6c, 0xb3, 0x13, 0xbd, 0xa7, 0x6c, 0x9c, 0xfc, 0x41, 0xec, 0xad, 0x63, 0x63, 0x09, 0x87,
+    0xc2, 0x9f, 0xa3, 0xf9, 0xe7, 0x43, 0xbd, 0x09, 0x3c, 0xd0,
+];
 const RECOVERABLE_DATABASE_CORRUPTION_STAGE: &str = "database.recoverable_corruption";
 /// Stage reported when the database was created by a NEWER app version than
 /// this binary: `_sqlx_migrations` contains a version the embedded migrator
@@ -468,9 +476,10 @@ async fn run_migrations_with_retry(conn: &mut sqlx::SqliteConnection) -> Result<
 }
 
 /// Historical Windows builds embedded CRLF SQL; the monorepo checks out LF.
-/// Accept only byte-for-byte LF/CRLF variants of the embedded SQL, never an
-/// arbitrary checksum or SQL change. Only migration metadata is updated, not
-/// schema or user data. The caller holds the cross-process startup lock.
+/// Accept only byte-for-byte LF/CRLF variants of embedded SQL, plus the one
+/// pinned historical mixed-EOL checksum. Never accept arbitrary SQL changes.
+/// Only migration metadata is updated, not schema or user data. The caller
+/// holds the cross-process startup lock.
 async fn align_line_ending_migration_checksums(conn: &mut sqlx::SqliteConnection) -> Result<(), DbError> {
     conn.ensure_migrations_table().await.map_err(DbError::Migration)?;
     if conn.dirty_version().await.map_err(DbError::Migration)?.is_some() {
@@ -504,7 +513,9 @@ async fn align_line_ending_migration_checksums(conn: &mut sqlx::SqliteConnection
             .checksum
                 == row.checksum
         });
-        if equivalent {
+        let known_historical_mixed_eol = migration.version == LEGACY_MIXED_EOL_MIGRATION_VERSION
+            && row.checksum.as_ref() == LEGACY_MIXED_EOL_MIGRATION_CHECKSUM;
+        if equivalent || known_historical_mixed_eol {
             updates.push((row, migration));
         }
         // Other mismatches remain untouched for sqlx's validation and the
@@ -528,7 +539,7 @@ async fn align_line_ending_migration_checksums(conn: &mut sqlx::SqliteConnection
     info!(
         code = "BOOTSTRAP_MIGRATION_EOL_CHECKSUMS_ALIGNED",
         migration_count = updates.len(),
-        "Aligned equivalent LF/CRLF migration checksums; schema and user data unchanged"
+        "Aligned known historical line-ending migration checksums; schema and user data unchanged"
     );
     Ok(())
 }
