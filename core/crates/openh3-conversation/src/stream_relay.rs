@@ -1817,7 +1817,10 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let captured = capture_logs(Level::INFO, || {
+        // Keep this capture at TRACE so a parallel test's WARN-only subscriber
+        // cannot leave the global callsite cache filtering the INFO terminal
+        // event before this scoped subscriber is installed.
+        let captured = capture_logs(Level::TRACE, || {
             runtime.block_on(async {
                 let repo = Arc::new(RecordingRepo::new());
                 let bus = Arc::new(openh3_realtime::BroadcastEventBus::new(64));
