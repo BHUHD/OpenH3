@@ -1113,7 +1113,13 @@ mod tests {
             .with_ansi(false)
             .finish();
 
-        tracing::subscriber::with_default(subscriber, f);
+        tracing::subscriber::with_default(subscriber, || {
+            // Callsite interest is cached globally. Parallel tests may have
+            // installed a WARN-only subscriber just before this scoped INFO
+            // capture, so explicitly recalculate it for this subscriber.
+            tracing::callsite::rebuild_interest_cache();
+            f();
+        });
         String::from_utf8(buffer.lock().expect("log buffer lock").clone()).expect("utf8 logs")
     }
 
