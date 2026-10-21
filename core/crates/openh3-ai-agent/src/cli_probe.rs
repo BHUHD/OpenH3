@@ -156,23 +156,35 @@ fn first_nonempty_line(bytes: &[u8]) -> Option<String> {
 
 #[cfg(all(test, unix))]
 mod tests {
-    use std::os::unix::fs::PermissionsExt;
-
     use super::*;
 
-    fn executable_script(name: &str, contents: &str) -> (tempfile::TempDir, PathBuf) {
+    async fn executable_script(name: &str, contents: &str) -> (tempfile::TempDir, PathBuf) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(name);
-        std::fs::write(&path, contents).unwrap();
-        let mut permissions = std::fs::metadata(&path).unwrap().permissions();
-        permissions.set_mode(0o755);
-        std::fs::set_permissions(&path, permissions).unwrap();
+        // Keep writable script descriptors out of the parallel test runner.
+        // Another test's fork can inherit even CLOEXEC descriptors until exec,
+        // making this script fail with ETXTBSY after the parent closes its copy.
+        let mut writer = Builder::clean_cli("/bin/sh");
+        writer
+            .args([
+                "-c",
+                "printf '%s' \"$2\" > \"$1\" && chmod 755 \"$1\"",
+                "write-cli-fixture",
+            ])
+            .arg(&path)
+            .arg(contents);
+        let output = writer.output().await.unwrap();
+        assert!(
+            output.status.success(),
+            "failed to create CLI fixture: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         (dir, path)
     }
 
     #[tokio::test]
     async fn version_probe_accepts_runnable_cli() {
-        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf 'agent-cli 1.2.3\\n'\n");
+        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf 'agent-cli 1.2.3\\n'\n").await;
         assert_eq!(
             resolve_and_validate_command(path.to_str().unwrap()).await.unwrap(),
             path
@@ -184,7 +196,7 @@ mod tests {
         // The availability path decides agy drift from this. Discarding it
         // (as the probe used to) would mean a second `--version` launch, or —
         // as shipped — no drift warning at connection-test time at all.
-        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf '1.1.8\\n'\n");
+        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf '1.1.8\\n'\n").await;
         let ok = validate_version_with_timeout(&path, Duration::from_secs(5))
             .await
             .unwrap();
@@ -195,7 +207,7 @@ mod tests {
     async fn a_silent_cli_reports_no_version_rather_than_an_empty_one() {
         // Some CLIs exit 0 without printing. `Some("")` would be read as a
         // parseable version and could produce a bogus drift verdict.
-        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nexit 0\n");
+        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nexit 0\n").await;
         let ok = validate_version_with_timeout(&path, Duration::from_secs(5))
             .await
             .unwrap();
@@ -204,7 +216,7 @@ mod tests {
 
     #[tokio::test]
     async fn version_probe_success_reports_duration() {
-        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf 'agent-cli 1.2.3\\n'\n");
+        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nprintf 'agent-cli 1.2.3\\n'\n").await;
         let ok = validate_version_with_timeout(&path, Duration::from_secs(5))
             .await
             .unwrap();
@@ -221,7 +233,8 @@ mod tests {
         let (_dir, path) = executable_script(
             "agent-cli",
             "#!/bin/sh\nprintf 'native binary missing\\n' >&2\nexit 1\n",
-        );
+        )
+        .await;
         let failure = validate_version_with_timeout(&path, Duration::from_secs(5))
             .await
             .unwrap_err();
@@ -241,7 +254,7 @@ mod tests {
 
     #[tokio::test]
     async fn version_probe_classifies_timeout_without_condemning() {
-        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nsleep 10\n");
+        let (_dir, path) = executable_script("agent-cli", "#!/bin/sh\nsleep 10\n").await;
         let failure = validate_version_with_timeout(&path, Duration::from_millis(50))
             .await
             .unwrap_err();
