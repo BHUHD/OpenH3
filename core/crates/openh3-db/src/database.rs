@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use fs2::FileExt;
-use sqlx::migrate::Migrator;
+use sqlx::migrate::{Migrate, Migration, Migrator};
 use sqlx::pool::PoolOptions;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use sqlx::{Sqlite, SqlitePool};
@@ -441,6 +441,7 @@ async fn run_migrations_staged(pool: &SqlitePool) -> Result<(), DatabaseInitErro
 /// pass sees the row that the winner committed, checksum matches (same
 /// shipped binary), and the migration is treated as already applied.
 async fn run_migrations_with_retry(conn: &mut sqlx::SqliteConnection) -> Result<(), DbError> {
+    align_line_ending_migration_checksums(conn).await?;
     match DB_MIGRATOR.run(&mut *conn).await {
         Ok(()) => Ok(()),
         Err(e) if is_migrations_table_unique_conflict(&e) => {
@@ -464,6 +465,72 @@ async fn run_migrations_with_retry(conn: &mut sqlx::SqliteConnection) -> Result<
         }
         Err(e) => Err(DbError::Migration(e)),
     }
+}
+
+/// Historical Windows builds embedded CRLF SQL; the monorepo checks out LF.
+/// Accept only byte-for-byte LF/CRLF variants of the embedded SQL, never an
+/// arbitrary checksum or SQL change. Only migration metadata is updated, not
+/// schema or user data. The caller holds the cross-process startup lock.
+async fn align_line_ending_migration_checksums(conn: &mut sqlx::SqliteConnection) -> Result<(), DbError> {
+    conn.ensure_migrations_table().await.map_err(DbError::Migration)?;
+    if conn.dirty_version().await.map_err(DbError::Migration)?.is_some() {
+        return Ok(()); // Let sqlx report the original dirty-migration error.
+    }
+    let applied = conn.list_applied_migrations().await.map_err(DbError::Migration)?;
+    if applied
+        .iter()
+        .any(|row| !DB_MIGRATOR.iter().any(|m| m.version == row.version))
+    {
+        return Ok(()); // Preserve sqlx's downgrade detection before any updates.
+    }
+
+    let mut updates = Vec::new();
+    for row in &applied {
+        let Some(migration) = DB_MIGRATOR.iter().find(|m| m.version == row.version) else {
+            continue;
+        };
+        if row.checksum == migration.checksum {
+            continue;
+        }
+        let lf = migration.sql.replace("\r\n", "\n");
+        let equivalent = [lf.clone(), lf.replace('\n', "\r\n")].into_iter().any(|sql| {
+            Migration::new(
+                migration.version,
+                migration.description.clone(),
+                migration.migration_type,
+                sql.into(),
+                migration.no_tx,
+            )
+            .checksum
+                == row.checksum
+        });
+        if equivalent {
+            updates.push((row, migration));
+        }
+        // Other mismatches remain untouched for sqlx's validation and the
+        // existing, separately gated MCP schema reconciliation fallback.
+    }
+    if updates.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = sqlx::Connection::begin(conn).await.map_err(DbError::Query)?;
+    for (row, migration) in &updates {
+        sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = ? AND success = 1 AND checksum = ?")
+            .bind(migration.checksum.as_ref())
+            .bind(row.version)
+            .bind(row.checksum.as_ref())
+            .execute(&mut *tx)
+            .await
+            .map_err(DbError::Query)?;
+    }
+    tx.commit().await.map_err(DbError::Query)?;
+    info!(
+        code = "BOOTSTRAP_MIGRATION_EOL_CHECKSUMS_ALIGNED",
+        migration_count = updates.len(),
+        "Aligned equivalent LF/CRLF migration checksums; schema and user data unchanged"
+    );
+    Ok(())
 }
 
 /// Detect the specific "another process inserted this version first" error.
