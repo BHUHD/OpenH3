@@ -846,7 +846,13 @@ mod tests {
             .with_ansi(false)
             .finish();
 
-        tracing::subscriber::with_default(subscriber, f);
+        tracing::subscriber::with_default(subscriber, || {
+            // Other tests can reach these callsites without a subscriber.
+            // Rebuild their global interest cache after installing this scoped
+            // subscriber, as the stream relay log-capture helper does.
+            tracing::callsite::rebuild_interest_cache();
+            f();
+        });
         String::from_utf8(buffer.lock().unwrap().clone()).unwrap()
     }
 
