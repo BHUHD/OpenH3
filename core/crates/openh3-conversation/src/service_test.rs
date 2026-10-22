@@ -7331,6 +7331,39 @@ async fn warmup_wrong_user_returns_not_found() {
 }
 
 #[tokio::test]
+async fn warmup_relinks_migrated_workspace_and_persists_without_losing_extra() {
+    let root = tempfile::tempdir().unwrap();
+    let old_root = tempfile::tempdir().unwrap();
+    let (svc, _broadcaster, repo, _task_mgr) = make_service_with_workspace_root(root.path().to_path_buf());
+    let conv = svc.create("user_1", make_create_req()).await.unwrap();
+    let relative =
+        PathBuf::from("conversations/users/system_default_user/2026/10/08").join(format!("acp-temp-{}", conv.id));
+    let relocated = root.path().join(&relative);
+    std::fs::create_dir_all(&relocated).unwrap();
+    let task_mgr: Arc<dyn IWorkerTaskManager> =
+        Arc::new(MockTaskManagerWithWorkspace::new(&relocated.to_string_lossy()));
+    let original = old_root.path().join(&relative);
+    repo.update(
+        "user_1",
+        &conv.id,
+        &ConversationRowUpdate {
+            extra: Some(json!({ "workspace": original, "migration_marker": "keep" }).to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    svc.warmup("user_1", &conv.id, &task_mgr).await.unwrap();
+
+    let saved = repo.get("user_1", &conv.id).await.unwrap().unwrap();
+    let extra: serde_json::Value = serde_json::from_str(&saved.extra).unwrap();
+    assert_eq!(Path::new(extra["workspace"].as_str().unwrap()), relocated.as_path());
+    assert_eq!(extra["migration_marker"], "keep");
+    assert!(!original.exists());
+}
+
+#[tokio::test]
 async fn warmup_rejects_legacy_workspace_with_runtime_error_code() {
     let (svc, _broadcaster, repo, _task_mgr) = make_service();
     let task_mgr: Arc<dyn IWorkerTaskManager> = Arc::new(MockTaskManager::new());

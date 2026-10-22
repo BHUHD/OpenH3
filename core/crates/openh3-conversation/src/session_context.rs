@@ -156,6 +156,18 @@ impl<'a> SessionContextBuilder<'a> {
 
         let normalized = match validate_workspace_path_availability(stored_path) {
             Ok(normalized) => normalized,
+            Err(WorkspacePathValidationError::DoesNotExist(_))
+                if let Some(relocated) = relocated_auto_workspace(
+                    self.workspace_root,
+                    &row.id,
+                    agent_type,
+                    extra.get("backend"),
+                    Path::new(stored_path),
+                ) =>
+            {
+                info!(conversation_id = %row.id, "Resolved existing auto workspace after data directory relocation");
+                relocated.to_string_lossy().into_owned()
+            }
             Err(WorkspacePathValidationError::DoesNotExist(path))
                 if is_auto_workspace(
                     self.workspace_root,
@@ -663,6 +675,40 @@ fn is_auto_workspace(
         ["users", _user_dir, year, month, day, leaf] => dated(year, month, day) && *leaf == expected_leaf,
         _ => false,
     }
+}
+
+/// Reuse only an existing conversation-specific directory under the new root.
+/// Never create an empty replacement or redirect a custom project directory.
+fn relocated_auto_workspace(
+    workspace_root: &Path,
+    conversation_id: &str,
+    agent_type: &AgentType,
+    backend: Option<&serde_json::Value>,
+    candidate: &Path,
+) -> Option<PathBuf> {
+    if !candidate.is_absolute()
+        || candidate
+            .components()
+            .any(|part| matches!(part, std::path::Component::ParentDir))
+    {
+        return None;
+    }
+    let old_conversations = candidate
+        .ancestors()
+        .find(|ancestor| ancestor.file_name().is_some_and(|name| name == "conversations"))?;
+    let old_root = old_conversations.parent()?;
+    if !is_auto_workspace(old_root, conversation_id, agent_type, backend, candidate) {
+        return None;
+    }
+    let relocated = workspace_root
+        .join("conversations")
+        .join(candidate.strip_prefix(old_conversations).ok()?);
+    let canonical_root = workspace_root.join("conversations").canonicalize().ok()?;
+    let canonical_target = relocated.canonicalize().ok()?;
+    if !canonical_target.starts_with(canonical_root) || !canonical_target.is_dir() {
+        return None;
+    }
+    Some(relocated)
 }
 
 fn conversation_label(agent_type: &AgentType, backend: Option<&serde_json::Value>) -> String {
@@ -1256,6 +1302,93 @@ mod tests {
         let context = repos.builder().build(&row).await.unwrap();
         assert!(context.workspace.is_custom);
         assert_eq!(context.workspace.path, custom.to_string_lossy());
+    }
+
+    #[tokio::test]
+    async fn workspace_relinks_existing_auto_workspace_after_data_root_migration() {
+        let repos = setup().await;
+        let relative = Path::new("conversations/users/system_default_user/2026/10/08/aionrs-temp-conv-1");
+        let relocated = repos.workspace_root.join(relative);
+        std::fs::create_dir_all(&relocated).unwrap();
+        let old_profile = tempfile::tempdir().unwrap();
+        let legacy = old_profile.path().join(relative).to_string_lossy().into_owned();
+        assert!(!Path::new(&legacy).exists());
+        let row = row("aionrs", serde_json::json!({ "workspace": legacy }), None);
+
+        let context = repos.builder().build(&row).await.unwrap();
+
+        assert!(!context.workspace.is_custom);
+        assert_eq!(Path::new(&context.workspace.path), relocated.as_path());
+        assert_eq!(context.workspace.stored_path, legacy);
+    }
+
+    #[tokio::test]
+    async fn workspace_relocation_preserves_existing_original() {
+        let repos = setup().await;
+        let old_profile = tempfile::tempdir().unwrap();
+        let relative = Path::new("conversations/2026/10/08/aionrs-temp-conv-1");
+        let original = old_profile.path().join(relative);
+        std::fs::create_dir_all(&original).unwrap();
+        std::fs::create_dir_all(repos.workspace_root.join(relative)).unwrap();
+        let row = row("aionrs", serde_json::json!({ "workspace": original }), None);
+        let context = repos.builder().build(&row).await.unwrap();
+        assert_eq!(Path::new(&context.workspace.path), original.as_path());
+    }
+
+    #[tokio::test]
+    async fn workspace_relocation_accepts_userless_layout_and_preserves_files() {
+        let repos = setup().await;
+        let old_profile = tempfile::tempdir().unwrap();
+        let relative = Path::new("conversations/2026/10/08/aionrs-temp-conv-1");
+        let relocated = repos.workspace_root.join(relative);
+        std::fs::create_dir_all(&relocated).unwrap();
+        std::fs::write(relocated.join("existing.txt"), "existing content").unwrap();
+        let row = row(
+            "aionrs",
+            serde_json::json!({ "workspace": old_profile.path().join(relative) }),
+            None,
+        );
+        let context = repos.builder().build(&row).await.unwrap();
+        assert_eq!(Path::new(&context.workspace.path), relocated.as_path());
+        assert!(!context.workspace.is_custom);
+        assert_eq!(
+            std::fs::read_to_string(relocated.join("existing.txt")).unwrap(),
+            "existing content"
+        );
+    }
+
+    #[tokio::test]
+    async fn workspace_relocation_rejects_missing_file_custom_and_wrong_conversation() {
+        let repos = setup().await;
+        let old_profile = tempfile::tempdir().unwrap();
+        for (relative, create_target, file_target) in [
+            ("conversations/2026/10/08/aionrs-temp-conv-1", false, false),
+            ("conversations/2026/10/09/aionrs-temp-conv-1", true, true),
+            ("projects/custom", true, false),
+            ("conversations/2026/10/08/aionrs-temp-other", true, false),
+            ("conversations/2026/10/08/../08/aionrs-temp-conv-1", true, false),
+        ] {
+            let target = repos.workspace_root.join(relative);
+            if create_target {
+                if file_target {
+                    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+                    std::fs::write(&target, "not a directory").unwrap();
+                } else {
+                    std::fs::create_dir_all(&target).unwrap();
+                }
+            }
+            let original = old_profile.path().join(relative);
+            let row = row("aionrs", serde_json::json!({ "workspace": original }), None);
+            assert!(
+                matches!(repos.builder().build(&row).await,
+                Err(ConversationError::WorkspacePathRuntimeUnavailable { path }) if Path::new(&path) == original),
+                "{relative}"
+            );
+            assert!(!original.exists());
+            if !create_target {
+                assert!(!target.exists());
+            }
+        }
     }
 
     #[test]
