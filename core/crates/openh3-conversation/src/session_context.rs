@@ -1471,6 +1471,27 @@ mod tests {
 
     #[test]
     fn workspace_validation_failure_logs_redacted_runtime_check() {
+        const CHILD: &str = "OPENH3_WORKSPACE_LOG_CAPTURE_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            // tracing callsite interest is process-global. Run this assertion
+            // alone so parallel tests cannot disable its scoped subscriber.
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "session_context::tests::workspace_validation_failure_logs_redacted_runtime_check",
+                    "--nocapture",
+                ])
+                .env(CHILD, "1")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "isolated log capture failed:\n{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
