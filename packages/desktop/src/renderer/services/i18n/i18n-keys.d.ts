@@ -3340,6 +3340,8 @@ export type I18nKey =
   | 'update.cancel'
   | 'update.checkFailed'
   | 'update.checking'
+  | 'update.confirmInstall'
+  | 'update.confirmInstallDescription'
   | 'update.currentVersion'
   | 'update.downloadAndInstall'
   | 'update.downloadButton'
@@ -3409,6 +3411,7 @@ export type I18nKey =
   | 'update.noCompatibleAssetManual'
   | 'update.noReleaseNotes'
   | 'update.openFile'
+  | 'update.openInstaller'
   | 'update.preparingInstall'
   | 'update.readyToInstall'
   | 'update.readyToInstallDesc'
@@ -3418,6 +3421,10 @@ export type I18nKey =
   | 'update.restartNow'
   | 'update.restoreUpdateNotification'
   | 'update.showInFolder'
+  | 'update.sidebarAvailable'
+  | 'update.sidebarDownloading'
+  | 'update.sidebarRestart'
+  | 'update.sidebarRetry'
   | 'update.upToDateTitle'
   | 'update.viewRelease';
 
