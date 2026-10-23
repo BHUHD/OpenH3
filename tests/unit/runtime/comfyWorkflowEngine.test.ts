@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { ComfyProfile } from '@/common/chat/document/creation/comfy';
 import { ComfyWorkflowEngine } from '@/process/services/media/comfy/workflowEngine';
+import { ComfyRuntimeCoordinator } from '@/process/services/media/comfy/runtimeCoordinator';
 
 let root: string;
 let profile: ComfyProfile;
@@ -51,8 +52,23 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
 function fetchFixture(overrides: Record<string, unknown> = {}): typeof fetch {
-  return vi.fn(async (url: string | URL | Request) => {
+  let queue = structuredClone(overrides['/queue'] ?? { queue_running: [], queue_pending: [] }) as {
+    queue_running: unknown[][];
+    queue_pending: unknown[][];
+  };
+  return vi.fn(async (url: string | URL | Request, options?: RequestInit) => {
     const suffix = new URL(String(url)).pathname;
+    if (suffix === '/queue') {
+      if (options?.method === 'POST') {
+        const deleted = JSON.parse(String(options.body)).delete as string[];
+        queue.queue_pending = queue.queue_pending.filter((entry) => !deleted.includes(String(entry[1])));
+      }
+      return Response.json(queue);
+    }
+    if (suffix === '/interrupt' && options?.method === 'POST') {
+      const promptId = JSON.parse(String(options.body)).prompt_id;
+      queue.queue_running = queue.queue_running.filter((entry) => entry[1] !== promptId);
+    }
     if (suffix in overrides) return Response.json(overrides[suffix]);
     if (suffix === '/system_stats') return Response.json(stats);
     if (suffix === '/object_info') return Response.json(registry);
@@ -78,6 +94,7 @@ function fetchFixture(overrides: Record<string, unknown> = {}): typeof fetch {
 function engine(fetchImpl = fetchFixture(), options: Record<string, unknown> = {}): ComfyWorkflowEngine {
   return new ComfyWorkflowEngine({
     outputRoot: path.join(root, 'results'),
+    runtimeCoordinator: new ComfyRuntimeCoordinator({ directory: path.join(root, `leases-${crypto.randomUUID()}`) }),
     fetchImpl,
     runtimeInspector: async () => ({ executable: profile.environment.python, root }),
     runtimeProbe: async () => ({
@@ -99,7 +116,7 @@ describe('generic ComfyUI workflow engine', () => {
     const base = fetchFixture();
     let statsReads = 0;
     const fetchImpl = vi.fn(async (url, options) => {
-      if (new URL(String(url)).pathname === '/system_stats' && ++statsReads > 1)
+      if (new URL(String(url)).pathname === '/system_stats' && ++statsReads > 3)
         throw new TypeError('second stats disconnected');
       return base(url, options);
     }) as typeof fetch;
@@ -207,6 +224,213 @@ describe('generic ComfyUI workflow engine', () => {
     await runtime.generate(profile, { prompt: 'edit', imagePaths: [imagePath] }, new AbortController().signal);
     const request = vi.mocked(fetchImpl).mock.calls.find(([url]) => String(url).endsWith('/prompt'));
     expect(JSON.parse(String(request?.[1]?.body)).prompt['4'].inputs.image).toBe('images/uploaded.png');
+  });
+
+  it('uploads ordered Omni references and binds image, video, embedded audio, and audio labels', async () => {
+    profile.family = 'fasth3-omni';
+    profile.kind = 'video';
+    profile.capabilities = ['reference-to-video', 'audio-video'];
+    profile.bindings.prompt = [{ nodeId: '1', input: 'text' }];
+    const graph = JSON.parse(fs.readFileSync(profile.workflowPath, 'utf8'));
+    graph['4'] = { class_type: 'MiniMaxH3ReferenceToVideo', inputs: { prompt: 'default' } };
+    fs.writeFileSync(profile.workflowPath, JSON.stringify(graph));
+    const imagePath = path.join(root, 'ref.png');
+    const videoPath = path.join(root, 'ref.mp4');
+    const audioPath = path.join(root, 'ref.wav');
+    for (const file of [imagePath, videoPath, audioPath]) fs.writeFileSync(file, 'reference');
+    const uploaded: string[] = [];
+    const base = fetchFixture({
+      '/object_info': {
+        ...registry,
+        MiniMaxH3ReferenceToVideo: {
+          input: {
+            required: { prompt: ['STRING'] },
+            optional: {
+              ref_images: ['AUTOGROW'],
+              ref_videos: ['AUTOGROW'],
+              ref_video_audios: ['AUTOGROW'],
+              ref_audios: ['AUTOGROW'],
+            },
+          },
+          output: ['CONDITIONING', 'LATENT'],
+        },
+        LoadVideo: { input: { required: { file: ['STRING'] } }, output: ['VIDEO'] },
+        GetVideoComponents: { input: { required: { video: ['VIDEO'] } }, output: ['IMAGE', 'AUDIO', 'FLOAT'] },
+        LoadAudio: { input: { required: { audio: ['STRING'] } }, output: ['AUDIO'] },
+      },
+    });
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (new URL(String(url)).pathname === '/upload/image') {
+        const form = init?.body as FormData;
+        uploaded.push(String(form.get('image') instanceof Blob ? (form.get('image') as File).name : ''));
+        return Response.json({ name: `upload-${uploaded.length}.bin`, subfolder: 'input' });
+      }
+      return base(url, init);
+    }) as typeof fetch;
+    await engine(fetchImpl, {
+      referencePreflight: {
+        inspect: async () =>
+          new Map([
+            [videoPath, { duration: 3, audio: true, fps: 24 }],
+            [audioPath, { duration: 3, audio: true }],
+          ]),
+      },
+    }).generate(
+      profile,
+      {
+        prompt: 'A moving scene',
+        references: [
+          { type: 'video', path: videoPath },
+          { type: 'audio', path: audioPath },
+          { type: 'image', path: imagePath },
+        ],
+      },
+      new AbortController().signal
+    );
+    const request = vi.mocked(fetchImpl).mock.calls.find(([url]) => String(url).endsWith('/prompt'));
+    const submitted = JSON.parse(String(request?.[1]?.body)).prompt;
+    const refNode = submitted['4'];
+    expect(uploaded.map((name) => name.replace(/^[a-f0-9-]{36}-/, ''))).toEqual(['ref.mp4', 'ref.wav', 'ref.png']);
+    expect(submitted['1'].inputs.text).toContain('<Picture 1>');
+    expect(submitted['1'].inputs.text).toContain('<Video 1>');
+    expect(submitted['1'].inputs.text).toContain('<Audio 1>');
+    expect(refNode.inputs['ref_images.ref_image_0']).toEqual(['8', 0]);
+    expect(refNode.inputs['ref_videos.ref_video_0']).toEqual(['6', 0]);
+    expect(refNode.inputs['ref_video_audios.ref_video_audio_0']).toEqual(['6', 1]);
+    expect(refNode.inputs['ref_audios.ref_audio_0']).toEqual(['7', 0]);
+    expect(submitted['1'].inputs.text).toContain('<Picture 1> <Audio 1> <Video 1> <Audio 2>');
+  });
+
+  it('requires an Omni image or video reference before starting ComfyUI', async () => {
+    profile.family = 'fasth3-omni';
+    profile.kind = 'video';
+    const fetchImpl = fetchFixture();
+    await expect(
+      engine(fetchImpl).generate(
+        profile,
+        { prompt: 'A moving scene', references: [{ type: 'audio', path: path.join(root, 'audio.wav') }] },
+        new AbortController().signal
+      )
+    ).rejects.toThrow('COMFY_OMNI_REFERENCE_REQUIRED');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { images: 0, videos: 2, audios: 2, duration: 3, error: 'COMFY_REFERENCE_AUDIO_LIMIT_WITH_SOUNDTRACKS' },
+    { images: 9, videos: 2, audios: 0, duration: 3, error: 'COMFY_REFERENCE_TOTAL_LIMIT_WITH_SOUNDTRACKS' },
+    { images: 0, videos: 1, audios: 1, duration: 8, error: 'COMFY_REFERENCE_AUDIO_DURATION_WITH_SOUNDTRACKS' },
+  ])('counts video soundtracks towards Omni limits: $error', async ({ images, videos, audios, duration, error }) => {
+    profile.family = 'fasth3-omni';
+    profile.kind = 'video';
+    const references = [
+      ...Array.from({ length: images }, (_, index) => ({
+        type: 'image' as const,
+        path: path.join(root, `${index}.png`),
+      })),
+      ...Array.from({ length: videos }, (_, index) => ({
+        type: 'video' as const,
+        path: path.join(root, `${index}.mp4`),
+      })),
+      ...Array.from({ length: audios }, (_, index) => ({
+        type: 'audio' as const,
+        path: path.join(root, `${index}.wav`),
+      })),
+    ];
+    const fetchImpl = fetchFixture();
+    const inspect = async () => new Map(references.map(({ path: file }) => [file, { duration, audio: true }]));
+    await expect(
+      engine(fetchImpl, { referencePreflight: { inspect } }).generate(
+        profile,
+        { prompt: 'A moving scene', references },
+        new AbortController().signal
+      )
+    ).rejects.toThrow(error);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('confirms idle queue and observed VRAM recovery before resolving memory cleanup', async () => {
+    const reads: number[] = [];
+    let freeRequests = 0;
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const suffix = new URL(String(url)).pathname;
+      if (suffix === '/system_stats') {
+        reads.push(freeRequests ? 700 : 400);
+        return Response.json({ ...stats, devices: [{ vram_free: reads.at(-1) }] });
+      }
+      if (suffix === '/queue') return Response.json({ queue_running: [], queue_pending: [] });
+      if (suffix === '/free') {
+        freeRequests++;
+        expect(init?.method).toBe('POST');
+        return Response.json({});
+      }
+      return fetchFixture()(url, init);
+    }) as typeof fetch;
+    await engine(fetchImpl, { sleep: async () => undefined }).clearMemory(profile, 'oom', new AbortController().signal);
+    expect(freeRequests).toBe(1);
+    expect(reads).toEqual([400, 700]);
+  });
+
+  it('does not confirm cleanup from /free HTTP 200 alone when the queue is busy', async () => {
+    const fetchImpl = fetchFixture({
+      '/queue': { queue_running: [['1', 'busy']], queue_pending: [] },
+    });
+    await expect(engine(fetchImpl).clearMemory(profile, 'oom', new AbortController().signal)).rejects.toThrow(
+      'COMFY_MEMORY_CLEAR_QUEUE_BUSY'
+    );
+    expect(vi.mocked(fetchImpl).mock.calls.some(([url]) => String(url).endsWith('/free'))).toBe(false);
+  });
+
+  it('accepts an already empty allocator only after stable telemetry and rejects a replaced runtime', async () => {
+    const fetchImpl = fetchFixture({
+      '/system_stats': { ...stats, devices: [{ vram_free: 700, torch_vram_total: 0 }] },
+    });
+    await engine(fetchImpl).clearMemory(profile, 'idle', new AbortController().signal);
+    expect(vi.mocked(fetchImpl).mock.calls.filter(([url]) => String(url).endsWith('/system_stats'))).toHaveLength(3);
+    let reads = 0;
+    const runtimeInspector = async () => ({ executable: profile.environment.python, root, pid: ++reads <= 2 ? 1 : 2 });
+    await expect(
+      engine(fetchImpl, { runtimeInspector }).clearMemory(profile, 'oom', new AbortController().signal)
+    ).rejects.toThrow('COMFY_MEMORY_CLEAR_RUNTIME_CHANGED');
+  });
+
+  it('shares its generation fence across engine instances and recovers the accepted prompt without another POST', async () => {
+    const directory = path.join(root, 'shared-leases');
+    const coordinator = new ComfyRuntimeCoordinator({ directory });
+    const base = fetchFixture();
+    const offline = vi.fn(async (url, init) =>
+      String(url).includes('/history/') ? new Response(null, { status: 503 }) : base(url, init)
+    ) as typeof fetch;
+    await expect(
+      engine(offline, { runtimeCoordinator: coordinator, maxPollAttempts: 3 }).generate(
+        profile,
+        { prompt: 'keep this task' },
+        new AbortController().signal
+      )
+    ).rejects.toThrow('COMFY_HISTORY_UNAVAILABLE');
+    const recovered = engine(base, { runtimeCoordinator: new ComfyRuntimeCoordinator({ directory }) });
+    await expect(recovered.generate(profile, { prompt: 'replacement' }, new AbortController().signal)).rejects.toThrow(
+      'COMFY_REMOTE_STATE_UNCONFIRMED'
+    );
+    await expect(recovered.resume(profile, 'prompt-1', new AbortController().signal)).resolves.toHaveProperty(
+      'promptId',
+      'prompt-1'
+    );
+    expect(vi.mocked(offline).mock.calls.filter(([url]) => String(url).endsWith('/prompt'))).toHaveLength(1);
+    expect(vi.mocked(base).mock.calls.filter(([url]) => String(url).endsWith('/prompt'))).toHaveLength(1);
+  });
+
+  it('keeps an unconfirmed cancellation blocked and does not treat a nonterminal history record as complete', async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      const suffix = new URL(String(url)).pathname;
+      if (suffix === '/queue') return Response.json({ queue_running: [[0, 'prompt-1']], queue_pending: [] });
+      return fetchFixture()(url);
+    }) as typeof fetch;
+    fs.writeFileSync(path.join(root, 'server.py'), 'prompt_id = json_data.get("prompt_id")\n# targeted interruption\n');
+    await expect(engine(fetchImpl).cancel(profile, 'prompt-1')).rejects.toThrow('COMFY_CANCEL_UNCONFIRMED');
+    const incomplete = fetchFixture({
+      '/history/prompt-1': { 'prompt-1': { status: { completed: false, status_str: 'running' } } },
+    });
+    await expect(engine(incomplete).cancel(profile, 'prompt-1', true)).rejects.toThrow('COMFY_CANCEL_UNCONFIRMED');
   });
 
   it('does not reuse or kill a server from another interpreter and rejects non-loopback servers', async () => {
@@ -465,11 +689,12 @@ describe('generic ComfyUI workflow engine', () => {
   it('accepts ComfyUI empty successful cancellation responses and keeps interruption prompt-scoped', async () => {
     const base = fetchFixture({ '/queue': { queue_running: [[0, 'prompt-1']], queue_pending: [] } });
     fs.writeFileSync(path.join(root, 'server.py'), 'prompt_id = json_data.get("prompt_id")\n# targeted interruption\n');
-    const fetchImpl = vi.fn(async (url, options) =>
-      options?.method === 'POST' && String(url).endsWith('/interrupt')
+    const fetchImpl = vi.fn(async (url, options) => {
+      const result = await base(url, options);
+      return options?.method === 'POST' && String(url).endsWith('/interrupt')
         ? new Response(null, { status: 200 })
-        : base(url, options)
-    ) as typeof fetch;
+        : result;
+    }) as typeof fetch;
     await expect(engine(fetchImpl).cancel(profile, 'prompt-1')).resolves.toBeUndefined();
     const request = vi.mocked(fetchImpl).mock.calls.find(([url]) => String(url).endsWith('/interrupt'));
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({ prompt_id: 'prompt-1' });

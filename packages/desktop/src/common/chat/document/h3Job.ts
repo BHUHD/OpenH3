@@ -120,6 +120,8 @@ export type H3Job = {
   /** A remote prompt may still own GPU work. Blocks replacement submissions across restarts. */
   remoteUncertain?: boolean;
   submissionPending?: boolean;
+  /** Reserved before retrying, persisted so restarts cannot reset the OOM allowance. */
+  oomRetryCount?: number;
   promptId?: string;
   parentVersionId?: string;
   cancelRequested?: boolean;
@@ -128,6 +130,13 @@ export type H3Job = {
   artifacts: H3Artifact[];
   error?: string;
   diagnosis?: H3ComfyDiagnosis;
+  memory?: {
+    components?: string;
+    before?: Array<{ free?: number; total?: number; torchTotal?: number; torchFree?: number }>;
+    after?: Array<{ free?: number; total?: number; torchTotal?: number; torchFree?: number }>;
+    failedNode?: string;
+    cleanups?: Array<{ at: string; reason: string; confirmed: boolean; error?: string }>;
+  };
 };
 
 export type H3Monitor = {

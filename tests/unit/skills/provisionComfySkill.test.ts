@@ -174,7 +174,16 @@ describe('ComfyUI skill provisioning', () => {
       }>;
     };
     expect(new Set(catalog.candidates.map((candidate) => candidate.family))).toEqual(
-      new Set(['h3', 'qwen-edit', 'z-image'])
+      new Set([
+        'h3',
+        'fasth3-omni',
+        'qwen-edit',
+        'z-image',
+        'flux-3-image-klein',
+        'moss-image-base',
+        'moss-image-sft',
+        'krea2',
+      ])
     );
     expect(catalog.offlineApiPreparation).toMatchObject({
       status: 'source-derived-api-baselines-discovery-only',
@@ -246,6 +255,25 @@ describe('ComfyUI skill provisioning', () => {
     await expect(provisionComfySkill(request, bundleRoot)).resolves.toBe('updated');
     expect(preferences[COMFY_LOCAL_SKILL_PREFERENCE]).not.toEqual(firstStamp);
     expect(await fs.readFile(path.join(userRoot, 'references', 'h3.md'), 'utf8')).toBe('New repair guidance.');
+  });
+
+  it('upgrades an unchanged owned skill to the complete Omni bundle and does not reimport it again', async () => {
+    await provisionComfySkill(request, bundleRoot);
+    const repositoryBundle = path.resolve('resources/skills/comfyui-local');
+    await expect(provisionComfySkill(request, repositoryBundle)).resolves.toBe('updated');
+    expect(preferences[COMFY_LOCAL_SKILL_PREFERENCE]).toMatchObject({ version: '1.5.0' });
+    expect(await fs.readFile(path.join(userRoot, 'references/fasth3-omni.md'), 'utf8')).toBe(
+      await fs.readFile(path.join(repositoryBundle, 'references/fasth3-omni.md'), 'utf8')
+    );
+    const imageGuide = await fs.readFile(path.join(userRoot, 'references/z-image.md'), 'utf8');
+    for (const family of ['FLUX 3 Image Klein', 'MOSS-Image-Base', 'Krea2']) expect(imageGuide).toContain(family);
+    const catalog = JSON.parse(await fs.readFile(path.join(userRoot, 'references/candidates.json'), 'utf8')) as {
+      candidates: Array<{ family: string }>;
+    };
+    expect(catalog.candidates.filter(({ family }) => family === 'fasth3-omni')).toHaveLength(4);
+    request.mockClear();
+    await expect(provisionComfySkill(request, repositoryBundle)).resolves.toBe('current');
+    expect(request).not.toHaveBeenCalledWith('POST', expect.anything(), expect.anything());
   });
 
   it('recognizes a backend inventory that returns the installed directory', async () => {

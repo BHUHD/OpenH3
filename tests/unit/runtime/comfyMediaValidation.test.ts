@@ -11,7 +11,13 @@ beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'comfy-media-'));
 });
 afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
-function video(name: string, source: string, audio = false): string {
+function video(
+  name: string,
+  source: string,
+  audio: boolean | string = false,
+  duration = '1',
+  audioFormat: { sampleRate?: number; channels?: number } = {}
+): string {
   const target = path.join(root, name);
   execFileSync(
     resolveMediaBinary('ffmpeg'),
@@ -22,16 +28,20 @@ function video(name: string, source: string, audio = false): string {
       'lavfi',
       '-i',
       source,
-      ...(audio ? ['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=8000:duration=1'] : []),
+      ...(audio
+        ? ['-f', 'lavfi', '-i', typeof audio === 'string' ? audio : 'sine=frequency=440:sample_rate=8000:duration=1']
+        : []),
       '-t',
-      '1',
+      duration,
       '-c:v',
       'mpeg4',
       '-q:v',
       '3',
       '-pix_fmt',
       'yuv420p',
-      ...(audio ? ['-c:a', 'aac', '-shortest'] : []),
+      ...(audio
+        ? ['-c:a', 'aac', '-ar', String(audioFormat.sampleRate ?? 8000), '-ac', String(audioFormat.channels ?? 1)]
+        : []),
       target,
     ],
     { windowsHide: true, timeout: 30_000, stdio: 'pipe' }
@@ -82,6 +92,70 @@ describe('representative Comfy smoke media validation', () => {
     await expect(validate(file, context({}, true))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
     await expect(validate(file, context({ width: 128 }))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
     await expect(validate(file, context({ durationSeconds: 3 }))).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('requires an Omni soundtrack even when a profile omits the audio capability flag', async () => {
+    const evidence = context();
+    evidence.profile.family = 'fasth3-omni';
+    const silent = video('silent-omni.mp4', 'testsrc2=size=96x64:rate=12:duration=1');
+    await expect(validate(silent, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+    const audible = video('audible-omni.mp4', 'testsrc2=size=96x64:rate=24:duration=1', true, '1', {
+      sampleRate: 32000,
+      channels: 2,
+    });
+    await expect(validate(audible, evidence)).resolves.toBeUndefined();
+  });
+  it('rejects an Omni soundtrack containing only silent PCM samples', async () => {
+    const evidence = context();
+    evidence.profile.family = 'fasth3-omni';
+    const file = video(
+      'zero-audio.mp4',
+      'testsrc2=size=96x64:rate=24:duration=1',
+      'anullsrc=r=32000:cl=stereo:d=1',
+      '1',
+      { sampleRate: 32000, channels: 2 }
+    );
+    await expect(validate(file, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('rejects a soundtrack that ends before the generated video', async () => {
+    const evidence = context({}, true);
+    const file = video(
+      'short-audio.mp4',
+      'testsrc2=size=96x64:rate=24:duration=1',
+      'sine=frequency=440:sample_rate=8000:duration=0.2'
+    );
+    await expect(validate(file, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('checks the Omni output duration when its workflow binds only a frame count', async () => {
+    const evidence = context({ durationSeconds: 5 });
+    evidence.profile.family = 'fasth3-omni';
+    evidence.profile.bindings = { frames: [{ nodeId: '1', input: 'length' }] };
+    const file = video('short-omni.mp4', 'testsrc2=size=96x64:rate=24:duration=1', true);
+    await expect(validate(file, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+  });
+  it('accepts the 17n + 5 frame alignment and audio that starts after a silent intro', async () => {
+    const evidence = context({ durationSeconds: 5 });
+    evidence.profile.family = 'fasth3-omni';
+    evidence.profile.bindings = { frames: [{ nodeId: '1', input: 'length' }] };
+    evidence.profile.defaults = { fps: 24, frameMultiple: 17, frameOffset: 5 };
+    const file = video(
+      'aligned-omni.mp4',
+      'testsrc2=size=96x64:rate=24:duration=5.166667',
+      'sine=frequency=440:sample_rate=32000:duration=2.166667,adelay=3000',
+      '5.166667',
+      { sampleRate: 32000, channels: 2 }
+    );
+    await expect(validate(file, evidence)).resolves.toBeUndefined();
+  });
+  it('requires Omni native audio to be 32-kHz stereo', async () => {
+    const evidence = context();
+    evidence.profile.family = 'fasth3-omni';
+    const mono = video('mono-omni.mp4', 'testsrc2=size=96x64:rate=24:duration=1', true);
+    const lowRate = video('low-rate-omni.mp4', 'testsrc2=size=96x64:rate=24:duration=1', true, '1', {
+      sampleRate: 24000,
+      channels: 2,
+    });
+    await expect(validate(mono, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
+    await expect(validate(lowRate, evidence)).rejects.toThrow('COMFY_SMOKE_VIDEO_INVALID');
   });
   it('does not invent dimensions for a workflow whose canvas is selected from its input image', async () => {
     const file = video('moving.mp4', 'testsrc2=size=96x64:rate=12:duration=1');

@@ -18,6 +18,7 @@ import { classifyConversationBusyError } from '../conversationBusyError';
 import { buildSendFailureError } from './buildSendFailureError';
 import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
+import type { ComfyFamily, ComfyIntent } from '@/common/chat/document/creation/comfy';
 import { clearGuidDraftIfMatches } from '@/renderer/pages/guid/hooks/useGuidDraft';
 import { beginComfySelectionChange } from '../../runtime/Creation/useComfySelectionPending';
 
@@ -83,8 +84,8 @@ export const useAcpInitialMessage = ({
           finishBinding = beginComfySelectionChange(conversation_id);
           const request = initialMessage.creationRequest as {
             profileId?: string;
-            family?: 'h3' | 'qwen-edit' | 'z-image';
-            intent?: 'generate' | 'install' | 'repair' | 'install-other';
+            family?: ComfyFamily;
+            intent?: ComfyIntent;
             source?: 'local' | 'cloud';
             kind?: 'image' | 'video';
           };

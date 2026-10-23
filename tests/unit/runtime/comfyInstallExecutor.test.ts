@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import type { ComfyInstallPlan, ComfyProfile } from '@/common/chat/document/creation/comfy';
 import type { ComfyGenerationResult } from '@/process/services/media/comfy/workflowEngine';
+import { downloadH3FromSources } from '@/process/services/runtime/h3Downloader';
+import { ComfyRuntimeCoordinator } from '@/process/services/media/comfy/runtimeCoordinator';
 import {
   assertComfyInstallPlan,
   executeComfyInstall,
@@ -154,6 +156,151 @@ function fixture() {
 }
 
 describe('generic ComfyUI install executor', () => {
+  it('clears memory before retrying a terminal smoke OOM once with the original recipe', async () => {
+    const { options, engine } = fixture();
+    const oom = Object.assign(new Error('COMFY_OOM'), {
+      diagnosis: { category: 'OOM', nodeId: '7', retryable: true, action: 'clear-memory' },
+    });
+    engine.generate.mockRejectedValueOnce(oom);
+    const clearMemory = vi.fn(async () => {
+      expect(engine.generate).toHaveBeenCalledTimes(1);
+      const file = path.join(options.snapshotRoot, 'smoke-receipts');
+      const receipt = JSON.parse(fs.readFileSync(path.join(file, fs.readdirSync(file)[0]), 'utf8'));
+      expect(receipt).toMatchObject({ oomRetryCount: 1, status: 'retry-ready' });
+    });
+    await expect(
+      executeComfyInstall(plan, new AbortController().signal, undefined, {
+        ...options,
+        engine: { ...engine, clearMemory },
+      })
+    ).resolves.toMatchObject({ state: 'verified' });
+    expect(clearMemory).toHaveBeenCalledOnce();
+    expect(engine.generate).toHaveBeenCalledTimes(2);
+    expect(engine.generate.mock.calls[1].slice(0, 2)).toEqual(engine.generate.mock.calls[0].slice(0, 2));
+  });
+
+  it('retains the exhausted smoke OOM allowance after restarting the installer', async () => {
+    const first = fixture();
+    const oom = Object.assign(new Error('COMFY_OOM'), {
+      diagnosis: { category: 'OOM', nodeId: '7', retryable: true, action: 'clear-memory' },
+    });
+    first.engine.generate.mockRejectedValue(oom);
+    await expect(
+      executeComfyInstall(plan, new AbortController().signal, undefined, {
+        ...first.options,
+        engine: { ...first.engine, clearMemory: vi.fn(async () => undefined) },
+      })
+    ).rejects.toThrow('COMFY_OOM');
+    expect(first.engine.generate).toHaveBeenCalledTimes(2);
+    const second = fixture();
+    await expect(executeComfyInstall(plan, new AbortController().signal, undefined, second.options)).rejects.toThrow(
+      'COMFY_OOM'
+    );
+    expect(second.engine.generate).not.toHaveBeenCalled();
+    expect(second.engine.resume).not.toHaveBeenCalled();
+    expect(second.download).not.toHaveBeenCalled();
+  });
+
+  it('keeps other processes out of the device between smoke OOM cleanup and its retry', async () => {
+    const { options, engine } = fixture();
+    engine.generate.mockRejectedValueOnce(
+      Object.assign(new Error('COMFY_OOM'), {
+        diagnosis: { category: 'OOM', nodeId: '7', retryable: true, action: 'clear-memory' },
+      })
+    );
+    const directory = path.join(root, 'leases');
+    let startedCleanup!: () => void;
+    let finishCleanup!: () => void;
+    const cleaning = new Promise<void>((resolve) => (startedCleanup = resolve));
+    const cleared = new Promise<void>((resolve) => (finishCleanup = resolve));
+    const running = executeComfyInstall(plan, new AbortController().signal, undefined, {
+      ...options,
+      runtimeCoordinator: new ComfyRuntimeCoordinator({ directory }),
+      engine: {
+        ...engine,
+        runtimeResourceKey: async () => 'gpu-0',
+        clearMemory: async () => {
+          startedCleanup();
+          await cleared;
+        },
+      },
+    });
+    await cleaning;
+    const otherTask = vi.fn(async () => undefined);
+    const other = new ComfyRuntimeCoordinator({ directory }).run('gpu-0', 'other', otherTask, async () => undefined);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(otherTask).not.toHaveBeenCalled();
+    } finally {
+      finishCleanup();
+    }
+    await expect(running).resolves.toMatchObject({ state: 'verified' });
+    await other;
+    expect(engine.generate).toHaveBeenCalledTimes(2);
+    expect(otherTask).toHaveBeenCalledOnce();
+  });
+
+  it('recovers a reserved smoke retry after interrupted cleanup without granting a new allowance', async () => {
+    const first = fixture();
+    first.engine.generate.mockRejectedValueOnce(
+      Object.assign(new Error('COMFY_OOM'), {
+        diagnosis: { category: 'OOM', nodeId: '7', retryable: true, action: 'clear-memory' },
+      })
+    );
+    await expect(
+      executeComfyInstall(plan, new AbortController().signal, undefined, {
+        ...first.options,
+        engine: { ...first.engine, clearMemory: vi.fn().mockRejectedValue(new Error('offline')) },
+      })
+    ).rejects.toThrow('COMFY_MEMORY_CLEAR_UNCONFIRMED');
+    expect(first.engine.generate).toHaveBeenCalledOnce();
+    const second = fixture();
+    const clearMemory = vi.fn(async () => undefined);
+    await expect(
+      executeComfyInstall(plan, new AbortController().signal, undefined, {
+        ...second.options,
+        engine: { ...second.engine, clearMemory },
+      })
+    ).resolves.toMatchObject({ state: 'verified' });
+    expect(clearMemory).toHaveBeenCalledOnce();
+    expect(second.engine.generate).toHaveBeenCalledOnce();
+    expect(second.engine.resume).not.toHaveBeenCalled();
+    expect(second.runCommand).not.toHaveBeenCalled();
+    const receipts = path.join(second.options.snapshotRoot, 'smoke-receipts');
+    expect(JSON.parse(fs.readFileSync(path.join(receipts, fs.readdirSync(receipts)[0]), 'utf8'))).toMatchObject({
+      status: 'succeeded',
+      oomRetryCount: 1,
+    });
+  });
+
+  it('passes approved domestic-first byte-identical sources through resumable download fallback', async () => {
+    const component = plan.components[0];
+    component.sourceUrls = [
+      'https://modelscope.cn/models/example/weights/resolve/abcdef123456/weights.safetensors',
+      'https://hf-mirror.com/example/weights/resolve/abcdef123456/weights.safetensors',
+      component.url!,
+    ];
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      urls.push(String(input));
+      if (urls.length === 1) return new Response('offline', { status: 503 });
+      return new Response(content, { headers: { 'content-length': String(content.length) } });
+    }) as typeof fetch;
+    const { options } = fixture();
+    await executeComfyInstall(plan, new AbortController().signal, undefined, {
+      ...options,
+      download: (manifest, settings) => downloadH3FromSources(manifest, { ...settings, fetchImpl }),
+    });
+    expect(urls).toEqual(component.sourceUrls.slice(0, 2));
+    expect(fs.readFileSync(component.path, 'utf8')).toBe(content);
+  });
+
+  it('rejects fallback URLs without shared checksum/size before changing files', () => {
+    plan.components[0].sourceUrls = [plan.components[0].url!];
+    delete plan.components[0].sha256;
+    expect(() => assertComfyInstallPlan(plan)).toThrow('COMFY_COMPONENT_SOURCES_INTEGRITY_REQUIRED');
+  });
+
   it('runs approved argv stages, downloads a pinned component and grants verified state only after a real smoke artifact', async () => {
     const { options, events, engine, runCommand } = fixture();
     const result = await executeComfyInstall(plan, new AbortController().signal, undefined, options);

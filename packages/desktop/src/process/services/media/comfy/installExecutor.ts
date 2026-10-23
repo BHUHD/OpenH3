@@ -8,9 +8,11 @@ import {
   type ComfyInstallPlan,
   type ComfyProfile,
 } from '@/common/chat/document/creation/comfy';
-import { downloadH3WithRetry } from '@/process/services/runtime/h3Downloader';
+import { downloadH3FromSources } from '@/process/services/runtime/h3Downloader';
 import type { ComfyWorkflowEngine, ComfyGenerationResult } from './workflowEngine';
 import { verifyComfySmokeArtifact, type ComfySmokeContext } from './mediaValidation';
+import { runComfyInstallSmoke, type ComfySmokeReceipt as SmokeReceipt } from './smokeRunner';
+import type { ComfyRuntimeCoordinator } from './runtimeCoordinator';
 
 export type ComfyInstallCommandOptions = {
   cwd: string;
@@ -33,8 +35,11 @@ export type ComfyInstallCommandRunner = (
 ) => Promise<ComfyInstallCommandResult>;
 export type ComfyInstallExecutorOptions = {
   engine: Pick<ComfyWorkflowEngine, 'validate' | 'generate' | 'snapshotFingerprint'> &
-    Partial<Pick<ComfyWorkflowEngine, 'assertInstallable' | 'stopOwned' | 'resume'>>;
-  download?: typeof downloadH3WithRetry;
+    Partial<
+      Pick<ComfyWorkflowEngine, 'assertInstallable' | 'stopOwned' | 'resume' | 'clearMemory' | 'runtimeResourceKey'>
+    >;
+  runtimeCoordinator?: ComfyRuntimeCoordinator;
+  download?: typeof downloadH3FromSources;
   runCommand?: ComfyInstallCommandRunner;
   freeBytes?: (file: string) => Promise<number | { freeBytes: number; volume: string }>;
   snapshotRoot?: string;
@@ -71,14 +76,6 @@ function stable(value: unknown): string {
       .join(',')}}`;
   return JSON.stringify(value) ?? 'null';
 }
-type SmokeReceipt = {
-  planHash: string;
-  profile: ComfyProfile;
-  snapshotDirectory: string;
-  status: 'pending' | 'submitted' | 'succeeded';
-  promptId?: string;
-  result?: ComfyGenerationResult;
-};
 type VenvEvidence = { executable: string; version: string; prefix: string; baseExecutable: string };
 type VenvReceipt = {
   evidence: VenvEvidence;
@@ -665,8 +662,12 @@ export function assertComfyInstallPlan(plan: ComfyInstallPlan): void {
   const scope = resourceScope(frozen);
   assertPlanWrites(frozen, scope);
   validateCommands(frozen, scope);
-  for (const component of frozen.components)
-    if (!pinnedSource(component)) throw new Error('COMFY_COMPONENT_SOURCE_UNPINNED');
+  for (const component of frozen.components) {
+    if (component.sourceUrls && (!component.sha256 || !component.sizeBytes || !component.url))
+      throw new Error('COMFY_COMPONENT_SOURCES_INTEGRITY_REQUIRED');
+    if (!pinnedSource(component) || component.sourceUrls?.some((url) => !pinnedSource({ ...component, url })))
+      throw new Error('COMFY_COMPONENT_SOURCE_UNPINNED');
+  }
   // Existence is sufficient only for this read-only lower bound. The executor below
   // verifies every reusable file before accepting the final download budget.
   const bytes = frozen.components.reduce(
@@ -837,7 +838,8 @@ export async function executeComfyInstall(
       if (
         receipt.planHash !== planHash ||
         recipe(receipt.profile) !== recipe(profileFromPlan(frozen)) ||
-        !['pending', 'submitted', 'succeeded'].includes(receipt.status) ||
+        !['pending', 'submitted', 'succeeded', 'retry-ready', 'failed'].includes(receipt.status) ||
+        (receipt.oomRetryCount !== undefined && ![0, 1].includes(receipt.oomRetryCount)) ||
         !receipt.profile.validation?.fingerprint
       )
         throw new Error('receipt mismatch');
@@ -847,21 +849,22 @@ export async function executeComfyInstall(
     }
     try {
       // Do this before prepare, repair snapshots or stopOwned: the existing prompt owns its runtime.
-      if (!receipt.promptId) throw new Error('COMFY_SUBMISSION_STATE_UNKNOWN');
+      if (!receipt.promptId && !['retry-ready', 'failed'].includes(receipt.status))
+        throw new Error('COMFY_SUBMISSION_STATE_UNKNOWN');
       for (const component of frozen.components)
         if (!(await existingComponent(component, signal))) throw new Error('COMFY_PROFILE_CHANGED');
       const fingerprint = await options.engine.snapshotFingerprint(receipt.profile);
       if (fingerprint !== receipt.profile.validation!.fingerprint) throw new Error('COMFY_PROFILE_CHANGED');
       options.onProfile?.(structuredClone({ ...receipt.profile, state: 'loadable' }));
       onProgress?.('smoke:resume');
-      if (receipt.status !== 'succeeded' && !options.engine.resume) throw new Error('COMFY_SMOKE_RESUME_UNAVAILABLE');
-      const result =
-        receipt.status === 'succeeded' && receipt.result
-          ? receipt.result
-          : await options.engine.resume!(structuredClone(receipt.profile), receipt.promptId, signal, (progress) =>
-              onProgress?.(`smoke:${progress}`)
-            );
-      if (result.promptId !== receipt.promptId) throw new Error('COMFY_SMOKE_RECEIPT_INVALID');
+      const resumed = await runComfyInstallSmoke(receipt, frozen.smokeInput, signal, {
+        engine: options.engine,
+        coordinator: options.runtimeCoordinator,
+        save: saveSmoke,
+        progress: (progress) => onProgress?.(`smoke:${progress}`),
+      });
+      receipt = resumed.receipt;
+      const result = resumed.result;
       const verified = await finishSmoke(receipt.profile, result, fingerprint);
       saveSmoke({ ...receipt, profile: verified, status: 'succeeded', result });
       fs.writeFileSync(
@@ -1262,11 +1265,18 @@ export async function executeComfyInstall(
       if (!component.url) throw new Error('COMFY_COMPONENT_SOURCE_REQUIRED');
       fs.mkdirSync(path.dirname(component.path), { recursive: true });
       onProgress?.(`download:${component.name}`);
-      const result = await (options.download ?? downloadH3WithRetry)(
-        { url: component.url, destination: component.path, sizeBytes: component.sizeBytes, sha256: component.sha256 },
+      const result = await (options.download ?? downloadH3FromSources)(
+        {
+          url: component.url,
+          ...(component.sourceUrls ? { urls: [...new Set([...component.sourceUrls, component.url])] } : {}),
+          destination: component.path,
+          sizeBytes: component.sizeBytes,
+          sha256: component.sha256,
+        },
         {
           signal,
           maxAttempts: 1,
+          onSource: (host) => onProgress?.(`download:${component.name}:${host}`),
           onProgress: (bytes, total) =>
             onProgress?.(`download:${component.name}:${bytes}/${total ?? component.sizeBytes ?? '?'}`),
         }
@@ -1281,7 +1291,7 @@ export async function executeComfyInstall(
         throw new Error('COMFY_COMPONENT_DOWNLOAD_HASH_MISMATCH');
       fs.writeFileSync(
         receiptPath(component.path),
-        JSON.stringify({ url: component.url, version: component.version, file })
+        JSON.stringify({ url: component.url, sourceUrls: component.sourceUrls, version: component.version, file })
       );
     }
     for (const step of frozen.commands.filter((step) => step.stage === 'finish')) {
@@ -1328,21 +1338,17 @@ export async function executeComfyInstall(
     };
     options.onProfile?.(structuredClone(profile));
     onProgress?.('smoke');
-    let receipt: SmokeReceipt = { planHash, profile: structuredClone(profile), snapshotDirectory, status: 'pending' };
-    const smoke = await options.engine.generate(
-      structuredClone(profile),
+    const { receipt, result: smoke } = await runComfyInstallSmoke(
+      { planHash, profile: structuredClone(profile), snapshotDirectory, status: 'pending' },
       frozen.smokeInput,
       signal,
-      (progress) => onProgress?.(`smoke:${progress}`),
-      (promptId) => {
-        receipt = { ...receipt, status: 'submitted', promptId };
-        saveSmoke(receipt);
-      },
-      () => saveSmoke(receipt)
+      {
+        engine: options.engine,
+        coordinator: options.runtimeCoordinator,
+        save: saveSmoke,
+        progress: (progress) => onProgress?.(`smoke:${progress}`),
+      }
     );
-    // Retain the known submission even if media verification or artifact retrieval later fails.
-    receipt = { ...receipt, status: 'submitted', promptId: smoke.promptId };
-    saveSmoke(receipt);
     const verified = await finishSmoke(profile, smoke, validation.fingerprint);
     saveSmoke({ ...receipt, status: 'succeeded', profile: verified, result: smoke });
     fs.writeFileSync(path.join(snapshotDirectory, 'verified-profile.json'), JSON.stringify(verified, null, 2));

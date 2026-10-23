@@ -21,21 +21,80 @@ const localUrl = z
     );
   }, 'A local ComfyUI endpoint is required');
 const scalar = z.union([z.string(), z.number().finite(), z.boolean()]);
-export const comfyFamilySchema = z.enum(['h3', 'qwen-edit', 'z-image']);
+export const comfyFamilySchema = z.enum([
+  'h3',
+  'fasth3-omni',
+  'qwen-edit',
+  'z-image',
+  'flux-3-image-klein',
+  'moss-image-base',
+  'moss-image-sft',
+  'krea2',
+]);
 export type ComfyFamily = z.infer<typeof comfyFamilySchema>;
 export type ComfyIntent = 'generate' | 'install' | 'repair' | 'install-other';
-export const comfyGenerationInputSchema = z.object({
-  prompt: z.string().min(1),
-  imagePaths: z.array(absolutePath).max(9).optional(),
-  negativePrompt: z.string().optional(),
-  width: z.number().int().positive().optional(),
-  height: z.number().int().positive().optional(),
-  seed: z.number().int().nonnegative().optional(),
-  durationSeconds: z.number().positive().max(120).optional(),
-  batchSize: z.number().int().positive().max(16).optional(),
-  offload: z.boolean().optional(),
+const comfyReferenceSchema = z.object({
+  type: z.enum(['image', 'video', 'audio']),
+  path: absolutePath,
 });
+export const comfyGenerationInputSchema = z
+  .object({
+    prompt: z.string().min(1),
+    imagePaths: z.array(absolutePath).max(9).optional(),
+    /** Ordered multimodal references. Order is preserved for Omni prompt numbering and workflow binding. */
+    references: z.array(comfyReferenceSchema).max(12).optional(),
+    negativePrompt: z.string().optional(),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+    seed: z.number().int().nonnegative().optional(),
+    durationSeconds: z.number().positive().max(120).optional(),
+    batchSize: z.number().int().positive().max(16).optional(),
+    offload: z.boolean().optional(),
+  })
+  .superRefine((input, ctx) => {
+    if (input.imagePaths !== undefined && input.references !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['references'],
+        message: 'COMFY_IMAGE_PATHS_AND_REFERENCES_CONFLICT',
+      });
+      return;
+    }
+    const counts = { image: 0, video: 0, audio: 0 };
+    for (const reference of input.references ?? []) counts[reference.type]++;
+    for (const [type, count, maximum] of [
+      ['image', counts.image, 9],
+      ['video', counts.video, 3],
+      ['audio', counts.audio, 3],
+    ] as const) {
+      if (count > maximum) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['references'],
+          message: `COMFY_REFERENCE_LIMIT:${type}:${maximum}`,
+        });
+      }
+    }
+  });
 export type ComfyGenerationInput = z.infer<typeof comfyGenerationInputSchema>;
+
+/** Parses the shared input contract and applies family-specific generation requirements. */
+export function validateComfyGenerationInputForFamily(family: ComfyFamily, input: unknown): ComfyGenerationInput {
+  const parsed = comfyGenerationInputSchema.parse(input);
+  if (family === 'fasth3-omni') {
+    const hasImage = Boolean(parsed.imagePaths?.length || parsed.references?.some(({ type }) => type === 'image'));
+    const hasVideo = Boolean(parsed.references?.some(({ type }) => type === 'video'));
+    if (!hasImage && !hasVideo) throw new Error('COMFY_OMNI_REFERENCE_REQUIRED');
+    if (parsed.durationSeconds !== undefined && (parsed.durationSeconds < 5 || parsed.durationSeconds > 15))
+      throw new Error('COMFY_OMNI_DURATION_RANGE:5:15');
+  }
+  return parsed;
+}
+
+export function comfyFamilyKind(family: ComfyFamily): 'image' | 'video' {
+  return family === 'h3' || family === 'fasth3-omni' ? 'video' : 'image';
+}
+
 export const comfyProfileSchema = z.object({
   id: z.string().regex(/^[a-zA-Z0-9][\w.-]{0,99}$/),
   family: comfyFamilySchema,
@@ -60,6 +119,8 @@ export const comfyProfileSchema = z.object({
         version: pinnedVersion,
         precision: z.string().min(1),
         url: z.string().url().optional(),
+        /** Approved, byte-identical download transports in domestic-first fallback order. */
+        sourceUrls: z.array(z.string().url()).min(1).max(4).optional(),
         sha256: z
           .string()
           .regex(/^[a-f0-9]{64}$/i)

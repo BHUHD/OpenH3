@@ -46,6 +46,7 @@ function setup() {
     resume: vi.fn(),
     cancel: vi.fn(async () => undefined),
     stopOwned: vi.fn(),
+    clearMemory: vi.fn(async () => undefined),
   };
   const install = vi.fn(async () => structuredClone(profile));
   const probe = vi.fn(async () => ({
@@ -266,7 +267,7 @@ describe('Comfy installation and profile service', () => {
       'COMFY_GENERATION_INTENT_REQUIRED'
     );
   });
-  it('adjusts only documented parameters after terminal OOM, preserving the component set', async () => {
+  it('clears memory after terminal OOM then retries once with the original profile and input', async () => {
     const { service, engine } = setup();
     profile = {
       ...profile,
@@ -285,6 +286,7 @@ describe('Comfy installation and profile service', () => {
     };
     service.register(profile);
     await service.revalidate(profile.id, { prompt: 'test' });
+    engine.generate.mockClear();
     service.bind({
       requestId,
       conversationId: 'chat',
@@ -292,6 +294,50 @@ describe('Comfy installation and profile service', () => {
       family: profile.family,
       intent: 'generate',
     });
+    engine.generate.mockImplementationOnce(async (_profile, _input, _signal, _progress, onSubmitted) => {
+      onSubmitted?.('terminal-oom-prompt');
+      throw Object.assign(new Error('terminal OOM'), {
+        diagnosis: { category: 'OOM', retryable: false, action: 'REVIEW_MEMORY_BUDGET' },
+      });
+    });
+    const job = service.generate(requestId, profile.id, { prompt: 'test' });
+    await service.idle();
+    expect(engine.clearMemory).toHaveBeenCalledOnce();
+    expect(engine.clearMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ id: profile.id }),
+      'oom',
+      expect.any(AbortSignal)
+    );
+    expect(engine.generate.mock.calls.at(-1)?.[1]).toEqual({ prompt: 'test' });
+    expect(engine.generate.mock.calls.at(-1)?.[0]).toMatchObject({ id: profile.id, quantization: 'BF16' });
+    expect(service.job(job.id, { requestId })).toMatchObject({
+      status: 'succeeded',
+    });
+    expect(service.job(job.id, { requestId }).adjustments).toBeUndefined();
+    const saved = JSON.parse(fs.readFileSync(path.join(root, 'state.json'), 'utf8'));
+    expect(saved.jobs[0].oomRetryCount).toBe(1);
+    const restored = new ComfyService({
+      filename: path.join(root, 'state.json'),
+      engine,
+      install: vi.fn(),
+      probe: vi.fn(),
+    });
+    expect(restored.job(job.id, { requestId })).toMatchObject({ status: 'succeeded' });
+    expect(JSON.parse(fs.readFileSync(path.join(root, 'state.json'), 'utf8')).jobs[0].oomRetryCount).toBe(1);
+  });
+  it('does not retry an OOM if memory clearing cannot be confirmed', async () => {
+    const { service, engine } = setup();
+    service.register(profile);
+    await service.revalidate(profile.id, { prompt: 'test' });
+    engine.generate.mockClear();
+    service.bind({
+      requestId,
+      conversationId: 'chat',
+      profileId: profile.id,
+      family: profile.family,
+      intent: 'generate',
+    });
+    engine.clearMemory.mockRejectedValueOnce(new Error('COMFY_MEMORY_CLEAR_UNCONFIRMED'));
     engine.generate.mockRejectedValueOnce(
       Object.assign(new Error('terminal OOM'), {
         diagnosis: { category: 'OOM', retryable: false, action: 'REVIEW_MEMORY_BUDGET' },
@@ -299,12 +345,31 @@ describe('Comfy installation and profile service', () => {
     );
     const job = service.generate(requestId, profile.id, { prompt: 'test' });
     await service.idle();
-    expect(engine.generate.mock.calls.at(-1)?.[1]).toMatchObject({ width: 768, height: 768 });
-    expect(engine.generate.mock.calls.at(-1)?.[0]).toMatchObject({ id: profile.id, quantization: 'BF16' });
-    expect(service.job(job.id, { requestId })).toMatchObject({
-      status: 'succeeded',
-      adjustments: [{ input: { width: 768, height: 768 } }],
+    expect(engine.generate).toHaveBeenCalledOnce();
+    expect(service.job(job.id, { requestId })).toMatchObject({ status: 'failed' });
+    expect(JSON.parse(fs.readFileSync(path.join(root, 'state.json'), 'utf8')).jobs[0].oomRetryCount).toBe(1);
+  });
+  it('uses no second OOM retry for the same job', async () => {
+    const { service, engine } = setup();
+    service.register(profile);
+    await service.revalidate(profile.id, { prompt: 'test' });
+    engine.generate.mockClear();
+    service.bind({
+      requestId,
+      conversationId: 'chat',
+      profileId: profile.id,
+      family: profile.family,
+      intent: 'generate',
     });
+    const oom = Object.assign(new Error('terminal OOM'), {
+      diagnosis: { category: 'OOM', retryable: false, action: 'REVIEW_MEMORY_BUDGET' },
+    });
+    engine.generate.mockRejectedValueOnce(oom).mockRejectedValueOnce(oom);
+    const job = service.generate(requestId, profile.id, { prompt: 'test' });
+    await service.idle();
+    expect(engine.clearMemory).toHaveBeenCalledOnce();
+    expect(engine.generate).toHaveBeenCalledTimes(2); // original + one retry
+    expect(service.job(job.id, { requestId })).toMatchObject({ status: 'failed', diagnosis: { category: 'OOM' } });
   });
   it('does not retry unknown submission outcomes or repeatedly replay the same terminal failure', async () => {
     const { service, engine } = setup();
@@ -389,6 +454,38 @@ describe('Comfy installation and profile service', () => {
       service.request(requestId, { ...input, environment: { ...input.environment, launchArgs: ['--cpu'] } })
     ).resolves.toMatchObject({ state: 'awaiting-consent' });
   });
+
+  it.each(['fasth3-omni', 'flux-3-image-klein', 'krea2'] as const)(
+    'rejects %s NVFP4 on a known non-Blackwell GPU before planning a download',
+    async (family) => {
+      const { service, install, probe } = setup();
+      service.bind({
+        requestId,
+        conversationId: 'chat',
+        family,
+        intent: 'install',
+        source: 'local',
+        kind: family === 'fasth3-omni' ? 'video' : 'image',
+      });
+      const input = { ...plan(), family, kind: family === 'fasth3-omni' ? 'video' : 'image', quantization: 'NVFP4' };
+      await expect(service.request(requestId, input)).rejects.toThrow(
+        'COMFY_DEVICE_CONDITIONS_INSUFFICIENT:NVFP4_REQUIRES_BLACKWELL'
+      );
+      expect(install).not.toHaveBeenCalled();
+      const complete = await probe();
+      probe.mockResolvedValueOnce({
+        ...complete,
+        machine: { ...complete.machine, gpus: [{ ...complete.machine.gpus[0], computeCapability: '' }] },
+      });
+      await expect(service.request(requestId, input)).rejects.toThrow('COMFY_DETECTION_INCOMPLETE');
+      probe.mockResolvedValueOnce({
+        ...complete,
+        machine: { ...complete.machine, gpus: [{ ...complete.machine.gpus[0], computeCapability: '12.0' }] },
+      });
+      await expect(service.request(requestId, input)).resolves.toMatchObject({ state: 'awaiting-consent' });
+    }
+  );
+
   it('preserves corrupt state for recovery and never executes its content', () => {
     const { engine, install, probe } = setup();
     const filename = path.join(root, 'state.json');

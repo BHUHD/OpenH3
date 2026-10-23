@@ -12,7 +12,7 @@ describe('ComfyUI attachment-derived guidance', () => {
     expect(skill).toMatch(/object_info/i);
     expect(operations).toMatch(/one image|single image|单张|逐张/i);
     expect(operations).toMatch(/OOM|显存不足/i);
-    expect(operations).toMatch(/at most one|一次有界|有界调整/i);
+    expect(operations).toMatch(/retry OOM once|最多重试一次/i);
     expect(operations).toMatch(/history|输出文件|output/i);
   });
 
@@ -37,6 +37,6 @@ describe('ComfyUI attachment-derived guidance', () => {
     expect(adoption).toMatch(/Qwen Image 2\.1.*不是 Qwen-Edit/s);
     expect(adoption).toMatch(/hf-mirror\.com/);
     expect(adoption).toMatch(/固定仓库.*revision.*SHA-256/s);
-    expect(adoption).toMatch(/一次.*有界|at most one/i);
+    expect(adoption).toMatch(/最多重试一次|at most one/i);
   });
 });

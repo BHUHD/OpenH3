@@ -4,7 +4,12 @@ import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { spawn, type ChildProcess } from 'node:child_process';
-import type { ComfyProfile, ComfyGenerationInput, ComfyDiagnosis } from '@/common/chat/document/creation/comfy';
+import {
+  validateComfyGenerationInputForFamily,
+  type ComfyProfile,
+  type ComfyGenerationInput,
+  type ComfyDiagnosis,
+} from '@/common/chat/document/creation/comfy';
 import {
   validateComfyWorkflow,
   type ComfyGraph,
@@ -12,7 +17,17 @@ import {
 } from '@/process/services/runtime/h3WorkflowPreflight';
 import { diagnoseComfyError } from '@/process/services/runtime/h3ComfyError';
 import { MATLOWAI_CUSTOM_NODE_ARCHIVES } from '@/process/services/runtime/h3OfflineBundle';
+import { H3ReferencePreflight } from '@/process/services/runtime/H3ReferencePreflight';
+import { withComfyReferenceVideo } from './referenceVideo';
 import { readPythonRuntime, readComfyHardwareIdentity, runComfyCommand, type ComfyPythonRuntime } from './environment';
+import {
+  comfyRuntimeResourceKey,
+  sharedComfyRuntimeCoordinator,
+  comfyRuntimeSignature,
+  clearBoundComfyRuntime,
+  type ComfyCleanupReason,
+  type ComfyRuntimeCoordinator,
+} from './runtimeCoordinator';
 
 export type ComfyServiceIdentity = { executable: string; root: string; pid?: number };
 export type ComfyGenerationResult = { promptId: string; artifacts: Array<{ path: string; mimeType: string }> };
@@ -33,6 +48,8 @@ export type ComfyWorkflowEngineOptions = {
   maxWaitMs?: number;
   pollIntervalMs?: number;
   maxPollAttempts?: number;
+  referencePreflight?: Pick<H3ReferencePreflight, 'inspect'>;
+  runtimeCoordinator?: ComfyRuntimeCoordinator;
 };
 type RuntimeCache = { value: ComfyPythonRuntime; files: string[]; signature: string };
 type OwnedProcess = {
@@ -232,7 +249,7 @@ function applyBindings(graph: ComfyGraph, profile: ComfyProfile, values: Record<
   }
 }
 function generationValues(profile: ComfyProfile, input: ComfyGenerationInput): Record<string, unknown> {
-  const { imagePaths: _imagePaths, ...values } = input;
+  const { imagePaths: _imagePaths, references: _references, ...values } = input;
   for (const [key, value] of Object.entries(values)) {
     if (value === undefined) continue;
     if (!profile.bindings[key]?.length && !(key === 'durationSeconds' && profile.bindings.frames?.length))
@@ -344,7 +361,9 @@ function selectedIdentity(stats: Record<string, unknown>): ComfyServiceIdentity 
   const system = record(stats.system);
   const executable = system.python_executable ?? system.executable;
   const root = system.comfyui_root ?? system.base_directory;
-  return typeof executable === 'string' && typeof root === 'string' ? { executable, root } : undefined;
+  return typeof executable === 'string' && typeof root === 'string'
+    ? { executable, root, ...(typeof system.pid === 'number' ? { pid: system.pid } : {}) }
+    : undefined;
 }
 
 /** Resolve the process owning the local server socket; standard /system_stats often omits sys.executable. */
@@ -352,9 +371,17 @@ async function inspectService(
   profile: ComfyProfile,
   stats: Record<string, unknown>
 ): Promise<ComfyServiceIdentity | undefined> {
+  return inspectComfyServiceIdentity(loopbackUrl(profile).href, stats);
+}
+
+export async function inspectComfyServiceIdentity(
+  baseUrl: string,
+  stats: Record<string, unknown>
+): Promise<ComfyServiceIdentity | undefined> {
   const fromStats = selectedIdentity(stats);
   if (fromStats) return fromStats;
-  const url = loopbackUrl(profile);
+  const url = new URL(baseUrl);
+  if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) return undefined;
   const port = Number(url.port || 80);
   const options = { timeout: 5000, windowsHide: true, maxBuffer: 1024 * 1024 };
   try {
@@ -916,6 +943,80 @@ export class ComfyWorkflowEngine {
     }
   }
 
+  private async inputReferences(
+    profile: ComfyProfile,
+    graph: ComfyGraph,
+    references: NonNullable<ComfyGenerationInput['references']>,
+    media: Map<string, { duration: number; audio: boolean; fps?: number }>,
+    signal: AbortSignal
+  ): Promise<string> {
+    const target = Object.values(graph).find((node) => node.class_type === 'MiniMaxH3ReferenceToVideo');
+    if (!target?.inputs) throw new Error('COMFY_OMNI_REFERENCE_BINDING_MISSING');
+    for (const key of Object.keys(target.inputs)) {
+      if (/^ref_(images|videos|video_audios|audios)(?:\.|$)/.test(key)) delete target.inputs[key];
+    }
+    const add = (class_type: string, inputs: Record<string, unknown>): string => {
+      const id = String(Math.max(0, ...Object.keys(graph).map(Number).filter(Number.isFinite)) + 1);
+      graph[id] = { class_type, inputs };
+      return id;
+    };
+    const counts = { image: 0, video: 0, audio: 0 };
+    for (const reference of references) {
+      this.throwAborted(signal);
+      if (!path.isAbsolute(reference.path) || !fs.existsSync(reference.path) || !fs.statSync(reference.path).isFile())
+        throw new Error('COMFY_REFERENCE_FILE_MISSING');
+      if (!mimeType(reference.path).startsWith(`${reference.type}/`)) throw new Error('COMFY_REFERENCE_TYPE_MISMATCH');
+      const upload = async (file: string): Promise<Record<string, unknown>> => {
+        const data = new FormData();
+        data.append(
+          'image',
+          new Blob([fs.readFileSync(file)], { type: mimeType(file) }),
+          `${crypto.randomUUID()}-${path.basename(file)}`
+        );
+        data.append('type', 'input');
+        data.append('overwrite', 'false');
+        return this.json(profile, '/upload/image', { method: 'POST', body: data }, signal);
+      };
+      const uploaded =
+        reference.type === 'video'
+          ? await withComfyReferenceVideo(reference.path, media.get(reference.path)?.fps, signal, upload)
+          : await upload(reference.path);
+      if (typeof uploaded.name !== 'string' || !uploaded.name || /[\\/]/.test(uploaded.name))
+        throw new Error('COMFY_UPLOAD_INVALID_RESPONSE');
+      const subfolder = typeof uploaded.subfolder === 'string' ? uploaded.subfolder.replaceAll('\\', '/') : '';
+      if (
+        subfolder.split('/').some((segment) => segment === '..') ||
+        subfolder.startsWith('/') ||
+        /^[a-z]:/i.test(subfolder)
+      )
+        throw new Error('COMFY_UPLOAD_INVALID_RESPONSE');
+      const filename = [subfolder, uploaded.name].filter(Boolean).join('/');
+      const index = counts[reference.type]++;
+      if (reference.type === 'image') {
+        target.inputs[`ref_images.ref_image_${index}`] = [add('LoadImage', { image: filename }), 0];
+      } else if (reference.type === 'video') {
+        const loader = add('LoadVideo', { file: filename });
+        const components = add('GetVideoComponents', { video: [loader, 0] });
+        target.inputs[`ref_videos.ref_video_${index}`] = [components, 0];
+        if (media.get(reference.path)?.audio)
+          target.inputs[`ref_video_audios.ref_video_audio_${index}`] = [components, 1];
+      } else {
+        target.inputs[`ref_audios.ref_audio_${index}`] = [add('LoadAudio', { audio: filename }), 0];
+      }
+    }
+    // The official node presents images, paired soundtrack/video, then standalone audio.
+    const tags = Array.from({ length: counts.image }, (_, index) => `<Picture ${index + 1}>`);
+    let audioIndex = 0;
+    references
+      .filter((reference) => reference.type === 'video')
+      .forEach((reference, index) => {
+        if (media.get(reference.path)?.audio) tags.push(`<Audio ${++audioIndex}>`);
+        tags.push(`<Video ${index + 1}>`);
+      });
+    for (let index = 0; index < counts.audio; index++) tags.push(`<Audio ${++audioIndex}>`);
+    return tags.join(' ');
+  }
+
   /** Submit exactly once, poll bounded history, then copy ComfyUI artifacts into application-owned output storage. */
   async generate(
     profile: ComfyProfile,
@@ -923,37 +1024,219 @@ export class ComfyWorkflowEngine {
     signal: AbortSignal,
     onProgress?: (progress: number) => void,
     onSubmitted?: (promptId: string) => void,
-    onSubmitting?: () => void
+    onSubmitting?: (promptId: string) => void
   ): Promise<ComfyGenerationResult> {
+    const prepared = await this.prepareInput(profile, input, signal);
+    let submitted = false;
+    let uncertain = false;
+    const reservedPromptId = crypto.randomUUID();
+    const execute = async (): Promise<ComfyGenerationResult> => {
+      try {
+        return await this.generateUncoordinated(
+          prepared,
+          signal,
+          onProgress,
+          (promptId) => {
+            submitted = true;
+            (this.options.runtimeCoordinator ?? sharedComfyRuntimeCoordinator).adoptTaskId(reservedPromptId, promptId);
+            onSubmitted?.(promptId);
+          },
+          (promptId) => {
+            submitted = true;
+            onSubmitting?.(promptId);
+          },
+          reservedPromptId
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        uncertain =
+          submitted &&
+          !(error && typeof error === 'object' && 'remoteTerminal' in error) &&
+          !/COMFY_(?:EXECUTION_ERROR|PROMPT_REJECTED)/.test(message) &&
+          !(error && typeof error === 'object' && 'diagnosis' in error);
+        throw error;
+      }
+    };
+    return this.coordinate(prepared.frozen, reservedPromptId, false, execute, () => uncertain, signal);
+  }
+
+  private async coordinate<T>(
+    profile: ComfyProfile,
+    taskId: string,
+    recover: boolean,
+    task: () => Promise<T>,
+    isUncertain: () => boolean,
+    signal: AbortSignal
+  ): Promise<T> {
+    const coordinator = this.options.runtimeCoordinator ?? sharedComfyRuntimeCoordinator;
+    const resource = await this.runtimeResourceKey(profile).catch(() => 'machine');
+    const binding = { kind: 'comfy' as const, profile, outputRoot: this.options.outputRoot };
+    const memory = (stats: Record<string, unknown> | undefined) =>
+      Array.isArray(stats?.devices)
+        ? stats.devices.map((device) => {
+            const value = record(device);
+            return {
+              index: value.index,
+              total: value.vram_total,
+              free: value.vram_free,
+              torchTotal: value.torch_vram_total,
+              torchFree: value.torch_vram_free,
+            };
+          })
+        : [];
+    const execute = async (): Promise<T> => {
+      const before = memory(await this.stats(profile));
+      try {
+        if (
+          !recover &&
+          before.some(
+            (device) =>
+              typeof device.free === 'number' &&
+              typeof device.total === 'number' &&
+              device.free < Math.max(512 * 1024 * 1024, device.total * 0.05) &&
+              typeof device.torchTotal === 'number' &&
+              typeof device.torchFree === 'number' &&
+              device.torchTotal > device.torchFree
+          )
+        )
+          await this.clearMemory(profile, 'memory-pressure', signal);
+        const result = await task();
+        const after = memory(await this.stats(profile));
+        this.writeTaskMemoryDiagnostic({
+          taskId,
+          resource,
+          components: profile.components,
+          before,
+          after,
+          failedNode: undefined,
+        });
+        return result;
+      } catch (error) {
+        const after = memory(await this.stats(profile));
+        const diagnosis =
+          error && typeof error === 'object' && 'diagnosis' in error
+            ? (error as { diagnosis?: { nodeId?: string; category?: string } }).diagnosis
+            : undefined;
+        this.writeTaskMemoryDiagnostic({
+          taskId,
+          resource,
+          components: profile.components,
+          before,
+          after,
+          failure: error instanceof Error ? error.message : String(error),
+          category: diagnosis?.category,
+          failedNode: diagnosis?.nodeId,
+        });
+        throw error;
+      }
+    };
+    return coordinator.run(
+      resource,
+      comfyRuntimeSignature(profile),
+      execute,
+      (reason, previous) => {
+        const previousProfile = (previous as typeof binding | undefined)?.profile;
+        if (
+          !previous ||
+          ((previous as typeof binding).kind === 'comfy' &&
+            previousProfile?.environment.baseUrl === profile.environment.baseUrl)
+        )
+          return this.clearMemory(previousProfile ?? profile, reason, new AbortController().signal);
+        return clearBoundComfyRuntime(previous, reason, new AbortController().signal, () =>
+          this.clearMemory(profile, reason, new AbortController().signal)
+        );
+      },
+      signal,
+      { taskId, recover, isUncertain, context: binding }
+    );
+  }
+
+  private writeTaskMemoryDiagnostic(payload: Record<string, unknown>): void {
+    try {
+      const file = this.diagnosticFile('task-memory');
+      this.writeDiagnostic(file, stable({ at: new Date(this.now()).toISOString(), ...payload }));
+    } catch {
+      /* A diagnostic write must not change the job outcome. */
+    }
+  }
+
+  private async prepareInput(profile: ComfyProfile, input: ComfyGenerationInput, signal: AbortSignal) {
     const frozen = structuredClone(profile);
-    const requestInput = structuredClone(input);
+    const requestInput = validateComfyGenerationInputForFamily(frozen.family, structuredClone(input));
+    const references =
+      requestInput.references ?? requestInput.imagePaths?.map((file) => ({ type: 'image' as const, path: file })) ?? [];
     this.throwAborted(signal);
+    if (frozen.family !== 'fasth3-omni' && references.some((reference) => reference.type !== 'image'))
+      throw new Error('COMFY_MULTIMODAL_WORKFLOW_REQUIRED');
     if (
+      frozen.family !== 'fasth3-omni' &&
       (frozen.family === 'qwen-edit' ||
         frozen.capabilities.includes('image-edit') ||
         frozen.capabilities.includes('image-to-image') ||
         (!frozen.capabilities.includes('text-to-video') &&
           (frozen.capabilities.includes('image-to-video') || frozen.capabilities.includes('reference-to-video')))) &&
-      !requestInput.imagePaths?.length
+      !references.length
     )
       throw new Error('COMFY_INPUT_IMAGE_REQUIRED');
     if (typeof requestInput.prompt !== 'string' || !requestInput.prompt.trim())
       throw new Error('COMFY_PROMPT_REQUIRED');
     if (!frozen.bindings.prompt?.length) throw new Error('COMFY_PROMPT_BINDING_MISSING');
+    const media =
+      frozen.family === 'fasth3-omni'
+        ? await (this.options.referencePreflight ?? new H3ReferencePreflight()).inspect(references)
+        : new Map<string, { duration: number; audio: boolean }>();
+    if (frozen.family === 'fasth3-omni') {
+      const soundtracks = references.filter(
+        (reference) => reference.type === 'video' && media.get(reference.path)?.audio
+      );
+      const audio = references.filter((reference) => reference.type === 'audio');
+      if (soundtracks.length + audio.length > 3) throw new Error('COMFY_REFERENCE_AUDIO_LIMIT_WITH_SOUNDTRACKS');
+      if (references.length + soundtracks.length > 12) throw new Error('COMFY_REFERENCE_TOTAL_LIMIT_WITH_SOUNDTRACKS');
+      if (
+        [...soundtracks, ...audio].reduce((sum, reference) => sum + (media.get(reference.path)?.duration ?? 0), 0) >
+        15.001
+      )
+        throw new Error('COMFY_REFERENCE_AUDIO_DURATION_WITH_SOUNDTRACKS');
+    }
+    return { frozen, requestInput, references, media };
+  }
+
+  private async generateUncoordinated(
+    prepared: Awaited<ReturnType<ComfyWorkflowEngine['prepareInput']>>,
+    signal: AbortSignal,
+    onProgress?: (progress: number) => void,
+    onSubmitted?: (promptId: string) => void,
+    onSubmitting?: (promptId: string) => void,
+    reservedPromptId = crypto.randomUUID()
+  ): Promise<ComfyGenerationResult> {
+    const { frozen, requestInput, references, media } = prepared;
     await this.ensureStarted(frozen);
     const current = await this.snapshotFingerprint(frozen);
     if (frozen.validation && frozen.validation.fingerprint !== current) throw new Error('COMFY_PROFILE_CHANGED');
     const graph = graphFromProfile(frozen);
     applyBindings(graph, frozen, generationValues(frozen, requestInput));
     validateKnownModelBindings(frozen, graph);
-    await this.inputImages(frozen, graph, requestInput.imagePaths ?? [], signal);
+    if (frozen.family === 'fasth3-omni') {
+      const tags = await this.inputReferences(frozen, graph, references, media, signal);
+      const missing = tags
+        .split('> ')
+        .map((tag) => (tag.endsWith('>') ? tag : `${tag}>`))
+        .filter((tag) => !requestInput.prompt.includes(tag));
+      if (missing.length) applyBindings(graph, frozen, { prompt: `${requestInput.prompt}\n${missing.join(' ')}` });
+    } else
+      await this.inputImages(
+        frozen,
+        graph,
+        references.map((reference) => reference.path),
+        signal
+      );
     const registry = (await this.json(frozen, '/object_info', {}, signal)) as ComfyRegistry;
     validateComfyWorkflow(graph, registry);
     this.throwAborted(signal);
     onProgress?.(0);
     let response: Response;
     this.throwAborted(signal);
-    onSubmitting?.();
+    onSubmitting?.(reservedPromptId);
     try {
       response = await this.request(
         frozen,
@@ -961,7 +1244,7 @@ export class ComfyWorkflowEngine {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: graph, client_id: crypto.randomUUID() }),
+          body: JSON.stringify({ prompt: graph, client_id: crypto.randomUUID(), prompt_id: reservedPromptId }),
         },
         signal
       );
@@ -984,8 +1267,10 @@ export class ComfyWorkflowEngine {
       throw new Error('COMFY_SUBMISSION_STATE_UNKNOWN');
     const promptId = submission.prompt_id;
     onSubmitted?.(promptId);
+    let cancellation: Promise<void> | undefined;
     const abort = (): void => {
-      void this.cancel(frozen, promptId).catch((): void => undefined);
+      cancellation = this.cancel(frozen, promptId);
+      void cancellation.catch((): void => undefined);
     };
     signal.addEventListener('abort', abort, { once: true });
     if (signal.aborted) abort();
@@ -995,6 +1280,16 @@ export class ComfyWorkflowEngine {
       const artifacts = await this.download(frozen, promptId, history, signal);
       onProgress?.(100);
       return { promptId, artifacts };
+    } catch (error) {
+      if (cancellation) {
+        try {
+          await cancellation;
+          if (error instanceof Error) Object.assign(error, { remoteTerminal: true });
+        } catch {
+          /* Keep the remote uncertainty when cancellation was not confirmed. */
+        }
+      }
+      throw error;
     } finally {
       signal.removeEventListener('abort', abort);
     }
@@ -1032,6 +1327,34 @@ export class ComfyWorkflowEngine {
     signal: AbortSignal,
     onProgress?: (progress: number) => void
   ): Promise<ComfyGenerationResult> {
+    profile = structuredClone(profile);
+    let uncertain = true;
+    return this.coordinate(
+      profile,
+      promptId,
+      true,
+      async () => {
+        try {
+          const result = await this.resumeUncoordinated(profile, promptId, signal, onProgress);
+          uncertain = false;
+          return result;
+        } catch (error) {
+          if (error && typeof error === 'object' && ('diagnosis' in error || 'remoteTerminal' in error))
+            uncertain = false;
+          throw error;
+        }
+      },
+      () => uncertain,
+      signal
+    );
+  }
+
+  private async resumeUncoordinated(
+    profile: ComfyProfile,
+    promptId: string,
+    signal: AbortSignal,
+    onProgress?: (progress: number) => void
+  ): Promise<ComfyGenerationResult> {
     const frozen = structuredClone(profile);
     this.throwAborted(signal);
     assertEnvironment(frozen);
@@ -1063,8 +1386,10 @@ export class ComfyWorkflowEngine {
       );
       if (!present) throw new Error('COMFY_RESUME_PROMPT_LOST');
     }
+    let cancellation: Promise<void> | undefined;
     const abort = (): void => {
-      void this.cancel(frozen, promptId).catch((): void => undefined);
+      cancellation = this.cancel(frozen, promptId);
+      void cancellation.catch((): void => undefined);
     };
     signal.addEventListener('abort', abort, { once: true });
     if (signal.aborted) abort();
@@ -1074,6 +1399,16 @@ export class ComfyWorkflowEngine {
       const artifacts = await this.download(frozen, promptId, completed, signal);
       onProgress?.(100);
       return { promptId, artifacts };
+    } catch (error) {
+      if (cancellation) {
+        try {
+          await cancellation;
+          if (error instanceof Error) Object.assign(error, { remoteTerminal: true });
+        } catch {
+          /* Keep the remote uncertainty when cancellation was not confirmed. */
+        }
+      }
+      throw error;
     } finally {
       signal.removeEventListener('abort', abort);
     }
@@ -1160,7 +1495,85 @@ export class ComfyWorkflowEngine {
   }
 
   /** Delete only this queued prompt and interrupt only if it is the sole matching active prompt. */
-  async cancel(profile: ComfyProfile, promptId: string): Promise<void> {
+  async runtimeResourceKey(profile: ComfyProfile): Promise<string> {
+    const stats = await this.stats(profile);
+    if (stats) await this.assertIdentity(profile, stats);
+    return comfyRuntimeResourceKey(profile.environment.baseUrl, stats ?? {});
+  }
+
+  /** Request cache eviction only on an idle, identified runtime and observe device memory recovery. */
+  async clearMemory(profile: ComfyProfile, reason: ComfyCleanupReason, signal: AbortSignal): Promise<void> {
+    const frozen = structuredClone(profile);
+    this.throwAborted(signal);
+    assertEnvironment(frozen);
+    const before = await this.json(frozen, '/system_stats', {}, signal);
+    await this.assertIdentity(frozen, before);
+    const identityBefore = await (this.options.runtimeInspector ?? inspectService)(frozen, before);
+    const assertIdle = async (): Promise<void> => {
+      const queue = await this.json(frozen, '/queue', {}, signal);
+      if (!Array.isArray(queue.queue_running) || !Array.isArray(queue.queue_pending))
+        throw new Error('COMFY_QUEUE_INVALID_RESPONSE');
+      if (queue.queue_running.length || queue.queue_pending.length) throw new Error('COMFY_MEMORY_CLEAR_QUEUE_BUSY');
+    };
+    const memory = (stats: Record<string, unknown>): number[] =>
+      Array.isArray(stats.devices)
+        ? stats.devices.map((value) => {
+            const device = record(value);
+            return typeof device.vram_free === 'number' && Number.isFinite(device.vram_free) ? device.vram_free : NaN;
+          })
+        : [];
+    const baseline = memory(before);
+    await assertIdle();
+    if (!baseline.length || baseline.some((value) => !Number.isFinite(value)))
+      throw this.diagnosed(new Error('COMFY_MEMORY_CLEAR_TELEMETRY_UNAVAILABLE'), { reason, before }, 'memory');
+    await this.json(
+      frozen,
+      '/free',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ unload_models: true, free_memory: true }),
+      },
+      signal
+    );
+    const observations: number[][] = [];
+    let emptySamples = 0;
+    for (let attempt = 0; attempt < Math.min(this.options.maxPollAttempts ?? 10, 10); attempt++) {
+      await this.pause(this.options.pollIntervalMs ?? 500, signal);
+      await assertIdle();
+      const after = await this.json(frozen, '/system_stats', {}, signal);
+      await this.assertIdentity(frozen, after);
+      const identityAfter = await (this.options.runtimeInspector ?? inspectService)(frozen, after);
+      if (identityBefore?.pid !== undefined && identityAfter?.pid !== identityBefore.pid)
+        throw new Error('COMFY_MEMORY_CLEAR_RUNTIME_CHANGED');
+      const observed = memory(after);
+      observations.push(observed);
+      const devices = Array.isArray(after.devices) ? after.devices.map(record) : [];
+      const emptyAllocator = devices.length > 0 && devices.every((device) => device.torch_vram_total === 0);
+      emptySamples = emptyAllocator ? emptySamples + 1 : 0;
+      if (
+        observed.length === baseline.length &&
+        observed.every((value) => Number.isFinite(value)) &&
+        observed.every((value, index) => value >= baseline[index]) &&
+        (observed.some((value, index) => value > baseline[index]) || emptySamples >= 2)
+      ) {
+        const file = this.diagnosticFile('memory');
+        this.writeDiagnostic(
+          file,
+          stable({ reason, components: frozen.components, before: baseline, observations, confirmed: true })
+        );
+        return;
+      }
+    }
+    throw this.diagnosed(
+      new Error('COMFY_MEMORY_CLEAR_UNCONFIRMED'),
+      { reason, components: frozen.components, before: baseline, observations, confirmed: false },
+      'memory'
+    );
+  }
+
+  /** Delete only this queued prompt and interrupt only if it is the sole matching active prompt. */
+  async cancel(profile: ComfyProfile, promptId: string, requireKnown = false): Promise<void> {
     const stats = await this.stats(profile);
     if (!stats) throw new Error('COMFY_SERVER_UNAVAILABLE');
     await this.assertIdentity(profile, stats);
@@ -1168,6 +1581,9 @@ export class ComfyWorkflowEngine {
     if (!Array.isArray(queue.queue_running) || !Array.isArray(queue.queue_pending))
       throw new Error('COMFY_QUEUE_INVALID_RESPONSE');
     const running = queue.queue_running.filter((entry) => Array.isArray(entry));
+    const knownInQueue = [...queue.queue_running, ...queue.queue_pending].some(
+      (entry) => Array.isArray(entry) && entry[1] === promptId
+    );
     if (queue.queue_pending.some((entry) => Array.isArray(entry) && entry[1] === promptId))
       await this.json(profile, '/queue', {
         method: 'POST',
@@ -1192,6 +1608,39 @@ export class ComfyWorkflowEngine {
         body: JSON.stringify({ prompt_id: promptId }),
       });
     }
+    // POST only acknowledges the request. Confirm the prompt disappeared from
+    // queue and history reached a terminal state before releasing the local
+    // submission barrier.
+    let absent = 0;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await this.pause(Math.min(this.options.pollIntervalMs ?? 500, 1000));
+      const currentStats = await this.stats(profile);
+      if (!currentStats) throw new Error('COMFY_SERVER_UNAVAILABLE');
+      await this.assertIdentity(profile, currentStats);
+      const currentQueue = await this.json(profile, '/queue');
+      if (!Array.isArray(currentQueue.queue_running) || !Array.isArray(currentQueue.queue_pending))
+        throw new Error('COMFY_QUEUE_INVALID_RESPONSE');
+      const present = [...currentQueue.queue_running, ...currentQueue.queue_pending].some(
+        (entry) => Array.isArray(entry) && entry[1] === promptId
+      );
+      if (present) {
+        absent = 0;
+        continue;
+      }
+      const history = await this.json(profile, `/history/${encodeURIComponent(promptId)}`);
+      const entry = history[promptId] as HistoryEntry | undefined;
+      if (
+        entry?.status?.completed ||
+        entry?.status?.status_str === 'error' ||
+        entry?.status?.messages?.some((message) => Array.isArray(message) && message[0] === 'execution_interrupted')
+      )
+        return;
+      if (!entry && ++absent >= 2) {
+        if (requireKnown && !knownInQueue) throw new Error('COMFY_SUBMISSION_STATE_UNKNOWN');
+        return;
+      }
+    }
+    throw new Error('COMFY_CANCEL_UNCONFIRMED');
   }
 
   /** Check that installation will not mutate a busy or externally owned live environment. */

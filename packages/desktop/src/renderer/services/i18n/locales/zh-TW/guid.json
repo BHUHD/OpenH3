@@ -18,26 +18,31 @@
     "diagnosticLog": "診斷日誌",
     "title": "本地模型",
     "noProfile": "尚無已安裝的模型設定",
-    "use": "使用",
+    "use": "使用模型",
     "selected": "已選擇",
     "version": "{{family}} 版本",
     "draftHint": "點擊安裝後會填入可編輯的請求，確認內容後再傳送。",
     "families": {
       "h3": "影片生成",
       "qwen-edit": "圖片編輯",
-      "z-image": "圖片生成"
+      "z-image": "圖片生成",
+      "fasth3-omni": "支援圖片、影片和音訊參考的文字／圖片生成影片",
+      "flux-3-image-klein": "輕量文字生圖",
+      "moss-image-base": "中文文字與版面生圖",
+      "krea2": "風格化快速生圖",
+      "moss-image-sft": "中文文字與版面生圖（SFT）"
     },
     "actions": {
-      "install": "安裝",
+      "install": "引導安裝",
       "repair": "檢查 / 修復",
       "install-other": "其他版本",
       "generate": "生成"
     },
     "intentSummary": "本地模型任務：{{model}} · {{intent}}。目標設定：{{profile}}。請保持該模型家族與任務意圖，先制定具體的 ComfyUI 方案並等待我確認後再安裝。安裝任務不需要生成參數。",
     "prompts": {
-      "install": "幫我在本地安裝 {{family}}，透過 ComfyUI 使用。先檢查顯示卡、記憶體、磁碟、網路與現有環境，推薦適合的固定模型版本及量化方案，並選擇與該模型家族任務匹配的 ComfyUI 工作流程，列出所需節點、模型、編碼器與 VAE。優先尋找可證明與固定版本完全一致的魔搭或可靠中國內地鏡像副本，固定來源、版本與 SHA-256，說明下載大小、安裝位置、斷點續傳方式與驗證步驟，等我確認後再開始安裝。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "repair": "檢查並修復我的本地 {{family}} 模型設定 {{profile}}。檢查環境、模型元件、自訂節點與工作流程，說明修復方案，等我確認後再修改，並以小規模生成測試驗證。 Use openh3_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "install-other": "幫我為 {{family}} 安裝其他版本或量化方案。先檢查硬體與已有設定，提出獨立設定、固定來源與驗證方案，等我確認後再安裝，並保留目前可用設定。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+      "install": "幫我在本地安裝 {{family}}，透過 ComfyUI 使用。先檢查顯示卡、記憶體、磁碟、網路與現有環境，推薦適合的固定模型版本及量化方案，並選擇與該模型家族任務匹配的 ComfyUI 工作流程，列出所需節點、模型、編碼器與 VAE。優先尋找可證明與固定版本完全一致的魔搭或可靠中國內地鏡像副本，固定來源、版本與 SHA-256，說明下載大小、安裝位置、斷點續傳方式與驗證步驟，等我確認後再開始安裝。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 若目標是 FastH3-Omni，先讀取 comfyui-local 的 references/fasth3-omni.md，使用固定 FastVideo/FastH3-Omni-Comfy 候選與匹配的編碼器、影片 VAE、音訊 VAE；逐項評估 BF16、INT8-ConvRot、FP8、NVFP4-QAD，NVFP4-QAD 僅限相容 Blackwell 且實際核心驗證通過的環境。依 OS、GPU 架構、驅動、實際核心、VRAM、RAM 與磁碟列出缺項，區分「設備條件不足」與「偵測未完成」。生成需要至少一張圖片或一段影片參考；採用官方 R2V 基線，steps=8、guidance=1、video/audio shift=12/3，移除不匹配的 Turbo LoRA。下載依魔搭、已核驗中國內地鏡像、官方來源排序，只有真實生成並驗證影片影格與音軌後才標記可用。安裝請求不要求現在提供生成附件。",
+      "repair": "檢查並修復我的本地 {{family}} 模型設定 {{profile}}。檢查環境、模型元件、自訂節點與工作流程，說明修復方案，等我確認後再修改，並以小規模生成測試驗證。 Use openh3_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 若目標是 FastH3-Omni，先讀取 comfyui-local 的 references/fasth3-omni.md，使用固定 FastVideo/FastH3-Omni-Comfy 候選與匹配的編碼器、影片 VAE、音訊 VAE；逐項評估 BF16、INT8-ConvRot、FP8、NVFP4-QAD，NVFP4-QAD 僅限相容 Blackwell 且實際核心驗證通過的環境。依 OS、GPU 架構、驅動、實際核心、VRAM、RAM 與磁碟列出缺項，區分「設備條件不足」與「偵測未完成」。生成需要至少一張圖片或一段影片參考；採用官方 R2V 基線，steps=8、guidance=1、video/audio shift=12/3，移除不匹配的 Turbo LoRA。下載依魔搭、已核驗中國內地鏡像、官方來源排序，只有真實生成並驗證影片影格與音軌後才標記可用。安裝請求不要求現在提供生成附件。 連續任務採速度優先、按需釋放策略。OOM 後先確認遠端任務終態、佇列閒置與執行身分，再由共享協調器呼叫 /free 並有界觀察；HTTP 200 僅表示接受請求。確認清理後保留原模型、原參考與原參數，最多重試一次，持久化計數且重新啟動不重設；不自動降低解析度、批量或畫質，也不改變 offload。提交狀態不明、監控斷線或取消未確認時，先恢復既有任務，保持阻塞並避免重複提交；再次失敗時回傳失敗節點與顯示記憶體診斷。",
+      "install-other": "幫我為 {{family}} 安裝其他版本或量化方案。先檢查硬體與已有設定，提出獨立設定、固定來源與驗證方案，等我確認後再安裝，並保留目前可用設定。 呼叫 openh3_comfy_environment，並將候選模型、節點或工作流程的固定 URL 放入 sources 後再判斷網路。network.requested=false、缺少候選結果或出現 NETWORK_* 問題都表示證據不完整，必須說明缺少什麼，不能宣稱網路檢查已通過。優先使用魔搭，再考慮可靠的中國內地鏡像，最後才用上游；只有倉庫、revision、檔名、大小、授權、SHA-256 與載入器相容性全部一致，才可把鏡像視為同一檔案，能存取同名檔案並不足夠。工作流程有 Skill 隨附的固定 API 圖時直接重用，生成時不要重複下載。所有候選來源都失敗時先讓我選擇來源，不要擅自更換模型家族、量化或尺寸。 Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 若目標是 FastH3-Omni，先讀取 comfyui-local 的 references/fasth3-omni.md，使用固定 FastVideo/FastH3-Omni-Comfy 候選與匹配的編碼器、影片 VAE、音訊 VAE；逐項評估 BF16、INT8-ConvRot、FP8、NVFP4-QAD，NVFP4-QAD 僅限相容 Blackwell 且實際核心驗證通過的環境。依 OS、GPU 架構、驅動、實際核心、VRAM、RAM 與磁碟列出缺項，區分「設備條件不足」與「偵測未完成」。生成需要至少一張圖片或一段影片參考；採用官方 R2V 基線，steps=8、guidance=1、video/audio shift=12/3，移除不匹配的 Turbo LoRA。下載依魔搭、已核驗中國內地鏡像、官方來源排序，只有真實生成並驗證影片影格與音軌後才標記可用。安裝請求不要求現在提供生成附件。"
     },
     "operation": {
       "title": "ComfyUI 模型方案",
@@ -85,7 +90,27 @@
       "actualInput": "實際生成參數",
       "submissionUncertain": "尚未確認請求已提交。重新提交前，請先檢查目前的 ComfyUI 佇列。"
     },
-    "illustrativeCover": "用途示意圖"
+    "illustrativeCover": "用途示意圖",
+    "preview": {
+      "video": "{{family}} 影片預覽",
+      "poster": "影片預覽封面",
+      "image": "{{family}} 圖片範例",
+      "play": "播放預覽",
+      "pause": "暫停預覽",
+      "officialSample": "Nuva Lab 官方樣片",
+      "sampleVersion": "樣片所用模型：{{version}}",
+      "runtimeVersion": "實際執行版本：{{version}}",
+      "notInstalled": "未安裝",
+      "projectDemo": "OpenH3 專案示範",
+      "officialImageSample": "{{publisher}} 官方樣片"
+    },
+    "recipes": {
+      "flux-3-image-klein": "comfyui-local: references/z-image.md#flux-3-image-klein — BF16 / INT8-ConvRot / NVFP4; distilled steps=16, CFG=1; CLIPLoader.type=flux3. 使用蒸餾版，先由目前 Agent/LLM 將請求擴寫成保留使用者意圖的完整場景描述，再送入生成；不要直接傳送短提示詞。魔搭官方庫需要授權，授權失敗屬於來源問題。",
+      "moss-image-base": "comfyui-local: references/z-image.md#moss-image-base — BF16 / INT8-ConvRot / INT8-ConvRot+W4A8; steps=50, CFG=3; CLIPLoader.type=moss_image. 嚴格使用 Base，不可替換為 SFT。使用包含原生 moss_image 支援的固定 ComfyUI；不要沿用舊外掛的 ModelSamplingSD3。採用原生 shift=5、全程負分支 SLG layer=22。",
+      "krea2": "comfyui-local: references/z-image.md#krea2 — BF16 / FP8 / INT8-ConvRot / NVFP4; Turbo steps=8, CFG=1; CLIPLoader.type=krea2. 預設使用 Turbo，不可混入 Raw 或自動加入風格 LoRA。此處只驗證文字生圖，風格參考需要獨立匹配工作流程。",
+      "moss-image-sft": "comfyui-local: references/z-image.md#moss-image-sft — MOSS-Image-SFT, BF16 / INT8-ConvRot / INT8-ConvRot+W4A8; steps=50, CFG=3; CLIPLoader.type=moss_image. Keep SFT separate from Base and use the fixed native moss_image ComfyUI route with shift=5 and negative-branch SLG layer=22. Prefer ModelScope, then verified domestic mirror, then upstream with fixed revision, size and SHA-256; only real generation verification marks the profile usable."
+    },
+    "imageRecipeRequirements": "透過 openh3_comfy_environment 檢查系統、GPU 架構、驅動、Python/Torch、實際精度與注意力核心、可用顯存、記憶體、卸載條件及磁碟；區分「設備條件不足」與「偵測未完成」，列出具體缺項，不可只按顯存容量選模型。NVFP4 僅限相容 Blackwell。依序選擇 ModelScope 已核驗檔案、SHA-256 一致的 hf-mirror.com、官方來源；固定 revision、大小及 SHA-256，重用斷點續傳。來源未核驗或需要授權時明確說明，不可編造下載版本。只有實際生圖驗證通過才標記可用。"
   },
   "creation": {
     "states": {

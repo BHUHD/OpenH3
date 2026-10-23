@@ -68,6 +68,267 @@ const stableHash = (value: unknown) =>
     .update(`${JSON.stringify(value, null, 2)}\n`)
     .digest('hex');
 
+type OmniCandidate = CandidateCatalog['candidates'][number] & {
+  quantization: string;
+  hardware: { blackwellOnly: boolean; kernelValidationRequired: boolean };
+  components: Array<
+    CandidateCatalog['candidates'][number]['components'][number] & {
+      transports: Array<{ provider: string; revision: string; url: string; sizeBytes: number; sha256: string }>;
+    }
+  >;
+};
+type OmniBaseline = {
+  id: string;
+  candidateId: string;
+  graph: Record<string, { class_type: string; inputs: Record<string, unknown> }>;
+  graphSha256: string;
+  bindings: Record<string, Array<{ nodeId: string; input: string }>>;
+  defaults: Record<string, string | number | boolean>;
+  guidance: number;
+  verifiedOnThisMachine: boolean;
+};
+
+describe('packaged FastH3-Omni installation', () => {
+  it('pins all four Comfy formats with complete matching components and source order', async () => {
+    const catalog = JSON.parse(await fs.readFile(candidatePath, 'utf8')) as { candidates: OmniCandidate[] };
+    const omni = catalog.candidates.filter(({ family }) => family === 'fasth3-omni');
+    expect(omni.map(({ quantization }) => quantization)).toEqual(['BF16', 'INT8-ConvRot', 'FP8', 'NVFP4-QAD']);
+    for (const candidate of omni) {
+      expect(candidate.verifiedOnThisMachine).toBe(false);
+      expect(candidate.hardware.kernelValidationRequired).toBe(true);
+      expect(candidate.hardware.blackwellOnly).toBe(candidate.quantization === 'NVFP4-QAD');
+      expect(candidate.components.map(({ role }) => role).toSorted()).toEqual(
+        ['diffusion', 'text-encoder', 'video-vae', 'audio-vae'].toSorted()
+      );
+      for (const component of candidate.components) {
+        expect(component.revision).toMatch(/^[a-f0-9]{40}$/);
+        expect(component.sha256).toMatch(/^[a-f0-9]{64}$/);
+        expect(component.sizeBytes).toBeGreaterThan(0);
+        const providers = component.transports.map(({ provider }) => provider);
+        expect(providers.at(-1)).toBe('upstream');
+        if (providers.includes('modelscope')) expect(providers[0]).toBe('modelscope');
+        for (const transport of component.transports) {
+          expect(transport.revision).toMatch(/^[a-f0-9]{40}$/);
+          expect(transport.url).toContain(transport.revision);
+          expect(transport.sha256).toBe(component.sha256);
+          expect(transport.sizeBytes).toBe(component.sizeBytes);
+        }
+      }
+    }
+  });
+
+  it('ships source-derived R2V graphs at 8 steps, guidance 1, shifts 12/3 with native audio and no Turbo LoRA', async () => {
+    const bundle = JSON.parse(await fs.readFile(bundlePath, 'utf8')) as {
+      omni: { sourceDerivedObjectInfo: ComfyRegistry; baselines: OmniBaseline[] };
+    };
+    expect(bundle.omni?.baselines).toHaveLength(4);
+    for (const baseline of bundle.omni.baselines) {
+      expect(baseline.verifiedOnThisMachine).toBe(false);
+      expect(stableHash(baseline.graph)).toBe(baseline.graphSha256);
+      expect(baseline.guidance).toBe(1);
+      expect(Object.values(baseline.graph).some(({ class_type }) => class_type.includes('Lora'))).toBe(false);
+      expect(baseline.graph['124'].inputs.steps).toBe(8);
+      expect(baseline.graph['147']).toMatchObject({
+        class_type: 'MiniMaxH3SigmaShift',
+        inputs: { shift_video: 12, shift_audio: 3 },
+      });
+      expect(baseline.graph['130'].inputs.audio).toEqual(['121', 0]);
+      expect(baseline.graph['136'].inputs.audio_vae).toEqual(['120', 0]);
+      validateComfyWorkflow(baseline.graph, bundle.omni.sourceDerivedObjectInfo);
+      for (const bindings of Object.values(baseline.bindings)) {
+        for (const binding of bindings) expect(baseline.graph[binding.nodeId].inputs).toHaveProperty(binding.input);
+      }
+    }
+  });
+
+  it('uses resolvable repository commits, matching domestic metadata and an output-connected graph', async () => {
+    const catalog = JSON.parse(await fs.readFile(candidatePath, 'utf8')) as { candidates: OmniCandidate[] };
+    const bundle = JSON.parse(await fs.readFile(bundlePath, 'utf8')) as {
+      omni: { sourceDerivedObjectInfo: ComfyRegistry; baselines: OmniBaseline[] };
+    };
+    for (const candidate of catalog.candidates.filter(({ family }) => family === 'fasth3-omni')) {
+      for (const component of candidate.components) {
+        if (component.role !== 'diffusion' || ['BF16', 'INT8-ConvRot'].includes(candidate.quantization)) {
+          expect(component.revision).toBe('82eff2a6eee6c962846879f4bab52610a4df24d3');
+          expect(component.url).toContain('/FastVideo/FastH3-Omni-Comfy/resolve/');
+        } else {
+          expect(component.url).toContain(`/FastVideo/FastH3-Omni-${candidate.quantization}-Comfy/resolve/`);
+        }
+        expect(component.transports.map(({ provider }) => provider)).toEqual(
+          component.role === 'diffusion' && ['FP8', 'NVFP4-QAD'].includes(candidate.quantization)
+            ? ['domestic-mirror', 'upstream']
+            : ['modelscope', 'domestic-mirror', 'upstream']
+        );
+      }
+    }
+    for (const baseline of bundle.omni.baselines) {
+      expect(baseline.graph['92']).toMatchObject({ class_type: 'SaveVideo', inputs: { video: ['130', 0] } });
+      const visited = new Set<string>();
+      const visit = (id: string): void => {
+        if (visited.has(id)) return;
+        visited.add(id);
+        for (const value of Object.values(baseline.graph[id].inputs)) {
+          if (Array.isArray(value)) visit(value[0] as string);
+        }
+      };
+      visit('92');
+      expect([...visited].toSorted()).toEqual(Object.keys(baseline.graph).toSorted());
+      expect(baseline.bindings.frames).toEqual([{ nodeId: '136', input: 'length' }]);
+      expect(baseline.bindings.seed).toEqual([{ nodeId: '129', input: 'noise_seed' }]);
+      const candidate = catalog.candidates.find(({ id }) => id === baseline.candidateId)!;
+      expect(baseline.graph['127'].inputs.unet_name).toBe(
+        candidate.components.find(({ role }) => role === 'diffusion')!.name
+      );
+      expect(baseline.graph['128'].inputs.clip_name).toBe(
+        candidate.components.find(({ role }) => role === 'text-encoder')!.name
+      );
+      expect(baseline.graph['119'].inputs.vae_name).toBe(
+        candidate.components.find(({ role }) => role === 'video-vae')!.name
+      );
+      expect(baseline.graph['120'].inputs.vae_name).toBe(
+        candidate.components.find(({ role }) => role === 'audio-vae')!.name
+      );
+    }
+  });
+
+  it('packages Omni guidance and preserves original parameters when recovering from OOM', async () => {
+    const root = path.resolve('resources/skills/comfyui-local');
+    const skill = await fs.readFile(path.join(root, 'SKILL.md'), 'utf8');
+    const omni = await fs.readFile(path.join(root, 'references/fasth3-omni.md'), 'utf8');
+    expect(skill).toContain('references/fasth3-omni.md');
+    for (const requirement of ['Blackwell', 'detection incomplete', 'device conditions insufficient', 'SHA-256']) {
+      expect(omni).toContain(requirement);
+    }
+    expect(omni).toContain('each video or standalone audio must be 2–15 seconds');
+    expect(omni).toContain('all videos together must be at most 15 seconds');
+    expect(omni).toContain('all soundtracks plus standalone audio together must be at most 15 seconds');
+    expect(JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8')).version).toBe('1.5.0');
+    expect(skill).toContain('original parameters');
+    expect(skill).not.toContain('lower width/height');
+    const attachments = await fs.readFile(path.join(root, 'references/attachment-adoption.md'), 'utf8');
+    expect(attachments).not.toContain('优先缩小尺寸');
+  });
+});
+
+describe('additional image model installation recipes', () => {
+  it('pins complete device-specific sets and matching domestic transports without claiming verification', async () => {
+    const catalog = JSON.parse(await fs.readFile(candidatePath, 'utf8')) as { candidates: OmniCandidate[] };
+    const families = ['flux-3-image-klein', 'moss-image-base', 'moss-image-sft', 'krea2'];
+    for (const family of families) {
+      const candidates = catalog.candidates.filter((candidate) => candidate.family === family);
+      expect(candidates.length, family).toBeGreaterThanOrEqual(2);
+      expect(
+        candidates.some((candidate) => candidate.quantization === 'BF16'),
+        family
+      ).toBe(true);
+      expect(
+        candidates.some((candidate) => candidate.quantization === 'INT8-ConvRot'),
+        family
+      ).toBe(true);
+      for (const candidate of candidates) {
+        expect(candidate.status).toBe('discovery-only');
+        expect(candidate.verifiedOnThisMachine).toBe(false);
+        expect(candidate.hardware.kernelValidationRequired).toBe(true);
+        expect(candidate.hardware.blackwellOnly).toBe(candidate.quantization === 'NVFP4');
+        expect(candidate.components.map(({ role }) => role).toSorted()).toEqual(['diffusion', 'text-encoder', 'vae']);
+        for (const component of candidate.components) {
+          const providers = component.transports.map(({ provider }) => provider);
+          expect(providers.at(-1)).toBe('upstream');
+          expect(providers[0]).toBe(family === 'flux-3-image-klein' ? 'domestic-mirror' : 'modelscope');
+          for (const transport of component.transports) {
+            expect(transport.revision).toMatch(/^[a-f0-9]{40}$/);
+            expect(transport.url).toContain(transport.revision);
+            expect(transport.sha256).toBe(component.sha256);
+            expect(transport.sizeBytes).toBe(component.sizeBytes);
+          }
+          if (family === 'moss-image-base' && component.role === 'diffusion')
+            expect(component.name).not.toContain('sft');
+          if (family === 'moss-image-sft' && component.role === 'diffusion') {
+            expect(component.name).toContain('sft');
+            expect(component.transports[0].repositoryPath).toContain('moss_image_sft_');
+            expect(component.transports[0].url).toContain(component.name);
+          }
+          if (family === 'krea2') expect(component.name).not.toContain('raw');
+        }
+      }
+    }
+  });
+
+  it('ships output-connected graphs with the right loaders, bindings and source-derived schema evidence', async () => {
+    const catalog = JSON.parse(await fs.readFile(candidatePath, 'utf8')) as CandidateCatalog;
+    const { imageModels } = JSON.parse(await fs.readFile(bundlePath, 'utf8')) as {
+      imageModels: {
+        coreRevision: string;
+        sourceDerivedObjectInfo: ComfyRegistry;
+        schemaSources: Array<{ path: string; revision: string; sha256: string }>;
+        classEvidence: Record<string, { sourcePath: string; sha256: string }>;
+        baselines: Array<OmniBaseline & { family: string; requiredNodes: Array<{ id: string; version: string }> }>;
+      };
+    };
+    expect(imageModels.baselines.length).toBeGreaterThanOrEqual(7);
+    for (const baseline of imageModels.baselines) {
+      const candidate = catalog.candidates.find(({ id }) => id === baseline.candidateId)!;
+      expect(candidate.apiBaselineId).toBe(baseline.id);
+      expect(baseline.verifiedOnThisMachine).toBe(false);
+      expect(stableHash(baseline.graph)).toBe(baseline.graphSha256);
+      expect(baseline.requiredNodes).toContainEqual({ id: 'comfyui-core', version: imageModels.coreRevision });
+      validateComfyWorkflow(baseline.graph, imageModels.sourceDerivedObjectInfo);
+      const visited = new Set<string>();
+      const visit = (id: string): void => {
+        if (visited.has(id)) return;
+        visited.add(id);
+        const node = baseline.graph[id];
+        const evidence = imageModels.classEvidence[node.class_type];
+        expect(imageModels.schemaSources).toContainEqual(
+          expect.objectContaining({
+            path: evidence.sourcePath,
+            sha256: evidence.sha256,
+            revision: imageModels.coreRevision,
+          })
+        );
+        for (const value of Object.values(node.inputs)) if (Array.isArray(value)) visit(value[0] as string);
+      };
+      visit('9');
+      expect([...visited].toSorted()).toEqual(Object.keys(baseline.graph).toSorted());
+      const loaders = Object.values(baseline.graph).flatMap(({ inputs }) =>
+        Object.entries(inputs)
+          .filter(([key]) => ['unet_name', 'clip_name', 'vae_name'].includes(key))
+          .map(([, value]) => value)
+      );
+      expect(loaders.toSorted()).toEqual(candidate.components.map(({ name }) => name).toSorted());
+      const applied = structuredClone(baseline.graph);
+      for (const [name, value] of Object.entries({
+        prompt: 'A full scene caption.',
+        width: 512,
+        height: 512,
+        batchSize: 1,
+        seed: 42,
+      })) {
+        expect(baseline.bindings[name]?.length).toBeGreaterThan(0);
+        for (const binding of baseline.bindings[name]) applied[binding.nodeId].inputs[binding.input] = value;
+      }
+      validateComfyWorkflow(applied, imageModels.sourceDerivedObjectInfo);
+      expect(baseline.graph['2'].inputs.type).toBe(
+        {
+          'flux-3-image-klein': 'flux3',
+          'moss-image-base': 'moss_image',
+          'moss-image-sft': 'moss_image',
+          krea2: 'krea2',
+        }[baseline.family]
+      );
+      expect(baseline.graph['7'].inputs).toMatchObject({
+        steps:
+          baseline.family === 'krea2' ? 8 : ['moss-image-base', 'moss-image-sft'].includes(baseline.family) ? 50 : 16,
+        cfg: ['moss-image-base', 'moss-image-sft'].includes(baseline.family) ? 3 : 1,
+      });
+      if (['moss-image-base', 'moss-image-sft'].includes(baseline.family)) {
+        expect(baseline.graph['10'].inputs).toMatchObject({ single_layers: '22', start_percent: 0, end_percent: 1 });
+        expect(Object.values(baseline.graph).some(({ class_type }) => class_type === 'ModelSamplingSD3')).toBe(false);
+      }
+    }
+  });
+});
+
 describe('packaged ComfyUI API baselines', () => {
   it('contains source-derived, discovery-only graphs with complete schema evidence', async () => {
     const bundle = JSON.parse(await fs.readFile(bundlePath, 'utf8')) as WorkflowBundle;

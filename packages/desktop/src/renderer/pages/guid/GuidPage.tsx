@@ -19,6 +19,7 @@ import { useCreationModels } from './Creation/useCreationModels';
 import ComfyModelCards from './components/ComfyModelCards';
 import {
   comfyFamilyDetails,
+  comfyFamilyRecipeKey,
   readComfyDraftIntent,
   writeComfyDraftIntent,
   type ComfyDraftIntent,
@@ -316,11 +317,15 @@ const GuidPage: React.FC = () => {
   const handleComfyAction = useCallback(
     (intent: ComfyDraftIntent) => {
       setCreationIntent(intent);
+      const recipeKey = comfyFamilyRecipeKey(intent.family);
       guidInput.setInput(
-        t(`guid.comfy.prompts.${intent.intent}`, {
-          family: comfyFamilyDetails(intent.family).name,
-          profile: intent.profileId ?? '',
-        })
+        [
+          t(`guid.comfy.prompts.${intent.intent}`, {
+            family: comfyFamilyDetails(intent.family).name,
+            profile: intent.profileId ?? '',
+          }),
+          ...(recipeKey ? [t(recipeKey), t('guid.comfy.imageRecipeRequirements')] : []),
+        ].join('\n\n')
       );
       setTemplateFocusKey(crypto.randomUUID());
     },

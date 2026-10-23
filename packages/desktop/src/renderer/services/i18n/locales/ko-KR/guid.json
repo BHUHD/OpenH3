@@ -18,26 +18,31 @@
     "diagnosticLog": "진단 로그",
     "title": "로컬 모델",
     "noProfile": "설치된 프로필 없음",
-    "use": "사용",
+    "use": "모델 사용",
     "selected": "선택됨",
     "version": "{{family}} 버전",
     "draftHint": "설치 작업은 편집 가능한 요청을 입력합니다. 확인 후 전송하세요.",
     "families": {
       "h3": "동영상 생성",
       "qwen-edit": "이미지 편집",
-      "z-image": "이미지 생성"
+      "z-image": "이미지 생성",
+      "fasth3-omni": "이미지·동영상·오디오 참조를 사용한 텍스트/이미지 기반 동영상 생성",
+      "flux-3-image-klein": "가벼운 텍스트 이미지 생성",
+      "moss-image-base": "중국어 텍스트와 레이아웃 생성",
+      "krea2": "빠른 스타일 이미지 생성",
+      "moss-image-sft": "중국어 텍스트와 레이아웃 생성(SFT)"
     },
     "actions": {
-      "install": "설치",
+      "install": "설치 안내",
       "repair": "확인 / 복구",
       "install-other": "다른 버전",
       "generate": "생성"
     },
     "intentSummary": "로컬 모델 작업: {{model}} · {{intent}}. 프로필: {{profile}}. 모델 계열과 작업을 유지하고 구체적인 ComfyUI 계획을 준비한 후 제 승인을 기다리세요. 설치에는 생성 매개변수가 필요하지 않습니다.",
     "prompts": {
-      "install": "ComfyUI로 {{family}}를 로컬에 설치해 주세요. 먼저 하드웨어, 네트워크와 기존 환경을 확인하고 이 모델 계열과 작업에 맞는 ComfyUI 워크플로, 필요한 노드, 모델, 인코더와 VAE를 선택하세요. 고정 버전과 양자화를 제안하고, 고정된 upstream 아티팩트와 동일함이 입증된 경우에만 ModelScope 또는 신뢰할 수 있는 국내 미러 사본을 우선하세요. 출처, 리비전과 SHA-256을 고정하고 다운로드 크기, 위치, 재개 방법과 검증을 설명하세요. 설치 전에 제 승인을 기다리세요. Call openh3_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "repair": "로컬 {{family}} 프로필 {{profile}}를 확인하고 복구해 주세요. 환경, 구성 요소, 노드와 워크플로를 검사하고 계획을 설명하세요. 제 승인 후 수정하고 작은 생성 테스트로 검증하세요. Use openh3_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source.",
-      "install-other": "{{family}}의 다른 버전이나 양자화를 별도 프로필로 설치해 주세요. 하드웨어와 기존 프로필을 확인하고 고정 출처와 검증 계획을 제안하세요. 제 승인을 기다리고 기존 프로필을 유지하세요. Call openh3_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source."
+      "install": "ComfyUI로 {{family}}를 로컬에 설치해 주세요. 먼저 하드웨어, 네트워크와 기존 환경을 확인하고 이 모델 계열과 작업에 맞는 ComfyUI 워크플로, 필요한 노드, 모델, 인코더와 VAE를 선택하세요. 고정 버전과 양자화를 제안하고, 고정된 upstream 아티팩트와 동일함이 입증된 경우에만 ModelScope 또는 신뢰할 수 있는 국내 미러 사본을 우선하세요. 출처, 리비전과 SHA-256을 고정하고 다운로드 크기, 위치, 재개 방법과 검증을 설명하세요. 설치 전에 제 승인을 기다리세요. Call openh3_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 대상이 FastH3-Omni이면 먼저 comfyui-local의 references/fasth3-omni.md를 읽는다. 고정된 FastVideo/FastH3-Omni-Comfy 후보와 일치하는 인코더, 동영상 VAE, 오디오 VAE를 사용하며 BF16, INT8-ConvRot, FP8, NVFP4-QAD를 각각 평가한다. NVFP4-QAD는 실제 커널 동작을 검증한 호환 Blackwell 환경에만 허용한다. OS, GPU 아키텍처, 드라이버, 실제 커널, VRAM, RAM, 디스크의 누락 증거를 나열하고 “기기 조건 부족”과 “감지 미완료”를 구분한다. 생성에는 참조 이미지 또는 동영상이 최소 1개 필요하다. 공식 R2V 기준을 steps=8, guidance=1, video/audio shift=12/3으로 사용하고 호환되지 않는 Turbo LoRA를 제거한다. ModelScope, 검증된 중국 내 미러, 공식 소스 순으로 다운로드한다. 실제 생성에서 동영상 프레임과 오디오 트랙을 검증한 뒤에만 사용 가능으로 표시한다. 설치 요청 시점에는 생성용 첨부 파일이 필요하지 않다.",
+      "repair": "로컬 {{family}} 프로필 {{profile}}를 확인하고 복구해 주세요. 환경, 구성 요소, 노드와 워크플로를 검사하고 계획을 설명하세요. 제 승인 후 수정하고 작은 생성 테스트로 검증하세요. Use openh3_comfy_environment and the recorded diagnostic log before changing anything. If a node, model, Python package, or workflow must be downloaded, probe its exact immutable URL first and apply the ModelScope/domestic-mirror identity and SHA-256 rules; network.requested=false or a NETWORK_* issue is incomplete evidence, not success. Snapshot the current profile, make one bounded repair, and revalidate with a representative smoke input. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 대상이 FastH3-Omni이면 먼저 comfyui-local의 references/fasth3-omni.md를 읽는다. 고정된 FastVideo/FastH3-Omni-Comfy 후보와 일치하는 인코더, 동영상 VAE, 오디오 VAE를 사용하며 BF16, INT8-ConvRot, FP8, NVFP4-QAD를 각각 평가한다. NVFP4-QAD는 실제 커널 동작을 검증한 호환 Blackwell 환경에만 허용한다. OS, GPU 아키텍처, 드라이버, 실제 커널, VRAM, RAM, 디스크의 누락 증거를 나열하고 “기기 조건 부족”과 “감지 미완료”를 구분한다. 생성에는 참조 이미지 또는 동영상이 최소 1개 필요하다. 공식 R2V 기준을 steps=8, guidance=1, video/audio shift=12/3으로 사용하고 호환되지 않는 Turbo LoRA를 제거한다. ModelScope, 검증된 중국 내 미러, 공식 소스 순으로 다운로드한다. 실제 생성에서 동영상 프레임과 오디오 트랙을 검증한 뒤에만 사용 가능으로 표시한다. 설치 요청 시점에는 생성용 첨부 파일이 필요하지 않다. 연속 작업은 속도를 우선하고 필요할 때 메모리를 해제한다. OOM 이후 원격 작업의 종료, 유휴 대기열 및 실행 환경 식별을 먼저 확인하고 공유 조정자가 /free를 호출해 제한된 시간 동안 관찰한다. HTTP 200은 요청 접수만 뜻한다. 정리가 확인되면 원래 모델, 참조 및 매개변수를 유지해 최대 1회만 재시도하고, 재시작해도 횟수가 초기화되지 않도록 저장한다. 해상도, 배치 크기, 화질을 자동으로 줄이거나 offload를 변경하지 않는다. 제출 상태가 불명확하거나 모니터링이 끊기거나 취소가 확인되지 않으면 기존 작업을 먼저 복구하고 중복 제출을 막도록 차단을 유지한다. 다시 실패하면 실패 노드와 VRAM 진단을 반환한다.",
+      "install-other": "{{family}}의 다른 버전이나 양자화를 별도 프로필로 설치해 주세요. 하드웨어와 기존 프로필을 확인하고 고정 출처와 검증 계획을 제안하세요. 제 승인을 기다리고 기존 프로필을 유지하세요. Call openh3_comfy_environment with the exact immutable candidate URLs in sources before claiming that network access was checked. Treat network.requested=false, missing source results, or NETWORK_* issues as incomplete evidence and say what is missing. Prefer ModelScope (魔搭), then a reputable domestic mirror, then upstream only when repository/revision, filename, byte count, license, SHA-256, and loader compatibility match; a reachable same-name file is not enough. Keep the pinned API workflow from the Skill bundle when available and do not redownload workflows during generation. If all candidates fail, pause for a source choice instead of silently changing the model family, quantization, or size. Keep each openh3_comfy_environment.sources probe to at most 12 URLs; batch additional candidates by models, Git/custom nodes, Python packages, and workflows. Reachability or same-name/same-size files do not establish artifact identity; retain a matching resume receipt and resume only an already-approved equivalent source. 대상이 FastH3-Omni이면 먼저 comfyui-local의 references/fasth3-omni.md를 읽는다. 고정된 FastVideo/FastH3-Omni-Comfy 후보와 일치하는 인코더, 동영상 VAE, 오디오 VAE를 사용하며 BF16, INT8-ConvRot, FP8, NVFP4-QAD를 각각 평가한다. NVFP4-QAD는 실제 커널 동작을 검증한 호환 Blackwell 환경에만 허용한다. OS, GPU 아키텍처, 드라이버, 실제 커널, VRAM, RAM, 디스크의 누락 증거를 나열하고 “기기 조건 부족”과 “감지 미완료”를 구분한다. 생성에는 참조 이미지 또는 동영상이 최소 1개 필요하다. 공식 R2V 기준을 steps=8, guidance=1, video/audio shift=12/3으로 사용하고 호환되지 않는 Turbo LoRA를 제거한다. ModelScope, 검증된 중국 내 미러, 공식 소스 순으로 다운로드한다. 실제 생성에서 동영상 프레임과 오디오 트랙을 검증한 뒤에만 사용 가능으로 표시한다. 설치 요청 시점에는 생성용 첨부 파일이 필요하지 않다."
     },
     "operation": {
       "title": "ComfyUI 모델 계획",
@@ -85,7 +90,27 @@
       "actualInput": "실제 생성 매개변수",
       "submissionUncertain": "제출이 확인되지 않았습니다. 다시 제출하기 전에 현재 ComfyUI 대기열을 확인하세요."
     },
-    "illustrativeCover": "용도 예시 이미지"
+    "illustrativeCover": "용도 예시 이미지",
+    "preview": {
+      "video": "{{family}} 동영상 미리보기",
+      "poster": "동영상 미리보기 포스터",
+      "image": "{{family}} 이미지 예시",
+      "play": "미리보기 재생",
+      "pause": "미리보기 일시 정지",
+      "officialSample": "Nuva Lab 공식 샘플",
+      "sampleVersion": "샘플 모델: {{version}}",
+      "runtimeVersion": "실행 버전: {{version}}",
+      "notInstalled": "설치되지 않음",
+      "projectDemo": "OpenH3 프로젝트 데모",
+      "officialImageSample": "{{publisher}} 공식 샘플"
+    },
+    "recipes": {
+      "flux-3-image-klein": "comfyui-local: references/z-image.md#flux-3-image-klein — BF16 / INT8-ConvRot / NVFP4; distilled steps=16, CFG=1; CLIPLoader.type=flux3. 증류 버전을 사용한다. 현재 Agent/LLM이 사용자 의도를 유지한 완전한 장면 설명으로 요청을 확장한 뒤 생성에 전달하며 짧은 원문을 바로 보내지 않는다. 공식 ModelScope는 접근 승인이 필요하며 인증 실패는 소스 문제다.",
+      "moss-image-base": "comfyui-local: references/z-image.md#moss-image-base — BF16 / INT8-ConvRot / INT8-ConvRot+W4A8; steps=50, CFG=3; CLIPLoader.type=moss_image. Base를 SFT로 바꾸지 않는다. 네이티브 moss_image 지원이 포함된 ComfyUI를 고정하고 기존 플러그인의 ModelSamplingSD3를 재사용하지 않는다. 네이티브 shift=5와 전체 구간 음성 분기 SLG layer=22를 사용한다.",
+      "krea2": "comfyui-local: references/z-image.md#krea2 — BF16 / FP8 / INT8-ConvRot / NVFP4; Turbo steps=8, CFG=1; CLIPLoader.type=krea2. 기본값은 Turbo이며 Raw를 혼합하거나 스타일 LoRA를 자동 추가하지 않는다. 이 기준은 텍스트 이미지 생성만 검증하며 스타일 참조에는 별도로 맞춘 워크플로가 필요하다.",
+      "moss-image-sft": "comfyui-local: references/z-image.md#moss-image-sft — MOSS-Image-SFT, BF16 / INT8-ConvRot / INT8-ConvRot+W4A8; steps=50, CFG=3; CLIPLoader.type=moss_image. Keep SFT separate from Base and use the fixed native moss_image ComfyUI route with shift=5 and negative-branch SLG layer=22. Prefer ModelScope, then verified domestic mirror, then upstream with fixed revision, size and SHA-256; only real generation verification marks the profile usable."
+    },
+    "imageRecipeRequirements": "openh3_comfy_environment로 OS, GPU 아키텍처, 드라이버, Python/Torch, 실제 정밀도/어텐션 커널, 여유 VRAM/RAM, 오프로딩과 디스크를 확인한다. 기기 조건 부족과 감지 미완료를 구분하고 누락 항목을 명시하며 VRAM 용량만으로 선택하지 않는다. NVFP4는 호환 Blackwell이 필요하다. 검증된 ModelScope, SHA-256이 같은 hf-mirror.com, 공식 소스 순으로 선택하고 revision, 크기와 SHA-256을 고정하여 다운로드 재개를 사용한다. 미검증 또는 승인이 필요한 소스를 설명하고 버전을 지어내지 않는다. 실제 이미지 생성 성공 후에만 사용 가능으로 표시한다."
   },
   "creation": {
     "states": {

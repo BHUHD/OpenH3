@@ -18,6 +18,58 @@ function memoryStore(initial: H3Job): H3JobStore {
 }
 import { H3JobRunner } from '@/process/services/runtime/H3JobRunner';
 import { diagnoseComfyError } from '@/process/services/runtime/h3ComfyError';
+import { ComfyRuntimeCoordinator } from '@/process/services/media/comfy/runtimeCoordinator';
+
+it('coordinates legacy H3 OOM cleanup and retries the original spec once with a persisted allowance', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-oom-'));
+  try {
+    const filename = path.join(directory, 'jobs.json');
+    const store = new FileH3JobStore(filename);
+    store.create(createH3Job({ prompt: 'exact quality', megapixels: 2, durationSeconds: 10, seed: 42 }, 'p'));
+    const error = diagnoseComfyError({
+      status: { messages: [['execution_error', { node_id: '7', exception_type: 'torch.OutOfMemoryError' }]] },
+    });
+    const client = {
+      generate: vi.fn().mockRejectedValue(error),
+      resume: vi.fn(),
+      cancel: vi.fn(),
+      runtimeResourceKey: async () => 'machine',
+      runtimeSignature: () => 'h3-components',
+      clearMemory: vi.fn().mockResolvedValue(undefined),
+    };
+    const runner = new H3JobRunner(
+      store,
+      client,
+      { validate: async () => undefined },
+      new ComfyRuntimeCoordinator({ directory: path.join(directory, 'leases') })
+    );
+    await expect(runner.run('p')).rejects.toThrow('OOM');
+    expect(client.generate).toHaveBeenCalledTimes(2);
+    expect(client.generate.mock.calls[1][0]).toEqual(client.generate.mock.calls[0][0]);
+    const restored = new FileH3JobStore(filename);
+    expect(restored.get('p')).toMatchObject({
+      oomRetryCount: 1,
+      remoteUncertain: false,
+      memory: {
+        failedNode: '7',
+        cleanups: expect.arrayContaining([expect.objectContaining({ reason: 'oom', confirmed: true })]),
+      },
+    });
+    restored.update('p', { status: 'queued', promptId: 'remote-2' });
+    client.resume.mockRejectedValueOnce(error);
+    await expect(
+      new H3JobRunner(
+        restored,
+        client,
+        { validate: async () => undefined },
+        new ComfyRuntimeCoordinator({ directory: path.join(directory, 'leases') })
+      ).run('p')
+    ).rejects.toThrow('OOM');
+    expect(client.generate).toHaveBeenCalledTimes(2);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 it.each(['queued', 'running', 'succeeded', 'failed', 'cancelled'] as const)(
   'ends Agent polling for a %s snapshot',
@@ -84,7 +136,7 @@ it('preserves artifacts when completion races with a user cancellation', async (
   });
 });
 
-it('persists a dispatch barrier when a timed-out remote task cannot be stopped, including after restart', async () => {
+it('retains a timed-out remote task for recovery without sending another prompt or cancelling it', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-fence-'));
   try {
     const filename = path.join(directory, 'jobs.json');
@@ -96,7 +148,7 @@ it('persists a dispatch barrier when a timed-out remote task cannot be stopped, 
       cancel: vi.fn().mockRejectedValue(new Error('offline')),
     };
     await expect(new H3JobRunner(store, client).run('old')).rejects.toThrow('H3_COMFY_HISTORY_TIMEOUT');
-    expect(client.cancel).toHaveBeenCalledWith('remote');
+    expect(client.cancel).not.toHaveBeenCalled();
     const restored = new FileH3JobStore(filename);
     expect(restored.get('old')).toMatchObject({
       status: 'failed',
@@ -202,24 +254,139 @@ describe('H3 job runner', () => {
       listBlocked: () => [...state.values()].filter((job) => job.remoteUncertain),
       listActive: () => [...state.values()],
     };
-    const runner = new H3JobRunner(store, {
-      generate: async (_spec, signal, _progress, submitted) => {
-        submitted?.('prompt-cancel');
-        return new Promise((_resolve, reject) => {
-          signal.addEventListener('abort', () => reject(new Error('H3_JOB_CANCELLED')));
-        });
+    const coordinator = { confirmSettled: vi.fn().mockResolvedValue(undefined) } as unknown as ComfyRuntimeCoordinator;
+    const runner = new H3JobRunner(
+      store,
+      {
+        generate: async (_spec, signal, _progress, submitted) => {
+          submitted?.('prompt-cancel');
+          return new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new Error('H3_JOB_CANCELLED')));
+          });
+        },
+        cancel: async (promptId: string) => {
+          cancelled = promptId;
+        },
+        resume: vi.fn(),
+        runtimeResourceKey: async () => 'machine',
       },
-      cancel: async (promptId: string) => {
-        cancelled = promptId;
-      },
-      resume: vi.fn(),
-    });
+      undefined,
+      coordinator
+    );
     const running = runner.run(initial.id).catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await runner.cancel(initial.id);
     await running;
     expect(cancelled).toBe('prompt-cancel');
     expect(store.get(initial.id)?.status).toBe('cancelled');
+    expect(coordinator.confirmSettled).toHaveBeenCalledWith('machine', initial.id);
+  });
+
+  it('aborts a pre-submission H3 run before checking the remote queue', async () => {
+    const initial = createH3Job({ prompt: 'test' }, 'job-pre-submit-cancel');
+    const store = memoryStore({ ...initial, status: 'running' });
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => (markStarted = resolve));
+    let observedSignal: AbortSignal | undefined;
+    const runner = new H3JobRunner(
+      store,
+      {
+        generate: vi.fn((_spec, signal) => {
+          observedSignal = signal;
+          markStarted();
+          return new Promise((_resolve, reject) => {
+            const abort = (): void => reject(new Error('H3_JOB_CANCELLED'));
+            if (signal.aborted) abort();
+            else signal.addEventListener('abort', abort, { once: true });
+          });
+        }),
+        cancel: vi.fn(),
+        resume: vi.fn(),
+        confirmIdle: vi.fn(async () => {
+          expect(observedSignal?.aborted).toBe(true);
+        }),
+        runtimeResourceKey: async () => 'machine',
+        clearMemory: vi.fn(async () => undefined),
+      },
+      { validate: async () => undefined },
+      {
+        run: async (_resource, _signature, task) => task(),
+        confirmSettled: vi.fn(async () => undefined),
+      } as unknown as ComfyRuntimeCoordinator
+    );
+
+    const running = runner.run(initial.id).catch(() => undefined);
+    await started;
+    await expect(runner.cancel(initial.id)).resolves.toMatchObject({ status: 'cancelled' });
+    await running;
+  });
+
+  it('records cancellation while waiting for the device lease as cancelled', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-cancel-lease-'));
+    const coordinator = new ComfyRuntimeCoordinator({ directory });
+    let releaseDevice!: () => void;
+    let deviceStarted!: () => void;
+    const started = new Promise<void>((resolve) => (deviceStarted = resolve));
+    const held = coordinator.run(
+      'machine',
+      'other-model',
+      async () => {
+        deviceStarted();
+        await new Promise<void>((resolve) => (releaseDevice = resolve));
+      },
+      async () => undefined
+    );
+    await started;
+    const initial = createH3Job({ prompt: 'test' }, 'job-lease-cancel');
+    const store = memoryStore({ ...initial, status: 'running' });
+    const generate = vi.fn();
+    const runner = new H3JobRunner(
+      store,
+      {
+        generate,
+        cancel: vi.fn(),
+        resume: vi.fn(),
+        runtimeResourceKey: async () => 'machine',
+        clearMemory: vi.fn(async () => undefined),
+      },
+      { validate: async () => undefined },
+      new ComfyRuntimeCoordinator({ directory })
+    );
+    try {
+      const running = runner.run(initial.id).catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await expect(runner.cancel(initial.id)).resolves.toMatchObject({
+        status: 'cancelled',
+        error: 'H3_JOB_CANCELLED',
+      });
+      await running;
+      expect(generate).not.toHaveBeenCalled();
+    } finally {
+      releaseDevice();
+      await held;
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('does not clear a legacy H3 submission fence until an unknown prompt is confirmed idle', async () => {
+    const initial = { ...createH3Job({ prompt: 'test' }, 'job-unknown-cancel'), status: 'running' as const };
+    const store = memoryStore(initial);
+    const coordinator = { confirmSettled: vi.fn().mockResolvedValue(undefined) } as unknown as ComfyRuntimeCoordinator;
+    const runner = new H3JobRunner(
+      store,
+      {
+        generate: vi.fn(),
+        cancel: vi.fn(),
+        resume: vi.fn(),
+        confirmIdle: vi.fn().mockRejectedValue(new Error('H3_REMOTE_STATE_UNCONFIRMED')),
+        runtimeResourceKey: async () => 'machine',
+      },
+      undefined,
+      coordinator
+    );
+    await expect(runner.cancel(initial.id)).rejects.toThrow('H3_REMOTE_STATE_UNCONFIRMED');
+    expect(coordinator.confirmSettled).not.toHaveBeenCalled();
+    expect(store.get(initial.id)?.status).toBe('running');
   });
 
   it('resumes the persisted remote prompt after recovery without submitting again', async () => {

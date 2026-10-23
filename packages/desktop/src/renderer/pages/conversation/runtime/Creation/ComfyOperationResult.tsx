@@ -285,6 +285,17 @@ export default function ComfyOperationResult({ id, conversationId }: { id: strin
                         {t('guid.comfy.operation.source')}
                       </a>
                     )}
+                    {component.sourceUrls && (
+                      <ol className='m-0 break-all'>
+                        {component.sourceUrls.map((url) => (
+                          <li key={url}>
+                            <a href={url} target='_blank' rel='noreferrer'>
+                              {url}
+                            </a>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                     <dl className='m-0 space-y-4px'>
                       {Object.entries({
                         path: component.path,

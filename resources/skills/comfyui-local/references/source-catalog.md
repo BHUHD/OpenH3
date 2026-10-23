@@ -17,6 +17,15 @@ The LLM must pass the exact candidate URLs to `openh3_comfy_environment.sources`
 - Python wheels must match the selected OS, Python, Torch, CUDA/ROCm, and architecture. A faster package index is not evidence of ABI compatibility.
 - Official workflow templates are converted into the fixed API graph shipped in this Skill bundle. Do not download a fresh workflow during generation. Probe and pin a template URL only for a planned bundle update.
 
+## Additional image model snapshot (2026-10-22)
+
+- `flux-3-image-klein`: upstream `black-forest-labs/flux-3-image-klein-comfy`, revision `feef60b0aaf63a4773ace96636ebbcf43b881312`. The same fixed-revision `hf-mirror.com` file metadata matches upstream sizes and Git-LFS SHA-256. Official ModelScope exists but requires authorization and anonymous file metadata returned 404; it is a lookup candidate, not an eligible pinned transport. Re-check authorized metadata before adding it. Neither the mirror nor upstream metadata proves gated weight downloads are authorized or reachable.
+- `moss-image-base`: upstream `Comfy-Org/MOSS-Image`, revision `ee64003102c8470ee32501cf883419235db81884`. The catalog's Base diffusion, Qwen3.5 encoder and small FLUX2 VAE have byte-identical metadata on ModelScope and the domestic mirror; per-file ModelScope revisions are pinned in `transports`. SFT files are not part of this family recipe.
+- `moss-image-sft`: upstream `Comfy-Org/MOSS-Image`, revision `24147db865fcdc207270f844777587223fed8d6e`, with the SFT BF16/INT8 diffusion files and shared Qwen3.5/VAE files matched against ModelScope and `hf-mirror.com`. Keep this family separate from Base; the SFT template and graph use the same native loader but distinct diffusion filenames and source revision.
+- `krea2`: upstream `Comfy-Org/Krea-2`, revision `1171f4dc7e325bf3734586942e737872506c73e1`. Turbo diffusion/encoder/VAE sets have matching ModelScope and domestic-mirror size/SHA-256 metadata. Raw checkpoints, optional styles and MXFP8 are not substitutes for the bundled Turbo sets.
+
+For each selected component, pass its ordered eligible `transports` URLs to the environment network probe and install plan. Reuse the common resumable transfer, source receipt and digest validation. A file digest mismatch must stop, not silently fall through to another source. The upstream identity stays in `url`, and transports populate `sourceUrls`; never replace the identity with a mirror URL.
+
 ## When no mirror is usable
 
 Keep the install request in the reviewable planning state and report the missing evidence. Ask for the smallest decision needed: another approved source, a user-provided verified file, or a later retry. Do not silently downgrade the model, change quantization, use a moving `latest` snapshot, or switch to a cloud workflow.

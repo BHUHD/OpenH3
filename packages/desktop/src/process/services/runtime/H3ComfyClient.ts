@@ -15,6 +15,8 @@ import { resolveH3BundleRoot } from './h3BundlePath';
 import { diagnoseComfyError } from './h3ComfyError';
 import { validateComfyWorkflow, type ComfyRegistry } from './h3WorkflowPreflight';
 import { H3ComfyEvents } from './h3ComfyEvents';
+import { comfyRuntimeResourceKey } from '../media/comfy/runtimeCoordinator';
+import { inspectComfyServiceIdentity, type ComfyServiceIdentity } from '../media/comfy/workflowEngine';
 
 type FetchLike = typeof fetch;
 type ApiWorkflow = Record<string, { class_type?: string; inputs?: Record<string, unknown>; [key: string]: unknown }>;
@@ -46,6 +48,7 @@ export type H3ComfyClientOptions = {
   heartbeatFailureLimit?: number;
   cancelConfirmAttempts?: number;
   missingGraceMs?: number;
+  runtimeInspector?: (baseUrl: string, stats: Record<string, unknown>) => Promise<ComfyServiceIdentity | undefined>;
 };
 
 export type H3GenerationResult = { promptId: string; artifacts: H3Artifact[] };
@@ -234,6 +237,48 @@ export class H3ComfyClient {
     return this.baseUrl;
   }
 
+  /** Stable device identity shared with the generic ComfyUI runtime coordinator. */
+  async runtimeResourceKey(): Promise<string> {
+    try {
+      const stats = (await this.systemStats()) as Record<string, unknown>;
+      return comfyRuntimeResourceKey(this.baseUrl, stats);
+    } catch {
+      return 'machine';
+    }
+  }
+
+  async runtimeBinding() {
+    const stats = (await this.systemStats()) as Record<string, unknown>;
+    const identity = await (this.options.runtimeInspector ?? inspectComfyServiceIdentity)(this.baseUrl, stats);
+    return { kind: 'h3' as const, baseUrl: this.baseUrl, identity };
+  }
+
+  runtimeSignature(): string {
+    const directory = this.options.bundleRoot?.() ?? resolveH3BundleRoot();
+    const workflows = ['t2v', 'fl2v', 'ref2va'].map((mode) => workflowPathForMode(mode as H3ResolvedMode, directory));
+    return JSON.stringify({
+      baseUrl: this.baseUrl,
+      directory,
+      attention: this.options.attentionBackend?.() ?? 'dense',
+      workflows: workflows.map((file) => ({
+        path: file,
+        modified: fs.existsSync(file) ? fs.statSync(file).mtimeMs : undefined,
+      })),
+    });
+  }
+
+  async memorySnapshot(): Promise<Array<{ free?: number; total?: number; torchTotal?: number; torchFree?: number }>> {
+    const stats = (await this.systemStats()) as Record<string, unknown>;
+    return Array.isArray(stats.devices)
+      ? stats.devices.map((entry: Record<string, unknown>) => ({
+          free: typeof entry.vram_free === 'number' ? entry.vram_free : undefined,
+          total: typeof entry.vram_total === 'number' ? entry.vram_total : undefined,
+          torchTotal: typeof entry.torch_vram_total === 'number' ? entry.torch_vram_total : undefined,
+          torchFree: typeof entry.torch_vram_free === 'number' ? entry.torch_vram_free : undefined,
+        }))
+      : [];
+  }
+
   async systemStats(): Promise<unknown> {
     const response = await this.fetchImpl(`${this.baseUrl}/system_stats`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) throw new Error(`H3_COMFY_HTTP_${response.status}`);
@@ -254,6 +299,58 @@ export class H3ComfyClient {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error(`H3_COMFY_FREE_HTTP_${response.status}`);
+  }
+
+  /** Confirm queue idleness and observed VRAM recovery after accepting /free. */
+  async clearMemory(expectedIdentity?: ComfyServiceIdentity): Promise<void> {
+    const before = (await this.systemStats()) as Record<string, unknown>;
+    const identity = await (this.options.runtimeInspector ?? inspectComfyServiceIdentity)(this.baseUrl, before);
+    if (!identity) throw new Error('H3_MEMORY_CLEAR_IDENTITY_UNAVAILABLE');
+    const sameIdentity = (value: ComfyServiceIdentity | undefined, expected: ComfyServiceIdentity): boolean =>
+      Boolean(
+        value &&
+        path.resolve(value.executable) === path.resolve(expected.executable) &&
+        path.resolve(value.root) === path.resolve(expected.root) &&
+        (expected.pid === undefined || value.pid === expected.pid)
+      );
+    if (expectedIdentity && !sameIdentity(identity, expectedIdentity))
+      throw new Error('H3_MEMORY_CLEAR_RUNTIME_CHANGED');
+    const memory = (stats: Record<string, unknown>): number[] =>
+      Array.isArray(stats.devices)
+        ? stats.devices.map((value) => {
+            const device = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+            return typeof device.vram_free === 'number' ? device.vram_free : NaN;
+          })
+        : [];
+    const baseline = memory(before);
+    const idle = async (): Promise<void> => {
+      const payload = this.parseQueue(await this.queueStatus());
+      if (payload.queue_running.length || payload.queue_pending.length) throw new Error('H3_MEMORY_CLEAR_QUEUE_BUSY');
+    };
+    await idle();
+    if (!baseline.length || baseline.some((value) => !Number.isFinite(value)))
+      throw new Error('H3_MEMORY_CLEAR_TELEMETRY_UNAVAILABLE');
+    await this.freeMemory(true);
+    let emptySamples = 0;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await this.pause(Math.min(1000, this.pollIntervalMs || 1), AbortSignal.timeout(15_000));
+      await idle();
+      const after = (await this.systemStats()) as Record<string, unknown>;
+      const currentIdentity = await (this.options.runtimeInspector ?? inspectComfyServiceIdentity)(this.baseUrl, after);
+      if (!sameIdentity(currentIdentity, identity)) throw new Error('H3_MEMORY_CLEAR_RUNTIME_CHANGED');
+      const observed = memory(after);
+      const devices = Array.isArray(after.devices) ? (after.devices as Array<Record<string, unknown>>) : [];
+      const emptyAllocator = devices.length > 0 && devices.every((device) => device.torch_vram_total === 0);
+      emptySamples = emptyAllocator ? emptySamples + 1 : 0;
+      if (
+        observed.length === baseline.length &&
+        observed.every(Number.isFinite) &&
+        observed.every((value, index) => value >= baseline[index]) &&
+        (observed.some((value, index) => value > baseline[index]) || emptySamples >= 2)
+      )
+        return;
+    }
+    throw new Error('H3_MEMORY_CLEAR_UNCONFIRMED');
   }
 
   async fetchArtifact(artifact: H3Artifact, signal?: AbortSignal): Promise<Response> {
@@ -288,6 +385,12 @@ export class H3ComfyClient {
       if (state === 'absent') {
         if (history?.status?.completed && history.status.status_str !== 'error')
           return this.settledResult(promptId, history);
+        if (
+          history?.status &&
+          history.status.status_str !== 'error' &&
+          !history.status.messages?.some((message) => Array.isArray(message) && message[0] === 'execution_interrupted')
+        )
+          throw new Error('H3_COMFY_CANCEL_UNCONFIRMED');
         if (requireKnown && !payload.cancelled && !history?.status) throw new Error('H3_SUBMISSION_STATE_UNKNOWN');
         if (++absent >= 2) return;
       } else absent = 0;
@@ -303,6 +406,12 @@ export class H3ComfyClient {
       const history = await this.readHistory(promptId, signal);
       if (history?.status?.completed && history.status.status_str !== 'error')
         return this.settledResult(promptId, history);
+      if (
+        history?.status &&
+        history.status.status_str !== 'error' &&
+        !history.status.messages?.some((message) => Array.isArray(message) && message[0] === 'execution_interrupted')
+      )
+        throw new Error('H3_REMOTE_STATE_UNCONFIRMED');
       if (requireKnown && !history?.status) throw new Error('H3_SUBMISSION_STATE_UNKNOWN');
       if (!attempt) await this.pause(Math.min(1000, this.pollIntervalMs), signal);
     }

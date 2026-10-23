@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "status": "discovery-only",
-  "researchedAt": "2026-10-14",
+  "researchedAt": "2026-10-22",
   "verifiedOnThisMachine": false,
   "workflows": [
     {
@@ -1926,5 +1926,4392 @@
         "Dynamic model/image choices in the planning schema describe proposed filenames, not assets found on this computer"
       ]
     }
-  ]
+  ],
+  "omni": {
+    "sourceDerivedObjectInfo": {
+      "VAELoader": {
+        "input": {
+          "required": {
+            "vae_name": [
+              "COMBO",
+              {
+                "options": [
+                  "minimax_h3_video_vae_fp16.safetensors",
+                  "minimax_h3_video_vae_int8_convrot.safetensors",
+                  "minimax_h3_audio_vae_fp32.safetensors"
+                ]
+              }
+            ]
+          }
+        },
+        "output": ["VAE"]
+      },
+      "CLIPLoader": {
+        "input": {
+          "required": {
+            "clip_name": [
+              "COMBO",
+              {
+                "options": [
+                  "qwen3vl_32b_minimax_h3_bf16.safetensors",
+                  "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+                  "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+                ]
+              }
+            ],
+            "type": [
+              "COMBO",
+              {
+                "options": ["minimax"]
+              }
+            ]
+          },
+          "optional": {
+            "device": [
+              "COMBO",
+              {
+                "options": ["default", "cpu"]
+              }
+            ]
+          }
+        },
+        "output": ["CLIP"]
+      },
+      "UNETLoader": {
+        "input": {
+          "required": {
+            "unet_name": [
+              "COMBO",
+              {
+                "options": [
+                  "fasth3_omniref_8step_pruned_bf16.safetensors",
+                  "fasth3_omniref_8step_pruned_int8_convrot.safetensors",
+                  "fasth3_omniref_fp8_comfy.safetensors",
+                  "fasth3_omniref_qad_nvfp4_comfy.safetensors"
+                ]
+              }
+            ],
+            "weight_dtype": [
+              "COMBO",
+              {
+                "options": ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
+              }
+            ]
+          }
+        },
+        "output": ["MODEL"]
+      },
+      "MiniMaxH3SigmaShift": {
+        "input": {
+          "required": {
+            "model": ["MODEL"],
+            "shift_video": [
+              "FLOAT",
+              {
+                "min": 0.01,
+                "max": 100
+              }
+            ],
+            "shift_audio": [
+              "FLOAT",
+              {
+                "min": 0.01,
+                "max": 100
+              }
+            ]
+          }
+        },
+        "output": ["MODEL"]
+      },
+      "KSamplerSelect": {
+        "input": {
+          "required": {
+            "sampler_name": [
+              "COMBO",
+              {
+                "options": ["res_multistep"]
+              }
+            ]
+          }
+        },
+        "output": ["SAMPLER"]
+      },
+      "BasicScheduler": {
+        "input": {
+          "required": {
+            "model": ["MODEL"],
+            "scheduler": [
+              "COMBO",
+              {
+                "options": ["simple"]
+              }
+            ],
+            "steps": [
+              "INT",
+              {
+                "min": 1,
+                "max": 10000
+              }
+            ],
+            "denoise": [
+              "FLOAT",
+              {
+                "min": 0,
+                "max": 1
+              }
+            ]
+          }
+        },
+        "output": ["SIGMAS"]
+      },
+      "RandomNoise": {
+        "input": {
+          "required": {
+            "noise_seed": [
+              "INT",
+              {
+                "min": 0,
+                "max": 9007199254740991
+              }
+            ]
+          }
+        },
+        "output": ["NOISE"]
+      },
+      "BasicGuider": {
+        "input": {
+          "required": {
+            "model": ["MODEL"],
+            "conditioning": ["CONDITIONING"]
+          }
+        },
+        "output": ["GUIDER"]
+      },
+      "SamplerCustomAdvanced": {
+        "input": {
+          "required": {
+            "noise": ["NOISE"],
+            "guider": ["GUIDER"],
+            "sampler": ["SAMPLER"],
+            "sigmas": ["SIGMAS"],
+            "latent_image": ["LATENT"]
+          }
+        },
+        "output": ["LATENT", "LATENT"]
+      },
+      "VAEDecode": {
+        "input": {
+          "required": {
+            "samples": ["LATENT"],
+            "vae": ["VAE"]
+          }
+        },
+        "output": ["IMAGE"]
+      },
+      "VAEDecodeAudio": {
+        "input": {
+          "required": {
+            "samples": ["LATENT"],
+            "vae": ["VAE"]
+          }
+        },
+        "output": ["AUDIO"]
+      },
+      "CreateVideo": {
+        "input": {
+          "required": {
+            "images": ["IMAGE"],
+            "fps": [
+              "FLOAT",
+              {
+                "min": 1,
+                "max": 120
+              }
+            ]
+          },
+          "optional": {
+            "audio": ["AUDIO"],
+            "bit_depth": [
+              "COMBO",
+              {
+                "options": ["auto", 8, 10]
+              }
+            ],
+            "color_space": [
+              "COMBO",
+              {
+                "options": ["sRGB", "HDR", "HDR PQ"]
+              }
+            ]
+          }
+        },
+        "output": ["VIDEO"]
+      },
+      "LoadImage": {
+        "input": {
+          "required": {
+            "image": [
+              "COMBO",
+              {
+                "options": ["omni_smoke_reference.png"]
+              }
+            ]
+          }
+        },
+        "output": ["IMAGE", "MASK"]
+      },
+      "MiniMaxH3ReferenceToVideo": {
+        "input": {
+          "required": {
+            "clip": ["CLIP"],
+            "prompt": ["STRING"],
+            "width": [
+              "INT",
+              {
+                "min": 32,
+                "max": 16384,
+                "step": 32
+              }
+            ],
+            "height": [
+              "INT",
+              {
+                "min": 32,
+                "max": 16384,
+                "step": 32
+              }
+            ],
+            "length": [
+              "INT",
+              {
+                "min": 5,
+                "max": 3600,
+                "step": 17
+              }
+            ],
+            "ref_image_size": [
+              "COMBO",
+              {
+                "options": ["match", "max"]
+              }
+            ]
+          },
+          "optional": {
+            "vae": ["VAE"],
+            "audio_vae": ["VAE"],
+            "ref_images": [
+              "COMFY_AUTOGROW_V3",
+              {
+                "template": {
+                  "input": {
+                    "required": {
+                      "ref_image": ["IMAGE"]
+                    }
+                  },
+                  "prefix": "ref_image_",
+                  "min": 0,
+                  "max": 9
+                }
+              }
+            ],
+            "ref_videos": [
+              "COMFY_AUTOGROW_V3",
+              {
+                "template": {
+                  "input": {
+                    "required": {
+                      "ref_video": ["IMAGE"]
+                    }
+                  },
+                  "prefix": "ref_video_",
+                  "min": 0,
+                  "max": 3
+                }
+              }
+            ],
+            "ref_video_audios": [
+              "COMFY_AUTOGROW_V3",
+              {
+                "template": {
+                  "input": {
+                    "required": {
+                      "ref_video_audio": ["AUDIO"]
+                    }
+                  },
+                  "prefix": "ref_video_audio_",
+                  "min": 0,
+                  "max": 3
+                }
+              }
+            ],
+            "ref_audios": [
+              "COMFY_AUTOGROW_V3",
+              {
+                "template": {
+                  "input": {
+                    "required": {
+                      "ref_audio": ["AUDIO"]
+                    }
+                  },
+                  "prefix": "ref_audio_",
+                  "min": 0,
+                  "max": 3
+                }
+              }
+            ]
+          }
+        },
+        "output": ["CONDITIONING", "LATENT"]
+      },
+      "SaveVideo": {
+        "input": {
+          "required": {
+            "video": ["VIDEO"],
+            "filename_prefix": ["STRING"],
+            "format": [
+              "COMBO",
+              {
+                "options": ["auto", "mp4", "mkv", "webm"]
+              }
+            ]
+          },
+          "optional": {
+            "codec": [
+              "COMBO",
+              {
+                "options": ["auto", "h264", "av1"]
+              }
+            ]
+          }
+        },
+        "output": ["VIDEO"]
+      }
+    },
+    "baselines": [
+      {
+        "id": "fasth3-omni-bf16-r2v-api-discovery",
+        "candidateId": "fasth3-omni-bf16-discovery",
+        "graph": {
+          "92": {
+            "class_type": "SaveVideo",
+            "inputs": {
+              "video": ["130", 0],
+              "filename_prefix": "video/FastH3-Omni",
+              "format": "mp4",
+              "codec": "h264"
+            }
+          },
+          "119": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+            }
+          },
+          "120": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+            }
+          },
+          "121": {
+            "class_type": "VAEDecodeAudio",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["120", 0]
+            }
+          },
+          "122": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["119", 0]
+            }
+          },
+          "123": {
+            "class_type": "KSamplerSelect",
+            "inputs": {
+              "sampler_name": "res_multistep"
+            }
+          },
+          "124": {
+            "class_type": "BasicScheduler",
+            "inputs": {
+              "model": ["147", 0],
+              "scheduler": "simple",
+              "steps": 8,
+              "denoise": 1
+            }
+          },
+          "125": {
+            "class_type": "SamplerCustomAdvanced",
+            "inputs": {
+              "noise": ["129", 0],
+              "guider": ["126", 0],
+              "sampler": ["123", 0],
+              "sigmas": ["124", 0],
+              "latent_image": ["136", 1]
+            }
+          },
+          "126": {
+            "class_type": "BasicGuider",
+            "inputs": {
+              "model": ["147", 0],
+              "conditioning": ["136", 0]
+            }
+          },
+          "127": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "fasth3_omniref_8step_pruned_bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "128": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_32b_minimax_h3_bf16.safetensors",
+              "type": "minimax",
+              "device": "default"
+            }
+          },
+          "129": {
+            "class_type": "RandomNoise",
+            "inputs": {
+              "noise_seed": 0
+            }
+          },
+          "130": {
+            "class_type": "CreateVideo",
+            "inputs": {
+              "images": ["122", 0],
+              "audio": ["121", 0],
+              "fps": 24,
+              "bit_depth": 8
+            }
+          },
+          "136": {
+            "class_type": "MiniMaxH3ReferenceToVideo",
+            "inputs": {
+              "clip": ["128", 0],
+              "vae": ["119", 0],
+              "audio_vae": ["120", 0],
+              "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+              "width": 832,
+              "height": 480,
+              "length": 124,
+              "ref_image_size": "match",
+              "ref_images.ref_image_0": ["137", 0]
+            }
+          },
+          "137": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "omni_smoke_reference.png"
+            }
+          },
+          "147": {
+            "class_type": "MiniMaxH3SigmaShift",
+            "inputs": {
+              "model": ["127", 0],
+              "shift_video": 12,
+              "shift_audio": 3
+            }
+          }
+        },
+        "graphSha256": "9ee4c08ce5159ee0c82f8f89b81f9c28540fd182222389daf6742565876d0bab",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "136",
+              "input": "prompt"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "136",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "136",
+              "input": "height"
+            }
+          ],
+          "frames": [
+            {
+              "nodeId": "136",
+              "input": "length"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "129",
+              "input": "noise_seed"
+            }
+          ],
+          "steps": [
+            {
+              "nodeId": "124",
+              "input": "steps"
+            }
+          ],
+          "fps": [
+            {
+              "nodeId": "130",
+              "input": "fps"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "92",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "width": 832,
+          "height": 480,
+          "frames": 124,
+          "seed": 0,
+          "steps": 8,
+          "fps": 24,
+          "frameMultiple": 17,
+          "frameOffset": 5,
+          "outputPrefix": "video/FastH3-Omni"
+        },
+        "guidance": 1,
+        "verifiedOnThisMachine": false,
+        "family": "fasth3-omni",
+        "status": "discovery-only",
+        "capabilities": ["reference-to-video", "image-to-video", "video-reference", "audio-reference", "native-audio"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c"
+          }
+        ],
+        "components": [
+          {
+            "role": "diffusion",
+            "name": "fasth3_omniref_8step_pruned_bf16.safetensors",
+            "directory": "diffusion_models",
+            "precision": "BF16",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "c0fac98c0317eb85215bd186b250be9b113675baab1323add40f26262f552ed9"
+          },
+          {
+            "role": "text-encoder",
+            "name": "qwen3vl_32b_minimax_h3_bf16.safetensors",
+            "directory": "text_encoders",
+            "precision": "BF16",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "600d567f6a9629c8574e8e7041b199bdd9c59a986afa7906910a81919610607d"
+          },
+          {
+            "role": "video-vae",
+            "name": "minimax_h3_video_vae_fp16.safetensors",
+            "directory": "vae",
+            "precision": "FP16",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522"
+          },
+          {
+            "role": "audio-vae",
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae",
+            "precision": "FP32",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+          }
+        ],
+        "smokeInput": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "durationSeconds": 5,
+          "seed": 0
+        },
+        "smokeRequirements": [
+          "Supply a real local image or video through ordered references; placeholder omni_smoke_reference.png is not a validation result.",
+          "Video references include paired original audio, occupy audio reference labels, and require duration/count validation before upload.",
+          "Inspect moving decoded frames, expected dimensions/duration, 24 FPS, synchronized non-silent audio and native audio sample-rate/channel metadata."
+        ],
+        "requiredClassTypes": [
+          "BasicGuider",
+          "BasicScheduler",
+          "CLIPLoader",
+          "CreateVideo",
+          "KSamplerSelect",
+          "LoadImage",
+          "MiniMaxH3ReferenceToVideo",
+          "MiniMaxH3SigmaShift",
+          "RandomNoise",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ]
+      },
+      {
+        "id": "fasth3-omni-int8-r2v-api-discovery",
+        "candidateId": "fasth3-omni-int8-convrot-discovery",
+        "graph": {
+          "92": {
+            "class_type": "SaveVideo",
+            "inputs": {
+              "video": ["130", 0],
+              "filename_prefix": "video/FastH3-Omni",
+              "format": "mp4",
+              "codec": "h264"
+            }
+          },
+          "119": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+            }
+          },
+          "120": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+            }
+          },
+          "121": {
+            "class_type": "VAEDecodeAudio",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["120", 0]
+            }
+          },
+          "122": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["119", 0]
+            }
+          },
+          "123": {
+            "class_type": "KSamplerSelect",
+            "inputs": {
+              "sampler_name": "res_multistep"
+            }
+          },
+          "124": {
+            "class_type": "BasicScheduler",
+            "inputs": {
+              "model": ["147", 0],
+              "scheduler": "simple",
+              "steps": 8,
+              "denoise": 1
+            }
+          },
+          "125": {
+            "class_type": "SamplerCustomAdvanced",
+            "inputs": {
+              "noise": ["129", 0],
+              "guider": ["126", 0],
+              "sampler": ["123", 0],
+              "sigmas": ["124", 0],
+              "latent_image": ["136", 1]
+            }
+          },
+          "126": {
+            "class_type": "BasicGuider",
+            "inputs": {
+              "model": ["147", 0],
+              "conditioning": ["136", 0]
+            }
+          },
+          "127": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "fasth3_omniref_8step_pruned_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "128": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+              "type": "minimax",
+              "device": "default"
+            }
+          },
+          "129": {
+            "class_type": "RandomNoise",
+            "inputs": {
+              "noise_seed": 0
+            }
+          },
+          "130": {
+            "class_type": "CreateVideo",
+            "inputs": {
+              "images": ["122", 0],
+              "audio": ["121", 0],
+              "fps": 24,
+              "bit_depth": 8
+            }
+          },
+          "136": {
+            "class_type": "MiniMaxH3ReferenceToVideo",
+            "inputs": {
+              "clip": ["128", 0],
+              "vae": ["119", 0],
+              "audio_vae": ["120", 0],
+              "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+              "width": 832,
+              "height": 480,
+              "length": 124,
+              "ref_image_size": "match",
+              "ref_images.ref_image_0": ["137", 0]
+            }
+          },
+          "137": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "omni_smoke_reference.png"
+            }
+          },
+          "147": {
+            "class_type": "MiniMaxH3SigmaShift",
+            "inputs": {
+              "model": ["127", 0],
+              "shift_video": 12,
+              "shift_audio": 3
+            }
+          }
+        },
+        "graphSha256": "2b854b573f4cb66005859ebb41e52a4d4bb97ae39db82e755d4d5a65791d70fe",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "136",
+              "input": "prompt"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "136",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "136",
+              "input": "height"
+            }
+          ],
+          "frames": [
+            {
+              "nodeId": "136",
+              "input": "length"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "129",
+              "input": "noise_seed"
+            }
+          ],
+          "steps": [
+            {
+              "nodeId": "124",
+              "input": "steps"
+            }
+          ],
+          "fps": [
+            {
+              "nodeId": "130",
+              "input": "fps"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "92",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "width": 832,
+          "height": 480,
+          "frames": 124,
+          "seed": 0,
+          "steps": 8,
+          "fps": 24,
+          "frameMultiple": 17,
+          "frameOffset": 5,
+          "outputPrefix": "video/FastH3-Omni"
+        },
+        "guidance": 1,
+        "verifiedOnThisMachine": false,
+        "family": "fasth3-omni",
+        "status": "discovery-only",
+        "capabilities": ["reference-to-video", "image-to-video", "video-reference", "audio-reference", "native-audio"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c"
+          }
+        ],
+        "components": [
+          {
+            "role": "diffusion",
+            "name": "fasth3_omniref_8step_pruned_int8_convrot.safetensors",
+            "directory": "diffusion_models",
+            "precision": "INT8-ConvRot",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "851b2dc9670ed864b7f1e951ac9da047d83b1c04ded9bfcc1a9e5bba0ee33f80"
+          },
+          {
+            "role": "text-encoder",
+            "name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+            "directory": "text_encoders",
+            "precision": "INT8-ConvRot",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "bc2ced0fbea64757fa9acddccfc0b3f4819d1dcf1da6c124d690d368be283923"
+          },
+          {
+            "role": "video-vae",
+            "name": "minimax_h3_video_vae_int8_convrot.safetensors",
+            "directory": "vae",
+            "precision": "INT8-ConvRot",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e"
+          },
+          {
+            "role": "audio-vae",
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae",
+            "precision": "FP32",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+          }
+        ],
+        "smokeInput": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "durationSeconds": 5,
+          "seed": 0
+        },
+        "smokeRequirements": [
+          "Supply a real local image or video through ordered references; placeholder omni_smoke_reference.png is not a validation result.",
+          "Video references include paired original audio, occupy audio reference labels, and require duration/count validation before upload.",
+          "Inspect moving decoded frames, expected dimensions/duration, 24 FPS, synchronized non-silent audio and native audio sample-rate/channel metadata."
+        ],
+        "requiredClassTypes": [
+          "BasicGuider",
+          "BasicScheduler",
+          "CLIPLoader",
+          "CreateVideo",
+          "KSamplerSelect",
+          "LoadImage",
+          "MiniMaxH3ReferenceToVideo",
+          "MiniMaxH3SigmaShift",
+          "RandomNoise",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ]
+      },
+      {
+        "id": "fasth3-omni-fp8-r2v-api-discovery",
+        "candidateId": "fasth3-omni-fp8-discovery",
+        "graph": {
+          "92": {
+            "class_type": "SaveVideo",
+            "inputs": {
+              "video": ["130", 0],
+              "filename_prefix": "video/FastH3-Omni",
+              "format": "mp4",
+              "codec": "h264"
+            }
+          },
+          "119": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_video_vae_fp16.safetensors"
+            }
+          },
+          "120": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+            }
+          },
+          "121": {
+            "class_type": "VAEDecodeAudio",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["120", 0]
+            }
+          },
+          "122": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["119", 0]
+            }
+          },
+          "123": {
+            "class_type": "KSamplerSelect",
+            "inputs": {
+              "sampler_name": "res_multistep"
+            }
+          },
+          "124": {
+            "class_type": "BasicScheduler",
+            "inputs": {
+              "model": ["147", 0],
+              "scheduler": "simple",
+              "steps": 8,
+              "denoise": 1
+            }
+          },
+          "125": {
+            "class_type": "SamplerCustomAdvanced",
+            "inputs": {
+              "noise": ["129", 0],
+              "guider": ["126", 0],
+              "sampler": ["123", 0],
+              "sigmas": ["124", 0],
+              "latent_image": ["136", 1]
+            }
+          },
+          "126": {
+            "class_type": "BasicGuider",
+            "inputs": {
+              "model": ["147", 0],
+              "conditioning": ["136", 0]
+            }
+          },
+          "127": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "fasth3_omniref_fp8_comfy.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "128": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_32b_minimax_h3_bf16.safetensors",
+              "type": "minimax",
+              "device": "default"
+            }
+          },
+          "129": {
+            "class_type": "RandomNoise",
+            "inputs": {
+              "noise_seed": 0
+            }
+          },
+          "130": {
+            "class_type": "CreateVideo",
+            "inputs": {
+              "images": ["122", 0],
+              "audio": ["121", 0],
+              "fps": 24,
+              "bit_depth": 8
+            }
+          },
+          "136": {
+            "class_type": "MiniMaxH3ReferenceToVideo",
+            "inputs": {
+              "clip": ["128", 0],
+              "vae": ["119", 0],
+              "audio_vae": ["120", 0],
+              "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+              "width": 832,
+              "height": 480,
+              "length": 124,
+              "ref_image_size": "match",
+              "ref_images.ref_image_0": ["137", 0]
+            }
+          },
+          "137": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "omni_smoke_reference.png"
+            }
+          },
+          "147": {
+            "class_type": "MiniMaxH3SigmaShift",
+            "inputs": {
+              "model": ["127", 0],
+              "shift_video": 12,
+              "shift_audio": 3
+            }
+          }
+        },
+        "graphSha256": "07e0ab89caf3046490de7c562a7e13fb684c40cbe4ca3e6edb305492824ec798",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "136",
+              "input": "prompt"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "136",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "136",
+              "input": "height"
+            }
+          ],
+          "frames": [
+            {
+              "nodeId": "136",
+              "input": "length"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "129",
+              "input": "noise_seed"
+            }
+          ],
+          "steps": [
+            {
+              "nodeId": "124",
+              "input": "steps"
+            }
+          ],
+          "fps": [
+            {
+              "nodeId": "130",
+              "input": "fps"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "92",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "width": 832,
+          "height": 480,
+          "frames": 124,
+          "seed": 0,
+          "steps": 8,
+          "fps": 24,
+          "frameMultiple": 17,
+          "frameOffset": 5,
+          "outputPrefix": "video/FastH3-Omni"
+        },
+        "guidance": 1,
+        "verifiedOnThisMachine": false,
+        "family": "fasth3-omni",
+        "status": "discovery-only",
+        "capabilities": ["reference-to-video", "image-to-video", "video-reference", "audio-reference", "native-audio"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c"
+          }
+        ],
+        "components": [
+          {
+            "role": "diffusion",
+            "name": "fasth3_omniref_fp8_comfy.safetensors",
+            "directory": "diffusion_models",
+            "precision": "FP8",
+            "revision": "c45ffde960cba19428ca2e2c948efdadcd15218a",
+            "sha256": "d3aa751e151df957b6248db7dbe4a159549dfefe78ba884056b12b0425b019f3"
+          },
+          {
+            "role": "text-encoder",
+            "name": "qwen3vl_32b_minimax_h3_bf16.safetensors",
+            "directory": "text_encoders",
+            "precision": "BF16",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "600d567f6a9629c8574e8e7041b199bdd9c59a986afa7906910a81919610607d"
+          },
+          {
+            "role": "video-vae",
+            "name": "minimax_h3_video_vae_fp16.safetensors",
+            "directory": "vae",
+            "precision": "FP16",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522"
+          },
+          {
+            "role": "audio-vae",
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae",
+            "precision": "FP32",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+          }
+        ],
+        "smokeInput": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "durationSeconds": 5,
+          "seed": 0
+        },
+        "smokeRequirements": [
+          "Supply a real local image or video through ordered references; placeholder omni_smoke_reference.png is not a validation result.",
+          "Video references include paired original audio, occupy audio reference labels, and require duration/count validation before upload.",
+          "Inspect moving decoded frames, expected dimensions/duration, 24 FPS, synchronized non-silent audio and native audio sample-rate/channel metadata."
+        ],
+        "requiredClassTypes": [
+          "BasicGuider",
+          "BasicScheduler",
+          "CLIPLoader",
+          "CreateVideo",
+          "KSamplerSelect",
+          "LoadImage",
+          "MiniMaxH3ReferenceToVideo",
+          "MiniMaxH3SigmaShift",
+          "RandomNoise",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ]
+      },
+      {
+        "id": "fasth3-omni-nvfp4-r2v-api-discovery",
+        "candidateId": "fasth3-omni-nvfp4-qad-discovery",
+        "graph": {
+          "92": {
+            "class_type": "SaveVideo",
+            "inputs": {
+              "video": ["130", 0],
+              "filename_prefix": "video/FastH3-Omni",
+              "format": "mp4",
+              "codec": "h264"
+            }
+          },
+          "119": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+            }
+          },
+          "120": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+            }
+          },
+          "121": {
+            "class_type": "VAEDecodeAudio",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["120", 0]
+            }
+          },
+          "122": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["125", 0],
+              "vae": ["119", 0]
+            }
+          },
+          "123": {
+            "class_type": "KSamplerSelect",
+            "inputs": {
+              "sampler_name": "res_multistep"
+            }
+          },
+          "124": {
+            "class_type": "BasicScheduler",
+            "inputs": {
+              "model": ["147", 0],
+              "scheduler": "simple",
+              "steps": 8,
+              "denoise": 1
+            }
+          },
+          "125": {
+            "class_type": "SamplerCustomAdvanced",
+            "inputs": {
+              "noise": ["129", 0],
+              "guider": ["126", 0],
+              "sampler": ["123", 0],
+              "sigmas": ["124", 0],
+              "latent_image": ["136", 1]
+            }
+          },
+          "126": {
+            "class_type": "BasicGuider",
+            "inputs": {
+              "model": ["147", 0],
+              "conditioning": ["136", 0]
+            }
+          },
+          "127": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "fasth3_omniref_qad_nvfp4_comfy.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "128": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+              "type": "minimax",
+              "device": "default"
+            }
+          },
+          "129": {
+            "class_type": "RandomNoise",
+            "inputs": {
+              "noise_seed": 0
+            }
+          },
+          "130": {
+            "class_type": "CreateVideo",
+            "inputs": {
+              "images": ["122", 0],
+              "audio": ["121", 0],
+              "fps": 24,
+              "bit_depth": 8
+            }
+          },
+          "136": {
+            "class_type": "MiniMaxH3ReferenceToVideo",
+            "inputs": {
+              "clip": ["128", 0],
+              "vae": ["119", 0],
+              "audio_vae": ["120", 0],
+              "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+              "width": 832,
+              "height": 480,
+              "length": 124,
+              "ref_image_size": "match",
+              "ref_images.ref_image_0": ["137", 0]
+            }
+          },
+          "137": {
+            "class_type": "LoadImage",
+            "inputs": {
+              "image": "omni_smoke_reference.png"
+            }
+          },
+          "147": {
+            "class_type": "MiniMaxH3SigmaShift",
+            "inputs": {
+              "model": ["127", 0],
+              "shift_video": 12,
+              "shift_audio": 3
+            }
+          }
+        },
+        "graphSha256": "ec6cd84d0d5948ab163828a957b105c92dbde594c9c445579603e0b1a9591fed",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "136",
+              "input": "prompt"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "136",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "136",
+              "input": "height"
+            }
+          ],
+          "frames": [
+            {
+              "nodeId": "136",
+              "input": "length"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "129",
+              "input": "noise_seed"
+            }
+          ],
+          "steps": [
+            {
+              "nodeId": "124",
+              "input": "steps"
+            }
+          ],
+          "fps": [
+            {
+              "nodeId": "130",
+              "input": "fps"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "92",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "width": 832,
+          "height": 480,
+          "frames": 124,
+          "seed": 0,
+          "steps": 8,
+          "fps": 24,
+          "frameMultiple": 17,
+          "frameOffset": 5,
+          "outputPrefix": "video/FastH3-Omni"
+        },
+        "guidance": 1,
+        "verifiedOnThisMachine": false,
+        "family": "fasth3-omni",
+        "status": "discovery-only",
+        "capabilities": ["reference-to-video", "image-to-video", "video-reference", "audio-reference", "native-audio"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c"
+          }
+        ],
+        "components": [
+          {
+            "role": "diffusion",
+            "name": "fasth3_omniref_qad_nvfp4_comfy.safetensors",
+            "directory": "diffusion_models",
+            "precision": "NVFP4-QAD",
+            "revision": "36dbf15cd11113471114b1040c4f38646c031549",
+            "sha256": "bf25ee58df65b4dfee349d612f7ac62a2fea0dddd1e68eb37e75c8ce8b166f5a"
+          },
+          {
+            "role": "text-encoder",
+            "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+            "directory": "text_encoders",
+            "precision": "NVFP4-AWQ",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "35a88d51044231fe332301d7a62aa81e3f2cba62febeb446e2c1e3e0ef76f2c6"
+          },
+          {
+            "role": "video-vae",
+            "name": "minimax_h3_video_vae_int8_convrot.safetensors",
+            "directory": "vae",
+            "precision": "INT8-ConvRot",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e"
+          },
+          {
+            "role": "audio-vae",
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae",
+            "precision": "FP32",
+            "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+            "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+          }
+        ],
+        "smokeInput": {
+          "prompt": "Use <Picture 1> to create a cinematic scene with synchronized sound.",
+          "durationSeconds": 5,
+          "seed": 0
+        },
+        "smokeRequirements": [
+          "Supply a real local image or video through ordered references; placeholder omni_smoke_reference.png is not a validation result.",
+          "Video references include paired original audio, occupy audio reference labels, and require duration/count validation before upload.",
+          "Inspect moving decoded frames, expected dimensions/duration, 24 FPS, synchronized non-silent audio and native audio sample-rate/channel metadata."
+        ],
+        "requiredClassTypes": [
+          "BasicGuider",
+          "BasicScheduler",
+          "CLIPLoader",
+          "CreateVideo",
+          "KSamplerSelect",
+          "LoadImage",
+          "MiniMaxH3ReferenceToVideo",
+          "MiniMaxH3SigmaShift",
+          "RandomNoise",
+          "SamplerCustomAdvanced",
+          "SaveVideo",
+          "UNETLoader",
+          "VAEDecode",
+          "VAEDecodeAudio",
+          "VAELoader"
+        ]
+      }
+    ],
+    "source": "https://huggingface.co/FastVideo/FastH3-Omni-Comfy",
+    "revision": "82eff2a6eee6c962846879f4bab52610a4df24d3",
+    "researchedAt": "2026-10-22",
+    "verifiedOnThisMachine": false,
+    "status": "source-derived-api-baselines-discovery-only",
+    "coreRevision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+    "originalTemplate": {
+      "repository": "Comfy-Org/workflow_templates",
+      "revision": "020a271ba4cf341096f70dfb6f4fe85bd5df2f5e",
+      "path": "templates/video_minimax_h3_r2v.json",
+      "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/020a271ba4cf341096f70dfb6f4fe85bd5df2f5e/templates/video_minimax_h3_r2v.json",
+      "sizeBytes": 45323,
+      "sha256": "afeea99e9fd5a1456df348e0573e289c1243f2f28546fc95c1c963f808d61ddb",
+      "format": "ui",
+      "apiConversionRequired": true
+    },
+    "schemaSha256": "d89b24e4e9f33d9eebfd88ecc9f22c87342e7f98e7669f89885a508704b1fd20",
+    "schemaSources": [
+      {
+        "path": "nodes.py",
+        "revision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c/nodes.py",
+        "sizeBytes": 109595,
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e"
+      },
+      {
+        "path": "comfy_extras/nodes_minimax_h3.py",
+        "revision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c/comfy_extras/nodes_minimax_h3.py",
+        "sizeBytes": 30934,
+        "sha256": "108ceff11e5a5c9a34a57bbc380447cf9941beb673a1bd421abc818de54ccd5c"
+      },
+      {
+        "path": "comfy_extras/nodes_video.py",
+        "revision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c/comfy_extras/nodes_video.py",
+        "sizeBytes": 23647,
+        "sha256": "9d01f3f5cc392a475fcf1422366a66d5ea665c59e391a9c0d6374e6b84ed8a0c"
+      },
+      {
+        "path": "comfy_extras/nodes_audio.py",
+        "revision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c/comfy_extras/nodes_audio.py",
+        "sizeBytes": 35175,
+        "sha256": "483466af050a43bf96f9fcdfa56ab2759dbf8611dd6a14a9543f6d136ecbdf43"
+      },
+      {
+        "path": "comfy_extras/nodes_custom_sampler.py",
+        "revision": "b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c",
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/b1a247c9cf9dbfda4b2c0a0c1d50950667eeaa0c/comfy_extras/nodes_custom_sampler.py",
+        "sizeBytes": 49739,
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe"
+      }
+    ],
+    "classEvidence": {
+      "VAELoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e",
+        "inputOrder": {
+          "required": ["vae_name"],
+          "optional": []
+        }
+      },
+      "CLIPLoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e",
+        "inputOrder": {
+          "required": ["clip_name", "type"],
+          "optional": ["device"]
+        }
+      },
+      "UNETLoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e",
+        "inputOrder": {
+          "required": ["unet_name", "weight_dtype"],
+          "optional": []
+        }
+      },
+      "MiniMaxH3SigmaShift": {
+        "sourcePath": "comfy_extras/nodes_minimax_h3.py",
+        "sha256": "108ceff11e5a5c9a34a57bbc380447cf9941beb673a1bd421abc818de54ccd5c",
+        "inputOrder": {
+          "required": ["model", "shift_video", "shift_audio"],
+          "optional": []
+        }
+      },
+      "KSamplerSelect": {
+        "sourcePath": "comfy_extras/nodes_custom_sampler.py",
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+        "inputOrder": {
+          "required": ["sampler_name"],
+          "optional": []
+        }
+      },
+      "BasicScheduler": {
+        "sourcePath": "comfy_extras/nodes_custom_sampler.py",
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+        "inputOrder": {
+          "required": ["model", "scheduler", "steps", "denoise"],
+          "optional": []
+        }
+      },
+      "RandomNoise": {
+        "sourcePath": "comfy_extras/nodes_custom_sampler.py",
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+        "inputOrder": {
+          "required": ["noise_seed"],
+          "optional": []
+        }
+      },
+      "BasicGuider": {
+        "sourcePath": "comfy_extras/nodes_custom_sampler.py",
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+        "inputOrder": {
+          "required": ["model", "conditioning"],
+          "optional": []
+        }
+      },
+      "SamplerCustomAdvanced": {
+        "sourcePath": "comfy_extras/nodes_custom_sampler.py",
+        "sha256": "b0ba1521c72475e06fed15db004274ed7c8bb2bf73f1d58849faf6f9f9d264fe",
+        "inputOrder": {
+          "required": ["noise", "guider", "sampler", "sigmas", "latent_image"],
+          "optional": []
+        }
+      },
+      "VAEDecode": {
+        "sourcePath": "nodes.py",
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e",
+        "inputOrder": {
+          "required": ["samples", "vae"],
+          "optional": []
+        }
+      },
+      "VAEDecodeAudio": {
+        "sourcePath": "comfy_extras/nodes_audio.py",
+        "sha256": "483466af050a43bf96f9fcdfa56ab2759dbf8611dd6a14a9543f6d136ecbdf43",
+        "inputOrder": {
+          "required": ["samples", "vae"],
+          "optional": []
+        }
+      },
+      "CreateVideo": {
+        "sourcePath": "comfy_extras/nodes_video.py",
+        "sha256": "9d01f3f5cc392a475fcf1422366a66d5ea665c59e391a9c0d6374e6b84ed8a0c",
+        "inputOrder": {
+          "required": ["images", "fps"],
+          "optional": ["audio", "bit_depth", "color_space"]
+        }
+      },
+      "LoadImage": {
+        "sourcePath": "nodes.py",
+        "sha256": "a6db3d4ea52220db85bf92a01e27a3e8b17545f7d1c6d2fc6c929f1eb27b111e",
+        "inputOrder": {
+          "required": ["image"],
+          "optional": []
+        }
+      },
+      "MiniMaxH3ReferenceToVideo": {
+        "sourcePath": "comfy_extras/nodes_minimax_h3.py",
+        "sha256": "108ceff11e5a5c9a34a57bbc380447cf9941beb673a1bd421abc818de54ccd5c",
+        "inputOrder": {
+          "required": ["clip", "prompt", "width", "height", "length", "ref_image_size"],
+          "optional": ["vae", "audio_vae", "ref_images", "ref_videos", "ref_video_audios", "ref_audios"]
+        }
+      },
+      "SaveVideo": {
+        "sourcePath": "comfy_extras/nodes_video.py",
+        "sha256": "9d01f3f5cc392a475fcf1422366a66d5ea665c59e391a9c0d6374e6b84ed8a0c",
+        "inputOrder": {
+          "required": ["video", "filename_prefix", "format"],
+          "optional": ["codec"]
+        }
+      }
+    },
+    "derivation": [
+      "Manually project executed node schemas from pinned ComfyUI source; loader enums restricted to catalog artifacts and selected runtime controls.",
+      "Resolve UI helper constants; preserve original R2V conditioning, sampler, joint audio/video latent and output links.",
+      "Remove model/step switches, disconnected reference examples and mismatched Turbo LoRA.",
+      "Replace diffusion and matched encoder/VAEs with the selected official Omni Comfy set; set 8 steps and BasicGuider guidance 1.",
+      "Insert MiniMaxH3SigmaShift with video/audio shifts 12/3 and bind both scheduler and guider to its MODEL output.",
+      "Expose semantic frames conversion at 24 FPS with 17n+5 alignment; keep image placeholder for dynamic ordered references.",
+      "SaveVideo accepts legacy string format/codec; verify actual object_info including dynamic combos before generation."
+    ],
+    "structuralValidation": "Offline structural projection only; local schema validation, CUDA kernel checks, peak memory and end-to-end generation remain required."
+  },
+  "imageModels": {
+    "researchedAt": "2026-10-22",
+    "status": "discovery-only",
+    "verifiedOnThisMachine": false,
+    "coreRevision": "46aad33e4d4c0696582611bf450dd93742fa9090",
+    "schemaSources": [
+      {
+        "path": "nodes.py",
+        "revision": "46aad33e4d4c0696582611bf450dd93742fa9090",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "sizeBytes": 109650,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/46aad33e4d4c0696582611bf450dd93742fa9090/nodes.py"
+      },
+      {
+        "path": "comfy_extras/nodes_flux.py",
+        "revision": "46aad33e4d4c0696582611bf450dd93742fa9090",
+        "sha256": "7d2c4515a328eb6ae37c716d272df05629d21b6d4e90d454bf4f91c8f3f94d5a",
+        "sizeBytes": 11984,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/46aad33e4d4c0696582611bf450dd93742fa9090/comfy_extras/nodes_flux.py"
+      },
+      {
+        "path": "comfy_extras/nodes_slg.py",
+        "revision": "46aad33e4d4c0696582611bf450dd93742fa9090",
+        "sha256": "3042fb89646636eea114df5fa0090bdd8de26231bcd30bbfec304041e9ee1213",
+        "sizeBytes": 7161,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/46aad33e4d4c0696582611bf450dd93742fa9090/comfy_extras/nodes_slg.py"
+      },
+      {
+        "path": "comfy/supported_models.py",
+        "revision": "46aad33e4d4c0696582611bf450dd93742fa9090",
+        "sha256": "72e594a47489a66c3a5a4bf1010a41617170470d9a7ed0b8a789d0bb8dc04593",
+        "sizeBytes": 91229,
+        "url": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/46aad33e4d4c0696582611bf450dd93742fa9090/comfy/supported_models.py"
+      }
+    ],
+    "classEvidence": {
+      "UNETLoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["unet_name", "weight_dtype"]
+        }
+      },
+      "CLIPLoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["clip_name", "type"],
+          "optional": ["device"]
+        }
+      },
+      "VAELoader": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["vae_name"]
+        }
+      },
+      "CLIPTextEncode": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["text", "clip"]
+        }
+      },
+      "ConditioningZeroOut": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["conditioning"]
+        }
+      },
+      "KSampler": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": [
+            "model",
+            "seed",
+            "steps",
+            "cfg",
+            "sampler_name",
+            "scheduler",
+            "positive",
+            "negative",
+            "latent_image",
+            "denoise"
+          ]
+        }
+      },
+      "VAEDecode": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["samples", "vae"]
+        }
+      },
+      "SaveImage": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["images", "filename_prefix"],
+          "hidden": ["prompt", "extra_pnginfo"]
+        }
+      },
+      "EmptyFlux2LatentImage": {
+        "sourcePath": "comfy_extras/nodes_flux.py",
+        "sha256": "7d2c4515a328eb6ae37c716d272df05629d21b6d4e90d454bf4f91c8f3f94d5a",
+        "inputOrder": {
+          "required": ["width", "height", "batch_size"]
+        }
+      },
+      "EmptyLatentImage": {
+        "sourcePath": "nodes.py",
+        "sha256": "4cfd9be3754f9dc25213febdf96b690d6e32007c2e539d37e799d82226d758c5",
+        "inputOrder": {
+          "required": ["width", "height", "batch_size"]
+        }
+      },
+      "SkipLayerGuidanceDiTSimple": {
+        "sourcePath": "comfy_extras/nodes_slg.py",
+        "sha256": "3042fb89646636eea114df5fa0090bdd8de26231bcd30bbfec304041e9ee1213",
+        "inputOrder": {
+          "required": ["model", "double_layers", "single_layers", "start_percent", "end_percent"]
+        }
+      }
+    },
+    "sourceDerivedObjectInfo": {
+      "UNETLoader": {
+        "input": {
+          "required": {
+            "unet_name": [
+              [
+                "flux3-image-klein-bf16.safetensors",
+                "flux3-image-klein-int8-convrot.safetensors",
+                "flux3-image-klein-nvfp4.safetensors",
+                "moss_image_base_bf16.safetensors",
+                "moss_image_sft_bf16.safetensors",
+                "moss_image_base_int8_convrot.safetensors",
+                "moss_image_sft_int8_convrot.safetensors",
+                "krea2_turbo_bf16.safetensors",
+                "krea2_turbo_fp8_scaled.safetensors",
+                "krea2_turbo_int8_convrot.safetensors",
+                "krea2_turbo_nvfp4.safetensors"
+              ]
+            ],
+            "weight_dtype": [
+              ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],
+              {
+                "advanced": true
+              }
+            ]
+          }
+        },
+        "output": ["MODEL"],
+        "output_node": false
+      },
+      "CLIPLoader": {
+        "input": {
+          "required": {
+            "clip_name": [
+              [
+                "qwen3vl_4b_bf16.safetensors",
+                "qwen3vl_4b_int8_convrot.safetensors",
+                "qwen3.5_9b_bf16.safetensors",
+                "qwen3.5_9b_int8_convrot.safetensors",
+                "qwen3.5_9b_w4a8_gptq.safetensors",
+                "qwen3vl_4b_fp8_scaled.safetensors"
+              ]
+            ],
+            "type": [["flux3", "moss_image", "krea2"]]
+          },
+          "optional": {
+            "device": [
+              ["default", "cpu"],
+              {
+                "advanced": true
+              }
+            ]
+          }
+        },
+        "output": ["CLIP"],
+        "output_node": false
+      },
+      "VAELoader": {
+        "input": {
+          "required": {
+            "vae_name": [["flux2-vae.safetensors", "flux2-vae_small.safetensors", "qwen_image_vae.safetensors"]]
+          }
+        },
+        "output": ["VAE"],
+        "output_node": false
+      },
+      "CLIPTextEncode": {
+        "input": {
+          "required": {
+            "text": [
+              "STRING",
+              {
+                "multiline": true,
+                "dynamicPrompts": true
+              }
+            ],
+            "clip": ["CLIP", {}]
+          }
+        },
+        "output": ["CONDITIONING"],
+        "output_node": false
+      },
+      "ConditioningZeroOut": {
+        "input": {
+          "required": {
+            "conditioning": ["CONDITIONING"]
+          }
+        },
+        "output": ["CONDITIONING"],
+        "output_node": false
+      },
+      "KSampler": {
+        "input": {
+          "required": {
+            "model": ["MODEL", {}],
+            "seed": [
+              "INT",
+              {
+                "default": 0,
+                "min": 0,
+                "max": 18446744073709552000,
+                "control_after_generate": true
+              }
+            ],
+            "steps": [
+              "INT",
+              {
+                "default": 20,
+                "min": 1,
+                "max": 10000
+              }
+            ],
+            "cfg": [
+              "FLOAT",
+              {
+                "default": 8,
+                "min": 0,
+                "max": 100,
+                "step": 0.1,
+                "round": 0.01
+              }
+            ],
+            "sampler_name": [
+              [
+                "euler",
+                "euler_cfg_pp",
+                "euler_ancestral",
+                "euler_ancestral_cfg_pp",
+                "heun",
+                "heunpp2",
+                "exp_heun_2_x0",
+                "exp_heun_2_x0_sde",
+                "dpm_2",
+                "dpm_2_ancestral",
+                "lms",
+                "dpm_fast",
+                "dpm_adaptive",
+                "dpmpp_2s_ancestral",
+                "dpmpp_2s_ancestral_cfg_pp",
+                "dpmpp_sde",
+                "dpmpp_sde_gpu",
+                "dpmpp_2m",
+                "dpmpp_2m_cfg_pp",
+                "dpmpp_2m_sde",
+                "dpmpp_2m_sde_gpu",
+                "dpmpp_2m_sde_heun",
+                "dpmpp_2m_sde_heun_gpu",
+                "dpmpp_3m_sde",
+                "dpmpp_3m_sde_gpu",
+                "ddpm",
+                "lcm",
+                "ipndm",
+                "ipndm_v",
+                "deis",
+                "cfgpp_ud10_ab",
+                "res_multistep",
+                "res_multistep_cfg_pp",
+                "res_multistep_ancestral",
+                "res_multistep_ancestral_cfg_pp",
+                "gradient_estimation",
+                "gradient_estimation_cfg_pp",
+                "er_sde",
+                "seeds_2",
+                "seeds_3",
+                "sa_solver",
+                "sa_solver_pece",
+                "ddim",
+                "uni_pc",
+                "uni_pc_bh2"
+              ],
+              {}
+            ],
+            "scheduler": [
+              [
+                "simple",
+                "sgm_uniform",
+                "karras",
+                "exponential",
+                "ddim_uniform",
+                "beta",
+                "normal",
+                "linear_quadratic",
+                "kl_optimal"
+              ],
+              {}
+            ],
+            "positive": ["CONDITIONING", {}],
+            "negative": ["CONDITIONING", {}],
+            "latent_image": ["LATENT", {}],
+            "denoise": [
+              "FLOAT",
+              {
+                "default": 1,
+                "min": 0,
+                "max": 1,
+                "step": 0.01
+              }
+            ]
+          }
+        },
+        "output": ["LATENT"],
+        "output_node": false
+      },
+      "VAEDecode": {
+        "input": {
+          "required": {
+            "samples": ["LATENT", {}],
+            "vae": ["VAE", {}]
+          }
+        },
+        "output": ["IMAGE"],
+        "output_node": false
+      },
+      "SaveImage": {
+        "input": {
+          "required": {
+            "images": ["IMAGE", {}],
+            "filename_prefix": [
+              "STRING",
+              {
+                "default": "ComfyUI"
+              }
+            ]
+          },
+          "hidden": {
+            "prompt": "PROMPT",
+            "extra_pnginfo": "EXTRA_PNGINFO"
+          }
+        },
+        "output": ["IMAGE"],
+        "output_node": true
+      },
+      "EmptyFlux2LatentImage": {
+        "input": {
+          "required": {
+            "width": [
+              "INT",
+              {
+                "default": 1024,
+                "min": 16,
+                "max": 16384,
+                "step": 16
+              }
+            ],
+            "height": [
+              "INT",
+              {
+                "default": 1024,
+                "min": 16,
+                "max": 16384,
+                "step": 16
+              }
+            ],
+            "batch_size": [
+              "INT",
+              {
+                "default": 1,
+                "min": 1,
+                "max": 4096
+              }
+            ]
+          }
+        },
+        "output": ["LATENT"]
+      },
+      "EmptyLatentImage": {
+        "input": {
+          "required": {
+            "width": [
+              "INT",
+              {
+                "default": 1024,
+                "min": 16,
+                "max": 16384,
+                "step": 8
+              }
+            ],
+            "height": [
+              "INT",
+              {
+                "default": 1024,
+                "min": 16,
+                "max": 16384,
+                "step": 8
+              }
+            ],
+            "batch_size": [
+              "INT",
+              {
+                "default": 1,
+                "min": 1,
+                "max": 4096
+              }
+            ]
+          }
+        },
+        "output": ["LATENT"]
+      },
+      "SkipLayerGuidanceDiTSimple": {
+        "input": {
+          "required": {
+            "model": ["MODEL"],
+            "double_layers": [
+              "STRING",
+              {
+                "default": "7, 8, 9",
+                "advanced": true
+              }
+            ],
+            "single_layers": [
+              "STRING",
+              {
+                "default": "7, 8, 9",
+                "advanced": true
+              }
+            ],
+            "start_percent": [
+              "FLOAT",
+              {
+                "default": 0,
+                "min": 0,
+                "max": 1,
+                "step": 0.001,
+                "advanced": true
+              }
+            ],
+            "end_percent": [
+              "FLOAT",
+              {
+                "default": 1,
+                "min": 0,
+                "max": 1,
+                "step": 0.001,
+                "advanced": true
+              }
+            ]
+          }
+        },
+        "output": ["MODEL"]
+      }
+    },
+    "schemaSha256": "23025d0b108bdaf9fa8ddde70e60cbb41c374d45b4f3a46d2b2d8f43e5723b02",
+    "baselines": [
+      {
+        "id": "flux-3-image-klein-bf16-t2i-api-discovery",
+        "candidateId": "flux-3-image-klein-bf16-t2i-discovery",
+        "family": "flux-3-image-klein",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "flux3-image-klein-bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_bf16.safetensors",
+              "type": "flux3",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 16,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "flux-3-image-klein"
+            }
+          }
+        },
+        "graphSha256": "a0e9218bea2aa6d276aa441c1deba62543025ab7bf5d78bec877542fc18d4562",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "flux-3-image-klein"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_flux3_klein_distilled_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_flux3_klein_distilled_t2i.json",
+            "sizeBytes": 55478,
+            "sha256": "253fa4e783da734acd03b804a8731d0a7a8c564b73961837762800eb5cf85388",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Mandatory agent/LLM full scene caption; do not submit a raw short request",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Prompt expansion by the existing agent/LLM is mandatory before CLIPTextEncode. The local prompt-upsampler branch is intentionally excluded to avoid a second LLM download.",
+            "Official ModelScope repository is gated; anonymous repo/files returned 404 on 2026-10-22. Do not invent a revision or infer equivalence from underscore versus hyphen filenames. Re-check authorized metadata before adding it as a transport.",
+            "Hugging Face/hf-mirror gated access still needs legitimate repository access. Authentication failure is not a hardware failure."
+          ]
+        }
+      },
+      {
+        "id": "flux-3-image-klein-int8-t2i-api-discovery",
+        "candidateId": "flux-3-image-klein-int8-t2i-discovery",
+        "family": "flux-3-image-klein",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "flux3-image-klein-int8-convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+              "type": "flux3",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 16,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "flux-3-image-klein"
+            }
+          }
+        },
+        "graphSha256": "470250ba87f128c643ed6d03ecc7e191adafe9c79a8cbf54ae2a5dd66f13b10c",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "flux-3-image-klein"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_flux3_klein_distilled_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_flux3_klein_distilled_t2i.json",
+            "sizeBytes": 55478,
+            "sha256": "253fa4e783da734acd03b804a8731d0a7a8c564b73961837762800eb5cf85388",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Mandatory agent/LLM full scene caption; do not submit a raw short request",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Prompt expansion by the existing agent/LLM is mandatory before CLIPTextEncode. The local prompt-upsampler branch is intentionally excluded to avoid a second LLM download.",
+            "Official ModelScope repository is gated; anonymous repo/files returned 404 on 2026-10-22. Do not invent a revision or infer equivalence from underscore versus hyphen filenames. Re-check authorized metadata before adding it as a transport.",
+            "Hugging Face/hf-mirror gated access still needs legitimate repository access. Authentication failure is not a hardware failure."
+          ]
+        }
+      },
+      {
+        "id": "flux-3-image-klein-nvfp4-t2i-api-discovery",
+        "candidateId": "flux-3-image-klein-nvfp4-t2i-discovery",
+        "family": "flux-3-image-klein",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "flux3-image-klein-nvfp4.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+              "type": "flux3",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 16,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "flux-3-image-klein"
+            }
+          }
+        },
+        "graphSha256": "0311f86a9c389f380101fded4234aee2cccb10c43f84c246708c8160f312f3f3",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "flux-3-image-klein"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_flux3_klein_distilled_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_flux3_klein_distilled_t2i.json",
+            "sizeBytes": 55478,
+            "sha256": "253fa4e783da734acd03b804a8731d0a7a8c564b73961837762800eb5cf85388",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Mandatory agent/LLM full scene caption; do not submit a raw short request",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Prompt expansion by the existing agent/LLM is mandatory before CLIPTextEncode. The local prompt-upsampler branch is intentionally excluded to avoid a second LLM download.",
+            "Official ModelScope repository is gated; anonymous repo/files returned 404 on 2026-10-22. Do not invent a revision or infer equivalence from underscore versus hyphen filenames. Re-check authorized metadata before adding it as a transport.",
+            "Hugging Face/hf-mirror gated access still needs legitimate repository access. Authentication failure is not a hardware failure."
+          ]
+        }
+      },
+      {
+        "id": "moss-image-base-bf16-t2i-api-discovery",
+        "candidateId": "moss-image-base-bf16-t2i-discovery",
+        "family": "moss-image-base",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_base_bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_bf16.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-base"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "5a0bbec16ff26fc568698479415e7157825571ca4fda1250ac7e645c3180cc58",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-base"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_base_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_base_t2i.json",
+            "sizeBytes": 74194,
+            "sha256": "79f897bcc9d8ae049f731f633110b6b919042198575cf7794ed9e023055c540a",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-Base, never substitutes SFT. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        }
+      },
+      {
+        "id": "moss-image-base-int8-t2i-api-discovery",
+        "candidateId": "moss-image-base-int8-t2i-discovery",
+        "family": "moss-image-base",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_base_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_int8_convrot.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-base"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "5534de03c0e1c70927515f1554986fb3f3b4b9406b82732daf6725b1a787fd6a",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-base"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_base_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_base_t2i.json",
+            "sizeBytes": 74194,
+            "sha256": "79f897bcc9d8ae049f731f633110b6b919042198575cf7794ed9e023055c540a",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-Base, never substitutes SFT. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        }
+      },
+      {
+        "id": "moss-image-base-int8-w4a8-t2i-api-discovery",
+        "candidateId": "moss-image-base-int8-w4a8-t2i-discovery",
+        "family": "moss-image-base",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_base_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_w4a8_gptq.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-base"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "bad003983b29c72c07bf996b3b234602df31bdc2ba4c637fff9b9fb1ac1821dd",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-base"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_base_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_base_t2i.json",
+            "sizeBytes": 74194,
+            "sha256": "79f897bcc9d8ae049f731f633110b6b919042198575cf7794ed9e023055c540a",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-Base, never substitutes SFT. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        }
+      },
+      {
+        "id": "krea2-bf16-t2i-api-discovery",
+        "candidateId": "krea2-bf16-t2i-discovery",
+        "family": "krea2",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "krea2_turbo_bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_bf16.safetensors",
+              "type": "krea2",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "qwen_image_vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 8,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "krea2"
+            }
+          }
+        },
+        "graphSha256": "2d0de35abb6386a7372458b7299424f0f23e843d8eeca0532ac71ae60582e80d",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "krea2"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_krea2_turbo_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_krea2_turbo_t2i.json",
+            "sizeBytes": 59709,
+            "sha256": "c765bbcddb961b24ab0337b0e89ad6f736b96d06c8d0ae5cff8c769e030a35b7",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Uses Turbo, not Raw, at 8 steps/CFG 1; optional prompt-enhancement, style LoRA and their UI switches are removed. No implicit image-edit or style-reference capability."
+          ]
+        }
+      },
+      {
+        "id": "krea2-fp8-t2i-api-discovery",
+        "candidateId": "krea2-fp8-t2i-discovery",
+        "family": "krea2",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "krea2_turbo_fp8_scaled.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_fp8_scaled.safetensors",
+              "type": "krea2",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "qwen_image_vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 8,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "krea2"
+            }
+          }
+        },
+        "graphSha256": "3d5cee5b56a4d29469f0c92e3fea2433e10520bcafa66c810a38eb6a1fc44551",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "krea2"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_krea2_turbo_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_krea2_turbo_t2i.json",
+            "sizeBytes": 59709,
+            "sha256": "c765bbcddb961b24ab0337b0e89ad6f736b96d06c8d0ae5cff8c769e030a35b7",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Uses Turbo, not Raw, at 8 steps/CFG 1; optional prompt-enhancement, style LoRA and their UI switches are removed. No implicit image-edit or style-reference capability."
+          ]
+        }
+      },
+      {
+        "id": "krea2-int8-t2i-api-discovery",
+        "candidateId": "krea2-int8-t2i-discovery",
+        "family": "krea2",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "krea2_turbo_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+              "type": "krea2",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "qwen_image_vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 8,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "krea2"
+            }
+          }
+        },
+        "graphSha256": "6e6d38650241ddf9fe6c155aa98cefa64ad2ac8b1a2182e11c9830eafe83caf3",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "krea2"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_krea2_turbo_t2i_int8.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_krea2_turbo_t2i_int8.json",
+            "sizeBytes": 60684,
+            "sha256": "486dba5e7e971e8f5b03a8577c505c96d551d0cfcb79fbd2da56902042dec895",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Uses Turbo, not Raw, at 8 steps/CFG 1; optional prompt-enhancement, style LoRA and their UI switches are removed. No implicit image-edit or style-reference capability."
+          ]
+        }
+      },
+      {
+        "id": "krea2-nvfp4-t2i-api-discovery",
+        "candidateId": "krea2-nvfp4-t2i-discovery",
+        "family": "krea2",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "krea2_turbo_nvfp4.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+              "type": "krea2",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "qwen_image_vae.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "ConditioningZeroOut",
+            "inputs": {
+              "conditioning": ["4", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyLatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["1", 0],
+              "seed": 0,
+              "steps": 8,
+              "cfg": 1,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "krea2"
+            }
+          }
+        },
+        "graphSha256": "a1d1baa430e45ef9d27c09bf80549cdfd696b91a05a3fc4ef5182e82bbc5c94f",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "krea2"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_krea2_turbo_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_krea2_turbo_t2i.json",
+            "sizeBytes": 59709,
+            "sha256": "c765bbcddb961b24ab0337b0e89ad6f736b96d06c8d0ae5cff8c769e030a35b7",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The baseline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Uses Turbo, not Raw, at 8 steps/CFG 1; optional prompt-enhancement, style LoRA and their UI switches are removed. No implicit image-edit or style-reference capability."
+          ]
+        }
+      },
+      {
+        "id": "moss-image-sft-bf16-t2i-api-discovery",
+        "candidateId": "moss-image-sft-bf16-t2i-discovery",
+        "family": "moss-image-sft",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_sft_bf16.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_bf16.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-sft"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "88c2873029018173bddab2fcf1ab6ce455b37c3a2f82a9301f9da628f93708a8",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-sft"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+            "sizeBytes": 75307,
+            "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The sftline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-SFT, never substitutes Base. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        },
+        "workflow": {
+          "repository": "Comfy-Org/workflow_templates",
+          "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+          "path": "templates/image_moss_image_t2i.json",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+          "sizeBytes": 75307,
+          "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+          "format": "ui",
+          "apiConversionRequired": true
+        }
+      },
+      {
+        "id": "moss-image-sft-int8-t2i-api-discovery",
+        "candidateId": "moss-image-sft-int8-t2i-discovery",
+        "family": "moss-image-sft",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_sft_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_int8_convrot.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-sft"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "1c3231bc7f2c703065926512f8ba9fd8234e7f6c46332daaae31da6f596fc36b",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-sft"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+            "sizeBytes": 75307,
+            "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The sftline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-SFT, never substitutes Base. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        },
+        "workflow": {
+          "repository": "Comfy-Org/workflow_templates",
+          "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+          "path": "templates/image_moss_image_t2i.json",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+          "sizeBytes": 75307,
+          "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+          "format": "ui",
+          "apiConversionRequired": true
+        }
+      },
+      {
+        "id": "moss-image-sft-int8-w4a8-t2i-api-discovery",
+        "candidateId": "moss-image-sft-int8-w4a8-t2i-discovery",
+        "family": "moss-image-sft",
+        "status": "discovery-only",
+        "verifiedOnThisMachine": false,
+        "capabilities": ["text-to-image"],
+        "requiredNodes": [
+          {
+            "id": "comfyui-core",
+            "version": "46aad33e4d4c0696582611bf450dd93742fa9090"
+          }
+        ],
+        "graph": {
+          "1": {
+            "class_type": "UNETLoader",
+            "inputs": {
+              "unet_name": "moss_image_sft_int8_convrot.safetensors",
+              "weight_dtype": "default"
+            }
+          },
+          "2": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+              "clip_name": "qwen3.5_9b_w4a8_gptq.safetensors",
+              "type": "moss_image",
+              "device": "default"
+            }
+          },
+          "3": {
+            "class_type": "VAELoader",
+            "inputs": {
+              "vae_name": "flux2-vae_small.safetensors"
+            }
+          },
+          "4": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+              "clip": ["2", 0]
+            }
+          },
+          "5": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+              "text": "",
+              "clip": ["2", 0]
+            }
+          },
+          "6": {
+            "class_type": "EmptyFlux2LatentImage",
+            "inputs": {
+              "width": 1024,
+              "height": 1024,
+              "batch_size": 1
+            }
+          },
+          "7": {
+            "class_type": "KSampler",
+            "inputs": {
+              "model": ["10", 0],
+              "seed": 0,
+              "steps": 50,
+              "cfg": 3,
+              "sampler_name": "euler",
+              "scheduler": "simple",
+              "positive": ["4", 0],
+              "negative": ["5", 0],
+              "latent_image": ["6", 0],
+              "denoise": 1
+            }
+          },
+          "8": {
+            "class_type": "VAEDecode",
+            "inputs": {
+              "samples": ["7", 0],
+              "vae": ["3", 0]
+            }
+          },
+          "9": {
+            "class_type": "SaveImage",
+            "inputs": {
+              "images": ["8", 0],
+              "filename_prefix": "moss-image-sft"
+            }
+          },
+          "10": {
+            "class_type": "SkipLayerGuidanceDiTSimple",
+            "inputs": {
+              "model": ["1", 0],
+              "double_layers": "",
+              "single_layers": "22",
+              "start_percent": 0,
+              "end_percent": 1
+            }
+          }
+        },
+        "graphSha256": "71caa6ff354043aa4551e4b6b077125e200630b6b6b702b27e217ff17ff5e5cc",
+        "graphSerialization": "UTF-8 JSON.stringify(graph, null, 2) + '\\n'",
+        "bindings": {
+          "prompt": [
+            {
+              "nodeId": "4",
+              "input": "text"
+            }
+          ],
+          "seed": [
+            {
+              "nodeId": "7",
+              "input": "seed"
+            }
+          ],
+          "width": [
+            {
+              "nodeId": "6",
+              "input": "width"
+            }
+          ],
+          "height": [
+            {
+              "nodeId": "6",
+              "input": "height"
+            }
+          ],
+          "batchSize": [
+            {
+              "nodeId": "6",
+              "input": "batch_size"
+            }
+          ],
+          "outputPrefix": [
+            {
+              "nodeId": "9",
+              "input": "filename_prefix"
+            }
+          ],
+          "negativePrompt": [
+            {
+              "nodeId": "5",
+              "input": "text"
+            }
+          ]
+        },
+        "defaults": {
+          "width": 1024,
+          "height": 1024,
+          "batchSize": 1,
+          "seed": 0,
+          "outputPrefix": "moss-image-sft"
+        },
+        "smokeInput": {
+          "prompt": "A studio photograph of a red ceramic teapot on a pale wooden table, soft light from a window on the left, a plain cream wall behind it. The teapot is centered with its handle on the right and curved spout on the left. Fine ceramic texture, a soft shadow falling to the right, and a quiet uncluttered composition.",
+          "width": 512,
+          "height": 512,
+          "batchSize": 1,
+          "seed": 42
+        },
+        "smokeRequirements": [
+          "Decode and inspect the real image for dimensions, coherent content and nonblank output; persist fingerprint and actual peak memory.",
+          "Revalidate on the selected device and kernels before marking verified."
+        ],
+        "derivation": {
+          "method": "Source-derived specialization of pinned official UI template and model reference settings; not a live API export or converter execution",
+          "originalTemplate": {
+            "repository": "Comfy-Org/workflow_templates",
+            "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+            "path": "templates/image_moss_image_t2i.json",
+            "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+            "sizeBytes": 75307,
+            "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+            "format": "ui",
+            "apiConversionRequired": true
+          },
+          "promptPreparation": "Agent caption, no additional enhancer weights required",
+          "limitations": [
+            "Discovery-only; file metadata and offline schema checks do not establish device compatibility or successful generation.",
+            "Select using actual OS, GPU architecture, driver, Python/Torch/CUDA or ROCm/MPS, working precision/attention kernels, free VRAM/RAM, offload and disk evidence; no fixed VRAM table.",
+            "The sftline exposes text-to-image only. References/editing/style adapters require a separate matching workflow and validation.",
+            "Do not select a smaller recipe because probes are incomplete, or change the original generation parameters automatically after OOM.",
+            "Preserves MOSS-Image-SFT, never substitutes Base. Uses source-model reference settings: Euler, 50 steps, CFG 3, native shift 5 and negative-branch layer 22 skipping for the full trajectory. The inspected UI default instead disables SLG and uses 25 steps/CFG 2.5.",
+            "The pinned core includes native moss_image support; v0.41.3 does not. Never carry ModelSamplingSD3 from the old plugin into the native graph."
+          ]
+        },
+        "workflow": {
+          "repository": "Comfy-Org/workflow_templates",
+          "revision": "447747bf37b7e2f6d5fab3f15288e03bf889b82f",
+          "path": "templates/image_moss_image_t2i.json",
+          "url": "https://raw.githubusercontent.com/Comfy-Org/workflow_templates/447747bf37b7e2f6d5fab3f15288e03bf889b82f/templates/image_moss_image_t2i.json",
+          "sizeBytes": 75307,
+          "sha256": "91d76c158a1e427c09904c6222978065c1ed965c8b3f40ae323e649808af2198",
+          "format": "ui",
+          "apiConversionRequired": true
+        }
+      }
+    ]
+  }
 }

@@ -238,6 +238,23 @@ describe('generic ComfyUI MCP tools', () => {
     expect(JSON.parse(reply.content[0].text)).toEqual({ comfyJobId: job.id, job });
   });
 
+  it('preserves mixed Omni references in attachment order and rejects legacy/new reference conflicts', async () => {
+    const input = {
+      prompt: 'Animate <Picture 1> with <Video 1> and <Audio 1>',
+      references: [
+        { type: 'video', path: 'D:/clips/motion.mp4' },
+        { type: 'image', path: 'D:/clips/subject.png' },
+        { type: 'audio', path: 'D:/clips/voice.wav' },
+      ],
+    };
+    respond({ id: 'omni-job', status: 'queued', kind: 'video', artifacts: [] });
+    await invoke('aionui_comfy_generate', { profileId: 'fasth3-omni', input });
+    expect(requestBody()).toEqual({ profileId: 'fasth3-omni', input, requestId });
+    const schema = z.object(registered.get('aionui_comfy_generate')!.schema);
+    expect(schema.safeParse({ profileId: 'fasth3-omni', input: { ...input, imagePaths: [] } }).success).toBe(false);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it('surfaces stale-selection and unverified-profile rejection without choosing another model', async () => {
     respond({ error: 'COMFY_SELECTION_CHANGED' }, 409);
     const reply = await invoke('aionui_comfy_generate', { profileId: 'stale-profile', input: { prompt: 'A ball' } });

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { H3Job } from '@/common/chat/document/h3Job';
 import { H3JobRunner } from '@/process/services/runtime/H3JobRunner';
-import { H3ReferencePreflight } from '@/process/services/runtime/H3ReferencePreflight';
+import { H3ReferencePreflight, parseFfprobeMedia } from '@/process/services/runtime/H3ReferencePreflight';
 import type { H3JobStore } from '@/process/services/runtime/H3JobStore';
 
 function store(): H3JobStore {
@@ -26,6 +26,27 @@ function store(): H3JobStore {
 }
 
 describe('H3 reference preflight', () => {
+  it('detects video soundtracks from stream metadata and preserves exact inclusive duration boundaries', async () => {
+    expect(
+      parseFfprobeMedia('{"format":{"duration":"2"},"streams":[{"codec_type":"video"},{"codec_type":"audio"}]}')
+    ).toEqual({ duration: 2, audio: true });
+    expect(parseFfprobeMedia('{"streams":[{"codec_type":"video","duration":"15"}]}')).toEqual({
+      duration: 15,
+      audio: false,
+    });
+    const preflight = new H3ReferencePreflight({
+      fileExists: () => true,
+      probeMedia: async (filename) => ({ duration: filename === 'short.mp4' ? 2 : 13, audio: true }),
+    });
+    const inspected = await preflight.inspect([
+      { type: 'video', path: 'short.mp4' },
+      { type: 'video', path: 'long.mp4' },
+    ]);
+    expect([...inspected]).toEqual([
+      ['short.mp4', { duration: 2, audio: true }],
+      ['long.mp4', { duration: 13, audio: true }],
+    ]);
+  });
   it('accepts 2-15 second clips and ignores image references', async () => {
     const durations = new Map([
       ['clip.mp4', 2],

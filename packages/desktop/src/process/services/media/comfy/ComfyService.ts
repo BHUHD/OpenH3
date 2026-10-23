@@ -4,9 +4,10 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import {
   comfyFamilySchema,
-  comfyGenerationInputSchema,
   comfyInstallPlanSchema,
   comfyProfileSchema,
+  comfyFamilyKind,
+  validateComfyGenerationInputForFamily,
   type ComfyDiagnosis,
   type ComfyGenerationInput,
   type ComfyGenerationJob,
@@ -17,6 +18,13 @@ import {
 import { probeComfyEnvironment, type ComfyEnvironmentReport } from './environment';
 import type { ComfyWorkflowEngine } from './workflowEngine';
 import { verifyComfySmokeArtifact } from './mediaValidation';
+import {
+  sharedComfyRuntimeCoordinator,
+  comfyRuntimeSignature,
+  clearBoundComfyRuntime,
+  type ComfyCleanupReason,
+  type ComfyRuntimeCoordinator,
+} from './runtimeCoordinator';
 
 const uuid = z.string().uuid();
 const bindingSchema = z.object({
@@ -38,11 +46,18 @@ type SavedJob = ComfyGenerationJob & {
   submissionPending?: boolean;
   reconnectAfter?: number;
   verify?: boolean;
+  /** Persisted across restarts so one generation can consume at most one OOM retry. */
+  oomRetryCount?: number;
 };
 type Engine = Pick<
   ComfyWorkflowEngine,
   'validate' | 'snapshotFingerprint' | 'ensureStarted' | 'generate' | 'resume' | 'cancel' | 'stopOwned'
->;
+> & {
+  /** Resolves an identity shared by all ComfyUI endpoints on the same device. */
+  runtimeResourceKey?: (profile: ComfyProfile) => Promise<string>;
+  /** Resolves only after the selected Comfy runtime is confirmed idle and memory release is observed. */
+  clearMemory?: (profile: ComfyProfile, reason: ComfyCleanupReason, signal: AbortSignal) => Promise<void>;
+};
 export type ComfyServiceOptions = {
   filename: string;
   engine: Engine;
@@ -50,6 +65,7 @@ export type ComfyServiceOptions = {
   install: (plan: ComfyInstallPlan, signal: AbortSignal, progress: (detail: string) => void) => Promise<ComfyProfile>;
   probe?: typeof probeComfyEnvironment;
   verifyArtifact?: typeof verifyComfySmokeArtifact;
+  runtimeCoordinator?: ComfyRuntimeCoordinator;
 };
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -79,26 +95,7 @@ function diagnosticLogPath(error: unknown): string | undefined {
   return undefined;
 }
 function assertFamily(profile: Pick<ComfyProfile, 'family' | 'kind'>): void {
-  if (profile.kind !== (profile.family === 'h3' ? 'video' : 'image')) throw new Error('COMFY_FAMILY_KIND_MISMATCH');
-}
-function memoryFallback(profile: ComfyProfile, input: ComfyGenerationInput): ComfyGenerationInput | undefined {
-  const policy = profile.memoryPolicy;
-  if (!policy) return undefined;
-  const next = clone(input),
-    batch = input.batchSize ?? Number(profile.defaults.batchSize ?? 1);
-  if (policy.minBatchSize && profile.bindings.batchSize?.length && batch > policy.minBatchSize)
-    next.batchSize = policy.minBatchSize;
-  const reduce = (key: 'width' | 'height', minimum?: number): void => {
-    const current = input[key] ?? Number(profile.defaults[key]);
-    const step = policy.dimensionStep ?? 8;
-    if (minimum && profile.bindings[key]?.length && Number.isFinite(current) && current > minimum)
-      next[key] = Math.max(minimum, Math.floor((current * 0.75) / step) * step);
-  };
-  reduce('width', policy.minWidth);
-  reduce('height', policy.minHeight);
-  if (policy.allowOffload && profile.bindings.offload?.length && (input.offload ?? profile.defaults.offload) !== true)
-    next.offload = true;
-  return JSON.stringify(next) !== JSON.stringify(input) ? next : undefined;
+  if (profile.kind !== comfyFamilyKind(profile.family)) throw new Error('COMFY_FAMILY_KIND_MISMATCH');
 }
 function hardware(report: ComfyEnvironmentReport): string {
   return JSON.stringify({
@@ -115,24 +112,38 @@ function assertDetection(report: ComfyEnvironmentReport, plan: ComfyInstallPlan)
     report.runtime.accelerator === 'cpu' &&
     Boolean(report.runtime.packages.torch) &&
     plan.environment.launchArgs?.includes('--cpu');
+  const missing: string[] = [];
+  if (!machine.os) missing.push('os');
+  if (!machine.arch) missing.push('architecture');
+  if (!(machine.totalMemoryBytes > 0)) missing.push('ram-total');
+  if (!(machine.freeMemoryBytes >= 0)) missing.push('ram-free');
+  if (!machine.disk || !(machine.disk.freeBytes >= 0)) missing.push('disk-free');
+  if (!cpu) {
+    if (machine.gpuStatus !== 'available' || !machine.gpus.length) missing.push('gpu');
+    machine.gpus.forEach((gpu, index) => {
+      if (gpu.vendor === 'unknown') missing.push(`gpu-${index}-vendor`);
+      if (gpu.vendor === 'nvidia' || gpu.vendor === 'amd') {
+        if (!gpu.driver) missing.push(`gpu-${index}-driver`);
+        if (!(Number(gpu.totalMemoryBytes) > 0)) missing.push(`gpu-${index}-vram-total`);
+        if (!(Number(gpu.freeMemoryBytes) >= 0)) missing.push(`gpu-${index}-vram-free`);
+      }
+      if (gpu.vendor === 'nvidia' && !gpu.computeCapability) missing.push(`gpu-${index}-compute-capability`);
+    });
+  }
+  if (missing.length || !machine.disk) throw new Error(`COMFY_DETECTION_INCOMPLETE:${missing.join(',')}`);
   if (
-    !machine.os ||
-    !machine.arch ||
-    !machine.totalMemoryBytes ||
-    !machine.disk ||
-    (!cpu &&
-      (machine.gpuStatus !== 'available' ||
-        !machine.gpus.length ||
-        machine.gpus.some(
-          (gpu) =>
-            gpu.vendor === 'unknown' ||
-            ((gpu.vendor === 'nvidia' || gpu.vendor === 'amd') &&
-              (!gpu.driver || !gpu.totalMemoryBytes || gpu.freeMemoryBytes === undefined)) ||
-            (gpu.vendor === 'nvidia' &&
-              (!gpu.driver || !gpu.computeCapability || !gpu.totalMemoryBytes || gpu.freeMemoryBytes === undefined))
-        )))
-  )
-    throw new Error('COMFY_DETECTION_INCOMPLETE');
+    /nvfp4/i.test(
+      [plan.quantization, ...plan.components.map((component) => `${component.precision} ${component.name}`)].join(' ')
+    )
+  ) {
+    const nvidia = machine.gpus.filter((gpu) => gpu.vendor === 'nvidia');
+    if (!nvidia.length || nvidia.every((gpu) => Number(gpu.computeCapability) < 10))
+      throw new Error('COMFY_DEVICE_CONDITIONS_INSUFFICIENT:NVFP4_REQUIRES_BLACKWELL');
+    // Multi-device selection and unrecognized future architectures need explicit kernel/device evidence.
+    // Known Blackwell CUDA capabilities: https://developer.nvidia.com/cuda/gpus
+    if (nvidia.some((gpu) => !['10.0', '10.3', '12.0', '12.1'].includes(gpu.computeCapability ?? '')))
+      throw new Error('COMFY_DETECTION_INCOMPLETE:NVFP4_SELECTED_BLACKWELL_DEVICE');
+  }
   if (machine.disk.freeBytes < plan.requiredBytes) throw new Error('COMFY_DISK_SPACE_INSUFFICIENT');
 }
 
@@ -181,7 +192,7 @@ export class ComfyService {
       for (const value of saved.jobs) {
         uuid.parse(value.id);
         comfyProfileSchema.parse(value.profile);
-        comfyGenerationInputSchema.parse(value.input);
+        validateComfyGenerationInputForFamily(value.profile.family, value.input);
         this.jobs.set(
           value.id,
           value.status === 'running'
@@ -250,7 +261,7 @@ export class ComfyService {
       ...value,
       family: value.family ?? profile?.family,
       source: value.source ?? (value.family || profile ? 'local' : prior?.source),
-      kind: value.kind ?? profile?.kind ?? (value.family === 'h3' ? 'video' : value.family ? 'image' : prior?.kind),
+      kind: value.kind ?? profile?.kind ?? (value.family ? comfyFamilyKind(value.family) : prior?.kind),
     });
     this.flush();
   }
@@ -332,13 +343,17 @@ export class ComfyService {
       this.catalog.set(id, loadable);
       this.flush();
       if (input === undefined) return clone(loadable);
-      const result = await this.options.engine.generate(loadable, comfyGenerationInputSchema.parse(input), signal);
+      const result = await this.options.engine.generate(
+        loadable,
+        validateComfyGenerationInputForFamily(loadable.family, input),
+        signal
+      );
       if (!result.artifacts.some((artifact) => artifact.mimeType.startsWith(`${profile.kind}/`)))
         throw new Error('COMFY_SMOKE_OUTPUT_MISSING');
       for (const artifact of result.artifacts.filter((artifact) => artifact.mimeType.startsWith(`${profile.kind}/`)))
         await (this.options.verifyArtifact ?? verifyComfySmokeArtifact)(artifact, profile.kind, signal, {
           profile,
-          input: comfyGenerationInputSchema.parse(input),
+          input: validateComfyGenerationInputForFamily(loadable.family, input),
         });
       const current = await this.options.engine.snapshotFingerprint(loadable);
       if (current !== checked.fingerprint) throw new Error('COMFY_PROFILE_CHANGED');
@@ -534,7 +549,7 @@ export class ComfyService {
     if (scope.source !== 'local' || scope.profileId !== profileId) throw new Error('COMFY_SELECTION_CHANGED');
     if (scope.family !== profile.family) throw new Error('COMFY_FAMILY_MISMATCH');
     if (profile.state !== 'verified' || !profile.validation?.fingerprint) throw new Error('COMFY_PROFILE_NOT_VERIFIED');
-    const parsed = comfyGenerationInputSchema.parse(input);
+    const parsed = validateComfyGenerationInputForFamily(profile.family, input);
     const previous = [...this.jobs.values()].find(
       (job) =>
         job.requestId === requestId &&
@@ -599,6 +614,7 @@ export class ComfyService {
       input: _input,
       submittedInput: _submittedInput,
       verify: _verify,
+      oomRetryCount: _oomRetryCount,
       reconnectAfter: _reconnectAfter,
       ...job
     } = value;
@@ -608,7 +624,7 @@ export class ComfyService {
     const scope = this.scope(requestId),
       profile = clone(this.profile(profileId));
     if (scope.source !== 'local' || scope.family !== profile.family) throw new Error('COMFY_FAMILY_MISMATCH');
-    const parsed = comfyGenerationInputSchema.parse(input);
+    const parsed = validateComfyGenerationInputForFamily(profile.family, input);
     const prior = [...this.jobs.values()].find(
       (job) =>
         job.verify &&
@@ -670,47 +686,123 @@ export class ComfyService {
           this.updateJob(id, { profile: value.profile });
         }
         const progress = (progress: number): void => this.updateJob(id, { progress });
-        let result;
-        try {
-          result = value.promptId
-            ? await this.options.engine.resume(value.profile, value.promptId, controller.signal, progress)
-            : await this.options.engine.generate(
-                value.profile,
-                value.input,
-                controller.signal,
-                progress,
-                (promptId) =>
-                  this.updateJob(id, {
-                    promptId,
-                    submissionPending: false,
-                    submissionUncertain: false,
-                    error: undefined,
-                  }),
-                () => this.updateJob(id, { submissionPending: true })
+        const coordinator = this.options.runtimeCoordinator ?? sharedComfyRuntimeCoordinator;
+        const runtimeResource = this.options.engine.runtimeResourceKey
+          ? await this.options.engine.runtimeResourceKey(value.profile)
+          : value.profile.environment.baseUrl;
+        const runtimeSignature = comfyRuntimeSignature(value.profile);
+        const cleanup = async (reason: ComfyCleanupReason, context?: unknown): Promise<void> => {
+          if (!this.options.engine.clearMemory) return;
+          const binding = context as { kind?: string; profile?: ComfyProfile } | undefined;
+          const cleanupSignal = new AbortController().signal;
+          if (
+            !binding ||
+            (binding.kind === 'comfy' && binding.profile?.environment.baseUrl === value.profile.environment.baseUrl)
+          )
+            await this.options.engine.clearMemory(binding?.profile ?? value.profile, reason, cleanupSignal);
+          else
+            await clearBoundComfyRuntime(context, reason, cleanupSignal, () =>
+              this.options.engine.clearMemory!(value.profile, reason, cleanupSignal)
+            );
+        };
+        const coordinated = <T>(task: () => Promise<T>): Promise<T> =>
+          !this.options.engine.runtimeResourceKey && !this.options.runtimeCoordinator
+            ? task()
+            : coordinator.run(runtimeResource, runtimeSignature, task, cleanup, controller.signal, {
+                taskId: id,
+                recover: Boolean(value.promptId),
+                isUncertain: () => {
+                  const current = this.jobs.get(id);
+                  return Boolean(current?.submissionPending || current?.submissionUncertain);
+                },
+                context: {
+                  kind: 'comfy',
+                  profile: value.profile,
+                  outputRoot: path.join(path.dirname(this.options.filename), 'comfy-runtime-output'),
+                },
+              });
+        const execute = async () => {
+          let result;
+          try {
+            result = value.promptId
+              ? await this.options.engine.resume!(value.profile, value.promptId!, controller.signal, progress)
+              : await this.options.engine.generate(
+                  value.profile,
+                  value.input,
+                  controller.signal,
+                  progress,
+                  (promptId) =>
+                    this.updateJob(id, {
+                      promptId,
+                      submissionPending: false,
+                      submissionUncertain: false,
+                      error: undefined,
+                    }),
+                  (promptId) => this.updateJob(id, { promptId, submissionPending: true })
+                );
+          } catch (error) {
+            const currentJob = this.jobs.get(id)!;
+            // OOM diagnostics only come from a rejected submission or a terminal execution error;
+            // both are known outcomes, even when Comfy already assigned a prompt ID.
+            const isTerminalOom = diagnosis(error)?.category === 'OOM';
+            if (!isTerminalOom || controller.signal.aborted || (currentJob.oomRetryCount ?? 0) >= 1) throw error;
+
+            // Persist the retry reservation before clearing memory. A restart cannot grant another retry.
+            this.updateJob(id, {
+              oomRetryCount: (currentJob.oomRetryCount ?? 0) + 1,
+              promptId: undefined,
+              submissionPending: false,
+              submissionUncertain: false,
+            });
+            if (!this.options.engine.clearMemory) throw error;
+            try {
+              await this.options.engine.clearMemory(value.profile, 'oom', controller.signal);
+            } catch (clearError) {
+              const failure = Object.assign(
+                new Error(`COMFY_MEMORY_CLEAR_UNCONFIRMED:${message(clearError)}`, { cause: error }),
+                { diagnosis: diagnosis(error) }
               );
-        } catch (error) {
-          // A terminal OOM has a known outcome; use only limits validated for this same component set.
-          const fallback =
-            !value.verify && diagnosis(error)?.category === 'OOM' && !value.adjustments?.length
-              ? memoryFallback(value.profile, value.input)
-              : undefined;
-          if (!fallback || controller.signal.aborted) throw error;
-          const adjustments = [{ reason: value.profile.memoryPolicy!.evidence, input: clone(fallback) }];
-          this.updateJob(id, { promptId: undefined, input: fallback, adjustments, progress: 0 });
-          result = await this.options.engine.generate(
-            value.profile,
-            fallback,
-            controller.signal,
-            progress,
-            (promptId) =>
-              this.updateJob(id, { promptId, submissionPending: false, submissionUncertain: false, error: undefined }),
-            () => this.updateJob(id, { submissionPending: true })
-          );
-        }
+              throw failure;
+            }
+            if (controller.signal.aborted) throw error;
+            // Keep the exact original profile/input. OOM never silently reduces quality or changes offload.
+            this.updateJob(id, { progress: 0 });
+            result = await this.options.engine.generate(
+              value.profile,
+              value.input,
+              controller.signal,
+              progress,
+              (promptId) =>
+                this.updateJob(id, {
+                  promptId,
+                  submissionPending: false,
+                  submissionUncertain: false,
+                  error: undefined,
+                }),
+              (promptId) => this.updateJob(id, { promptId, submissionPending: true })
+            );
+          }
+          this.updateJob(id, { submissionPending: false, submissionUncertain: false });
+          return result;
+        };
+        const result = await coordinated(async () => {
+          try {
+            return await execute();
+          } catch (error) {
+            const current = this.jobs.get(id)!;
+            const terminal = Boolean(diagnosis(error));
+            this.updateJob(id, {
+              submissionPending: terminal ? false : current.submissionPending,
+              submissionUncertain:
+                current.status !== 'cancelled' && !terminal && Boolean(current.promptId || current.submissionPending),
+            });
+            throw error;
+          }
+        });
         if (!controller.signal.aborted) {
           if (!result.artifacts.some((artifact) => artifact.mimeType.startsWith(`${value.profile.kind}/`)))
             throw new Error('COMFY_SMOKE_OUTPUT_MISSING');
-          if (value.verify) {
+          if (value.verify || value.profile.family === 'fasth3-omni') {
             for (const artifact of result.artifacts.filter((artifact) =>
               artifact.mimeType.startsWith(`${value.profile.kind}/`)
             ))
@@ -720,6 +812,8 @@ export class ComfyService {
                 controller.signal,
                 { profile: value.profile, input: value.input }
               );
+          }
+          if (value.verify) {
             const fingerprint = await this.options.engine.snapshotFingerprint(value.profile);
             if (fingerprint !== value.profile.validation?.fingerprint) throw new Error('COMFY_PROFILE_CHANGED');
             this.catalog.set(value.profileId, {
@@ -764,12 +858,21 @@ export class ComfyService {
             });
             return;
           }
+          const terminalDiagnosis = diagnosis(error);
           this.updateJob(id, {
             status: 'failed',
             error: message(error),
-            diagnosis: diagnosis(error),
+            diagnosis: terminalDiagnosis,
             diagnosticLogPath: diagnosticLogPath(error),
-            submissionUncertain: /COMFY_SUBMISSION_STATE_UNKNOWN/.test(message(error)),
+            submissionPending: terminalDiagnosis ? false : currentJob.submissionPending,
+            submissionUncertain:
+              !terminalDiagnosis &&
+              Boolean(
+                currentJob.submissionUncertain ||
+                currentJob.submissionPending ||
+                currentJob.promptId ||
+                /COMFY_SUBMISSION_STATE_UNKNOWN/.test(message(error))
+              ),
           });
           if (value.verify || /COMFY_PROFILE_CHANGED|COMFY_.*MISMATCH|COMFY_MISSING_MODEL/.test(message(error))) {
             const current = this.catalog.get(value.profileId);
@@ -793,21 +896,27 @@ export class ComfyService {
     const value = this.jobs.get(id);
     if (!value) throw new Error('COMFY_JOB_NOT_FOUND');
     this.job(id, scope);
-    if (['succeeded', 'failed', 'cancelled'].includes(value.status)) return this.job(id, scope);
+    if (['succeeded', 'failed', 'cancelled'].includes(value.status) && !value.submissionUncertain)
+      return this.job(id, scope);
     if (value.submissionPending && !value.promptId) {
       this.updateJob(id, { error: 'COMFY_CANCEL_UNCONFIRMED:COMFY_SUBMISSION_PENDING', submissionUncertain: true });
       throw new Error('COMFY_SUBMISSION_PENDING');
     }
     if (value.promptId) {
       try {
-        await this.options.engine.cancel(value.profile, value.promptId);
+        await this.options.engine.cancel(value.profile, value.promptId, value.submissionPending);
       } catch (error) {
         this.updateJob(id, { error: `COMFY_CANCEL_UNCONFIRMED:${message(error)}` });
         throw error;
       }
     }
+    this.updateJob(id, { status: 'cancelled', submissionPending: false, submissionUncertain: false });
     this.controllers.get(id)?.abort();
-    this.updateJob(id, { status: 'cancelled' });
+    if (this.options.engine.runtimeResourceKey)
+      await (this.options.runtimeCoordinator ?? sharedComfyRuntimeCoordinator).confirmSettled(
+        await this.options.engine.runtimeResourceKey(value.profile),
+        id
+      );
     return this.job(id, scope);
   }
   async cancelConversation(conversationId: string): Promise<void> {

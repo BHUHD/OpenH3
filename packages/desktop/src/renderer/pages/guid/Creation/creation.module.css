@@ -18,10 +18,12 @@
 }
 .familyGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 .familyCard {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   border: 1px solid var(--color-border-2);
   border-radius: 15px;
@@ -31,17 +33,22 @@
 }
 .familyCover {
   position: relative;
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 16 / 9;
   margin: -16px -16px 16px;
   background: var(--color-fill-2);
 }
-.familyCover img {
+.familyCover img,
+.familyCover video {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.familyCover > span {
+.familyCover video {
+  cursor: pointer;
+}
+.previewBadge,
+.previewAttribution {
   position: absolute;
   inset-inline-end: 10px;
   bottom: 10px;
@@ -51,10 +58,41 @@
   color: var(--color-text-2);
   font-size: 10px;
 }
+.previewAttribution {
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 20px 10px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  color: var(--text-white);
+  line-height: 1.35;
+}
+.previewAttribution a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.previewPlay {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 8px;
+  color: var(--text-white) !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+}
+.previewPlay:focus-visible,
+.previewAttribution a:focus-visible {
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: 3px;
+}
 .familyTop {
   display: flex;
   gap: 11px;
   align-items: center;
+  flex: 1;
 }
 .familyIcon {
   display: flex;
@@ -119,7 +157,12 @@
   font-size: 11px;
   margin: 10px 0 0;
 }
-@media (max-width: 760px) {
+@media (max-width: 1120px) {
+  .familyGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
   .familyGrid {
     grid-template-columns: 1fr;
   }

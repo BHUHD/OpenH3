@@ -6,6 +6,50 @@ import os from 'node:os';
 import path from 'node:path';
 
 describe('H3 watchdog reconciliation', () => {
+  it('binds memory cleanup to the original process and confirms an already empty allocator', async () => {
+    let freed = false;
+    const fetchImpl = vi.fn(async (url) => {
+      const suffix = new URL(String(url)).pathname;
+      if (suffix === '/queue') return Response.json({ queue_running: [], queue_pending: [] });
+      if (suffix === '/free') {
+        freed = true;
+        return Response.json({});
+      }
+      return Response.json({ devices: [{ vram_free: 100, torch_vram_total: 0 }] });
+    }) as typeof fetch;
+    const identity = { executable: path.resolve('python.exe'), root: path.resolve('comfy'), pid: 1 };
+    const client = new H3ComfyClient({
+      fetchImpl,
+      pollIntervalMs: 0,
+      sleep: async () => undefined,
+      runtimeInspector: async () => identity,
+    });
+    await expect(client.clearMemory(identity)).resolves.toBeUndefined();
+    expect(freed).toBe(true);
+    await expect(client.clearMemory({ ...identity, pid: 2 })).rejects.toThrow('H3_MEMORY_CLEAR_RUNTIME_CHANGED');
+    const replaced = new H3ComfyClient({
+      fetchImpl,
+      pollIntervalMs: 0,
+      sleep: async () => undefined,
+      runtimeInspector: async () => ({ ...identity, pid: freed ? 2 : 1 }),
+    });
+    freed = false;
+    await expect(replaced.clearMemory(identity)).rejects.toThrow('H3_MEMORY_CLEAR_RUNTIME_CHANGED');
+  });
+
+  it('does not unlock a prompt from an empty queue paired with a nonterminal history record', async () => {
+    const client = new H3ComfyClient({
+      pollIntervalMs: 0,
+      sleep: async () => undefined,
+      fetchImpl: (async (url) =>
+        Response.json(
+          String(url).endsWith('/queue')
+            ? { queue_running: [], queue_pending: [] }
+            : { p: { status: { completed: false, status_str: 'running' } } }
+        )) as typeof fetch,
+    });
+    await expect(client.confirmStopped('p')).rejects.toThrow('H3_REMOTE_STATE_UNCONFIRMED');
+  });
   it('ignores duplicate node events rather than manufacturing fresh activity', async () => {
     let reads = 0;
     const updates = vi.fn();
