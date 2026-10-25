@@ -876,7 +876,21 @@ class AutoUpdaterService extends EventEmitter {
       this.moveCwdOutOfInstallDirForWindowsHandoff();
       // Confirmation is handled by the renderer. Apply in place without an installer
       // wizard, then restart. NSIS receives --updated /S --force-run; no data reset.
-      autoUpdater.quitAndInstall(true, true);
+      // BaseUpdater can reject synchronously via an error event without throwing.
+      // Only observe this call; asynchronous installer failures remain updater-owned.
+      let handoffError: Error | undefined;
+      const captureHandoffError = (error: unknown): void => {
+        handoffError ??= error instanceof Error ? error : new Error('Auto-updater rejected the install handoff');
+      };
+      autoUpdater.on('error', captureHandoffError);
+      try {
+        autoUpdater.quitAndInstall(true, true);
+      } finally {
+        autoUpdater.removeListener('error', captureHandoffError);
+      }
+      if (handoffError) {
+        throw handoffError;
+      }
       recordAutoUpdateQuitAndInstall(this.getAutoUpdateDiagnosticOptions());
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -898,9 +912,11 @@ class AutoUpdaterService extends EventEmitter {
     // behavior + close-to-tray). This leaves the process alive and Squirrel
     // cannot finish replacing the app bundle. Force-exit after a short delay
     // to let Squirrel receive the install signal.
-    setTimeout(() => {
-      app.exit(0);
-    }, 1000);
+    if (process.platform === 'darwin') {
+      setTimeout(() => {
+        app.exit(0);
+      }, 1000);
+    }
   }
 
   /**
