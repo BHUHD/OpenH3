@@ -92,5 +92,12 @@
       "promise4": "Açık kaynak deposu aktif olarak güncellenmeye devam eder, çekirdek özellikler eşzamanlı kalır, açık kaynak ruhu sürer.",
       "noRush": "Şimdilik geçmek istemiyorsanız mevcut sürümü normal şekilde kullanmaya devam edebilirsiniz; yalnızca artık güncelleme almayacaktır. Ancak yeni sürümde ilk oturumu açtığınız anda yerel verileriniz oraya taşınmış olur; bundan sonra günlük kullanımınız için yeni sürümü giriş noktası olarak kullanın."
     }
-  }
+  },
+  "sidebarAvailable": "Güncelleme var",
+  "sidebarDownloading": "İndiriliyor {{percent}}%",
+  "sidebarRestart": "Yeniden başlat ve güncelle",
+  "sidebarRetry": "Güncellemeyi tekrar dene",
+  "openInstaller": "Elle yükle (alternatif)",
+  "confirmInstall": "Yüklemeyi onayla",
+  "confirmInstallDescription": "Güncellemeyi yüklemek için uygulama kapanacak. Devam eden görevler kesintiye uğrayabilir. Devam etmeden önce işinizi tamamlayın."
 }

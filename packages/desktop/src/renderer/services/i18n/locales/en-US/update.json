@@ -92,5 +92,12 @@
       "promise4": "The open-source repository stays actively maintained, core features stay in sync, and the open-source spirit remains.",
       "noRush": "If you would rather wait, the current version keeps working as usual — it simply no longer receives updates. And once you have completed the first sign-in on the new version, your local data has already moved there, so please use the new version as your day-to-day entry point."
     }
-  }
+  },
+  "sidebarAvailable": "Update available",
+  "sidebarDownloading": "Downloading {{percent}}%",
+  "sidebarRestart": "Restart & update",
+  "sidebarRetry": "Retry update",
+  "openInstaller": "Manual install (fallback)",
+  "confirmInstall": "Confirm installation",
+  "confirmInstallDescription": "The app will close to install the update. Running tasks may be interrupted. Finish your work before continuing."
 }

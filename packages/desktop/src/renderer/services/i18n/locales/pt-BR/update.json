@@ -92,5 +92,12 @@
       "promise4": "O repositório open source continua ativo, os recursos principais permanecem sincronizados e o espírito open source se mantém.",
       "noRush": "Se preferir esperar, a versão atual continua funcionando normalmente — apenas não receberá mais atualizações. Mas, assim que você concluir o primeiro login na nova versão, seus dados locais já terão sido migrados para lá; use então a nova versão como seu ponto de acesso do dia a dia."
     }
-  }
+  },
+  "sidebarAvailable": "Atualização disponível",
+  "sidebarDownloading": "Baixando {{percent}}%",
+  "sidebarRestart": "Reiniciar e atualizar",
+  "sidebarRetry": "Tentar novamente",
+  "openInstaller": "Instalação manual (alternativa)",
+  "confirmInstall": "Confirmar instalação",
+  "confirmInstallDescription": "O aplicativo será fechado para instalar a atualização. As tarefas em andamento podem ser interrompidas. Conclua seu trabalho antes de continuar."
 }

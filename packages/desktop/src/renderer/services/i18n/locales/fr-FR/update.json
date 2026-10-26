@@ -92,5 +92,12 @@
       "promise4": "Le dépôt open source reste activement maintenu, les fonctionnalités clés restent synchronisées, l'esprit open source demeure.",
       "noRush": "Si vous préférez attendre, la version actuelle continue de fonctionner normalement — elle ne recevra simplement plus de mises à jour. En revanche, dès votre première connexion à la nouvelle version, vos données locales y ont déjà été transférées : utilisez alors la nouvelle version comme point d'accès quotidien."
     }
-  }
+  },
+  "sidebarAvailable": "Mise à jour",
+  "sidebarDownloading": "Téléchargement {{percent}}%",
+  "sidebarRestart": "Redémarrer et mettre à jour",
+  "sidebarRetry": "Réessayer",
+  "openInstaller": "Installation manuelle (secours)",
+  "confirmInstall": "Confirmer l’installation",
+  "confirmInstallDescription": "L’application va se fermer pour installer la mise à jour. Les tâches en cours peuvent être interrompues. Terminez votre travail avant de continuer."
 }

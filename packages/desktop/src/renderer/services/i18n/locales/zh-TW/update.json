@@ -92,5 +92,12 @@
       "promise4": "開源倉庫持續更新，核心功能保持同步，開源精神不變。",
       "noRush": "如果您暫不升級，當前版本仍可照常使用，只是不會再收到更新；而一旦在新版本完成首次登入，本地資料便已遷移過去，請以新版本作為日常入口。"
     }
-  }
+  },
+  "sidebarAvailable": "有新版本 · 更新",
+  "sidebarDownloading": "下載中 {{percent}}%",
+  "sidebarRestart": "重新啟動並更新",
+  "sidebarRetry": "更新失敗 · 重試",
+  "openInstaller": "手動安裝（備用）",
+  "confirmInstall": "確認安裝",
+  "confirmInstallDescription": "應用程式將關閉以安裝更新，執行中的工作可能中斷。請先完成目前工作，再確認更新。"
 }
