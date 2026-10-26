@@ -14,6 +14,7 @@ import {
   type ComfyInstallPlan,
   type ComfyOperation,
   type ComfyProfile,
+  type ComfyApprovalDecision,
 } from '@/common/chat/document/creation/comfy';
 import { probeComfyEnvironment, type ComfyEnvironmentReport } from './environment';
 import type { ComfyWorkflowEngine } from './workflowEngine';
@@ -66,6 +67,8 @@ export type ComfyServiceOptions = {
   probe?: typeof probeComfyEnvironment;
   verifyArtifact?: typeof verifyComfySmokeArtifact;
   runtimeCoordinator?: ComfyRuntimeCoordinator;
+  /** Read the active runtime's observed approval mode; never trust model input or a cached binding. */
+  resolveApproval?: (conversationId: string) => Promise<ComfyApprovalDecision>;
 };
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -402,8 +405,22 @@ export class ComfyService {
     }
   }
   async request(requestId: string, input: unknown): Promise<ComfyOperation> {
-    const scope = this.scope(requestId),
-      plan = comfyInstallPlanSchema.parse(input);
+    if (this.closing) throw new Error('COMFY_SERVICE_STOPPING');
+    const plan = comfyInstallPlanSchema.parse(input);
+    const key = JSON.stringify([requestId, plan]);
+    const pending = this.requesting.get(key);
+    if (pending) return clone(await pending);
+    const request = this.requestPlan(requestId, plan);
+    this.requesting.set(key, request);
+    try {
+      return clone(await request);
+    } finally {
+      this.requesting.delete(key);
+    }
+  }
+  private readonly requesting = new Map<string, Promise<ComfyOperation>>();
+  private async requestPlan(requestId: string, plan: ComfyInstallPlan): Promise<ComfyOperation> {
+    const scope = clone(this.scope(requestId));
     assertFamily(plan);
     this.options.checkPlan?.(plan);
     if (scope.source !== 'local' || !scope.family || scope.family !== plan.family)
@@ -414,7 +431,7 @@ export class ComfyService {
       (item) =>
         item.requestId === requestId && item.state !== 'cancelled' && JSON.stringify(item.plan) === JSON.stringify(plan)
     );
-    if (prior) return clone(prior);
+    if (prior) return this.applyRequestApproval(prior);
     if (
       [...this.operations.values()].filter((item) => !['completed', 'cancelled', 'failed'].includes(item.state))
         .length >= 200
@@ -451,7 +468,32 @@ export class ComfyService {
     this.probes.set(operation.id, hardware(report));
     this.operationScopes.set(operation.id, clone(scope));
     this.flush();
-    return clone(operation);
+    return this.applyRequestApproval(operation);
+  }
+  private async applyRequestApproval(operation: ComfyOperation): Promise<ComfyOperation> {
+    const resolve = this.options.resolveApproval;
+    if (!resolve || !['awaiting-consent', 'authorized', 'paused'].includes(operation.state)) return clone(operation);
+    let decision: ComfyApprovalDecision;
+    try {
+      decision = await resolve(operation.conversationId);
+    } catch {
+      this.updateOperation(operation.id, { error: 'COMFY_APPROVAL_MODE_UNAVAILABLE' });
+      console.warn('[comfy] approval lookup unavailable', { operationId: operation.id, family: operation.plan.family });
+      return this.operation(operation.id, { requestId: operation.requestId });
+    }
+    if (this.closing) throw new Error('COMFY_SERVICE_STOPPING');
+    const current = this.operation(operation.id, { requestId: operation.requestId });
+    if (!['awaiting-consent', 'authorized', 'paused'].includes(current.state)) return current;
+    const approval = { ...decision, source: 'session' as const, checkedAt: new Date().toISOString() };
+    this.updateOperation(operation.id, {
+      approval,
+      ...(current.error === 'COMFY_APPROVAL_MODE_UNAVAILABLE' ? { error: undefined } : {}),
+    });
+    if (decision.mode !== 'automatic') return this.operation(operation.id, { requestId: operation.requestId });
+    if (JSON.stringify(this.scope(operation.requestId)) !== JSON.stringify(this.operationScopes.get(operation.id)))
+      throw new Error('COMFY_SELECTION_CHANGED');
+    this.authorize(operation.id, operation.conversationId, approval);
+    return this.start(operation.id, operation.requestId);
   }
   private assertResourceScope(requestId: string, conversationId: string, scope: ComfyResourceScope): void {
     if (!scope?.requestId && !scope?.conversationId) throw new Error('COMFY_REQUEST_REQUIRED');
@@ -475,14 +517,24 @@ export class ComfyService {
     this.operations.set(id, { ...this.savedOperation(id), ...update, updatedAt: new Date().toISOString() });
     this.flush();
   }
-  authorize(id: string, conversationId: string): ComfyOperation {
+  authorize(id: string, conversationId: string, approval?: ComfyOperation['approval']): ComfyOperation {
     const operation = this.operation(id, { conversationId });
     this.scope(operation.requestId);
     if ((this.failures.get(id)?.count ?? 0) >= 2) throw new Error('COMFY_REPEATED_ERROR_REPLAN');
     if (operation.conversationId !== conversationId) throw new Error('COMFY_CONVERSATION_MISMATCH');
     if (!['awaiting-consent', 'authorized', 'paused', 'failed'].includes(operation.state))
       throw new Error('COMFY_OPERATION_NOT_AUTHORIZABLE');
-    this.updateOperation(id, { state: 'authorized', error: undefined });
+    this.updateOperation(id, {
+      state: 'authorized',
+      error: undefined,
+      approval: approval ?? { mode: 'manual', source: 'ui', checkedAt: new Date().toISOString() },
+    });
+    console.info('[comfy] installation authorized', {
+      operationId: id,
+      family: operation.plan.family,
+      source: approval?.source ?? 'ui',
+      runtimeMode: approval?.runtimeMode,
+    });
     return this.operation(id, { conversationId });
   }
   private schedule(task: () => Promise<void>): void {
@@ -501,6 +553,8 @@ export class ComfyService {
     if (operation.state !== 'authorized') throw new Error('COMFY_USER_CONFIRMATION_REQUIRED');
     if (JSON.stringify(scope) !== JSON.stringify(this.operationScopes.get(id)))
       throw new Error('COMFY_SELECTION_CHANGED');
+    if (this.closing) throw new Error('COMFY_SERVICE_STOPPING');
+    if (this.validating) throw new Error('COMFY_RUNTIME_BUSY');
     const controller = new AbortController();
     this.controllers.set(id, controller);
     this.updateOperation(id, { state: 'running', progress: 'queued' });
@@ -976,6 +1030,7 @@ export class ComfyService {
   async close(): Promise<void> {
     this.closing = true;
     for (const controller of this.controllers.values()) controller.abort();
+    await Promise.allSettled(this.requesting.values());
     await this.idle();
     await this.options.engine.stopOwned();
   }
