@@ -42,6 +42,7 @@ vi.mock('@/process/services/autoUpdateDiagnostics', () => diagnosticsMock);
 const nativeAutoUpdaterMock = vi.hoisted(() => ({
   on: vi.fn(),
   removeListener: vi.fn(),
+  checkForUpdates: vi.fn(),
 }));
 
 const appMock = vi.hoisted(() => ({
@@ -109,6 +110,7 @@ describe('AutoUpdaterService', () => {
     delete process.env.AIONUI_DEBUG_AUTO_UPDATE_CURRENT_VERSION;
     nativeAutoUpdaterMock.on.mockReset();
     nativeAutoUpdaterMock.removeListener.mockReset();
+    nativeAutoUpdaterMock.checkForUpdates.mockReset();
     Object.defineProperty(autoUpdaterMock, 'currentVersion', {
       configurable: true,
       value: { version: '2.1.13' },
@@ -501,6 +503,56 @@ describe('AutoUpdaterService', () => {
     expect(appMock.exit).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
     expect(appMock.exit).toHaveBeenCalledExactlyOnceWith(0);
+  });
+
+  it('starts native macOS staging only after explicit install confirmation', async () => {
+    setPlatform('darwin');
+    vi.useFakeTimers();
+    const cleanup = vi.fn();
+    const { autoUpdaterService } = await import('@/process/services/autoUpdaterService');
+    autoUpdaterService.initialize();
+    autoUpdaterService.setBeforeQuitAndInstall(cleanup);
+    getUpdateDownloadedHandler()({ version: '2.2.0' });
+    expect(autoUpdaterMock.autoInstallOnAppQuit).toBe(false);
+    expect(nativeAutoUpdaterMock.checkForUpdates).not.toHaveBeenCalled();
+    nativeAutoUpdaterMock.checkForUpdates.mockImplementationOnce(() => {
+      queueMicrotask(() => getNativeUpdateDownloadedHandler()());
+    });
+    const install = autoUpdaterService.quitAndInstall().catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const result = await install;
+    expect(nativeAutoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(1);
+    expect(result).toBeUndefined();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(autoUpdaterMock.quitAndInstall).toHaveBeenCalledExactlyOnceWith(true, true);
+    expect(autoUpdaterMock.autoInstallOnAppQuit).toBe(false);
+  });
+
+  it('rejects a synchronous native staging failure without stopping the backend and permits retry', async () => {
+    setPlatform('darwin');
+    vi.useFakeTimers();
+    const cleanup = vi.fn();
+    const { autoUpdaterService } = await import('@/process/services/autoUpdaterService');
+    autoUpdaterService.initialize();
+    autoUpdaterService.setBeforeQuitAndInstall(cleanup);
+    getUpdateDownloadedHandler()({ version: '2.2.0' });
+    nativeAutoUpdaterMock.checkForUpdates.mockImplementationOnce(() => {
+      throw new Error('native staging rejected');
+    });
+    const failure = autoUpdaterService.quitAndInstall().catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await failure).toMatchObject({ message: 'update.errors.prepareInstallFailed' });
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(autoUpdaterMock.quitAndInstall).not.toHaveBeenCalled();
+    expect(appMock.exit).not.toHaveBeenCalled();
+    nativeAutoUpdaterMock.checkForUpdates.mockImplementationOnce(() => {
+      queueMicrotask(() => getNativeUpdateDownloadedHandler()());
+    });
+    const retry = autoUpdaterService.quitAndInstall().catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await retry).toBeUndefined();
+    expect(nativeAutoUpdaterMock.checkForUpdates).toHaveBeenCalledTimes(2);
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it('does not quit on macOS when native updater reports readiness error first', async () => {

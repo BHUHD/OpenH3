@@ -585,6 +585,14 @@ class AutoUpdaterService extends EventEmitter {
     }, MAC_NATIVE_INSTALL_READY_TIMEOUT_MS);
 
     this._nativeInstallReadyWait = { promise, reject: rejectWait, resolve: resolveWait, startedAt, timer };
+    // With autoInstallOnAppQuit disabled, MacUpdater has only prepared its local
+    // feed. Start native staging after explicit confirmation, without arming its
+    // quitAndInstall listener until readiness and pre-install cleanup complete.
+    try {
+      nativeAutoUpdater.checkForUpdates();
+    } catch (error) {
+      void this.handleNativeInstallError(error instanceof Error ? error : new Error('Native update staging failed'));
+    }
     return promise;
   }
 
