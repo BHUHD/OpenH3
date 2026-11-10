@@ -12,6 +12,7 @@ mod assistant;
 mod auth;
 mod channel;
 mod chat_file;
+mod cloud_account;
 mod confirmation;
 mod connection_test;
 mod conversation;
@@ -90,6 +91,20 @@ pub use channel::{
     SyncChannelSettingsRequest, TestPluginExtraConfig, TestPluginRequest, TestPluginResponse, UserAuthorizedPayload,
 };
 pub use chat_file::ChatFileRef;
+pub use cloud_account::{
+    CloudAccountAllowance, CloudAccountAntiBot, CloudAccountAvailability, CloudAccountCapabilitiesResponse,
+    CloudAccountCheckout, CloudAccountCreateTopupRequest, CloudAccountDevice, CloudAccountDeviceStatus,
+    CloudAccountDevicesResponse, CloudAccountEmailCodePurpose, CloudAccountEmailCodeRequest, CloudAccountLoginRequest,
+    CloudAccountModel, CloudAccountModelPrice, CloudAccountModelsResponse, CloudAccountMoney, CloudAccountPageQuery,
+    CloudAccountPasswordResetCompleteRequest, CloudAccountPasswordResetRequest, CloudAccountPasswordResetResponse,
+    CloudAccountProfile, CloudAccountQuota, CloudAccountRate, CloudAccountRegisterRequest,
+    CloudAccountRegisterResponse, CloudAccountRevokeDeviceRequest, CloudAccountRevokeDeviceResponse,
+    CloudAccountSessionResponse, CloudAccountSubscription, CloudAccountSubscriptions, CloudAccountTopupOption,
+    CloudAccountTopupOptionsResponse, CloudAccountTopupOrder, CloudAccountTopupOrdersResponse, CloudAccountTopupStatus,
+    CloudAccountUsage, CloudAccountUsageQuantity, CloudAccountUsageResponse, CloudAccountVerification,
+    CloudAccountVerificationMethod, CloudAccountVerificationPurpose, CloudAccountVerifyRequest,
+    CloudAccountVerifyResponse, CloudAccountWalletBalance, CloudAccountWalletResponse,
+};
 pub use confirmation::{ApprovalCheckQuery, ApprovalCheckResponse, ConfirmRequest, ConfirmationListResponse};
 pub use connection_test::TestBedrockConnectionRequest;
 pub use conversation::{
