@@ -1,8 +1,10 @@
-//! Core-only native account lifecycle. No HTTP routes are installed here.
+//! Native account lifecycle and strict authenticated transport.
 mod client;
 mod flows;
 mod password;
+pub mod routes;
 mod service;
+pub mod state;
 #[cfg(test)]
 mod tests;
 mod wire;

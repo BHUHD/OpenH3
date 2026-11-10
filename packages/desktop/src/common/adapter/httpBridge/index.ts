@@ -6,7 +6,8 @@
  * so existing renderer code works without changes.
  */
 
-import { refreshSession, WS_CLOSE_POLICY_VIOLATION } from './sessionRefresh';
+import { isCloudAccountPath, safeCloudError } from './cloudAccount';
+import { refreshSession, WS_CLOSE_POLICY_VIOLATION } from '../sessionRefresh';
 
 // ---------------------------------------------------------------------------
 // Base URL
@@ -95,7 +96,11 @@ export class BackendHttpError extends Error {
   readonly body: unknown;
 
   constructor(params: { method: string; path: string; status: number; body: unknown }) {
-    const { method, path, status, body } = params;
+    const { status } = params;
+    const cloud = isCloudAccountPath(params.path);
+    const method = cloud && !['GET', 'POST'].includes(params.method) ? 'OTHER' : params.method;
+    const path = cloud ? '/api/cloud-account' : params.path;
+    const body = cloud ? safeCloudError(params.body) : params.body;
     let code = '';
     let backendMessage = '';
     let details: unknown;
@@ -181,7 +186,7 @@ const REFRESH_ENDPOINT = '/api/auth/refresh';
  * session — refreshing and replaying them would be recursive or nonsensical.
  */
 function isAuthEndpoint(path: string): boolean {
-  return path.startsWith(REFRESH_ENDPOINT) || path === '/login' || path === '/logout';
+  return isCloudAccountPath(path) || path.startsWith(REFRESH_ENDPOINT) || path === '/login' || path === '/logout';
 }
 
 /** Read the Core double-submit cookie; never synthesize a renderer token. */
@@ -230,12 +235,27 @@ export async function httpRequest<T>(
     if (csrf) headers['x-csrf-token'] = csrf;
   }
 
-  console.debug(
-    `[httpBridge] ${method} ${path}`,
-    body !== undefined ? JSON.stringify(redactForLog(body)).slice(0, 500) : '(no body)'
-  );
+  const cloud = isCloudAccountPath(path);
+  if (
+    cloud &&
+    typeof window !== 'undefined' &&
+    (window.electronAPI || window.location?.protocol === 'file:' || !isWebUiBrowserMode())
+  ) {
+    throw new BackendHttpError({ method, path, status: 401, body: { code: 'LOCAL_AUTH_REQUIRED' } });
+  }
+  if (!cloud)
+    console.debug(
+      `[httpBridge] ${method} ${path}`,
+      body !== undefined ? JSON.stringify(redactForLog(body)).slice(0, 500) : '(no body)'
+    );
 
-  let response = await sendHttpRequest(method, path, headers, body);
+  let response: Response;
+  try {
+    response = await sendHttpRequest(method, path, headers, body);
+  } catch (error) {
+    if (cloud) throw new BackendHttpError({ method, path, status: 503, body: null });
+    throw error;
+  }
 
   // Expired access cookie → 401. Attempt one silent session refresh, then replay
   // the original request — the WebUI half of the #4124 fix. refreshSession() is a
@@ -259,6 +279,14 @@ export async function httpRequest<T>(
     } catch {
       errorBody = rawText;
     }
+    if (cloud) {
+      const retry = response.headers.get('retry-after');
+      const safe = {
+        ...safeCloudError(errorBody),
+        ...(retry && /^\d{1,5}$/.test(retry) ? { details: { retry_after: Number(retry) } } : {}),
+      };
+      throw new BackendHttpError({ method, path, status: response.status, body: safe });
+    }
     if (options?.silentStatuses?.includes(response.status)) {
       console.debug(`[httpBridge] ${method} ${path} → ${response.status} (silenced)`, errorBody);
     } else {
@@ -267,14 +295,20 @@ export async function httpRequest<T>(
     throw new BackendHttpError({ method, path, status: response.status, body: errorBody });
   }
 
-  console.debug(`[httpBridge] ${method} ${path} → ${response.status} OK`);
+  if (!cloud) console.debug(`[httpBridge] ${method} ${path} → ${response.status} OK`);
 
   const contentType = response.headers.get('Content-Type');
   if (!contentType?.includes('application/json')) {
     return undefined as T;
   }
 
-  const json = await response.json();
+  let json: unknown;
+  try {
+    json = await response.json();
+  } catch (error) {
+    if (cloud) throw new BackendHttpError({ method, path, status: 502, body: { code: 'CLOUD_PROTOCOL' } });
+    throw error;
+  }
   // Backend wraps in { success, data, ... } — unwrap when present
   if (json && typeof json === 'object' && 'data' in json) {
     return json.data as T;

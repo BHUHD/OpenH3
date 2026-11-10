@@ -62,6 +62,9 @@ impl UpdateActivityService {
 }
 
 pub struct AppServices {
+    pub cloud_account: Arc<openh3_system::provider::cloud_account::CloudAccountService>,
+    pub cloud_account_config: crate::config::CloudAccountTransportConfig,
+    pub cloud_account_limiter: Arc<openh3_auth::RateLimiter>,
     pub content_catalog_proxy: Option<Arc<crate::ContentCatalogProxy>>,
     pub database: Database,
     pub jwt_service: Arc<JwtService>,
@@ -287,6 +290,11 @@ impl AppServices {
 
         let encryption_key = derive_encryption_key(&encryption_secret);
 
+        let cloud_account = Arc::new(openh3_system::provider::cloud_account::CloudAccountService::new(
+            Arc::new(openh3_db::SqliteCloudAccountRepository::new(database.pool().clone())),
+            encryption_key,
+            config.cloud_account.service.clone(),
+        )?);
         let provider_repo = Arc::new(SqliteProviderRepository::new(database.pool().clone()));
         let event_bus = Arc::new(BroadcastEventBus::new(256));
         // User-configured MCP servers — injected into ACP `session/new`
@@ -462,6 +470,9 @@ impl AppServices {
             .with_turn_cancelled_hook(Arc::new(QueueClearingCancelHook::new(session_message_queue.clone())));
 
         Ok(Self {
+            cloud_account,
+            cloud_account_config: config.cloud_account.clone(),
+            cloud_account_limiter: Arc::new(openh3_auth::RateLimiter::authenticated_action()),
             content_catalog_proxy: crate::ContentCatalogProxy::from_env(config.effective_identity_mode().is_local())?,
             database,
             jwt_service: Arc::new(JwtService::new(secret.clone())),

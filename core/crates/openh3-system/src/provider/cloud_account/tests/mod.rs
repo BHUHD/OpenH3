@@ -1,4 +1,5 @@
 use super::*;
+mod http;
 #[path = "race_tests.rs"]
 mod race_tests;
 use openh3_api_types::*;

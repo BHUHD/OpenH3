@@ -1,3 +1,5 @@
+import type { CloudAccountRequest, CloudAccountResponse } from './cloudAccount';
+
 // WebUI 状态接口 / WebUI status interface
 export interface WebUIStatus {
   running: boolean;
@@ -11,6 +13,8 @@ export interface WebUIStatus {
 }
 
 export interface ElectronBridgeAPI {
+  /** Invoke an allowlisted native cloud operation through the trusted main process. */
+  cloudAccount?: (request: CloudAccountRequest) => Promise<CloudAccountResponse>;
   emit: (name: string, data: unknown) => Promise<unknown> | void;
   on: (callback: (event: { value: string }) => void) => void;
   // 获取拖拽文件/目录的绝对路径 / Get absolute path for dragged file/directory

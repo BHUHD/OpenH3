@@ -228,7 +228,8 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
  */
 export function buildSpawnEnv(
   dirs?: BackendDirConfig,
-  contentHost?: { port: number; token: string }
+  contentHost?: { port: number; token: string },
+  cloudCapability?: string
 ): NodeJS.ProcessEnv {
   // PREBUILDS_ONLY protects the packaged Electron process's own node-gyp-build
   // natives (see desktop process/index.ts) and must stay scoped to it. Agent
@@ -239,8 +240,14 @@ export function buildSpawnEnv(
     PREBUILDS_ONLY: _prebuildsOnly,
     OPENH3_CONTENT_PORT: _contentPort,
     OPENH3_CONTENT_TOKEN: _contentToken,
+    OPENH3_CLOUD_ACCOUNT_CAPABILITY: _cloudCapability,
     ...parentEnv
   } = process.env;
+  // Windows inherited environment names are case-insensitive; object-rest is not.
+  for (const key of Object.keys(parentEnv)) {
+    if (key.toUpperCase() === 'OPENH3_CLOUD_ACCOUNT_CAPABILITY') delete parentEnv[key];
+  }
+  if (cloudCapability) parentEnv.OPENH3_CLOUD_ACCOUNT_CAPABILITY = cloudCapability;
   if (contentHost) {
     parentEnv.OPENH3_CONTENT_PORT = String(contentHost.port);
     parentEnv.OPENH3_CONTENT_TOKEN = contentHost.token;
@@ -536,6 +543,11 @@ async function probeHealthCheckTcpConnect(port: number, timeoutMs = 1_000): Prom
 }
 
 export class BackendLifecycleManager {
+  private cloudCapability?: string;
+  /** Bind the main-owned per-launch secret only to this Core child. */
+  configureCloudAccount(capability: string): void {
+    this.cloudCapability = capability;
+  }
   private contentHost?: { port: number; token: string };
   configureContentHost(endpoint: { port: number; token: string }): void {
     this.contentHost = endpoint;
@@ -716,7 +728,7 @@ export class BackendLifecycleManager {
     try {
       this.childProcess = spawn(binaryPath, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: buildSpawnEnv(dirs, this.contentHost),
+        env: buildSpawnEnv(dirs, this.contentHost, this.cloudCapability),
         cwd: dirs?.workDir ?? dbPath,
         detached: process.platform !== 'win32',
       });

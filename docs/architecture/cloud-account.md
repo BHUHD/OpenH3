@@ -10,8 +10,10 @@ not recordings of a gateway.
 
 ## Trust boundary
 
-The renderer calls `/api/cloud-account/*` through the existing local API bridge.
-Every route, including capabilities, registration, recovery and login, requires
+The desktop renderer uses the narrow `electronAPI.cloudAccount` operation API;
+Electron main calls `/api/cloud-account/*` on its owned Core. WebUI uses the
+existing same-origin HTTP bridge. Every route, including capabilities,
+registration, recovery and login, requires
 the authenticated local application identity. Cloud login establishes a remote
 account association; it does not replace local authentication. Handlers derive
 the local owner from `CurrentUser`, never a body/query `user_id`. Account IDs in
@@ -44,27 +46,27 @@ configuration, not a request field.
 All paths in this table have the `/api/cloud-account` prefix. Every timestamp is
 Unix seconds. Types below have the `CloudAccount` prefix in Rust.
 
-| Method and suffix               | Request                        | Success data            |
-| ------------------------------- | ------------------------------ | ----------------------- |
-| `GET /capabilities`             | None                           | `CapabilitiesResponse`  |
-| `POST /email-code`              | `EmailCodeRequest`             | Empty                   |
-| `POST /register`                | `RegisterRequest`              | `RegisterResponse`      |
-| `POST /login`                   | `LoginRequest`                 | `SessionResponse`       |
-| `POST /auth/verify`             | `VerifyRequest`                | `VerifyResponse`        |
-| `POST /password/reset`          | `PasswordResetRequest`         | `PasswordResetResponse` |
+| Method and suffix               | Request                        | Success data                    |
+| ------------------------------- | ------------------------------ | ------------------------------- |
+| `GET /capabilities`             | None                           | `CapabilitiesResponse`          |
+| `POST /email-code`              | `EmailCodeRequest`             | Empty                           |
+| `POST /register`                | `RegisterRequest`              | `RegisterResponse`              |
+| `POST /login`                   | `LoginRequest`                 | `SessionResponse`               |
+| `POST /auth/verify`             | `VerifyRequest`                | `VerifyResponse`                |
+| `POST /password/reset`          | `PasswordResetRequest`         | `PasswordResetResponse`         |
 | `POST /password/reset/complete` | `PasswordResetCompleteRequest` | `PasswordResetCompleteResponse` |
-| `GET /session`                  | None                           | `SessionResponse`       |
-| `GET /me`                       | None                           | `SessionResponse`       |
-| `POST /logout`                  | None                           | `LogoutResponse`        |
-| `GET /wallet`                   | None                           | `WalletResponse`        |
-| `GET /models`                   | None                           | `ModelsResponse`        |
-| `GET /usage`                    | `PageQuery`                    | `UsageResponse`         |
-| `GET /devices`                  | None                           | `DevicesResponse`       |
-| `POST /devices/revoke`          | `RevokeDeviceRequest`          | `RevokeDeviceResponse`  |
-| `GET /topup/options`            | None                           | `TopupOptionsResponse`  |
-| `POST /topup/orders`            | `CreateTopupRequest`           | `TopupOrder`            |
-| `GET /topup/orders`             | `PageQuery`                    | `TopupOrdersResponse`   |
-| `GET /topup/orders/{order_id}`  | Path order ID                  | `TopupOrder`            |
+| `GET /session`                  | None                           | `SessionResponse`               |
+| `GET /me`                       | None                           | `SessionResponse`               |
+| `POST /logout`                  | Empty JSON object              | `LogoutResponse`                |
+| `GET /wallet`                   | None                           | `WalletResponse`                |
+| `GET /models`                   | None                           | `ModelsResponse`                |
+| `GET /usage`                    | `PageQuery`                    | `UsageResponse`                 |
+| `GET /devices`                  | None                           | `DevicesResponse`               |
+| `POST /devices/revoke`          | `RevokeDeviceRequest`          | `RevokeDeviceResponse`          |
+| `GET /topup/options`            | None                           | `TopupOptionsResponse`          |
+| `POST /topup/orders`            | `CreateTopupRequest`           | `TopupOrder`                    |
+| `GET /topup/orders`             | `PageQuery`                    | `TopupOrdersResponse`           |
+| `GET /topup/orders/{order_id}`  | Path order ID                  | `TopupOrder`                    |
 
 `SessionResponse.state` is one of:
 
@@ -213,7 +215,7 @@ only transports their display text and does not change expression evaluation.
 ## Private gateway lifecycle
 
 The Core account lifecycle now lives under `openh3-system::provider::cloud_account`.
-It is deliberately not connected to local HTTP routes yet. Construction takes a
+AppServices constructs it and the guarded local HTTP transport. Construction takes a
 trusted, immutable HTTPS origin (explicit loopback opt-in for development), a
 persistent storage encryption key, and `ICloudAccountRepository`. Migration 047
 stores encrypted grants bound to local owner, issuer, remote subject, device and
@@ -258,3 +260,53 @@ route/service tests and pinned gateway integration tests as implementations land
 The lifecycle implementation records sanitized lifecycle outcomes, never passwords,
 codes, flow/access/refresh/inference tokens, raw remote responses or checkout
 URLs. Audit financial transitions through existing gateway billing observability.
+
+## Implemented account transport
+
+Core exposes only capabilities, session, me, devices, email-code, register, login,
+auth/verify, password/reset, password/reset/complete, logout and devices/revoke
+under /api/cloud-account. Billing, wallet, model and topup paths are not installed.
+Requests use the public DTOs and ApiResponse/ErrorResponse; JSON is capped at
+16 KiB, unknown fields and queries are rejected, and every response is no-store.
+Local-auth, cloud-auth, verification, policy, rate-limit and transport failures have
+distinct fixed codes. Rate-limit responses retain Retry-After. Neither transport
+replays cloud operations after a 401. Polling reads do not consume the per-user
+sensitive-action budget. Logout also bypasses that budget so failed attempts
+cannot prevent local disconnect.
+
+Configuration is read once at process bootstrap and can be injected as typed
+CloudAccountTransportConfig in tests. OPENH3_CLOUD_ACCOUNT_ENABLED=1 opts in;
+the default is disabled and no endpoint. OPENH3_CLOUD_ACCOUNT_ENDPOINT is a
+trusted operator-controlled HTTPS origin; the renderer cannot select it.
+OPENH3_CLOUD_ACCOUNT_ALLOW_LOOPBACK_HTTP=1 permits only explicit loopback HTTP
+for development. OPENH3_CLOUD_ACCOUNT_TRUSTED_ORIGINS is a comma-separated list
+of browser origins. Host and forwarded headers do not establish trust.
+
+Electron main generates a fresh in-memory capability per launch and injects it
+only into its owned Core child's environment. Core consumes and removes it while
+still single-threaded, before runtime initialization or login-shell probing, so
+even plain subprocesses cannot inherit it. It remains only in typed application
+state. Main bootstraps CSRF through local /health without the capability or any
+cloud I/O, and uses bounded, redirect-free fetches. The preload cloudAccount operation accepts
+only the native operation union, never headers, paths, URLs or owner IDs. Only
+the owned window's top-level frame on the packaged renderer document or the
+configured unpackaged development URL can invoke it (hash navigation is allowed).
+The synchronous port API is unchanged. Desktop cloud IPC currently supports Local
+identity mode only; nonlocal capability-only requests fail LOCAL_AUTH_REQUIRED.
+The renderer must use this IPC in desktop mode and must never fall back to direct
+unauthenticated HTTP when it is unavailable.
+
+WebUI requests, including requests forwarded into a Local Core, require a real
+UserSession plus a configured trusted Origin (or same-origin Referer on GET) and
+CSRF for mutations. The static server marker forces session authentication and
+cannot be combined with the desktop capability. All current and legacy helper
+credential headers are rejected independently. Cloud routes run outside the
+global permissive CORS path and retain the existing update-admission gate; other
+identity and BYOK routes retain their behavior.
+
+Access logs use generated request IDs and literal route labels, with no query
+keys or values. Malformed input and unknown field errors use fixed text. The
+HTTP bridge suppresses cloud bodies and sanitizes errors before retaining them.
+The capability is filtered from inherited agent environments and spawn builders.
+Tests use in-memory SQLite, local gateway fixtures and synthetic credentials;
+no real email, inference, payment or account credentials are used.

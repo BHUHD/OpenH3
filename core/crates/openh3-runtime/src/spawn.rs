@@ -285,6 +285,7 @@ fn strip_pollution(cmd: &mut Command) {
         .env_remove("NODE_DEBUG")
         .env_remove("CLAUDECODE")
         .env_remove("OPENH3_CONTENT_TOKEN")
+        .env_remove("OPENH3_CLOUD_ACCOUNT_CAPABILITY")
         .env_remove("OPENH3_CONTENT_PORT");
 }
 
@@ -368,6 +369,7 @@ fn resolve_program(program: &OsStr) -> OsString {
 mod tests {
     use super::*;
     use crate::ResolvedCommand;
+    #[cfg(unix)]
     use std::time::{Duration, Instant};
 
     #[tokio::test]
@@ -480,7 +482,33 @@ mod tests {
             .map(|(key, _)| key)
             .collect();
         assert!(removals.contains(&OsStr::new("OPENH3_CONTENT_TOKEN")));
+        assert!(removals.contains(&OsStr::new("OPENH3_CLOUD_ACCOUNT_CAPABILITY")));
         assert!(removals.contains(&OsStr::new("OPENH3_CONTENT_PORT")));
+    }
+
+    #[tokio::test]
+    async fn cloud_capability_is_not_inherited_by_actual_spawn() {
+        if !crate::test_support::run_in_env_child(
+            "spawn::tests::cloud_capability_is_not_inherited_by_actual_spawn",
+            |command| {
+                command.env("OPENH3_CLOUD_ACCOUNT_CAPABILITY", "synthetic-capability");
+            },
+        ) {
+            return;
+        }
+        assert!(std::env::var_os("OPENH3_CLOUD_ACCOUNT_CAPABILITY").is_some());
+        let mut builder = Builder::new(std::env::current_exe().unwrap());
+        builder
+            .args(["--exact", "spawn::tests::cloud_capability_child_check"])
+            .env("OPENH3_TEST_CLOUD_CHILD", "1");
+        assert!(builder.output().await.unwrap().status.success());
+    }
+
+    #[test]
+    fn cloud_capability_child_check() {
+        if std::env::var_os("OPENH3_TEST_CLOUD_CHILD").is_some() {
+            assert!(std::env::var_os("OPENH3_CLOUD_ACCOUNT_CAPABILITY").is_none());
+        }
     }
 
     #[test]

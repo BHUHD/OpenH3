@@ -4,7 +4,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::time::Duration;
 
 /// Trusted application configuration only. Never deserialize from a request.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct CloudAccountConfig {
     pub enabled: bool,
     pub endpoint: Option<String>,
