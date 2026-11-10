@@ -393,7 +393,12 @@ parsers end at Chat `[DONE]` or a Responses terminal; they do not require HTTP E
 after those markers. Chat finish_reason without `[DONE]` requires clean HTTP EOF.
 Missing terminals, empty/whitespace/reasoning-only finals,
 invalid tool events and an empty tool terminal become errors before those engine
-paths. It does not replace the SSE parser. Valid tool follow-ups, compaction and
+paths. A managed-only state flag in the existing vendored `aion-providers/src/openai.rs`
+and `openai_responses.rs` rejects broken JSON frames and completed tool calls with
+missing IDs/names or missing, invalid or non-object argument JSON before tolerant
+BYOK normalization discards that evidence. Fragmented arguments, explicit `{}`
+arguments and valid Responses lifecycle frames retain their existing semantics.
+It does not replace the SSE parser. Valid tool follow-ups, compaction and
 intentional finalization remain separate potentially billed requests; this is
 not a guarantee of one supplier request per user turn. Pinned compaction
 (`aion-agent/src/compact/auto.rs`) retries PromptTooLong with a shortened prompt.
@@ -407,6 +412,14 @@ same handoff. A delayed old invalidation cannot cancel a replacement account.
 The manager selects cancellation around the whole engine turn, including tool
 approval; cloned providers also select it around resolution and stream delivery.
 User cancellation drops the receiver, closing silent upstream HTTP work.
+The pinned `aion-agent` crate is also vendored at the same v0.2.11 commit with a
+narrow opt-in `AgentBootstrap::structured_children` seam. Verified in vendored
+`aion-agent/src/bootstrap.rs` and `spawner.rs`: managed managers enable concurrent
+`join_all` ownership of native Spawn child futures; dropping a parent turn drops
+all its children and their receivers, including silent streams. Results preserve
+input order. Future turns create fresh futures, so an old child cannot be revived
+by user continuation. The default false path retains BYOK's original task spawning.
+The opt-in also applies when the manager resumes an existing session.
 Stopping local work does not refund supplier work already accepted.
 
 An inference HTTP 401 fails that request without replay. It does not itself
@@ -418,7 +431,9 @@ the generic model fetcher retains its existing managed-row guard.
 
 Focused tests use synthetic local HTTP/SSE and real in-memory SQLite. They cover
 actual AgentBootstrap request counts for ambiguous responses in both protocols,
-successful native tool execution and continuation, per-request credentials,
+successful native tool execution and continuation, native Spawn concurrent result
+ordering and user-stop socket closure followed by a successful new turn, malformed
+payload rejection before normalization, per-request credentials,
 model override rejection, tool-approval cancellation, independent owners/device
 binding, refresh/logout races, stale subscriptions and old-account invalidation.
 The AppServices adapter integration observes silent response-body closure while
@@ -427,19 +442,34 @@ credential-free config/session files. DEBUG log tests check secret sentinels;
 BYOK recovery remains separately exercised. Catalog, wallet/payment and UI/E2E
 implementation are outside this change.
 
-Validation commands for this integration (local synthetic fixtures only):
+`services/managed/tests.rs` exercises eight text-plus-malformed-response cases:
+invalid argument JSON, missing tool ID, missing arguments and broken JSON frames
+in both protocols. Each returns the existing sanitized manager error after exactly
+one received request. `services/managed/children_test.rs` verifies actual native
+Spawn prompts, silent child socket closure on user stop, three requests across
+the cancelled turn and successful continuation, and four requests for two concurrent
+successful children plus their parent tool round. The cancelled child cannot accept
+a late tool response after the next turn.
+
+Validation commands for this integration (local synthetic fixtures only). Run
+from `core/` so Cargo and rustfmt use `core/rust-toolchain.toml` (Rust 1.95.0):
 
 ```sh
 cargo test -p openh3-system --lib provider::cloud_account
 cargo test -p openh3-ai-agent --lib services::
 cargo test -p openh3-ai-agent --lib services::managed
+cargo test -p aion-providers
+cargo test -p aion-agent --test spawn_test --test bootstrap_test
 cargo test -p openh3-ai-agent --lib manager::aionrs::agent::agent_test
 cargo test -p openh3-ai-agent --test factory_provider_integration
 cargo test -p openh3-app --lib real_account_refresh_logout
-cargo clippy -p openh3-ai-agent -p openh3-system -p openh3-app -- -D warnings
+cargo clippy -p aion-providers -p aion-agent -p openh3-ai-agent -p openh3-system -p openh3-app -- -D warnings
 cargo fmt --all -- --check
 ```
 
 The account suite's existing Go password interoperability test requires its
 separate gateway fixture and is ignored without that fixture. These scoped
 checks do not replace the later full-workspace and gateway billing checks.
+The upstream runtime's live `e2e` and `acceptance` targets require the explicit
+default-off `live-provider-tests` feature and were not executed. The vendor delta
+and attribution are recorded in `core/vendor/aion-agent/README.openh3.md`.

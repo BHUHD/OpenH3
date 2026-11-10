@@ -264,6 +264,7 @@ impl AionrsAgentManager {
         };
         let mut bootstrap = AgentBootstrap::new(config, &workspace, sink)
             .provider(provider)
+            .structured_children(managed_provider.is_some())
             .runtime_env(runtime_env)
             .extra_skill_dirs(_skill_dirs);
         if let Some(session) = resume_session {

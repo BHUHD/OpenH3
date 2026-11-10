@@ -8,6 +8,9 @@ use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
+#[path = "children_test.rs"]
+mod children_test;
+
 #[derive(Clone, Default)]
 struct Logs(Arc<std::sync::Mutex<Vec<u8>>>);
 impl std::io::Write for Logs {
@@ -596,5 +599,192 @@ async fn managed_bootstrap_never_replays_ambiguous_paid_requests() {
             assert_eq!(calls.load(Ordering::SeqCst), 1, "no hidden engine/provider replay");
             server.abort();
         }
+    }
+}
+
+#[tokio::test]
+async fn managed_malformed_payloads_fail_before_normalization() {
+    use axum::{Router, routing::post};
+    for mode in [OpenAiApiMode::ChatCompletions, OpenAiApiMode::Responses] {
+        for defect in ["invalid_json", "missing_id", "missing_arguments", "broken_frame"] {
+            let malformed = if mode == OpenAiApiMode::Responses {
+                let mut item =
+                    json!({"type":"function_call","id":"item-bad","call_id":"call-bad","name":"Read","arguments":"{}"});
+                if defect == "invalid_json" {
+                    item["arguments"] = json!("{");
+                }
+                if defect == "missing_id" {
+                    item.as_object_mut().unwrap().remove("call_id");
+                }
+                if defect == "missing_arguments" {
+                    item.as_object_mut().unwrap().remove("arguments");
+                }
+                format!(
+                    "data: {}\n\n{}",
+                    json!({"type":"response.output_item.done","item":item}),
+                    done(mode)
+                )
+            } else {
+                let mut call =
+                    json!({"index":0,"id":"call-bad","type":"function","function":{"name":"Read","arguments":"{}"}});
+                if defect == "invalid_json" {
+                    call["function"]["arguments"] = json!("{");
+                }
+                if defect == "missing_id" {
+                    call.as_object_mut().unwrap().remove("id");
+                }
+                if defect == "missing_arguments" {
+                    call["function"].as_object_mut().unwrap().remove("arguments");
+                }
+                format!(
+                    "data: {}\n\ndata: {{\"choices\":[{{\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n",
+                    json!({"choices":[{"delta":{"tool_calls":[call]},"finish_reason":null}]})
+                )
+            };
+            let first = if defect == "broken_frame" {
+                format!("{}data: broken-json\n\n{}", text(mode, "partial text"), done(mode))
+            } else {
+                format!("{}{}", text(mode, "partial text"), malformed)
+            };
+            let calls = Arc::new(AtomicUsize::new(0));
+            let app = Router::new().route(
+                "/{*path}",
+                post({
+                    let calls = calls.clone();
+                    move || {
+                        let n = calls.fetch_add(1, Ordering::SeqCst);
+                        let body = if n == 0 {
+                            first.clone()
+                        } else {
+                            format!("{}{}", text(mode, "OK"), done(mode))
+                        };
+                        async move { ([("content-type", "text/event-stream")], body) }
+                    }
+                }),
+            );
+            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let endpoint = format!("http://{}", listener.local_addr().unwrap());
+            let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+            let resolver = Arc::new(Resolver {
+                endpoint,
+                lifetime: watch::channel(false).0,
+                resolutions: AtomicUsize::new(0),
+            });
+            let provider = ManagedProvider::bind(
+                resolver,
+                "owner".into(),
+                "original-provider".into(),
+                "test-model".into(),
+                mode,
+            )
+            .await
+            .unwrap();
+            let dir = tempfile::tempdir().unwrap();
+            let manager = AionrsAgentManager::new_with_managed_provider(
+                format!("review-{defect}"),
+                dir.path().to_string_lossy().into(),
+                config(dir.path(), mode),
+                None,
+                vec![],
+                Some(provider),
+            )
+            .await
+            .unwrap();
+            let result = tokio::time::timeout(Duration::from_secs(10), manager.send_message(message()))
+                .await
+                .unwrap();
+            let error = result.expect_err("malformed payload must fail before normalization");
+            assert_eq!(
+                error.to_string(),
+                "The upstream Agent failed while handling the request",
+                "mode={mode:?} defect={defect}"
+            );
+            assert_eq!(
+                calls.load(Ordering::SeqCst),
+                1,
+                "mode={mode:?} defect={defect} must never replay"
+            );
+            server.abort();
+        }
+    }
+}
+
+#[tokio::test]
+async fn managed_empty_object_tools_and_lifecycle_frames_are_valid() {
+    use axum::{Json, Router, routing::post};
+    for mode in [OpenAiApiMode::ChatCompletions, OpenAiApiMode::Responses] {
+        let first = if mode == OpenAiApiMode::Responses {
+            let item = json!({"type":"function_call","id":"item-1","call_id":"call-1","name":"EnterPlanMode","arguments":"{}"});
+            [
+                json!({"type":"response.created","response":{"status":"in_progress"}}),
+                json!({"type":"response.output_item.added","item":{"type":"function_call","id":"item-1","call_id":"call-1","name":"EnterPlanMode","arguments":""}}),
+                json!({"type":"response.function_call_arguments.delta","item_id":"item-1","delta":"{"}),
+                json!({"type":"response.function_call_arguments.delta","item_id":"item-1","delta":"}"}),
+                json!({"type":"response.output_item.done","item":item}),
+                json!({"type":"response.completed","response":{"status":"completed","output":[item]}}),
+            ].iter().map(|event| format!("data: {event}\n\n")).collect::<String>()
+        } else {
+            [
+                json!({"choices":[{"delta":{"role":"assistant"},"finish_reason":null}]}),
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"EnterPlanMode","arguments":"{"}}]},"finish_reason":null}]}),
+                json!({"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"","arguments":"}"}}]},"finish_reason":null}]}),
+                json!({"choices":[{"delta":{},"finish_reason":"tool_calls"}]}),
+                json!({"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":2}}),
+            ].iter().map(|event| format!("data: {event}\n\n")).collect::<String>() // finish_reason + clean EOF
+        };
+        let calls = Arc::new(AtomicUsize::new(0));
+        let app = Router::new().route(
+            "/{*path}",
+            post({
+                let calls = calls.clone();
+                move |Json(body): Json<Value>| {
+                    let n = calls.fetch_add(1, Ordering::SeqCst);
+                    let response = if n == 0 {
+                        first.clone()
+                    } else {
+                        assert!(
+                            body.to_string().contains("Entered plan mode"),
+                            "valid no-argument tool must actually execute"
+                        );
+                        format!("{}{}", text(mode, "OK"), done(mode))
+                    };
+                    async move { ([("content-type", "text/event-stream")], response) }
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let resolver = Arc::new(Resolver {
+            endpoint,
+            lifetime: watch::channel(false).0,
+            resolutions: AtomicUsize::new(0),
+        });
+        let provider = ManagedProvider::bind(
+            resolver,
+            "owner".into(),
+            "original-provider".into(),
+            "test-model".into(),
+            mode,
+        )
+        .await
+        .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let manager = AionrsAgentManager::new_with_managed_provider(
+            "no-args".into(),
+            dir.path().to_string_lossy().into(),
+            config(dir.path(), mode),
+            None,
+            vec![],
+            Some(provider),
+        )
+        .await
+        .unwrap();
+        tokio::time::timeout(Duration::from_secs(5), manager.send_message(message()))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        server.abort();
     }
 }

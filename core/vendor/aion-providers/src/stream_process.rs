@@ -49,6 +49,7 @@ pub(crate) async fn process_openai_responses_sse_stream(
     let mut framer = SseLineFramer::default();
     let mut decoder = Utf8StreamDecoder::default();
     let managed = response.extensions().get::<ManagedResponse>().is_some();
+    state.managed = managed;
     let mut stream = response.bytes_stream();
     let mut emitted_content = false;
 
@@ -151,6 +152,7 @@ pub(crate) async fn process_openai_sse_stream(
     let parser = OpenAiParser { auto_tool_id };
     let mut state = parser.new_state();
     let managed = response.extensions().get::<ManagedResponse>().is_some();
+    state.managed = managed;
     // Never retain upstream-selected request IDs in managed diagnostics.
     let headers = if managed {
         &reqwest::header::HeaderMap::new()

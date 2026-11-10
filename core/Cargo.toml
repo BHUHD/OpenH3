@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "vendor/aion-agent",
     "vendor/aion-providers",
     "crates/openh3-assets",
     "crates/openh3-common",
@@ -234,3 +235,4 @@ incremental = false
 [patch."https://github.com/iOfficeAI/aionrs.git"]
 aion-mcp = { path = "vendor/aion-mcp" }
 aion-providers = { path = "vendor/aion-providers" }
+aion-agent = { path = "vendor/aion-agent" }

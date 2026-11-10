@@ -71,6 +71,8 @@ struct ToolCallAccumulator {
 }
 
 pub(crate) struct StreamState {
+    /// Managed calls must retain parse failures instead of normalizing them.
+    pub(crate) managed: bool,
     tool_calls: Vec<ToolCallAccumulator>,
     input_tokens: u64,
     output_tokens: u64,
@@ -88,6 +90,7 @@ pub(crate) struct StreamState {
 impl StreamState {
     pub(crate) fn new() -> Self {
         Self {
+            managed: false,
             tool_calls: Vec::new(),
             input_tokens: 0,
             output_tokens: 0,
@@ -153,6 +156,9 @@ pub(crate) fn parse_sse_chunk(data: &str, state: &mut StreamState, auto_tool_id:
         Ok(v) => v,
         Err(_) => {
             state.diagnostics.observe_invalid_json();
+            if state.managed {
+                state.stream_error = Some(ProviderError::Parse("Malformed managed stream frame".into()));
+            }
             return events;
         }
     };
@@ -233,6 +239,18 @@ pub(crate) fn parse_sse_chunk(data: &str, state: &mut StreamState, auto_tool_id:
     // Check finish_reason — defer Done until [DONE] so the trailing usage
     // chunk (choices:[]) can update token counts first.
     if let Some(finish_reason) = choice["finish_reason"].as_str() {
+        // Validate only the completed accumulation: arguments may be fragmented
+        // across deltas. Do this before BYOK's ID/default-object normalization.
+        if state.managed
+            && state.tool_calls.iter().any(|tc| {
+                tc.id.trim().is_empty()
+                    || tc.name.trim().is_empty()
+                    || !serde_json::from_str::<Value>(&tc.arguments).is_ok_and(|input| input.is_object())
+            })
+        {
+            state.stream_error = Some(ProviderError::Parse("Malformed managed tool call".into()));
+            return Vec::new();
+        }
         match finish_reason {
             "tool_calls" | "stop" => {
                 if !state.tool_calls.is_empty() {

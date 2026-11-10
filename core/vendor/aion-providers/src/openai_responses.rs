@@ -7,6 +7,7 @@ use serde_json::{Map, Value};
 pub(crate) const PROVIDER_ITEM_OWNER: &str = "openai_responses";
 
 pub(crate) struct StreamState {
+    pub(crate) managed: bool,
     seen_output_items: HashSet<String>,
     saw_tool_call: bool,
     terminal: bool,
@@ -15,6 +16,7 @@ pub(crate) struct StreamState {
 impl StreamState {
     pub(crate) fn new() -> Self {
         Self {
+            managed: false,
             seen_output_items: HashSet::new(),
             saw_tool_call: false,
             terminal: false,
@@ -29,6 +31,10 @@ impl StreamState {
 pub(crate) fn parse_sse_chunk(data: &str, state: &mut StreamState) -> Vec<LlmEvent> {
     let json = match serde_json::from_str::<Value>(data) {
         Ok(json) => json,
+        Err(_) if state.managed => {
+            state.terminal = true;
+            return vec![LlmEvent::Error("Malformed managed stream frame".into())];
+        }
         Err(_) => return Vec::new(),
     };
     let event_type = json.get("type").and_then(Value::as_str).unwrap_or_default();
@@ -128,6 +134,22 @@ fn error_event(event: &Value, state: &mut StreamState) -> Vec<LlmEvent> {
 }
 
 fn events_for_output_item(item: &Value, state: &mut StreamState) -> Vec<LlmEvent> {
+    // Check completed raw function items before deduplication or tolerant BYOK
+    // defaults can discard missing IDs or turn missing/invalid arguments into {}.
+    if state.managed && item.get("type").and_then(Value::as_str) == Some("function_call") {
+        let valid = ["call_id", "name"].into_iter().all(|key| {
+            item.get(key)
+                .and_then(Value::as_str)
+                .is_some_and(|value| !value.trim().is_empty())
+        }) && item
+            .get("arguments")
+            .and_then(Value::as_str)
+            .is_some_and(|arguments| serde_json::from_str::<Value>(arguments).is_ok_and(|input| input.is_object()));
+        if !valid {
+            state.terminal = true;
+            return vec![LlmEvent::Error("Malformed managed tool call".into())];
+        }
+    }
     let identity = item
         .get("id")
         .and_then(Value::as_str)
