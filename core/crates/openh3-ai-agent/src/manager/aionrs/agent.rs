@@ -37,6 +37,7 @@ use crate::dev_prompt_dump::{AgentFinalInputDump, dump_agent_final_input};
 use crate::error::AgentError;
 use crate::protocol::events::AgentStreamEvent;
 use crate::protocol::send_error::AgentSendError;
+use crate::services::managed::ManagedProvider;
 use crate::services::provider_stream::RecoveringProvider;
 use crate::types::{AionrsResolvedConfig, SendMessageData};
 
@@ -107,6 +108,7 @@ fn build_aionrs_final_input_dump_value(
 }
 
 pub struct AionrsAgentManager {
+    managed_provider: Option<Arc<ManagedProvider>>,
     runtime: AgentRuntime,
     engine: Mutex<AgentEngine>,
     /// Static slash command metadata captured at bootstrap so UI lookups do
@@ -159,6 +161,26 @@ impl AionrsAgentManager {
         config_extra: AionrsResolvedConfig,
         resume_session: Option<Session>,
         _skill_dirs: Vec<PathBuf>,
+    ) -> Result<Self, AgentError> {
+        Self::new_with_managed_provider(
+            conversation_id,
+            workspace,
+            config_extra,
+            resume_session,
+            _skill_dirs,
+            None,
+        )
+        .await
+    }
+
+    /// Inject an account-bound provider without storing its credentials in configuration.
+    pub async fn new_with_managed_provider(
+        conversation_id: String,
+        workspace: String,
+        config_extra: AionrsResolvedConfig,
+        resume_session: Option<Session>,
+        _skill_dirs: Vec<PathBuf>,
+        managed_provider: Option<Arc<ManagedProvider>>,
     ) -> Result<Self, AgentError> {
         let runtime = AgentRuntime::new(conversation_id.clone(), workspace.clone(), 128);
         let sink: Arc<dyn OutputSink> = Arc::new(BackendOutputSink::new(runtime.event_sender()));
@@ -236,7 +258,10 @@ impl AionrsAgentManager {
         let is_resume = resume_session.is_some();
         let provider_label = config.provider_label.clone();
 
-        let provider = Arc::new(RecoveringProvider(aion_providers::create_provider(&config)));
+        let provider: Arc<dyn aion_providers::LlmProvider> = match &managed_provider {
+            Some(provider) => provider.clone(),
+            None => Arc::new(RecoveringProvider(aion_providers::create_provider(&config))),
+        };
         let mut bootstrap = AgentBootstrap::new(config, &workspace, sink)
             .provider(provider)
             .runtime_env(runtime_env)
@@ -327,6 +352,7 @@ impl AionrsAgentManager {
         runtime.transition_to(ConversationStatus::Pending);
 
         Ok(Self {
+            managed_provider,
             runtime,
             engine: Mutex::new(engine),
             slash_commands,
@@ -481,6 +507,20 @@ impl IAgentTask for AionrsAgentManager {
         engine.set_next_turn_id(Some(turn_anchor));
 
         let result = tokio::select! {
+            biased;
+            _ = async {
+                match &self.managed_provider {
+                    Some(provider) => provider.cancelled().await,
+                    None => std::future::pending::<()>().await,
+                }
+            } => {
+                if let Ok(mut confirmations) = self.confirmations.write() {
+                    confirmations.clear();
+                }
+                info!(conversation_id = %self.runtime.conversation_id(), "Aionrs managed invocation cancelled by account lifecycle");
+                engine.abort_current_turn("Managed account invocation cancelled");
+                None
+            }
             res = engine.run_with_blocks(content_blocks, &data.msg_id) => Some(res),
             _ = self.cancel_notify.notified() => {
                 info!(

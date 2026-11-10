@@ -1,6 +1,7 @@
 //! Native account lifecycle and strict authenticated transport.
 mod client;
 mod flows;
+mod lifetime;
 mod password;
 pub mod routes;
 mod service;

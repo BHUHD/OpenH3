@@ -68,6 +68,11 @@ impl ProviderHealthCheckService {
     }
 
     fn resolve_probe_config(&self, row: &Provider, model_id: &str) -> Result<AionrsResolvedConfig, AgentError> {
+        if row.managed_by.is_some() {
+            return Err(AgentError::bad_request(
+                "Managed providers do not support generic probes",
+            ));
+        }
         let api_key = openh3_common::decrypt_string(&row.api_key_encrypted, &self.encryption_key)
             .map_err(|e| AgentError::internal(e.to_string()))?;
         let provider = map_aionrs_provider(&row.platform, model_id, row.model_protocols.as_deref())?;
@@ -402,6 +407,55 @@ mod tests {
             created_at: 0,
             updated_at: 0,
         }
+    }
+
+    #[test]
+    fn managed_probe_rejected_before_decryption() {
+        let mut provider = test_provider();
+        provider.managed_by = Some("cloud_account".into());
+        provider.api_key_encrypted = "invalid ciphertext must not be read".into();
+        let error = test_service()
+            .resolve_probe_config(&provider, "gpt-5.6-sol")
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("Managed providers do not support generic probes")
+        );
+    }
+
+    #[tokio::test]
+    async fn managed_health_check_makes_no_upstream_request() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let db = openh3_db::init_database_memory().await.unwrap();
+        sqlx::query("INSERT INTO providers(id,user_id,platform,name,base_url,api_key_encrypted,managed_by,models,enabled,capabilities,model_settings,is_full_url,created_at,updated_at) VALUES ('managed-probe','system_default_user','new-api','Managed',?,'must not decrypt','cloud_account','[\"test\"]',1,'[]','{}',0,1,1)")
+            .bind(endpoint).execute(db.pool()).await.unwrap();
+        let service = ProviderHealthCheckService::new(
+            Arc::new(openh3_db::SqliteProviderRepository::new(db.pool().clone())),
+            TEST_KEY,
+            PathBuf::from("unused"),
+        );
+        let result = service
+            .health_check(
+                "system_default_user",
+                ProviderHealthCheckRequest {
+                    provider_id: "managed-probe".into(),
+                    model: "test".into(),
+                },
+            )
+            .await;
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Managed providers do not support generic probes")
+        );
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), listener.accept())
+                .await
+                .is_err()
+        );
     }
 
     #[test]

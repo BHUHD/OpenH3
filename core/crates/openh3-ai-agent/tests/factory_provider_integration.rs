@@ -27,6 +27,7 @@ async fn setup() -> (
     Arc<dyn IProviderRepository>,
     Arc<AgentRegistry>,
     Arc<AcpSessionSyncService>,
+    openh3_db::Database,
 ) {
     let db = init_database_memory().await.unwrap();
     let pool = db.pool().clone();
@@ -36,7 +37,7 @@ async fn setup() -> (
     registry.hydrate().await.unwrap();
     let session_repo: Arc<dyn IAcpSessionRepository> = Arc::new(SqliteAcpSessionRepository::new(pool));
     let acp_agent_service = AcpSessionSyncService::new(session_repo);
-    (provider_repo, registry, acp_agent_service)
+    (provider_repo, registry, acp_agent_service, db)
 }
 
 async fn insert_test_provider(repo: &dyn IProviderRepository, id: &str, platform: &str) {
@@ -68,6 +69,7 @@ fn make_factory(
     provider_repo: Arc<dyn IProviderRepository>,
     agent_registry: Arc<AgentRegistry>,
     acp_agent_service: Arc<AcpSessionSyncService>,
+    managed_credentials: Option<Arc<dyn openh3_ai_agent::managed::ManagedCredentialResolver>>,
 ) -> openh3_ai_agent::task_manager::AgentFactory {
     let tmp = tempfile::TempDir::new().unwrap();
     let skill_paths = Arc::new(openh3_extension::resolve_skill_paths(tmp.path(), tmp.path()));
@@ -81,6 +83,7 @@ fn make_factory(
         openh3_process::local_machine_id(tmp.path()),
     ));
     build_agent_factory(AgentFactoryDeps {
+        managed_credentials,
         skill_manager: AcpSkillManager::new(skill_paths),
         provider_repo,
         encryption_key: test_encryption_key(),
@@ -131,8 +134,8 @@ fn make_aionrs_options(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn aionrs_factory_returns_error_for_missing_provider() {
-    let (provider_repo, agent_registry, acp_agent_service) = setup().await;
-    let factory = make_factory(provider_repo, agent_registry, acp_agent_service);
+    let (provider_repo, agent_registry, acp_agent_service, _db) = setup().await;
+    let factory = make_factory(provider_repo, agent_registry, acp_agent_service, None);
 
     let options = make_aionrs_options(
         "conv-test-1",
@@ -160,9 +163,9 @@ async fn aionrs_factory_returns_error_for_missing_provider() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn aionrs_factory_resolves_provider_from_db() {
-    let (provider_repo, agent_registry, acp_agent_service) = setup().await;
+    let (provider_repo, agent_registry, acp_agent_service, _db) = setup().await;
     insert_test_provider(&*provider_repo, "prov-001", "openai").await;
-    let factory = make_factory(provider_repo, agent_registry, acp_agent_service);
+    let factory = make_factory(provider_repo, agent_registry, acp_agent_service, None);
 
     let options = make_aionrs_options(
         "conv-test-2",
@@ -181,9 +184,9 @@ async fn aionrs_factory_resolves_provider_from_db() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn aionrs_factory_respects_use_model_override() {
-    let (provider_repo, agent_registry, acp_agent_service) = setup().await;
+    let (provider_repo, agent_registry, acp_agent_service, _db) = setup().await;
     insert_test_provider(&*provider_repo, "prov-002", "openai").await;
-    let factory = make_factory(provider_repo, agent_registry, acp_agent_service);
+    let factory = make_factory(provider_repo, agent_registry, acp_agent_service, None);
 
     let options = make_aionrs_options(
         "conv-test-3",
@@ -198,4 +201,140 @@ async fn aionrs_factory_respects_use_model_override() {
 
     let result = factory(options).await;
     assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+}
+
+struct AccountResolver {
+    endpoint: String,
+    lifetime: tokio::sync::watch::Sender<bool>,
+}
+#[async_trait::async_trait]
+impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
+    async fn subscribe(
+        &self,
+        owner: &str,
+        provider: &str,
+    ) -> Result<tokio::sync::watch::Receiver<bool>, openh3_ai_agent::managed::ProviderError> {
+        assert_eq!(owner, TEST_USER_ID);
+        assert_eq!(provider, "managed-factory");
+        Ok(self.lifetime.subscribe())
+    }
+    async fn resolve(
+        &self,
+        owner: &str,
+        provider: &str,
+    ) -> Result<openh3_ai_agent::managed::ManagedCredentials, openh3_ai_agent::managed::ProviderError> {
+        assert_eq!(owner, TEST_USER_ID);
+        assert_eq!(provider, "managed-factory");
+        Ok(openh3_ai_agent::managed::ManagedCredentials::new(
+            self.endpoint.clone(),
+            "synthetic-managed-factory".into(),
+        ))
+    }
+}
+
+#[tokio::test]
+async fn managed_factory_requires_verified_row_and_preserves_actual_selected_model() {
+    use axum::{Json, Router, http::HeaderMap, routing::post};
+    let requests = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let app = Router::new().route(
+        "/v1/chat/completions",
+        post({
+            let requests = requests.clone();
+            move |headers: HeaderMap, Json(body): Json<serde_json::Value>| {
+                requests.lock().unwrap().push((headers, body));
+                async {
+                    (
+                        [("content-type", "text/event-stream")],
+                        "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n",
+                    )
+                }
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let (repo, registry, sessions, db) = setup().await;
+    insert_test_provider(&*repo, "managed-factory", "new-api").await;
+    sqlx::query("UPDATE providers SET managed_by='cloud_account', api_key_encrypted='must not decrypt', base_url='http://127.0.0.1:1' WHERE id='managed-factory'").execute(db.pool()).await.unwrap();
+    let resolver = Arc::new(AccountResolver {
+        endpoint,
+        lifetime: tokio::sync::watch::channel(false).0,
+    });
+    let factory = make_factory(repo.clone(), registry.clone(), sessions.clone(), Some(resolver));
+    let dir = tempfile::tempdir().unwrap();
+    let options = || {
+        make_aionrs_options(
+            &format!("managed-{}", uuid::Uuid::now_v7()),
+            dir.path().to_str().unwrap(),
+            ProviderWithModel {
+                provider_id: "managed-factory".into(),
+                model: "gpt-4o".into(),
+                use_model: Some("gpt-5.4".into()),
+            },
+            Default::default(),
+        )
+    };
+    assert!(
+        factory(options())
+            .await
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("protocol is unverified")
+    );
+    sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
+        .bind(r#"{"gpt-5.4":{"openaiApiMode":"chat_completions"}}"#)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    // Persisted API types use snake_case; a misspelled catalog field must fail closed.
+    assert!(factory(options()).await.is_err());
+    sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
+        .bind(r#"{"gpt-5.4":{"openai_api_mode":"chat_completions"}}"#)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let missing = make_factory(repo, registry, sessions, None);
+    assert!(
+        missing(options())
+            .await
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("resolver unavailable")
+    );
+    sqlx::query("UPDATE providers SET models='[]' WHERE id='managed-factory'")
+        .execute(db.pool())
+        .await
+        .unwrap();
+    assert!(
+        factory(options())
+            .await
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("selection is unavailable")
+    );
+    assert!(requests.lock().unwrap().is_empty());
+    sqlx::query("UPDATE providers SET models='[\"gpt-5.4\"]' WHERE id='managed-factory'")
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let agent = factory(options()).await.unwrap();
+    agent
+        .send_message(openh3_ai_agent::types::SendMessageData {
+            content: "Reply OK".into(),
+            msg_id: "factory-message".into(),
+            turn_id: None,
+            files: vec![],
+            inject_skills: vec![],
+        })
+        .await
+        .unwrap();
+    let calls = requests.lock().unwrap();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].0["authorization"], "Bearer synthetic-managed-factory");
+    assert_eq!(calls[0].1["model"], "gpt-5.4");
+    server.abort();
 }

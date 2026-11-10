@@ -1,5 +1,6 @@
 use super::*;
 mod http;
+mod lifetime_tests;
 #[path = "race_tests.rs"]
 mod race_tests;
 use openh3_api_types::*;
@@ -655,6 +656,8 @@ async fn auth_failure_invalidates_but_transport_and_proof_failures_preserve_gran
         .mount(&server)
         .await;
     svc.login(&owner, login()).await.unwrap();
+    let grant = svc.read(&owner).await.unwrap().unwrap();
+    let lifetime = svc.inference_lifetime(&owner, &grant.provider_id).await.unwrap();
     for (status, code, expected) in [
         (503, "temporarily_unavailable", CloudAccountError::Transport),
         (401, "verification_failed", CloudAccountError::Verification),
@@ -687,6 +690,7 @@ async fn auth_failure_invalidates_but_transport_and_proof_failures_preserve_gran
         );
         drop(guard);
     }
+    assert!(*lifetime.borrow());
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
         CloudAccountSessionResponse::ReauthRequired {}
@@ -730,6 +734,8 @@ async fn recovery_mfa_reset_cleanup_and_devices_keep_private_fields_private() {
         .mount(&server)
         .await;
     svc.login(&owner, login()).await.unwrap();
+    let grant = svc.read(&owner).await.unwrap().unwrap();
+    let lifetime = svc.inference_lifetime(&owner, &grant.provider_id).await.unwrap();
     Mock::given(method("GET")).and(path("/api/openh3/devices")).respond_with(ok(json!({"devices":[{"device_id":"device-1","current":true,"created_at":1,"last_active_at":2,"expires_at":now()+300,"user_agent":"OpenH3","ip":"private-ip"}]}))).expect(1).mount(&server).await;
     let devices = svc.devices(&owner).await.unwrap();
     assert_eq!(devices.items[0].label, "OpenH3");
@@ -828,6 +834,7 @@ async fn recovery_mfa_reset_cleanup_and_devices_keep_private_fields_private() {
         .unwrap()
         .session_cleanup_pending
     );
+    assert!(*lifetime.borrow());
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
         CloudAccountSessionResponse::ReauthRequired {}

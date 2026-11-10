@@ -369,9 +369,7 @@ impl CloudAccountService {
                 if let Some(s) = connected
                     && f.target.as_deref() == Some(&s.credentials.device_id)
                 {
-                    self.repo
-                        .invalidate(owner, &s.issuer, Some(s.generation), false)
-                        .await?;
+                    self.invalidate_local(owner, &s.issuer, s.generation, false).await?;
                 }
                 Ok(CloudAccountVerifyResponse::DeviceRevoked {})
             }
@@ -407,7 +405,7 @@ impl CloudAccountService {
                 && s.account.email.as_deref().and_then(|e| email(e).ok()) == f.email
                 && f.email.is_some()
             {
-                self.repo.invalidate(owner, &s.issuer, Some(s.generation), true).await?;
+                self.invalidate_local(owner, &s.issuer, s.generation, true).await?;
             }
             Ok::<(), Error>(())
         }
@@ -440,9 +438,7 @@ impl CloudAccountService {
         match result {
             AuthResult::Revoked(State { state }) if state == "revoked" => {
                 if request.device_id == s.credentials.device_id {
-                    self.repo
-                        .invalidate(owner, &s.issuer, Some(s.generation), false)
-                        .await?;
+                    self.invalidate_local(owner, &s.issuer, s.generation, false).await?;
                 }
                 Ok(CloudAccountRevokeDeviceResponse::Revoked {})
             }

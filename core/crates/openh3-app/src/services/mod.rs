@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
+mod managed_account;
 
 use crate::config::{AppConfig, IdentityMode, derive_encryption_key};
 use openh3_ai_agent::{
@@ -404,6 +405,7 @@ impl AppServices {
         ));
 
         let factory = build_agent_factory(AgentFactoryDeps {
+            managed_credentials: Some(Arc::new(managed_account::AccountCredentials(cloud_account.clone()))),
             skill_manager: AcpSkillManager::new_with_repo(skill_paths.clone(), skill_repo.clone()),
             provider_repo,
             encryption_key,

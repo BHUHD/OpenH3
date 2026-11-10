@@ -23,6 +23,7 @@ pub struct CloudAccountService {
     pub(super) flows: Mutex<HashMap<String, LocalFlow>>,
     flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     ceremonies: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    pub(super) lifetimes: Mutex<HashMap<(String, i64), tokio::sync::watch::Sender<bool>>>,
 }
 
 /// Core inference handoff only. Intentionally neither Debug nor serializable.
@@ -67,6 +68,7 @@ impl CloudAccountService {
             flows: Mutex::new(HashMap::new()),
             flights: Mutex::new(HashMap::new()),
             ceremonies: Mutex::new(HashMap::new()),
+            lifetimes: Mutex::new(HashMap::new()),
         })
     }
     pub(super) async fn ceremony(&self, owner: &str) -> tokio::sync::OwnedMutexGuard<()> {
@@ -212,13 +214,13 @@ impl CloudAccountService {
         match self.decode(&row) {
             Ok(stored) => Ok(Some(stored)),
             Err(_) => {
-                self.repo.invalidate(owner, issuer, Some(row.generation), true).await?;
+                self.invalidate_local(owner, issuer, row.generation, true).await?;
                 tracing::warn!("Cloud account stored credentials invalidated");
                 Err(Error::Authentication)
             }
         }
     }
-    fn decode(&self, row: &CloudAccountRow) -> Result<Stored> {
+    pub(super) fn decode(&self, row: &CloudAccountRow) -> Result<Stored> {
         let plain = decrypt_string(
             row.encrypted.as_deref().ok_or(Error::Authentication)?,
             &self.encryption_key,
@@ -240,8 +242,7 @@ impl CloudAccountService {
     }
     pub(super) async fn invalidate_auth<T>(&self, stored: &Stored, result: Result<T>) -> Result<T> {
         if matches!(result, Err(Error::Authentication)) {
-            self.repo
-                .invalidate(&stored.owner, &stored.issuer, Some(stored.generation), true)
+            self.invalidate_local(&stored.owner, &stored.issuer, stored.generation, true)
                 .await?;
             tracing::info!("Cloud account reauthentication required");
         }
@@ -368,7 +369,7 @@ impl CloudAccountService {
         let had_grant;
         {
             let mut flows = self.flows.lock().await;
-            let row = self.repo.disconnect(owner, gateway.issuer()).await?;
+            let row = self.disconnect_local(owner, gateway.issuer()).await?;
             had_grant = matches!(row.state.as_str(), "active" | "pending");
             stored = self.decode(&row).ok();
             flows.retain(|_, f| f.owner != owner);

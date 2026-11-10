@@ -278,3 +278,46 @@ async fn atomic_logout_revokes_grant_committed_while_waiting() {
         CloudAccountSessionResponse::Disconnected {}
     ));
 }
+
+#[tokio::test]
+async fn subscription_waiting_behind_logout_cannot_survive_invalidation() {
+    let server = MockServer::start().await;
+    let (_, repo, svc, owner) = fixture_with_barrier(server.uri(), 0).await;
+    Mock::given(path("/api/openh3/capabilities"))
+        .respond_with(ok(capabilities()))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/openh3/login"))
+        .respond_with(ok(pending()))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/openh3/activate"))
+        .respond_with(ok(active()))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/openh3/revoke"))
+        .respond_with(ok(json!({"state":"revoked"})))
+        .mount(&server)
+        .await;
+    svc.login(&owner, login()).await.unwrap();
+    let grant = svc.read(&owner).await.unwrap().unwrap();
+    let life = svc.inference_lifetime(&owner, &grant.provider_id).await.unwrap();
+    repo.armed.store(DISCONNECT, Ordering::SeqCst);
+    let logout = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.logout(&owner).await }
+    });
+    repo.wait().await;
+    let subscribe = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.inference_lifetime(&owner, &grant.provider_id).await }
+    });
+    tokio::task::yield_now().await;
+    assert!(!subscribe.is_finished());
+    repo.release.notify_one();
+    logout.await.unwrap().unwrap();
+    assert!(subscribe.await.unwrap().is_err());
+    assert!(*life.borrow());
+}

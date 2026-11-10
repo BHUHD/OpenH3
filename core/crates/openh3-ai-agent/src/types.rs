@@ -153,7 +153,7 @@ pub struct AionrsResolvedConfig {
     pub thought_level: Option<String>,
     /// LLM provider name (anthropic, openai, bedrock, vertex).
     pub provider: String,
-    /// Decrypted API key.
+    /// Decrypted BYOK API key, or a nonsecret placeholder for managed providers.
     pub api_key: String,
     /// Model identifier.
     pub model: String,

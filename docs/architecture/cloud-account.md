@@ -360,10 +360,86 @@ sentinel-free DEBUG logs/errors alongside the original BYOK regression suite.
 These checks establish client/provider behavior only; they do not establish
 whether a gateway or supplier retries a request.
 
-This seam is not wired into the application and does not enable official
-inference. Task 5b still owns the per-request account resolver, lifetime
-cancellation on account changes, AppServices/factory/manager integration and
-actual AgentBootstrap request-count tests. Its wrapper must reject missing
-terminal events and empty, whitespace-only or reasoning-only finals before
-the engine's implicit retries. Catalog/price/billing verification and UI/E2E
-integration remain separate work.
+## Managed invocation lifetime
+
+`openh3-app/src/services/managed_account.rs` adapts the AI domain's
+`ManagedCredentialResolver` to `CloudAccountService`; AppServices is the sole
+assembly point. The factory recognizes a managed row before decrypting a BYOK
+key. It requires an enabled model in that row and an explicit persisted
+`ModelSettings.openai_api_mode`. Missing catalog/protocol information fails
+closed. The trusted catalog population remains separate work; current tests
+seed verified metadata. The model selected by the user is preserved.
+
+The managed provider is passed separately from `AionrsResolvedConfig`. The
+configuration and in-process `CliArgs` contain a nonsecret resolver placeholder
+and an inert loopback URL. The private credential is resolved afresh for every
+`LlmProvider::stream`, retaining the original local owner and provider ID.
+Verified in pinned `aion-config/src/config.rs::resolve_api_key`: an explicit
+CLI key wins before project/config/environment/OAuth resolution. The injected
+provider uses only the account resolver's issuer and key; it never constructs
+the ordinary provider or `RecoveringProvider` for a managed row.
+
+Verified in pinned `aion-agent/src/spawner.rs`: native children share the injected
+provider and `spawn_fork` can override the request model. The managed boundary
+rejects a request whose actual model differs from the bound verified model before
+credential resolution or network I/O. It never substitutes another model.
+
+Verified in pinned `aion-agent/src/engine.rs::consume_stream`, `run_inner`, and
+`turn.rs::TurnOutcome::from_stream`: EOF defaults to EndTurn, while an empty
+final can cause another model request and finalization. The managed wrapper
+forwards parsed text, reasoning, provider items, tools and usage, but holds Done
+until clean provider-channel completion with a protocol terminal. The pinned
+parsers end at Chat `[DONE]` or a Responses terminal; they do not require HTTP EOF
+after those markers. Chat finish_reason without `[DONE]` requires clean HTTP EOF.
+Missing terminals, empty/whitespace/reasoning-only finals,
+invalid tool events and an empty tool terminal become errors before those engine
+paths. It does not replace the SSE parser. Valid tool follow-ups, compaction and
+intentional finalization remain separate potentially billed requests; this is
+not a guarantee of one supplier request per user turn. Pinned compaction
+(`aion-agent/src/compact/auto.rs`) retries PromptTooLong with a shortened prompt.
+
+The account service's generation-scoped watch subscriptions share a narrow gate
+with local invalidation. The gate covers only local database work and never
+waits for refresh/network. Logout cancels the exact removed generation before
+remote revocation. Corrupt credentials, authenticated account-service failures,
+self-device revoke (direct or verified), and matching password recovery use the
+same handoff. A delayed old invalidation cannot cancel a replacement account.
+The manager selects cancellation around the whole engine turn, including tool
+approval; cloned providers also select it around resolution and stream delivery.
+User cancellation drops the receiver, closing silent upstream HTTP work.
+Stopping local work does not refund supplier work already accepted.
+
+An inference HTTP 401 fails that request without replay. It does not itself
+invalidate the desktop grant: the relay can forward a supplier authentication
+failure, so status alone is not evidence of desktop-session revocation. Only
+verified account-service authentication failures trigger that invalidation.
+Generic provider health probes reject managed rows before decryption/network;
+the generic model fetcher retains its existing managed-row guard.
+
+Focused tests use synthetic local HTTP/SSE and real in-memory SQLite. They cover
+actual AgentBootstrap request counts for ambiguous responses in both protocols,
+successful native tool execution and continuation, per-request credentials,
+model override rejection, tool-approval cancellation, independent owners/device
+binding, refresh/logout races, stale subscriptions and old-account invalidation.
+The AppServices adapter integration observes silent response-body closure while
+remote revoke is blocked, then verifies old/new billed Authorization actors and
+credential-free config/session files. DEBUG log tests check secret sentinels;
+BYOK recovery remains separately exercised. Catalog, wallet/payment and UI/E2E
+implementation are outside this change.
+
+Validation commands for this integration (local synthetic fixtures only):
+
+```sh
+cargo test -p openh3-system --lib provider::cloud_account
+cargo test -p openh3-ai-agent --lib services::
+cargo test -p openh3-ai-agent --lib services::managed
+cargo test -p openh3-ai-agent --lib manager::aionrs::agent::agent_test
+cargo test -p openh3-ai-agent --test factory_provider_integration
+cargo test -p openh3-app --lib real_account_refresh_logout
+cargo clippy -p openh3-ai-agent -p openh3-system -p openh3-app -- -D warnings
+cargo fmt --all -- --check
+```
+
+The account suite's existing Go password interoperability test requires its
+separate gateway fixture and is ignored without that fixture. These scoped
+checks do not replace the later full-workspace and gateway billing checks.
