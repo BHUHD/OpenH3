@@ -2,6 +2,125 @@ use super::cloud_account::*;
 use crate::init_database_memory;
 
 #[tokio::test]
+async fn atomic_login_admission_checks_state_not_only_generation() {
+    let db = init_database_memory().await.unwrap();
+    let repo = SqliteCloudAccountRepository::new(db.pool().clone());
+    let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    let issuer = "https://issuer.test";
+    assert_eq!(repo.ensure_generation(&owner, issuer).await.unwrap(), 0);
+    let first = repo.begin_login(&owner, issuer).await.unwrap();
+    let latest = repo.begin_login(&owner, issuer).await.unwrap();
+    let pending = SaveCloudAccount {
+        owner: &owner,
+        issuer,
+        generation: first,
+        subject: "42",
+        device_id: "device",
+        provider_id: "provider",
+        encrypted: "pending-ciphertext",
+        state: "pending",
+    };
+    assert!(matches!(
+        repo.save_pending(pending).await,
+        Err(crate::DbError::Conflict(_))
+    ));
+    let pending = SaveCloudAccount {
+        generation: latest,
+        ..pending
+    };
+    repo.save_pending(pending).await.unwrap();
+    for state in ["pending", "active"] {
+        if state == "active" {
+            repo.save_active(SaveCloudAccount {
+                state,
+                encrypted: "active-ciphertext",
+                ..pending
+            })
+            .await
+            .unwrap();
+        }
+        assert_eq!(repo.ensure_generation(&owner, issuer).await.unwrap(), latest);
+        assert!(matches!(
+            repo.begin_login(&owner, issuer).await,
+            Err(crate::DbError::Conflict(_))
+        ));
+        let row = repo.load(&owner, issuer).await.unwrap().unwrap();
+        assert_eq!(row.generation, latest);
+        assert_eq!(row.state, state);
+        assert_eq!(row.provider_id.as_deref(), Some("provider"));
+        assert_eq!(
+            row.encrypted.as_deref(),
+            Some(if state == "active" {
+                "active-ciphertext"
+            } else {
+                "pending-ciphertext"
+            })
+        );
+    }
+    let reauth = repo.invalidate(&owner, issuer, Some(latest), true).await.unwrap();
+    assert_eq!(repo.ensure_generation(&owner, issuer).await.unwrap(), reauth);
+    assert_eq!(repo.begin_login(&owner, issuer).await.unwrap(), reauth + 1);
+}
+
+#[tokio::test]
+async fn atomic_disconnect_captures_committed_grant_or_fences_later_persistence() {
+    for persist_first in [false, true] {
+        let db = init_database_memory().await.unwrap();
+        let repo = SqliteCloudAccountRepository::new(db.pool().clone());
+        let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        let issuer = "https://issuer.test";
+        let generation = repo.begin_login(&owner, issuer).await.unwrap();
+        let pending = SaveCloudAccount {
+            owner: &owner,
+            issuer,
+            generation,
+            subject: "42",
+            device_id: "device",
+            provider_id: "provider",
+            encrypted: "ciphertext-for-revocation",
+            state: "pending",
+        };
+        if persist_first {
+            repo.save_pending(pending).await.unwrap();
+        }
+        let removed = repo.disconnect(&owner, issuer).await.unwrap();
+        assert_eq!(removed.generation, generation);
+        if persist_first {
+            assert_eq!(removed.encrypted.as_deref(), Some("ciphertext-for-revocation"));
+            assert_eq!(removed.device_id.as_deref(), Some("device"));
+            assert_eq!(removed.state, "pending");
+            let enabled: bool = sqlx::query_scalar("SELECT enabled FROM providers WHERE id='provider'")
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+            assert!(!enabled);
+        } else {
+            assert!(removed.encrypted.is_none());
+            assert_eq!(removed.state, "disconnected");
+            assert!(matches!(
+                repo.save_pending(pending).await,
+                Err(crate::DbError::Conflict(_))
+            ));
+            let count: i64 = sqlx::query_scalar("SELECT count(*) FROM providers WHERE id='provider'")
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+            assert_eq!(count, 0);
+        }
+        let current = repo.load(&owner, issuer).await.unwrap().unwrap();
+        assert_eq!(current.generation, generation + 1);
+        assert!(current.encrypted.is_none());
+        assert_eq!(repo.ensure_generation(&owner, issuer).await.unwrap(), generation + 1);
+    }
+}
+
+#[tokio::test]
 async fn association_is_atomic_owner_scoped_and_logout_fences_old_work() {
     let db = init_database_memory().await.unwrap();
     let repo = SqliteCloudAccountRepository::new(db.pool().clone());

@@ -129,10 +129,7 @@ impl CloudAccountService {
     }
     pub(super) async fn generation(&self, owner: &str) -> Result<i64> {
         let issuer = self.gateway()?.issuer();
-        match self.repo.load(owner, issuer).await? {
-            Some(row) => Ok(row.generation),
-            None => Ok(self.repo.invalidate(owner, issuer, None, false).await?),
-        }
+        Ok(self.repo.ensure_generation(owner, issuer).await?)
     }
     pub(super) async fn check_generation(&self, owner: &str, generation: i64) -> Result<()> {
         if self.generation(owner).await? != generation {
@@ -144,15 +141,7 @@ impl CloudAccountService {
         let gateway = self.gateway()?;
         let generation = {
             let mut flows = self.flows.lock().await;
-            if self
-                .repo
-                .load(owner, gateway.issuer())
-                .await?
-                .is_some_and(|r| matches!(r.state.as_str(), "active" | "pending"))
-            {
-                return Err(Error::Conflict);
-            }
-            let generation = self.repo.invalidate(owner, gateway.issuer(), None, false).await?;
+            let generation = self.repo.begin_login(owner, gateway.issuer()).await?;
             flows.retain(|_, f| f.owner != owner);
             generation
         };
@@ -379,12 +368,9 @@ impl CloudAccountService {
         let had_grant;
         {
             let mut flows = self.flows.lock().await;
-            let row = self.repo.load(owner, gateway.issuer()).await?;
-            had_grant = row
-                .as_ref()
-                .is_some_and(|r| matches!(r.state.as_str(), "active" | "pending"));
-            stored = row.and_then(|row| self.decode(&row).ok());
-            self.repo.invalidate(owner, gateway.issuer(), None, false).await?;
+            let row = self.repo.disconnect(owner, gateway.issuer()).await?;
+            had_grant = matches!(row.state.as_str(), "active" | "pending");
+            stored = self.decode(&row).ok();
             flows.retain(|_, f| f.owner != owner);
         }
         tracing::info!("Cloud account disconnected locally");

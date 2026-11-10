@@ -1,4 +1,6 @@
 use super::*;
+#[path = "race_tests.rs"]
+mod race_tests;
 use openh3_api_types::*;
 use openh3_db::{ICloudAccountRepository, SqliteCloudAccountRepository, init_database_memory};
 use serde_json::{Value, json};

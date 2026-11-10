@@ -15,6 +15,12 @@ pub struct SaveCloudAccount<'a> {
 #[async_trait::async_trait]
 pub trait ICloudAccountRepository: Send + Sync {
     async fn load(&self, owner: &str, issuer: &str) -> Result<Option<CloudAccountRow>, DbError>;
+    /// Initialize a missing tombstone; never alter an existing grant or generation.
+    async fn ensure_generation(&self, owner: &str, issuer: &str) -> Result<i64, DbError>;
+    /// Atomically admit a new attempt only while disconnected or requiring reauth.
+    async fn begin_login(&self, owner: &str, issuer: &str) -> Result<i64, DbError>;
+    /// Clear locally and return the exact removed snapshot for best-effort revocation.
+    async fn disconnect(&self, owner: &str, issuer: &str) -> Result<CloudAccountRow, DbError>;
     /// Clears secrets and disables the old provider before returning a new generation.
     async fn invalidate(&self, owner: &str, issuer: &str, expected: Option<i64>, reauth: bool) -> Result<i64, DbError>;
     /// Must insert a fresh provider and binding in the same transaction.
@@ -29,6 +35,43 @@ pub struct SqliteCloudAccountRepository {
 impl SqliteCloudAccountRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
+    }
+    async fn invalidate_row(
+        &self,
+        owner: &str,
+        issuer: &str,
+        expected: Option<i64>,
+        reauth: bool,
+    ) -> Result<CloudAccountRow, DbError> {
+        let mut tx = self.pool.begin().await?;
+        // The first write serializes this snapshot and its invalidation with
+        // concurrent pending persistence, activation, and credential rotation.
+        sqlx::query("INSERT OR IGNORE INTO cloud_accounts(owner, issuer, state) VALUES (?, ?, 'disconnected')")
+            .bind(owner)
+            .bind(issuer)
+            .execute(&mut *tx)
+            .await?;
+        let row: CloudAccountRow = sqlx::query_as("SELECT * FROM cloud_accounts WHERE owner = ? AND issuer = ?")
+            .bind(owner)
+            .bind(issuer)
+            .fetch_one(&mut *tx)
+            .await?;
+        if expected.is_some_and(|g| g != row.generation) {
+            return Err(conflict());
+        }
+        if let Some(id) = &row.provider_id {
+            sqlx::query(
+                "UPDATE providers SET enabled = 0 WHERE id = ? AND user_id = ? AND managed_by = 'cloud_account'",
+            )
+            .bind(id)
+            .bind(owner)
+            .execute(&mut *tx)
+            .await?;
+        }
+        sqlx::query("UPDATE cloud_accounts SET generation = generation + 1, subject = NULL, device_id = NULL, provider_id = NULL, encrypted = NULL, state = ? WHERE owner = ? AND issuer = ?")
+            .bind(if reauth { "reauth_required" } else { "disconnected" }).bind(owner).bind(issuer).execute(&mut *tx).await?;
+        tx.commit().await?;
+        Ok(row)
     }
 }
 
@@ -47,34 +90,38 @@ impl ICloudAccountRepository for SqliteCloudAccountRepository {
                 .await?,
         )
     }
-    async fn invalidate(&self, owner: &str, issuer: &str, expected: Option<i64>, reauth: bool) -> Result<i64, DbError> {
+    async fn ensure_generation(&self, owner: &str, issuer: &str) -> Result<i64, DbError> {
         let mut tx = self.pool.begin().await?;
         sqlx::query("INSERT OR IGNORE INTO cloud_accounts(owner, issuer, state) VALUES (?, ?, 'disconnected')")
             .bind(owner)
             .bind(issuer)
             .execute(&mut *tx)
             .await?;
-        let row: CloudAccountRow = sqlx::query_as("SELECT * FROM cloud_accounts WHERE owner = ? AND issuer = ?")
+        let generation = sqlx::query_scalar("SELECT generation FROM cloud_accounts WHERE owner = ? AND issuer = ?")
             .bind(owner)
             .bind(issuer)
             .fetch_one(&mut *tx)
             .await?;
-        if expected.is_some_and(|g| g != row.generation) {
-            return Err(conflict());
-        }
-        if let Some(id) = row.provider_id {
-            sqlx::query(
-                "UPDATE providers SET enabled = 0 WHERE id = ? AND user_id = ? AND managed_by = 'cloud_account'",
-            )
-            .bind(id)
+        tx.commit().await?;
+        Ok(generation)
+    }
+    async fn begin_login(&self, owner: &str, issuer: &str) -> Result<i64, DbError> {
+        let mut tx = self.pool.begin().await?;
+        sqlx::query("INSERT OR IGNORE INTO cloud_accounts(owner, issuer, state) VALUES (?, ?, 'disconnected')")
             .bind(owner)
+            .bind(issuer)
             .execute(&mut *tx)
             .await?;
-        }
-        sqlx::query("UPDATE cloud_accounts SET generation = generation + 1, subject = NULL, device_id = NULL, provider_id = NULL, encrypted = NULL, state = ? WHERE owner = ? AND issuer = ?")
-            .bind(if reauth { "reauth_required" } else { "disconnected" }).bind(owner).bind(issuer).execute(&mut *tx).await?;
+        let generation = sqlx::query_scalar("UPDATE cloud_accounts SET generation = generation + 1, state = 'disconnected' WHERE owner = ? AND issuer = ? AND state IN ('disconnected', 'reauth_required') RETURNING generation")
+            .bind(owner).bind(issuer).fetch_optional(&mut *tx).await?.ok_or_else(conflict)?;
         tx.commit().await?;
-        Ok(row.generation + 1)
+        Ok(generation)
+    }
+    async fn disconnect(&self, owner: &str, issuer: &str) -> Result<CloudAccountRow, DbError> {
+        self.invalidate_row(owner, issuer, None, false).await
+    }
+    async fn invalidate(&self, owner: &str, issuer: &str, expected: Option<i64>, reauth: bool) -> Result<i64, DbError> {
+        Ok(self.invalidate_row(owner, issuer, expected, reauth).await?.generation + 1)
     }
     async fn save_pending(&self, p: SaveCloudAccount<'_>) -> Result<(), DbError> {
         let mut tx = self.pool.begin().await?;
