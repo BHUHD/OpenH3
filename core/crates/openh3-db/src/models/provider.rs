@@ -14,6 +14,9 @@ pub struct Provider {
     pub name: String,
     pub base_url: String,
     pub api_key_encrypted: String,
+    /// Server-owned account integration marker. None denotes a BYOK provider.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub managed_by: Option<String>,
     /// JSON array of model ID strings.
     pub models: String,
     pub enabled: bool,

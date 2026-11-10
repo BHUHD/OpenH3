@@ -11,6 +11,52 @@ use openh3_db::{
 
 const USER_ID: &str = "system_default_user";
 
+#[tokio::test]
+async fn managed_provider_migration_preserves_existing_byok_credentials() {
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+    // Match the startup migration pragmas for historical table rebuilds.
+    sqlx::query("PRAGMA foreign_keys = OFF; PRAGMA legacy_alter_table = ON")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let all = sqlx::migrate::Migrator::new(std::path::Path::new("migrations"))
+        .await
+        .unwrap();
+    let previous = sqlx::migrate::Migrator {
+        migrations: std::borrow::Cow::Owned(all.migrations.iter().filter(|m| m.version <= 45).cloned().collect()),
+        ignore_missing: false,
+        locking: true,
+        no_tx: false,
+    };
+    previous.run(&pool).await.unwrap();
+    let repo = SqliteProviderRepository::new(pool.clone());
+    let created = repo.create(sample_params()).await.unwrap();
+
+    all.run(&pool).await.unwrap();
+
+    let columns: Vec<(i64, String, String, i64, Option<String>, i64)> = sqlx::query_as("PRAGMA table_info(providers)")
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    assert!(
+        columns
+            .iter()
+            .any(|column| column.1 == "managed_by" && column.2 == "TEXT" && column.3 == 0),
+        "managed_by must be a nullable TEXT column"
+    );
+    let stored: (Option<String>, String) =
+        sqlx::query_as("SELECT managed_by, api_key_encrypted FROM providers WHERE id = ?")
+            .bind(&created.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stored, (None, "enc_key_data".into()));
+}
+
 async fn repo() -> Arc<dyn IProviderRepository> {
     let db = init_database_memory().await.unwrap();
     Arc::new(SqliteProviderRepository::new(db.pool().clone()))

@@ -144,17 +144,20 @@ pub struct BedrockConfig {
 
 /// Provider response for `GET /api/providers` and single-provider endpoints.
 ///
-/// The `api_key` field is returned in plaintext (decrypted on read). Storage
-/// remains encrypted at rest. Pre-launch convention for the frontend
-/// local-store → backend migration; no masking applied.
+/// BYOK `api_key` values are returned in plaintext for frontend local-store
+/// migration and remain encrypted at rest. Account-managed credentials are
+/// never returned; their `api_key` is empty and `managed_by` identifies ownership.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ProviderResponse {
     pub id: String,
     pub platform: String,
     pub name: String,
     pub base_url: String,
-    /// Plaintext API key (decrypted from storage).
+    /// Plaintext BYOK API key, or empty for an account-managed provider.
     pub api_key: String,
+    /// Server-owned integration marker; cannot be set through generic CRUD requests.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub managed_by: Option<String>,
     pub models: Vec<String>,
     pub enabled: bool,
     pub capabilities: Vec<ModelCapability>,
@@ -485,6 +488,22 @@ mod tests {
     // -- ProviderResponse --
 
     #[test]
+    fn managed_provider_response_round_trip_and_legacy_default() {
+        let mut raw = json!({
+            "id": "managed-provider", "platform": "openai", "name": "Cloud",
+            "base_url": "https://api.example.com", "api_key": "", "models": [],
+            "enabled": true, "capabilities": [], "model_settings": {},
+            "created_at": 1, "updated_at": 1, "managed_by": "cloud_account"
+        });
+        let response: ProviderResponse = serde_json::from_value(raw.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&response).unwrap()["managed_by"], "cloud_account");
+
+        raw.as_object_mut().unwrap().remove("managed_by");
+        let legacy: ProviderResponse = serde_json::from_value(raw).unwrap();
+        assert!(serde_json::to_value(&legacy).unwrap().get("managed_by").is_none());
+    }
+
+    #[test]
     fn test_provider_response_serialization() {
         let resp = ProviderResponse {
             id: "uuid-xxx".into(),
@@ -492,6 +511,7 @@ mod tests {
             name: "Anthropic".into(),
             base_url: "https://api.anthropic.com".into(),
             api_key: "sk-ant-api03-plaintext".into(),
+            managed_by: None,
             models: vec!["claude-sonnet-4-20250514".into()],
             enabled: true,
             capabilities: vec![ModelCapability {
@@ -522,13 +542,14 @@ mod tests {
 
     #[test]
     fn test_provider_response_api_key_plaintext() {
-        // Pre-launch: no masking is applied to the api_key field on the wire.
+        // BYOK keys retain plaintext responses for local-store migration.
         let resp = ProviderResponse {
             id: "id".into(),
             platform: "openai".into(),
             name: "n".into(),
             base_url: "https://api.openai.com".into(),
             api_key: "sk-secret-xyz".into(),
+            managed_by: None,
             models: vec![],
             enabled: true,
             capabilities: vec![],

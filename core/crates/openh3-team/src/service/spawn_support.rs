@@ -663,6 +663,7 @@ mod tests {
             name: id.into(),
             base_url: "https://example.com".into(),
             api_key_encrypted: String::new(),
+            managed_by: None,
             models: serde_json::to_string(models).unwrap(),
             enabled: true,
             capabilities: "[]".into(),

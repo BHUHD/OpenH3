@@ -388,6 +388,7 @@ mod tests {
             name: "Test Anthropic".to_owned(),
             base_url: "https://api.anthropic.com".to_owned(),
             api_key_encrypted: encrypt_string("sk-test", &TEST_KEY).unwrap(),
+            managed_by: None,
             models: r#"["claude-sonnet-4-20250514"]"#.to_owned(),
             enabled: true,
             capabilities: "[]".to_owned(),
