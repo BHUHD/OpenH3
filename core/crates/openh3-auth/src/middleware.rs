@@ -111,7 +111,13 @@ pub async fn auth_middleware(
     // Require an *access* token here: a refresh token must never authenticate an
     // ordinary request — it is accepted only at the refresh endpoint.
     let payload = state.jwt_service.verify_access(&token).map_err(|e| {
-        tracing::debug!("Token verification failed: {e}");
+        // Decoder errors can contain untrusted JWT fields; log only fixed categories.
+        let reason = match e {
+            crate::AuthError::TokenExpired => "expired",
+            crate::AuthError::TokenBlacklisted => "blacklisted",
+            _ => "invalid",
+        };
+        tracing::debug!(reason, "Token verification failed");
         ApiError::Unauthorized("Invalid or expired token".into())
     })?;
 
