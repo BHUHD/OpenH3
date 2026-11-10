@@ -1094,6 +1094,79 @@ async fn failed_delivery_keeps_request_id_without_a_usable_proof() {
 }
 
 #[tokio::test]
+async fn final_minute_email_resend_keeps_original_expiry_and_independent_cooldown() {
+    let (server, _, svc, owner) = fixture().await;
+    let expires_at = now() + 30;
+    let resend_at = now() + 60;
+    let request = || CloudAccountEmailCodeRequest {
+        email: "alice@example.com".into(),
+        purpose: CloudAccountEmailCodePurpose::PasswordReset,
+    };
+    let initial = Mock::given(method("POST"))
+        .and(path("/api/openh3/password/reset"))
+        .respond_with(ok(json!({"state":"code_sent","purpose":"openh3_recovery_email","flow_token":"old-flow","expires_at":expires_at,"resend_at":0,"methods":null})))
+        .expect(1)
+        .mount_as_scoped(&server)
+        .await;
+    svc.email_code(&owner, request()).await.unwrap();
+    drop(initial);
+    Mock::given(method("POST"))
+        .and(path("/api/openh3/password/reset"))
+        .respond_with(ok(json!({"state":"code_sent","purpose":"openh3_recovery_email","flow_token":"renewed-flow","expires_at":expires_at,"resend_at":resend_at,"methods":null})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    svc.email_code(&owner, request()).await.unwrap();
+    {
+        let flows = svc.flows.lock().await;
+        let stored = flows.values().find(|flow| flow.owner == owner).unwrap();
+        assert_eq!(stored.flow.expires_at, expires_at);
+        assert_eq!(stored.flow.resend_at, resend_at);
+    }
+    assert!(matches!(
+        svc.email_code(&owner, request()).await,
+        Err(CloudAccountError::RateLimited { retry_after: Some(seconds) }) if seconds > 0 && seconds <= 60
+    ));
+    Mock::given(method("POST"))
+        .and(path("/api/openh3/auth/verify"))
+        .respond_with(ok(json!({"state":"reset_ready","purpose":"openh3_reset_ready","flow_token":"ready-flow","expires_at":now()+600,"resend_at":0,"methods":null})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    assert!(matches!(
+        svc.password_reset(
+            &owner,
+            CloudAccountPasswordResetRequest {
+                email: "alice@example.com".into(),
+                code: "123456".into(),
+            }
+        )
+        .await
+        .unwrap(),
+        CloudAccountPasswordResetResponse::Ready { .. }
+    ));
+    let requests = server.received_requests().await.unwrap();
+    let deliveries: Vec<Value> = requests
+        .iter()
+        .filter(|r| r.url.path() == "/api/openh3/password/reset")
+        .map(|r| serde_json::from_slice(&r.body).unwrap())
+        .collect();
+    assert_eq!(deliveries.len(), 2);
+    assert_eq!(deliveries[0]["request_id"], deliveries[1]["request_id"]);
+    let verify: Value = serde_json::from_slice(
+        &requests
+            .iter()
+            .find(|r| r.url.path() == "/api/openh3/auth/verify")
+            .unwrap()
+            .body,
+    )
+    .unwrap();
+    assert_eq!(verify["request_id"], deliveries[1]["request_id"]);
+    assert_eq!(verify["flow_token"], "renewed-flow");
+    assert_eq!(verify["proof"], "123456");
+}
+
+#[tokio::test]
 async fn corrupt_grant_logout_clears_locally_and_reports_unconfirmed() {
     let (server, db, svc, owner) = fixture().await;
     mount_login(&server).await;

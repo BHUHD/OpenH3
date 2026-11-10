@@ -60,11 +60,9 @@ impl CloudAccountService {
         email: Option<String>,
         target: Option<String>,
     ) -> Result<String> {
-        if flow.flow_token.is_empty()
-            || flow.flow_token.len() > 128
-            || flow.expires_at <= now()
-            || flow.resend_at > flow.expires_at
-        {
+        // Proof lifetime and delivery cooldown are independent. The gateway
+        // preserves an existing expiry when a resend rotates the email proof.
+        if flow.flow_token.is_empty() || flow.flow_token.len() > 128 || flow.expires_at <= now() {
             return Err(Error::Protocol);
         }
         let mut flows = self.flows.lock().await;
