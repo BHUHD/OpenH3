@@ -310,3 +310,60 @@ HTTP bridge suppresses cloud bodies and sanitizes errors before retaining them.
 The capability is filtered from inherited agent environments and spawn builders.
 Tests use in-memory SQLite, local gateway fixtures and synthetic credentials;
 no real email, inference, payment or account credentials are used.
+
+## Managed provider transport seam
+
+`core/vendor/aion-providers` copies the `aion-providers` crate from
+[`iOfficeAI/aionrs`](https://github.com/iOfficeAI/aionrs/tree/8e61a90329fa9f67c4fdf7e97fe02c24dba33f75/crates/aion-providers),
+tag `v0.2.11`, commit `8e61a90329fa9f67c4fdf7e97fe02c24dba33f75`.
+The original Apache-2.0 license, source layout, projectors, parsers and upstream
+tests are retained. The Cargo patch follows the existing `aion-mcp` convention;
+the provider crate is also a workspace member so its original dev tests run.
+Its standalone manifest derives dependency versions/features from that pinned
+workspace; `workspace-hack` remains the pinned Git build helper. The additional
+test dependencies use the upstream lock versions. Existing locked dependencies
+are not upgraded.
+
+The patch adds only an opt-in `OpenAIProvider::new_managed` constructor and the
+associated transport, stream, error and diagnostics policy. `OpenAIProvider::new`
+retains BYOK defaults. The caller supplies a trusted validated issuer origin,
+private inference credential and explicit catalog `OpenAiApiMode`. The constructor
+fixes the endpoint to `/v1/chat/completions` or `/v1/responses`, overriding a custom
+compatibility path without guessing from model names. Credentials are held in
+private types without Debug/Serialize and the managed authorization HeaderValue
+is marked sensitive.
+
+Verified in `transport.rs` and `stream_runner.rs`: managed clients disable
+redirects, reqwest retries, initial connection/5xx retries and stream resends.
+They use a 15-second connection timeout and a 120-second per-read idle timeout,
+with no total generation deadline. Non-success response bodies are dropped
+without reading or allocating their contents. The existing bounded 64 KiB
+success-JSON inspector is retained. Error values retain a status where available
+and fixed categories, removing raw upstream body, URL and parser error text
+before delivery, including fields exposed through Debug. Direct parser Error
+events receive the same treatment.
+
+Verified in `composed.rs` and `stream_process.rs`: managed projection and parser
+diagnostics that could contain upstream tool IDs are suppressed; fixed projection
+counters and stream shape summaries remain. Managed summaries do not retain
+upstream request IDs, and Responses frame event names are omitted. The stream
+runner selects receiver closure while processing a managed response, so dropping
+the receiver closes a silent HTTP stream without waiting for another SSE chunk
+or idle timeout. Dropping the initial request future also cancels pending I/O.
+Chat finish-reason plus clean-EOF completion and Responses terminal/tool/usage
+semantics remain those of the pinned parsers.
+
+`tests/managed_openai_test.rs` uses synthetic loopback HTTP/SSE fixtures derived
+from the pinned upstream tests. It checks actual received request counts,
+redirect target isolation, server-observed socket closure, text/tools/usage and
+sentinel-free DEBUG logs/errors alongside the original BYOK regression suite.
+These checks establish client/provider behavior only; they do not establish
+whether a gateway or supplier retries a request.
+
+This seam is not wired into the application and does not enable official
+inference. Task 5b still owns the per-request account resolver, lifetime
+cancellation on account changes, AppServices/factory/manager integration and
+actual AgentBootstrap request-count tests. Its wrapper must reject missing
+terminal events and empty, whitespace-only or reasoning-only finals before
+the engine's implicit retries. Catalog/price/billing verification and UI/E2E
+integration remain separate work.

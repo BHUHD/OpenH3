@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "vendor/aion-providers",
     "crates/openh3-assets",
     "crates/openh3-common",
     "crates/openh3-db",
@@ -232,3 +233,4 @@ incremental = false
 # concurrent Streamable HTTP/SSE requests.
 [patch."https://github.com/iOfficeAI/aionrs.git"]
 aion-mcp = { path = "vendor/aion-mcp" }
+aion-providers = { path = "vendor/aion-providers" }
