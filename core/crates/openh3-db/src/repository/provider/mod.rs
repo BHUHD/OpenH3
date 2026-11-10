@@ -1,5 +1,8 @@
 use crate::error::DbError;
 use crate::models::Provider;
+pub mod cloud_account;
+#[cfg(test)]
+mod cloud_account_tests;
 
 /// Model provider data access abstraction.
 ///

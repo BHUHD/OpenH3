@@ -4108,11 +4108,14 @@ dependencies = [
 name = "openh3-system"
 version = "0.2.2"
 dependencies = [
+ "aes-gcm",
  "async-trait",
  "aws-config",
  "aws-sdk-bedrock",
  "axum",
+ "base64",
  "dirs",
+ "getrandom 0.2.17",
  "http-body-util",
  "openh3-api-types",
  "openh3-auth",
@@ -4121,9 +4124,11 @@ dependencies = [
  "openh3-realtime",
  "openh3-runtime",
  "reqwest",
+ "rsa",
  "semver",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",

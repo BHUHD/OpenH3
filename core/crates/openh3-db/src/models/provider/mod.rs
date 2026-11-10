@@ -1,5 +1,6 @@
 use openh3_common::TimestampMs;
 use serde::{Deserialize, Serialize};
+pub mod cloud_account;
 
 /// Row mapping for the `providers` table.
 ///

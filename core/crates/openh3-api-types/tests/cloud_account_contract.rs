@@ -63,6 +63,18 @@ fn registration_is_not_a_login_response() {
 }
 
 #[test]
+fn logout_and_committed_password_reset_have_explicit_partial_outcomes() {
+    for remote in ["confirmed", "unconfirmed", "not_needed"] {
+        round_trip::<CloudAccountLogoutResponse>(json!({"remote_revocation": remote}));
+    }
+    for pending in [true, false] {
+        round_trip::<CloudAccountPasswordResetCompleteResponse>(json!({"session_cleanup_pending":pending}));
+    }
+    assert!(serde_json::from_value::<CloudAccountLogoutResponse>(json!({})).is_err());
+    assert!(serde_json::from_value::<CloudAccountPasswordResetCompleteResponse>(json!({})).is_err());
+}
+
+#[test]
 fn secret_requests_accept_native_fields_and_reject_caller_identity() {
     let login = json!({"username":"alice", "password":"password"});
     let parsed: CloudAccountLoginRequest = serde_json::from_value(login.clone()).unwrap();

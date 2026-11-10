@@ -24,6 +24,7 @@ pub use error::{
     message_indicates_unique_violation,
 };
 pub use instance_lock::{DataDirInstanceGuard, instance_lock_path};
+pub use models::CloudAccountRow;
 pub use models::{
     AgentMetadataRow, AssistantDefinitionRow, AssistantOverlayRow, AssistantOverrideRow, AssistantPreferenceRow,
     AssistantRow, ConversationArtifactRow, ConversationAssistantSnapshotRow, CreateAssistantParams,
@@ -43,6 +44,9 @@ pub use repository::cron::{
 };
 pub use repository::mcp_server::{CreateMcpServerParams, UpdateMcpServerParams};
 pub use repository::oauth_token::UpsertOAuthTokenParams;
+pub use repository::provider::cloud_account::{
+    ICloudAccountRepository, SaveCloudAccount, SqliteCloudAccountRepository,
+};
 pub use repository::provider::{CreateProviderParams, UpdateProviderParams};
 pub use repository::remote_agent::{CreateRemoteAgentParams, UpdateRemoteAgentParams};
 pub use repository::skill::{CreateSkillImportRecordParams, UpsertSkillParams};

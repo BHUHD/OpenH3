@@ -52,10 +52,10 @@ Unix seconds. Types below have the `CloudAccount` prefix in Rust.
 | `POST /login`                   | `LoginRequest`                 | `SessionResponse`       |
 | `POST /auth/verify`             | `VerifyRequest`                | `VerifyResponse`        |
 | `POST /password/reset`          | `PasswordResetRequest`         | `PasswordResetResponse` |
-| `POST /password/reset/complete` | `PasswordResetCompleteRequest` | Empty                   |
+| `POST /password/reset/complete` | `PasswordResetCompleteRequest` | `PasswordResetCompleteResponse` |
 | `GET /session`                  | None                           | `SessionResponse`       |
 | `GET /me`                       | None                           | `SessionResponse`       |
-| `POST /logout`                  | None                           | Empty                   |
+| `POST /logout`                  | None                           | `LogoutResponse`        |
 | `GET /wallet`                   | None                           | `WalletResponse`        |
 | `GET /models`                   | None                           | `ModelsResponse`        |
 | `GET /usage`                    | `PageQuery`                    | `UsageResponse`         |
@@ -210,70 +210,40 @@ bound untrusted amounts, preserve overflow protections and retain settlement
 authority. `pkg/billingexpr/expr.md` describes expression semantics; this change
 only transports their display text and does not change expression evaluation.
 
-## Proposed private gateway extension
+## Private gateway lifecycle
 
-The following **proposed** `/api/openh3/*` routes are a Core-to-gateway contract,
-separate from both existing dashboard APIs and public renderer DTOs. Their
-credentials must live in private Core adapter structs, never in
-`openh3-api-types`. They require implementation and compatibility tests against
-the pinned gateway before the product can claim support.
+The Core account lifecycle now lives under `openh3-system::provider::cloud_account`.
+It is deliberately not connected to local HTTP routes yet. Construction takes a
+trusted, immutable HTTPS origin (explicit loopback opt-in for development), a
+persistent storage encryption key, and `ICloudAccountRepository`. Migration 047
+stores encrypted grants bound to local owner, issuer, remote subject, device and
+a fresh managed provider. Provider creation and pending persistence are atomic;
+activation and rotation commit before connected state or inference credentials
+are returned. Generation tombstones fence remote replies after logout.
 
-| Route                                                                                           | Private request/result                                                                                                                                                                                                                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /capabilities`                                                                             | Native feature policy, anti-bot requirement, password encryption requirement/key metadata. Core projects only public capability fields.                                                                                                                                                           |
-| `POST /email-code`                                                                              | Email plus purpose; returns an expiring opaque flow handle kept by Core. Response behavior must not enumerate registered addresses.                                                                                                                                                               |
-| `POST /register`                                                                                | Username, email, password material, conditional flow handle/code; returns registered only. Uses existing user/wallet creation with atomic email-flow consumption; no permanent default token.                                                                                                     |
-| `POST /login`                                                                                   | Username, password material and Core device metadata; returns a pending private credential bundle or verification flow.                                                                                                                                                                           |
-| `POST /auth/verify`                                                                             | Private flow token and explicit factor method/material. Login uses existing login-verification machinery; reset/device reauthentication uses the shared security policy. Returns a pending login bundle, reset-ready proof, or completed device revocation according to the server-bound purpose. |
-| `POST /password/reset`                                                                          | Email, private purpose-bound email flow and code; returns a reset-ready proof or required MFA flow. No new password yet.                                                                                                                                                                          |
-| `POST /password/reset/complete`                                                                 | Private reset-ready proof and new password material; atomically consumes proof, changes password and advances security version, then invalidates auth caches/sessions/grants. Empty result.                                                                                                       |
-| `POST /token`                                                                                   | Refresh credential and expected session/device identity; returns rotated private credential bundle using existing refresh machinery.                                                                                                                                                              |
-| `POST /activate`                                                                                | Desktop access credential authenticates the pending device; idempotently returns the same private inference key, device ID and active session expiry after activation. No renderer key delivery.                                                                                                  |
-| `POST /revoke`                                                                                  | Authenticated target device ID; starts purpose/target-bound reauthentication and revokes only an owned grant after proof, including its normal inference token. Session-authenticated logout can revoke the current device without asking the user to reauthenticate.                             |
-| `GET /me`, `/wallet`, `/models`, `/usage`, `/devices`                                           | Desktop identity-scoped safe projections of the existing user, wallet/subscriptions/token, pricing and logs. Usage uses bounded numbered pagination.                                                                                                                                              |
-| `GET /topup/options`, `POST /topup/orders`, `GET /topup/orders`, `GET /topup/orders/{order_id}` | Native projection over existing topup/payment services. Resolve options and idempotency on the server; check account ownership.                                                                                                                                                                   |
+First-external-user data adoption preserves both the cloud identity binding and
+its managed provider under the original local owner. It still adopts BYOK rows
+and conversations. An adopted conversation's old cloud provider cannot resolve
+under the new owner; that owner must explicitly establish a new cloud binding.
+The original owner retains its grant and ability to revoke the remote device.
 
-The draft private pending login bundle contains `state: "pending"`, `account` plus `credentials`
-with `access_token`, `refresh_token`, `access_expires_at`, `session_expires_at`
-and `device_id`. A verification result contains `flow_token`, `expires_at`, purpose and
-methods; a ready reset result contains a private single-use `reset_proof` and expiry.
-Core retains these fields and maps them to the public session state;
-they are never serialized through the local response. Email flow tokens are
-likewise retained under the local owner, normalized email and purpose. Exact
-private field names must be matched by the gateway implementation and Core
-adapter together; these are not upstream wire fixtures.
+An active or pending binding must be explicitly logged out before another login.
+Logout disables the provider and clears credentials before remote revocation;
+`remote_revocation` is `confirmed`, `unconfirmed`, or `not_needed`. Unconfirmed
+means no confirmation was received; there is no background revocation queue.
+The UI must display this outcome when switching accounts. The old provider ID
+remains disabled, and the next connection creates a new ID. Password-reset
+completion returns `session_cleanup_pending`; true still means the password was
+committed and its proof consumed. It must not invite replaying that proof.
 
-Extend the existing session machinery with a distinct desktop JWT audience and
-server-side session/grant classification. Both refresh entry points must reject
-the wrong session class **before** rotating or issuing credentials; a desktop
-refresh credential must never mint a dashboard access token. Desktop access
-tokens must fail dashboard/admin authorization, even when the underlying user
-is an administrator. Conversely, dashboard tokens cannot activate a desktop
-grant. Preserve auth-version checks and refresh replay handling rather than
-building another refresh engine.
-
-Each device grant is linked to a normal New API inference `Token`, the owning
-user and the desktop session. Activation, expiration, user/security-version
-changes and revocation must be enforced on inference requests, not only during
-login. Persist the linkage and check grant/session state in the token-auth path;
-merely returning an ordinary permanent key would bypass device revocation.
-Provision/activate with retry-safe server state. The server enforces a five-minute
-`pending_valid_until` for pending activation and an active session lifetime of
-30 days; the precise storage relationship to `UserSession.ExpiresAt` is an
-implementation detail to verify with the gateway. Activation returns the active
-expiry. Core securely persists the pending bundle before
-activation, then persists the inference key and active expiry before exposing
-`connected`. Activation retries retrieve the same linked token key, so a crash
-between server activation and local persistence is recoverable. Refresh reuses
-the linked inference key and does not need to resend it; inference authorization
-checks current session expiry and grant state on each request. Core securely
-persists rotated credentials before exposing them as usable; persistence or activation
-failure must leave no usable unowned credential. Clear local secrets on logout
-and fail closed when a stored credential cannot be decrypted.
-
-No second wallet, billing ledger or independent refresh/challenge engine is
-introduced. Existing models/services remain authoritative; the extension adds
-native projections, audience separation and device lifecycle constraints.
+The current adapter follows `controller/native_account.go`,
+`controller/native_account_dto.go` and `common/password_crypto.go` in the pinned
+gateway worktree at `27fc5147c0fac86381f1e2678492e6008889f56e`. Email delivery uses
+`{email, request_id}`; recovery ownership is proven through `/auth/verify`;
+reset-ready uses a private `flow_token`, not a `reset_proof` field. Complete-reset
+returns `{state: "password_reset", session_cleanup_pending}`. Password encryption
+uses the advertised v2 RSA-OAEP/SHA256 + AES-256-GCM envelope with the gateway's
+key ID, never an automatic plaintext fallback.
 
 ## Verification scope
 
@@ -285,7 +255,6 @@ remote audience isolation, expiry/replay, per-device inference revocation,
 payment callbacks, decimal validation or real gateway compatibility. Those need
 route/service tests and pinned gateway integration tests as implementations land.
 
-This DTO-only change needs no runtime logging. The implementation should record
-sanitized lifecycle outcomes and non-sensitive correlation IDs, never passwords,
+The lifecycle implementation records sanitized lifecycle outcomes, never passwords,
 codes, flow/access/refresh/inference tokens, raw remote responses or checkout
 URLs. Audit financial transitions through existing gateway billing observability.

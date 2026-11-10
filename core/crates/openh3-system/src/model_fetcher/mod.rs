@@ -97,6 +97,11 @@ impl ModelFetchService {
             .await?
             .ok_or_else(|| SystemError::NotFound(format!("Provider {provider_id} not found")))?;
 
+        if row.managed_by.is_some() {
+            return Err(SystemError::Conflict(
+                "Use the cloud account model catalog for managed providers".into(),
+            ));
+        }
         let api_key = decrypt_string(&row.api_key_encrypted, &self.encryption_key)?;
         if api_key.trim().is_empty() {
             return Err(SystemError::BadRequest("API key is empty".into()));
@@ -212,6 +217,22 @@ mod tests {
         let (svc, _db) = setup().await;
         let err = svc.load_provider_config(TEST_USER_ID, "no_such_id").await.unwrap_err();
         assert!(matches!(err, SystemError::NotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn managed_provider_rejected_before_decryption_or_network() {
+        let (svc, db) = setup().await;
+        let id = create_provider(&db, "openai", "https://unused.invalid", "key").await;
+        sqlx::query("UPDATE providers SET managed_by='cloud_account', api_key_encrypted='not ciphertext' WHERE id=?")
+            .bind(&id)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let err = svc
+            .fetch_models(TEST_USER_ID, &id, &FetchModelsRequest { try_fix: true })
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SystemError::Conflict(_)));
     }
 
     #[tokio::test]

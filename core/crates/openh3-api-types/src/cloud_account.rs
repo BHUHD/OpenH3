@@ -177,6 +177,26 @@ pub struct CloudAccountPasswordResetCompleteRequest {
     pub new_password: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountPasswordResetCompleteResponse {
+    pub session_cleanup_pending: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CloudAccountRemoteRevocation {
+    Confirmed,
+    Unconfirmed,
+    NotNeeded,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountLogoutResponse {
+    pub remote_revocation: CloudAccountRemoteRevocation,
+}
+
 /// Exact decimal monetary amount with an explicit ISO 4217 currency code.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
