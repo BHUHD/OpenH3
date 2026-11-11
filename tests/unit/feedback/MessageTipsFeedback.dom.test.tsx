@@ -138,6 +138,7 @@ describe('MessageTips — FeedbackButton wiring', () => {
               message: 'insufficient funds',
               code: 'USER_LLM_PROVIDER_BILLING_REQUIRED',
               ownership: 'user_llm_provider',
+              resolution: { kind: 'check_provider_billing', target: 'provider_settings' },
             }
           : undefined
       );
@@ -152,6 +153,19 @@ describe('MessageTips — FeedbackButton wiring', () => {
       const view = render(<MessageTips message={message} />);
       expect(screen.getByText('settings.cloudAccount.failureUnknown')).toBeInTheDocument();
       expect(screen.getByText('settings.cloudAccount.manualByok')).toBeInTheDocument();
+      expect(screen.queryByText('Model provider billing is required')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'The selected provider needs active billing, credits, or quota before it can complete this request.'
+        )
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Check the model provider balance, credits, or quota/)).not.toBeInTheDocument();
+      expect(screen.getByText('The agent could not reply')).toBeInTheDocument();
+      expect(screen.getByText('common.technical_details').closest('.arco-collapse-item')).not.toHaveClass(
+        'arco-collapse-item-active'
+      );
+      fireEvent.click(screen.getByText('common.technical_details'));
+      expect(screen.getAllByText(/insufficient funds/).length).toBeGreaterThan(0);
       fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.refreshWallet' }));
       fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.entry' }));
       expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
@@ -161,6 +175,24 @@ describe('MessageTips — FeedbackButton wiring', () => {
       expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
     }
   );
+  it('preserves ordinary BYOK billing diagnosis and resolution', () => {
+    const message = buildTips('error', 'supplier said insufficient balance', {
+      message: 'supplier said insufficient balance',
+      code: 'USER_LLM_PROVIDER_BILLING_REQUIRED',
+      ownership: 'user_llm_provider',
+      resolution: { kind: 'check_provider_billing', target: 'provider_settings' },
+    });
+    message.model_source = { kind: 'byok', provider_id: 'own', provider: 'Own', model: 'own', protocol: 'Responses' };
+    render(<MessageTips message={message} />);
+    expect(screen.getByText('Model provider billing is required')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The selected provider needs active billing, credits, or quota before it can complete this request.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Check the model provider balance, credits, or quota/)).toBeInTheDocument();
+    expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
+  });
 
   it('does not render FeedbackButton on success tips', () => {
     render(<MessageTips message={buildTips('success')} />);

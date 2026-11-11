@@ -76,45 +76,53 @@ const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
   // what the Butler diagnoses best.
   const shouldShowButler = type === 'error';
   const shouldShowFeedback = type === 'error' && structuredError?.feedback_recommended !== false;
+  // Historical binding and supplier classifications carry no request/funding
+  // evidence. Keep official outcomes neutral; raw errors remain diagnostics.
+  const neutralOfficial = type === 'error' && message.model_source?.kind === 'cloud_account';
 
-  if (structuredError) {
-    const errorCode = structuredError.code;
-    const ownership = structuredError.ownership;
-    const title = errorCode
-      ? t(`conversation.agentError.codes.${errorCode}.title`, {
-          defaultValue: t('conversation.agentError.fallbackTitle'),
-        })
-      : t('conversation.agentError.fallbackTitle');
-    const body = errorCode
-      ? t(
-          structuredError.workspacePath
-            ? `conversation.agentError.codes.${errorCode}.bodyWithPath`
-            : `conversation.agentError.codes.${errorCode}.body`,
-          {
-            workspacePath: structuredError.workspacePath,
-            defaultValue: structuredError.message || content,
-          }
-        )
-      : structuredError.message || content;
-    const ownershipLabel = ownership
-      ? t(`conversation.agentError.ownership.${ownership}`, {
-          defaultValue: t('conversation.agentError.ownership.unknown_upstream'),
-        })
-      : null;
+  if (structuredError || neutralOfficial) {
+    const errorCode = structuredError?.code;
+    const ownership = structuredError?.ownership;
+    const title =
+      errorCode && !neutralOfficial
+        ? t(`conversation.agentError.codes.${errorCode}.title`, {
+            defaultValue: t('conversation.agentError.fallbackTitle'),
+          })
+        : t('conversation.agentError.fallbackTitle');
+    const body = neutralOfficial
+      ? undefined
+      : errorCode
+        ? t(
+            structuredError?.workspacePath
+              ? `conversation.agentError.codes.${errorCode}.bodyWithPath`
+              : `conversation.agentError.codes.${errorCode}.body`,
+            {
+              workspacePath: structuredError?.workspacePath,
+              defaultValue: structuredError?.message || content,
+            }
+          )
+        : structuredError?.message || content;
+    const ownershipLabel =
+      ownership && !neutralOfficial
+        ? t(`conversation.agentError.ownership.${ownership}`, {
+            defaultValue: t('conversation.agentError.ownership.unknown_upstream'),
+          })
+        : null;
     const retryHint =
-      structuredError.retryable === undefined
+      neutralOfficial || structuredError?.retryable === undefined
         ? null
         : structuredError.retryable
           ? t('conversation.agentError.retryable')
           : t('conversation.agentError.notRetryable');
-    const resolutionHint = structuredError.resolution
-      ? `${t('conversation.agentError.resolutionPrefix')}${t(
-          `conversation.agentError.resolution.${structuredError.resolution.kind}`
-        )}`
-      : null;
+    const resolutionHint =
+      structuredError?.resolution && !neutralOfficial
+        ? `${t('conversation.agentError.resolutionPrefix')}${t(
+            `conversation.agentError.resolution.${structuredError.resolution.kind}`
+          )}`
+        : null;
     const detailParts = [
       errorCode ? `${t('conversation.agentError.errorCode')}: ${errorCode}` : '',
-      structuredError.detail || structuredError.message,
+      structuredError?.detail || structuredError?.message || content,
     ].filter(Boolean);
     const feedbackTags: Record<string, string> = {};
     if (errorCode) {
@@ -123,22 +131,22 @@ const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
     if (ownership) {
       feedbackTags.agent_error_ownership = ownership;
     }
-    if (structuredError.retryable !== undefined) {
+    if (structuredError?.retryable !== undefined) {
       feedbackTags.agent_error_retryable = String(structuredError.retryable);
     }
-    if (structuredError.resolution?.kind) {
+    if (structuredError?.resolution?.kind) {
       feedbackTags.agent_error_resolution = structuredError.resolution.kind;
     }
     const feedbackExtra = {
       agent_error: {
         ...(errorCode ? { code: errorCode } : {}),
         ...(ownership ? { ownership } : {}),
-        ...(structuredError.retryable !== undefined ? { retryable: structuredError.retryable } : {}),
-        ...(structuredError.feedback_recommended !== undefined
+        ...(structuredError?.retryable !== undefined ? { retryable: structuredError.retryable } : {}),
+        ...(structuredError?.feedback_recommended !== undefined
           ? { feedback_recommended: structuredError.feedback_recommended }
           : {}),
-        ...(structuredError.resolution ? { resolution: structuredError.resolution } : {}),
-        ...(structuredError.rawError ? { rawError: structuredError.rawError } : {}),
+        ...(structuredError?.resolution ? { resolution: structuredError.resolution } : {}),
+        ...(structuredError?.rawError ? { rawError: structuredError.rawError } : {}),
       },
     };
 
@@ -161,12 +169,16 @@ const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
                 )}
               </div>
               <div className='font-500 text-t-primary [word-break:break-word]'>{title}</div>
-              <div className='text-t-secondary whitespace-break-spaces [word-break:break-word]'>{body}</div>
+              {body && <div className='text-t-secondary whitespace-break-spaces [word-break:break-word]'>{body}</div>}
               {resolutionHint && (
                 <div className='text-t-secondary whitespace-break-spaces [word-break:break-word]'>{resolutionHint}</div>
               )}
               {detailParts.length > 0 && (
-                <Collapse bordered={false} className='bg-transparent' defaultActiveKey={['technical-details']}>
+                <Collapse
+                  bordered={false}
+                  className='bg-transparent'
+                  defaultActiveKey={neutralOfficial ? [] : ['technical-details']}
+                >
                   <Collapse.Item
                     name='technical-details'
                     header={<span className='text-12px text-t-tertiary'>{t('common.technical_details')}</span>}
