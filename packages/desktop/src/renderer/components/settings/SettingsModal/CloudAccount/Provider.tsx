@@ -13,7 +13,9 @@ import { requestCloudAccount } from './transport';
 
 type View = 'login' | 'register' | 'recovery' | 'proof' | 'reset';
 type Ticket = { owner: string | undefined; epoch: number };
-type Snapshot = { ticket: Ticket; session: CloudSession; capabilities: CloudCapabilities };
+type ReadScope = { ticket: Ticket; publication: number };
+type ReadError = Error & ReadScope;
+type Snapshot = ReadScope & { session: CloudSession; capabilities: CloudCapabilities };
 type State = {
   session?: CloudSession;
   capabilities?: CloudCapabilities;
@@ -60,6 +62,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     auth.status === 'authenticated' ? (auth.user?.id ?? (window.electronAPI ? desktopOwner : undefined)) : undefined;
   const [state, setState] = useState<State>(empty);
   const fence = useRef({ owner, epoch: 0 });
+  const readPublication = useRef(0);
   const identityFlight = useRef<(Ticket & { generation?: string; operation: string; failed?: boolean }) | undefined>(
     undefined
   );
@@ -96,6 +99,10 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     (ticket: Ticket) => live.current && ticket.owner === fence.current.owner && ticket.epoch === fence.current.epoch,
     []
   );
+  const matchesRead = useCallback(
+    (scope: ReadScope) => matches(scope.ticket) && scope.publication === readPublication.current,
+    [matches]
+  );
   const clearProviders = useCallback(
     () =>
       mutate<IProvider[]>(
@@ -106,23 +113,28 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     [mutate]
   );
   const read = useCallback(async (): Promise<Snapshot> => {
-    const ticket = { ...fence.current };
-    const [session, capabilities] = await Promise.all([
-      requestCloudAccount({ operation: 'session' }),
-      requestCloudAccount({ operation: 'capabilities' }),
-    ]);
-    if (!matches(ticket)) throw new Error('CLOUD_CONFLICT');
-    if (!session.success || !capabilities.success) throw new Error('CLOUD_TRANSPORT');
-    return { ticket, session: session.data as CloudSession, capabilities: capabilities.data as CloudCapabilities };
-  }, [matches]);
-  const query = useSWR(owner ? ['cloud-account', owner] : null, read, {
+    const scope = { ticket: { ...fence.current }, publication: readPublication.current };
+    try {
+      const [session, capabilities] = await Promise.all([
+        requestCloudAccount({ operation: 'session' }),
+        requestCloudAccount({ operation: 'capabilities' }),
+      ]);
+      if (!matchesRead(scope) || !session.success || !capabilities.success) throw new Error('CLOUD_TRANSPORT');
+      return { ...scope, session: session.data as CloudSession, capabilities: capabilities.data as CloudCapabilities };
+    } catch {
+      // SWR's catch path can publish an obsolete failure after mutate(). Keep
+      // the original read scope so the UI can fence errors as well as data.
+      throw Object.assign(new Error('CLOUD_TRANSPORT'), scope);
+    }
+  }, [matchesRead]);
+  const query = useSWR<Snapshot, ReadError>(owner ? ['cloud-account', owner] : null, read, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     shouldRetryOnError: false,
     keepPreviousData: false,
   });
   useEffect(() => {
-    if (!query.data || !owner || !matches(query.data.ticket)) return;
+    if (!query.data || !owner || !matchesRead(query.data)) return;
     // A read may observe this mutation's local commit while its remote outcome
     // is still pending. Only the mutation may finish that transition.
     const snapshot = query.data;
@@ -162,7 +174,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
           : {}),
       };
     });
-  }, [query.data, owner, matches, clearProviders, mutate]);
+  }, [query.data, owner, matches, matchesRead, clearProviders, mutate]);
   const renderEpoch = fence.current.epoch;
   const cancel = useCallback(() => {
     if (!matches({ owner, epoch: renderEpoch })) return;
@@ -232,6 +244,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       if (request.operation === 'login') connected = data as CloudSession;
       if (data && 'result' in data && data.result === 'login') connected = data.session;
       if (connected) {
+        readPublication.current++;
         // Publish through SWR's mutation boundary: reads begun before this
         // completed login/proof cannot replace it, even at the same generation.
         // Keep the original operation ticket valid for its catalog continuation.
@@ -309,7 +322,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   );
   const value: Lifecycle = {
     ...current,
-    error: current.error ?? (query.error ? 'CLOUD_TRANSPORT' : undefined),
+    error: current.error ?? (query.error && matchesRead(query.error) ? 'CLOUD_TRANSPORT' : undefined),
     available: !!owner,
     run,
     cancel,
