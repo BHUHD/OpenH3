@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from '@/common/chat/chatLib';
 import {
   composeMessage,
+  ephemeralStreamMessage,
   toolMessageKey,
   mergeAcpToolCallContent,
   mergeTextMessageContent,
@@ -794,6 +795,10 @@ export function foldSupersededTips(messages: TMessage[]): TMessage[] {
  * Normalize a message loaded from backend DB into renderer runtime shape.
  */
 export function normalizeDbMessage(msg: TMessage): TMessage {
+  if (msg[ephemeralStreamMessage]) {
+    msg = { ...msg };
+    delete msg[ephemeralStreamMessage];
+  }
   if (msg.type === 'tips') return normalizeDbTipsMessage(msg);
   if (msg.type !== 'text') return msg;
 
@@ -803,14 +808,15 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
   };
 }
 
-// User rows require exact DB identity. Stream row IDs are minted client-side,
-// but their msg_id is the server's persisted row ID. A raw duplicate msg_id
-// satisfies neither identity and must not inherit or suppress a live row.
+// Only actual ephemeral stream rows can reconcile their client ID to the
+// server's canonical row ID. Distinct DB rows (including forks/raw inserts)
+// require exact identity even when their msg_id is the same.
 const isSameHistoryRow = (persisted: TMessage, live: TMessage): boolean =>
   persisted.conversation_id === live.conversation_id &&
   persisted.type === live.type &&
   (persisted.id === live.id ||
-    (persisted.position !== 'right' &&
+    (live[ephemeralStreamMessage] === true &&
+      persisted.position !== 'right' &&
       live.position !== 'right' &&
       persisted.id === persisted.msg_id &&
       persisted.msg_id === live.msg_id));
@@ -819,12 +825,14 @@ const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMes
   if (!isSameHistoryRow(persisted, live)) return persisted;
   const preferred =
     persisted.type === 'text' && live.type === 'text' ? preferTextMessageVersion(persisted, live) : persisted;
-  return {
+  const merged = {
     ...preferred,
     id: persisted.id,
     msg_id: persisted.msg_id,
     model_source: persisted.model_source ?? live.model_source,
   };
+  delete merged[ephemeralStreamMessage];
+  return merged;
 };
 
 function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[], currentList: TMessage[]): TMessage[] {

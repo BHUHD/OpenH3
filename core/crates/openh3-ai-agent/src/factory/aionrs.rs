@@ -240,16 +240,6 @@ pub(super) async fn build(
         overrides.fork.as_ref(),
     )?;
 
-    let byok_source = (!managed).then(|| openh3_common::HistoricalModelSource::Byok {
-        provider_id: provider_id.clone(),
-        provider: row.platform.clone(),
-        model: model_id.clone(),
-        protocol: if provider == "openai" {
-            crate::services::managed::protocol_name(compat_overrides.openai_api_mode.unwrap_or_default()).into()
-        } else {
-            provider.clone()
-        },
-    });
     let source_owner = ctx.user_id.clone();
     let config = AionrsResolvedConfig {
         thought_level: overrides.thought_level,
@@ -346,9 +336,10 @@ pub(super) async fn build(
         }
         Err(error) => return Err(error),
     };
-    let agent = match byok_source {
-        Some(source) => agent.with_byok_source(source_owner, source),
-        None => agent,
+    let agent = if managed {
+        agent
+    } else {
+        agent.with_byok_source(source_owner, provider_id.clone(), row.platform)
     };
     Ok(AgentInstance::Aionrs(Arc::new(agent)))
 }

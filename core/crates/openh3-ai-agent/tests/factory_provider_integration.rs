@@ -71,6 +71,22 @@ fn make_factory(
     acp_agent_service: Arc<AcpSessionSyncService>,
     managed_credentials: Option<Arc<dyn openh3_ai_agent::managed::ManagedCredentialResolver>>,
 ) -> openh3_ai_agent::task_manager::AgentFactory {
+    make_factory_in_dir(
+        provider_repo,
+        agent_registry,
+        acp_agent_service,
+        managed_credentials,
+        PathBuf::from("/tmp/aionrs-test"),
+    )
+}
+
+fn make_factory_in_dir(
+    provider_repo: Arc<dyn IProviderRepository>,
+    agent_registry: Arc<AgentRegistry>,
+    acp_agent_service: Arc<AcpSessionSyncService>,
+    managed_credentials: Option<Arc<dyn openh3_ai_agent::managed::ManagedCredentialResolver>>,
+    data_dir: PathBuf,
+) -> openh3_ai_agent::task_manager::AgentFactory {
     let tmp = tempfile::TempDir::new().unwrap();
     let skill_paths = Arc::new(openh3_extension::resolve_skill_paths(tmp.path(), tmp.path()));
     // These provider integration tests only build aionrs tasks, which never touch
@@ -89,7 +105,7 @@ fn make_factory(
         encryption_key: test_encryption_key(),
         agent_registry,
         acp_agent_service,
-        data_dir: PathBuf::from("/tmp/aionrs-test"),
+        data_dir,
         dump_prompts: false,
         broadcaster: Arc::new(BroadcastEventBus::new(16)),
         backend_binary_path: Arc::new(PathBuf::from("/tmp/aionrs-test/aioncore")),
@@ -211,6 +227,95 @@ async fn aionrs_factory_respects_use_model_override() {
         })
     );
     assert!(agent.historical_source("foreign").is_none());
+}
+
+#[tokio::test]
+async fn aionrs_byok_source_uses_resolved_project_protocol_and_actual_model() {
+    use axum::{Json, Router, routing::post};
+    for explicit_mode in [None, Some("chat_completions")] {
+        let responses = explicit_mode.is_none();
+        let requests = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let app = Router::new().route(
+            "/{*path}",
+            post({
+                let requests = requests.clone();
+                move |Json(body): Json<serde_json::Value>| {
+                    requests.lock().unwrap().push(body);
+                    async move {
+                        let stream = if responses {
+                            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"OK\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n"
+                        } else {
+                            "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n"
+                        };
+                        ([("content-type", "text/event-stream")], stream)
+                    }
+                }
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}/v1", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let (repo, registry, sessions, db) = setup().await;
+        insert_test_provider(&*repo, "byok-resolved", "openai").await;
+        let settings = explicit_mode.map_or_else(
+            || "{}".to_owned(),
+            |mode| serde_json::json!({"gpt-4o":{"openai_api_mode":mode}}).to_string(),
+        );
+        sqlx::query("UPDATE providers SET base_url=?, model_settings=? WHERE id='byok-resolved'")
+            .bind(endpoint)
+            .bind(settings)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join(".aionrs.toml"),
+            "[providers.openai.compat]\nopenai_api_mode = \"responses\"\n",
+        )
+        .unwrap();
+        let factory = make_factory_in_dir(repo, registry, sessions, None, dir.path().join("data"));
+        let agent = factory(make_aionrs_options(
+            &format!("byok-resolved-{}", uuid::Uuid::now_v7()),
+            dir.path().to_str().unwrap(),
+            ProviderWithModel {
+                provider_id: "byok-resolved".into(),
+                model: "gpt-5.4".into(),
+                use_model: Some("gpt-4o".into()),
+            },
+            Default::default(),
+        ))
+        .await
+        .unwrap();
+        let source = agent.historical_source(TEST_USER_ID).unwrap();
+        assert!(agent.historical_source("foreign-owner").is_none());
+        agent
+            .send_message(openh3_ai_agent::types::SendMessageData {
+                content: "Reply OK".into(),
+                msg_id: "byok-resolved-message".into(),
+                turn_id: None,
+                files: vec![],
+                inject_skills: vec![],
+            })
+            .await
+            .unwrap();
+        {
+            let calls = requests.lock().unwrap();
+            assert_eq!(calls.len(), 1);
+            assert_eq!(calls[0]["model"], "gpt-4o");
+            assert_eq!(calls[0].get("input").is_some(), responses);
+            assert_eq!(calls[0].get("messages").is_some(), !responses);
+        }
+        server.abort();
+        let public = serde_json::to_value(source).unwrap();
+        assert_eq!(
+            public,
+            serde_json::json!({
+                "kind":"byok", "provider_id":"byok-resolved", "provider":"openai", "model":"gpt-4o",
+                "protocol": if responses { "responses" } else { "chat_completions" }
+            })
+        );
+        assert!(!public.to_string().contains("sk-test-key"));
+    }
 }
 
 struct AccountResolver {

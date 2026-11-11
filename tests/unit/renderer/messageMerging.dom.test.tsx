@@ -24,6 +24,7 @@ import {
   useAddOrUpdateMessage,
   useMessageLstCache,
   useMessageList,
+  normalizeDbMessage,
   usePrependHistoryPage,
   useReplaceWithAnchorWindow,
 } from '@/renderer/pages/conversation/Messages/hooks';
@@ -66,6 +67,12 @@ function createTextMessage(msgId: string, content: string): IMessageText {
       content,
     },
   };
+}
+
+function createStreamTextMessage(msgId: string, content: string): IMessageText {
+  const message = transformMessage({ type: 'content', conversation_id: CONVERSATION_ID, msg_id: msgId, data: content });
+  if (message?.type !== 'text') throw new Error('Expected a transformed text frame');
+  return message;
 }
 
 function createThinkingMessage(msgId: string, content: string): IMessageThinking {
@@ -252,8 +259,9 @@ describe('message merging', () => {
     });
 
     act(() => {
-      result.current.addOrUpdateMessage(createTextMessage('agent-1', 'partial streaming response'));
-      result.current.addOrUpdateMessage(createTextMessage('agent-2', 'live tail'));
+      result.current.addOrUpdateMessage(createStreamTextMessage('agent-1', 'partial streaming'));
+      result.current.addOrUpdateMessage(createStreamTextMessage('agent-1', ' response'));
+      result.current.addOrUpdateMessage(createStreamTextMessage('agent-2', 'live tail'));
     });
     await flushMessageQueue();
 
@@ -772,7 +780,7 @@ it('keeps a bound user source when an older history page completes after the liv
     model_source: source,
   };
   const assistant: IMessageText = {
-    ...createTextMessage('source-agent', 'reply'),
+    ...createStreamTextMessage('source-agent', 'reply'),
     id: 'client-stream-id',
     model_source: source,
   };
@@ -786,7 +794,7 @@ it('keeps a bound user source when an older history page completes after the liv
   act(() =>
     result.current.replace(CONVERSATION_ID, [
       { ...user, model_source: null },
-      { ...assistant, id: 'source-agent', model_source: null },
+      normalizeDbMessage({ ...assistant, id: 'source-agent', model_source: null }),
       { ...user, id: 'raw-duplicate', model_source: null },
     ])
   );
@@ -1058,6 +1066,49 @@ describe('historical source previous-page reconciliation', () => {
     return renderHook(() => ({ messages: useMessageList(), prepend: usePrependHistoryPage() }), { wrapper: Wrapper });
   }
 
+  it.each(['prepend', 'anchor'] as const)(
+    'keeps distinct normalized persisted left rows intact through %s reconciliation',
+    (mode) => {
+      const original = normalizeDbMessage({
+        ...createTextMessage('assistant-original', 'actual A answer'),
+        id: 'assistant-original',
+        model_source: source,
+      });
+      const raw = normalizeDbMessage({
+        ...createTextMessage('assistant-original', 'Untrusted distinct raw content longer than the authentic answer'),
+        id: 'raw-persisted-duplicate',
+        model_source: null,
+      });
+      function Wrapper({ children }: PropsWithChildren) {
+        return <MessageListProvider value={[raw]}>{children}</MessageListProvider>;
+      }
+      const { result } = renderHook(
+        () => ({ messages: useMessageList(), prepend: usePrependHistoryPage(), anchor: useReplaceWithAnchorWindow() }),
+        { wrapper: Wrapper }
+      );
+      act(() => {
+        if (mode === 'prepend') result.current.prepend([original]);
+        else result.current.anchor(CONVERSATION_ID, [original]);
+      });
+      expect(result.current.messages).toEqual([original, raw]);
+    }
+  );
+
+  it('clears ephemeral identity when a copied stream-shaped row is normalized as persisted history', () => {
+    const frame = createStreamTextMessage('assistant-original', 'A longer raw persisted duplicate');
+    const raw = normalizeDbMessage({ ...frame, id: 'raw-persisted-row', model_source: null });
+    const original = normalizeDbMessage({
+      ...createTextMessage('assistant-original', 'original'),
+      id: 'assistant-original',
+      model_source: source,
+    });
+    const { result } = renderPreviousPage([raw]);
+    act(() => result.current.prepend([original]));
+    expect(result.current.messages).toEqual([original, raw]);
+    expect(Object.getOwnPropertySymbols(raw)).toEqual([]);
+    expect(JSON.parse(JSON.stringify(frame))).toEqual(expect.objectContaining({ msg_id: 'assistant-original' }));
+  });
+
   it('keeps a sourced authentic row from a previous page distinct from a current raw duplicate msg_id', () => {
     const raw = { ...userRow('raw'), id: 'raw-duplicate' };
     const authentic = { ...userRow(), model_source: source };
@@ -1087,17 +1138,19 @@ describe('historical source previous-page reconciliation', () => {
   it.each(['stream', 'fork'] as const)(
     'preserves the persisted %s row identity and richer left text while reconciling source',
     (kind) => {
-      const current: IMessageText = {
-        ...createTextMessage('original-segment', 'A richer streaming response'),
+      const current: TMessage = {
+        ...(kind === 'stream'
+          ? createStreamTextMessage('original-segment', 'A richer streaming response')
+          : createTextMessage('original-segment', 'A richer streaming response')),
         id: kind === 'stream' ? 'client-stream-row' : 'fork-row',
         model_source: null,
       };
-      const persisted: IMessageText = {
+      const persisted = normalizeDbMessage({
         ...current,
         id: kind === 'stream' ? 'original-segment' : 'fork-row',
         content: { content: 'partial' },
         model_source: source,
-      };
+      });
       const { result } = renderPreviousPage([current]);
       act(() => result.current.prepend([persisted]));
       expect(result.current.messages).toEqual([{ ...persisted, content: current.content }]);

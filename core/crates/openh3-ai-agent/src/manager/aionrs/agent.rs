@@ -110,6 +110,8 @@ fn build_aionrs_final_input_dump_value(
 pub struct AionrsAgentManager {
     managed_provider: Option<Arc<ManagedProvider>>,
     byok_source: Option<(String, openh3_common::HistoricalModelSource)>,
+    resolved_model: String,
+    resolved_protocol: String,
     runtime: AgentRuntime,
     engine: Mutex<AgentEngine>,
     /// Static slash command metadata captured at bootstrap so UI lookups do
@@ -147,8 +149,16 @@ impl Drop for AionrsAgentManager {
 }
 
 impl AionrsAgentManager {
-    pub(crate) fn with_byok_source(mut self, owner: String, source: openh3_common::HistoricalModelSource) -> Self {
-        self.byok_source = Some((owner, source));
+    pub(crate) fn with_byok_source(mut self, owner: String, provider_id: String, provider: String) -> Self {
+        self.byok_source = Some((
+            owner,
+            openh3_common::HistoricalModelSource::Byok {
+                provider_id,
+                provider,
+                model: self.resolved_model.clone(),
+                protocol: self.resolved_protocol.clone(),
+            },
+        ));
         self
     }
     pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
@@ -273,6 +283,16 @@ impl AionrsAgentManager {
         let is_resume = resume_session.is_some();
         let provider_label = config.provider_label.clone();
 
+        // Capture the same final config passed to the native provider, including
+        // project/global compatibility and explicit factory overrides.
+        let resolved_model = config.model.clone();
+        let resolved_protocol = match config.provider {
+            ProviderType::OpenAI => crate::services::managed::protocol_name(config.compat.openai_api_mode()),
+            ProviderType::Anthropic => "anthropic",
+            ProviderType::Bedrock => "bedrock",
+            ProviderType::Vertex => "vertex",
+        }
+        .to_owned();
         let provider: Arc<dyn aion_providers::LlmProvider> = match &managed_provider {
             Some(provider) => provider.clone(),
             None => Arc::new(RecoveringProvider(aion_providers::create_provider(&config))),
@@ -370,6 +390,8 @@ impl AionrsAgentManager {
         Ok(Self {
             managed_provider,
             byok_source: None,
+            resolved_model,
+            resolved_protocol,
             runtime,
             engine: Mutex::new(engine),
             slash_commands,

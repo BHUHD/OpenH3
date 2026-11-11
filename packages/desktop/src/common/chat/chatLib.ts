@@ -76,7 +76,12 @@ type TMessageType =
   | 'available_commands'
   | 'acp_terminal_output';
 
+// Runtime-only identity: symbols survive our live spread merges but cannot arrive
+// in JSON history. DB normalization/reconciliation clears it once a row is known.
+export const ephemeralStreamMessage = Symbol('ephemeralStreamMessage');
+
 interface IMessage<T extends TMessageType, Content extends Record<string, any>> {
+  [ephemeralStreamMessage]?: true;
   /**
    * 唯一ID
    */
@@ -1142,6 +1147,7 @@ export const handleImageGenerationWithWorkspace = (message: TMessage, workspace:
 
 export const transformMessage = (message: IResponseMessage): TMessage | undefined => {
   const transformed = transformMessageInner(message);
+  if (transformed) transformed[ephemeralStreamMessage] = true;
   // Stamp the backend turn anchor so live-streamed messages gate the fork
   // entry exactly like history-loaded rows (see isForkEnabled).
   if (transformed && message.backend_turn_id) {
