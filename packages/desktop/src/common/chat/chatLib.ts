@@ -56,6 +56,11 @@ export const joinPath = (basePath: string, relativePath: string): string => {
  * @description 跟对话相关的消息类型申明 及相关处理
  */
 
+/** Trusted server binding/display facts. Null or absent means unavailable; never billing evidence. */
+export type HistoricalModelSource =
+  | { kind: 'cloud_account'; issuer: string; subject: string; provider_id: string; model: string; protocol: string }
+  | { kind: 'byok'; provider_id: string; provider: string; model: string; protocol: string };
+
 type TMessageType =
   | 'text'
   | 'tips'
@@ -114,7 +119,12 @@ interface IMessage<T extends TMessageType, Content extends Record<string, any>> 
    * reload), and backends without turn-anchored forks.
    */
   backend_turn_id?: string;
+  model_source?: HistoricalModelSource | null;
 }
+
+/** Sourced native tools use the server's turn-scoped identity; legacy tools keep raw IDs. */
+export const toolMessageKey = (message: TMessage, rawId: string): string =>
+  message.model_source && message.msg_id ? message.msg_id : rawId;
 
 export type CronMessageMeta = {
   source: 'cron';
@@ -956,6 +966,7 @@ export const composeMessage = (
 
   const updateMessage = (index: number, message: TMessage, change = true) => {
     message.id = list[index].id;
+    if (list[index].model_source) message.model_source = list[index].model_source;
     list[index] = message;
     if (change) messageHandler('update', message);
     return list.slice();
@@ -986,6 +997,8 @@ export const composeMessage = (
 
     const updatedList = list.map((existingMessage) => {
       if (existingMessage.type !== 'tool_group') return existingMessage;
+      if ((message.model_source || existingMessage.model_source) && message.msg_id !== existingMessage.msg_id)
+        return existingMessage;
       if (!existingMessage.content.length) return existingMessage;
 
       let didMergeIntoThisMessage = false;
@@ -1026,7 +1039,10 @@ export const composeMessage = (
   if (message.type === 'tool_call') {
     for (let i = 0, len = list.length; i < len; i++) {
       const msg = list[i];
-      if (msg.type === 'tool_call' && msg.content.call_id === message.content.call_id) {
+      if (
+        msg.type === 'tool_call' &&
+        toolMessageKey(msg, msg.content.call_id) === toolMessageKey(message, message.content.call_id)
+      ) {
         // Create new object instead of mutating original
         return updateMessage(i, { ...msg, content: { ...msg.content, ...message.content } });
       }
@@ -1039,7 +1055,11 @@ export const composeMessage = (
   if (message.type === 'acp_tool_call') {
     for (let i = 0, len = list.length; i < len; i++) {
       const msg = list[i];
-      if (msg.type === 'acp_tool_call' && msg.content.update?.tool_call_id === message.content.update?.tool_call_id) {
+      if (
+        msg.type === 'acp_tool_call' &&
+        toolMessageKey(msg, msg.content.update?.tool_call_id ?? '') ===
+          toolMessageKey(message, message.content.update?.tool_call_id ?? '')
+      ) {
         // Create new object instead of mutating original
         const merged = mergeAcpToolCallContent(msg.content, message.content);
         return updateMessage(i, { ...msg, content: merged });
@@ -1126,6 +1146,9 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
   // entry exactly like history-loaded rows (see isForkEnabled).
   if (transformed && message.backend_turn_id) {
     transformed.backend_turn_id = message.backend_turn_id;
+  }
+  if (transformed && message.model_source !== undefined) {
+    transformed.model_source = message.model_source;
   }
   return transformed;
 };

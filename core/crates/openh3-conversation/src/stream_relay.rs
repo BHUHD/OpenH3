@@ -230,6 +230,11 @@ impl StreamRelay {
         self
     }
 
+    pub fn with_model_source(mut self, source: Option<openh3_common::HistoricalModelSource>) -> Self {
+        self.adapter = self.adapter.with_model_source(source);
+        self
+    }
+
     pub fn with_turn_completion(mut self, enabled: bool) -> Self {
         self.complete_turn = enabled;
         self
@@ -848,7 +853,16 @@ impl StreamRelay {
     /// Forward an agent event to connected WebSocket clients.
     #[tracing::instrument(skip_all)]
     fn forward_to_websocket(&self, event: &AgentStreamEvent) {
-        self.forward_to_websocket_with_msg_id(&self.msg_id, event);
+        let msg_id = match event {
+            _ if self.adapter.model_source().is_none() => self.msg_id.clone(),
+            AgentStreamEvent::ToolCall(data) => self.adapter.tool_message_id("call", &data.call_id),
+            AgentStreamEvent::AcpToolCall(data) => self.adapter.tool_message_id("acp", &data.update.tool_call_id),
+            AgentStreamEvent::ToolGroup(entries) if !entries.is_empty() => {
+                self.adapter.tool_message_id("group", &entries[0].call_id)
+            }
+            _ => self.msg_id.clone(),
+        };
+        self.forward_to_websocket_with_msg_id(&msg_id, event);
     }
 
     #[tracing::instrument(skip_all)]
@@ -1020,9 +1034,18 @@ impl StreamRelay {
                 }
             };
             normalize_keys_to_snake_case(&mut body);
+            let msg_id = if self.adapter.model_source().is_some() {
+                match kind {
+                    "tool_call" => self.adapter.tool_message_id("call", &data.card.call_id),
+                    "tool_group" => self.adapter.tool_message_id("group", &data.agents[0].call_id),
+                    _ => self.msg_id.clone(),
+                }
+            } else {
+                self.msg_id.clone()
+            };
             self.broadcast_stream_payload(json!({
                 "conversation_id": self.conversation_id,
-                "msg_id": self.msg_id,
+                "msg_id": msg_id,
                 "turn_id": self.turn_id,
                 "type": kind,
                 "data": body,
@@ -1044,6 +1067,12 @@ impl StreamRelay {
                 obj.entry("backend_turn_id")
                     .or_insert_with(|| serde_json::Value::String(anchor));
             }
+        }
+        if let Some(obj) = payload.as_object_mut() {
+            obj.insert(
+                "model_source".into(),
+                serde_json::to_value(self.adapter.model_source()).unwrap_or_default(),
+            );
         }
         let msg = WebSocketMessage::new("message.stream", payload);
         self.broadcaster.broadcast(msg);
@@ -3334,5 +3363,121 @@ mod tests {
                 has_more: false,
             })
         }
+    }
+    #[tokio::test]
+    async fn historical_source_workflow_and_acp_tool_scopes_match_live_and_committed_rows() {
+        use openh3_ai_agent::protocol::events::tool_call::{ToolGroupEntry, ToolGroupStatus};
+        use openh3_ai_agent::protocol::events::{ToolCallEventData, ToolCallStatus, WorkflowProgressData};
+        use openh3_common::HistoricalModelSource;
+        let db = openh3_db::init_database_memory().await.unwrap();
+        let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO conversations (id,user_id,name,type,extra,created_at,updated_at) VALUES ('source-conv',?,'source','aionrs','{}',1,1)").bind(&owner).execute(db.pool()).await.unwrap();
+        let repo = Arc::new(openh3_db::SqliteConversationRepository::new(db.pool().clone()));
+        let bus = Arc::new(openh3_realtime::BroadcastEventBus::new(128));
+        let mut live = bus.subscribe();
+        for scope in ["a", "b"] {
+            let source = HistoricalModelSource::CloudAccount {
+                issuer: "https://fixture.invalid".into(),
+                subject: scope.into(),
+                provider_id: format!("provider-{scope}"),
+                model: "actual-model".into(),
+                protocol: "responses".into(),
+            };
+            let relay = StreamRelay::new(
+                "source-conv".into(),
+                scope.into(),
+                format!("turn-{scope}"),
+                owner.clone(),
+                repo.clone(),
+                bus.clone(),
+            )
+            .with_model_source(Some(source.clone()));
+            let (tx, rx) = broadcast::channel(32);
+            let card = ToolCallEventData {
+                call_id: "raw-workflow".into(),
+                name: "Workflow".into(),
+                args: json!({}),
+                status: ToolCallStatus::Running,
+                input: None,
+                output: None,
+                description: None,
+                parent_call_id: None,
+            };
+            tx.send(AgentStreamEvent::WorkflowProgress(WorkflowProgressData {
+                card: card.clone(),
+                agents: vec![ToolGroupEntry {
+                    call_id: "raw-agent".into(),
+                    name: "fixture".into(),
+                    status: ToolGroupStatus::Executing,
+                    description: None,
+                }],
+                settle_only: false,
+            }))
+            .unwrap();
+            tx.send(AgentStreamEvent::WorkflowProgress(WorkflowProgressData {
+                card: ToolCallEventData {
+                    status: ToolCallStatus::Completed,
+                    ..card
+                },
+                agents: vec![ToolGroupEntry {
+                    call_id: "raw-agent".into(),
+                    name: "fixture".into(),
+                    status: ToolGroupStatus::Success,
+                    description: None,
+                }],
+                settle_only: false,
+            }))
+            .unwrap();
+            let acp=serde_json::from_value(json!({"session_id":"fixture","update":{"sessionUpdate":"tool_call","tool_call_id":"raw-acp","status":"completed"}})).unwrap();
+            tx.send(AgentStreamEvent::AcpToolCall(acp)).unwrap();
+            tx.send(AgentStreamEvent::Finish(FinishEventData::default())).unwrap();
+            relay.consume(rx).await;
+            for (kind, raw) in [("call", "raw-workflow"), ("group", "raw-agent"), ("acp", "raw-acp")] {
+                let id = format!("tool:{scope}:{kind}:{raw}");
+                let row = repo.get_message(&owner, "source-conv", &id).await.unwrap().unwrap();
+                assert_eq!(row.msg_id.as_deref(), Some(id.as_str()));
+                assert_eq!(
+                    row.model_source.as_deref(),
+                    Some(serde_json::to_string(&source).unwrap().as_str())
+                );
+                assert_eq!(row.status.as_deref(), Some("finish"));
+                if kind == "group" {
+                    assert!(
+                        serde_json::from_str::<serde_json::Value>(&row.content)
+                            .unwrap()
+                            .is_array()
+                    );
+                }
+            }
+        }
+        let rows: Vec<MessageRow> = sqlx::query_as("SELECT * FROM messages WHERE conversation_id='source-conv'")
+            .fetch_all(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 6);
+        let mut sourced_frames = 0;
+        while let Ok(event) = live.try_recv() {
+            if event.name != "message.stream"
+                || !matches!(
+                    event.data["type"].as_str(),
+                    Some("tool_call" | "tool_group" | "acp_tool_call")
+                )
+            {
+                continue;
+            }
+            let id = event.data["msg_id"].as_str().unwrap();
+            let stored = rows
+                .iter()
+                .find(|row| row.msg_id.as_deref() == Some(id))
+                .expect("live scope must match committed row");
+            let public =
+                serde_json::to_value(crate::convert::row_to_message_response(stored.clone()).unwrap()).unwrap();
+            assert_eq!(event.data["model_source"], public["model_source"]);
+            sourced_frames += 1;
+        }
+        assert_eq!(sourced_frames, 10);
     }
 }

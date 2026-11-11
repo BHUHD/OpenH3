@@ -2,10 +2,24 @@
 use super::{CloudAccountError as Error, CloudAccountService, Result};
 use tokio::sync::watch;
 
+/// Original authenticated grant identity and its cancellation signal, captured together.
+pub struct CloudAccountInferenceBinding {
+    pub lifetime: watch::Receiver<bool>,
+    pub owner: String,
+    pub issuer: String,
+    pub subject: String,
+    pub provider_id: String,
+    pub generation: i64,
+}
+
 impl CloudAccountService {
     /// Subscribe to the original grant without refreshing it. Registration and
     /// local invalidation share a gate so logout cannot lose a new subscriber.
     pub async fn inference_lifetime(&self, owner: &str, provider_id: &str) -> Result<watch::Receiver<bool>> {
+        Ok(self.inference_binding(owner, provider_id).await?.lifetime)
+    }
+
+    pub async fn inference_binding(&self, owner: &str, provider_id: &str) -> Result<CloudAccountInferenceBinding> {
         let mut lifetimes = self.lifetimes.lock().await;
         let row = self
             .repo
@@ -26,10 +40,17 @@ impl CloudAccountService {
         if stored.provider_id != provider_id || stored.inference_key.is_none() {
             return Err(Error::Conflict);
         }
-        Ok(lifetimes
-            .entry((owner.into(), stored.generation))
-            .or_insert_with(|| watch::channel(false).0)
-            .subscribe())
+        Ok(CloudAccountInferenceBinding {
+            lifetime: lifetimes
+                .entry((owner.into(), stored.generation))
+                .or_insert_with(|| watch::channel(false).0)
+                .subscribe(),
+            owner: stored.owner,
+            issuer: stored.issuer,
+            subject: stored.account.id,
+            provider_id: stored.provider_id,
+            generation: stored.generation,
+        })
     }
 
     pub(super) async fn invalidate_local(

@@ -200,7 +200,17 @@ async fn aionrs_factory_respects_use_model_override() {
     );
 
     let result = factory(options).await;
-    assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+    let agent = result.unwrap();
+    assert_eq!(
+        agent.historical_source(TEST_USER_ID),
+        Some(openh3_common::HistoricalModelSource::Byok {
+            provider_id: "prov-002".into(),
+            provider: "openai".into(),
+            model: "gpt-5.4".into(),
+            protocol: "chat_completions".into(),
+        })
+    );
+    assert!(agent.historical_source("foreign").is_none());
 }
 
 struct AccountResolver {
@@ -218,6 +228,22 @@ impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
         assert_eq!(owner, TEST_USER_ID);
         assert_eq!(provider, "managed-factory");
         Ok(self.lifetime.subscribe())
+    }
+    async fn binding(
+        &self,
+        owner: &str,
+        provider: &str,
+    ) -> Result<openh3_ai_agent::managed::ManagedAccountBinding, openh3_ai_agent::managed::ProviderError> {
+        Ok(openh3_ai_agent::managed::ManagedAccountBinding {
+            lifetime: self.subscribe(owner, provider).await?,
+            identity: Some(openh3_ai_agent::managed::ManagedAccountIdentity {
+                owner: owner.into(),
+                issuer: "https://fixture.invalid".into(),
+                subject: "actor-a".into(),
+                provider_id: provider.into(),
+                generation: 1,
+            }),
+        })
     }
     async fn resolve(
         &self,
@@ -347,6 +373,17 @@ async fn managed_factory_requires_verified_row_and_preserves_actual_selected_mod
             .await
             .unwrap();
         let agent = factory(options(None)).await.unwrap();
+        assert_eq!(
+            agent.historical_source(TEST_USER_ID),
+            Some(openh3_common::HistoricalModelSource::CloudAccount {
+                issuer: "https://fixture.invalid".into(),
+                subject: "actor-a".into(),
+                provider_id: "managed-factory".into(),
+                model: "gpt-5.4".into(),
+                protocol: stored_mode.into(),
+            })
+        );
+        assert!(agent.historical_source("foreign-owner").is_none());
         agent
             .send_message(openh3_ai_agent::types::SendMessageData {
                 content: "Reply OK".into(),

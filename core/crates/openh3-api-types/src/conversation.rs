@@ -374,6 +374,16 @@ pub struct ConversationResponse {
 /// Paginated list of conversations.
 pub type ConversationListResponse = PaginatedResult<ConversationResponse>;
 
+/// The server bound a previously scheduled user row to its concrete native binding.
+/// Local owner scope only; these facts never establish a gateway charge.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MessageSourceBoundPayload {
+    pub user_id: String,
+    pub conversation_id: String,
+    pub msg_id: String,
+    pub model_source: openh3_common::HistoricalModelSource,
+}
+
 /// Single message object returned in API responses.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageResponse {
@@ -392,6 +402,9 @@ pub struct MessageResponse {
     /// backends without turn-anchored forks.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub backend_turn_id: Option<String>,
+    /// Binding/display facts only; null means unavailable. Never billing evidence.
+    #[serde(default)]
+    pub model_source: Option<openh3_common::HistoricalModelSource>,
 }
 
 /// Cursor-paginated list of messages.
@@ -884,6 +897,7 @@ mod tests {
             hidden: false,
             created_at: 1712345678000,
             backend_turn_id: None,
+            model_source: None,
         };
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["id"], "msg_1");
@@ -913,6 +927,7 @@ mod tests {
             hidden: true,
             created_at: 5000,
             backend_turn_id: None,
+            model_source: None,
         };
         let serialized = serde_json::to_string(&resp).unwrap();
         let deserialized: MessageResponse = serde_json::from_str(&serialized).unwrap();

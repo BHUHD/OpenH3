@@ -11,6 +11,7 @@ mod tests;
 mod wire;
 
 pub use client::CloudAccountConfig;
+pub use lifetime::CloudAccountInferenceBinding;
 pub use service::{CloudAccountInferenceCredentials, CloudAccountService};
 
 /// Sanitized errors only: never retains an upstream body, URL or credential.

@@ -5,10 +5,15 @@
  */
 
 import React, { type PropsWithChildren } from 'react';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
-import type { IMessageAcpToolCall, IMessageText, IMessageThinking } from '@/common/chat/chatLib';
+import {
+  transformMessage,
+  type IMessageAcpToolCall,
+  type IMessageText,
+  type IMessageThinking,
+} from '@/common/chat/chatLib';
 import {
   MessageListLoadingProvider,
   MessageListProvider,
@@ -25,6 +30,7 @@ vi.mock('@/common', () => ({
       userCreated: {
         on: vi.fn().mockReturnValue(() => {}),
       },
+      sourceBound: { on: vi.fn().mockReturnValue(() => {}) },
       statusChanged: {
         on: vi.fn().mockReturnValue(() => {}),
       },
@@ -578,4 +584,203 @@ describe('message merging', () => {
 
     expect(invoke).not.toHaveBeenCalled();
   });
+});
+
+it('applies a server source event to the exact user row and keeps its immutable source', async () => {
+  type SourcePayload = Parameters<Parameters<typeof ipcBridge.conversation.sourceBound.on>[0]>[0];
+  let emit: ((payload: SourcePayload) => void) | undefined;
+  vi.mocked(ipcBridge.conversation.sourceBound.on).mockImplementation((callback) => {
+    emit = callback;
+    return () => {};
+  });
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'actor-a',
+    provider_id: 'provider-a',
+    model: 'actual-model',
+    protocol: 'responses',
+  } as const;
+  vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue({
+    items: [
+      { ...createTextMessage('source-user', 'hello'), id: 'source-user', position: 'right' },
+      { ...createTextMessage('source-user', 'forged raw row'), id: 'raw-duplicate', position: 'right' },
+    ],
+    oldest_cursor: null,
+    newest_cursor: null,
+    has_more_before: false,
+    has_more_after: false,
+  });
+  function Harness() {
+    useMessageLstCache(CONVERSATION_ID);
+    return useMessageList();
+  }
+  const { result } = renderHook(Harness, { wrapper: CacheWrapper });
+  await act(async () => {
+    await Promise.resolve();
+  });
+  act(() =>
+    emit?.({ user_id: 'local-owner', conversation_id: 'foreign', msg_id: 'source-user', model_source: source })
+  );
+  expect(result.current[0].model_source).toBeUndefined();
+  act(() =>
+    emit?.({ user_id: 'local-owner', conversation_id: CONVERSATION_ID, msg_id: 'source-user', model_source: source })
+  );
+  expect(result.current[0].model_source).toEqual(source);
+  expect(result.current[1].id).toBe('raw-duplicate');
+  expect(result.current[1].model_source).toBeUndefined();
+  act(() =>
+    emit?.({
+      user_id: 'local-owner',
+      conversation_id: CONVERSATION_ID,
+      msg_id: 'source-user',
+      model_source: { ...source, subject: 'actor-b' },
+    })
+  );
+  expect(result.current[0].model_source).toEqual(source);
+  expect(result.current[1].model_source).toBeUndefined();
+});
+
+it('indexes sourced tool updates by server turn identity while preserving raw call IDs', async () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'a',
+    provider_id: 'p',
+    model: 'model',
+    protocol: 'responses',
+  } as const;
+  const frame = (scope: string, status: string): import('@/common/chat/chatLib').IMessageToolCall => ({
+    id: `row-${scope}`,
+    type: 'tool_call',
+    msg_id: `tool:${scope}:call:raw`,
+    conversation_id: CONVERSATION_ID,
+    model_source: { ...source, subject: scope },
+    content: { call_id: 'raw', name: 'Read', status: status as 'running' | 'completed', args: {} },
+  });
+  const { result } = renderHook(() => ({ add: useAddOrUpdateMessage(), messages: useMessageList() }), {
+    wrapper: TestWrapper,
+  });
+  act(() => result.current.add(frame('a', 'running')));
+  act(() => result.current.add(frame('b', 'running')));
+  act(() => result.current.add(frame('a', 'completed')));
+  await waitFor(() => expect(result.current.messages).toHaveLength(2));
+  expect(result.current.messages[0].model_source?.kind).toBe('cloud_account');
+  expect(result.current.messages[0].content).toEqual(expect.objectContaining({ status: 'completed', call_id: 'raw' }));
+  expect(result.current.messages[1].content).toEqual(expect.objectContaining({ status: 'running', call_id: 'raw' }));
+});
+
+it.each(['tool_group', 'acp_tool_call'] as const)(
+  'indexes sourced %s updates by server turn identity',
+  async (type) => {
+    const source = {
+      kind: 'cloud_account',
+      issuer: 'https://fixture.invalid',
+      subject: 'a',
+      provider_id: 'p',
+      model: 'model',
+      protocol: 'responses',
+    } as const;
+    const frame = (scope: string, finished: boolean) =>
+      transformMessage({
+        type,
+        msg_id: `tool:${scope}:${type}:raw`,
+        conversation_id: CONVERSATION_ID,
+        model_source: { ...source, subject: scope },
+        data:
+          type === 'tool_group'
+            ? [{ call_id: 'raw', name: 'fixture', status: finished ? 'Success' : 'Executing' }]
+            : {
+                session_id: 'fixture',
+                update: {
+                  sessionUpdate: 'tool_call',
+                  tool_call_id: 'raw',
+                  status: finished ? 'completed' : 'in_progress',
+                },
+              },
+      });
+    const { result } = renderHook(() => ({ add: useAddOrUpdateMessage(), messages: useMessageList() }), {
+      wrapper: TestWrapper,
+    });
+    act(() => result.current.add(frame('a', false)));
+    act(() => result.current.add(frame('b', false)));
+    act(() => result.current.add(frame('a', true)));
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+    const [a, b] = result.current.messages;
+    expect(a.model_source).toEqual({ ...source, subject: 'a' });
+    expect(b.model_source).toEqual({ ...source, subject: 'b' });
+    if (a.type === 'tool_group' && b.type === 'tool_group') {
+      expect(a.content[0].status).toBe('Success');
+      expect(b.content[0].status).toBe('Executing');
+    } else if (a.type === 'acp_tool_call' && b.type === 'acp_tool_call') {
+      expect(a.content.update.tool_call_id).toBe('raw');
+      expect(a.content.update.status).toBe('completed');
+      expect(b.content.update.status).toBe('in_progress');
+    } else throw new Error('tool type changed');
+  }
+);
+
+it('preserves a trusted source when a same-row generic update arrives', async () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'original',
+    provider_id: 'p',
+    model: 'model',
+    protocol: 'responses',
+  } as const;
+  const frame = (subject: string) =>
+    transformMessage({
+      type: 'tips',
+      msg_id: 'same-row',
+      conversation_id: CONVERSATION_ID,
+      model_source: { ...source, subject },
+      data: { content: 'fixture', type: 'info' },
+    });
+  const { result } = renderHook(() => ({ add: useAddOrUpdateMessage(), messages: useMessageList() }), {
+    wrapper: TestWrapper,
+  });
+  act(() => result.current.add(frame('original')));
+  act(() => result.current.add(frame('replacement')));
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+  expect(result.current.messages[0].model_source).toEqual(source);
+});
+
+it('keeps a bound user source when an older history page completes after the live event', async () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'original',
+    provider_id: 'p',
+    model: 'model',
+    protocol: 'responses',
+  } as const;
+  const user: IMessageText = {
+    ...createTextMessage('source-user', 'hello'),
+    id: 'source-user',
+    position: 'right',
+    model_source: source,
+  };
+  const assistant: IMessageText = {
+    ...createTextMessage('source-agent', 'reply'),
+    id: 'client-stream-id',
+    model_source: source,
+  };
+  const { result } = renderHook(
+    () => ({ add: useAddOrUpdateMessage(), replace: useReplaceWithAnchorWindow(), messages: useMessageList() }),
+    { wrapper: TestWrapper }
+  );
+  act(() => result.current.add(user));
+  act(() => result.current.add(assistant));
+  await waitFor(() => expect(result.current.messages).toHaveLength(2));
+  act(() =>
+    result.current.replace(CONVERSATION_ID, [
+      { ...user, model_source: null },
+      { ...assistant, id: 'source-agent', model_source: null },
+      { ...user, id: 'raw-duplicate', model_source: null },
+    ])
+  );
+  expect(result.current.messages[0].model_source).toEqual(source);
+  expect(result.current.messages[1].model_source).toEqual(source);
+  expect(result.current.messages[2].model_source).toBeNull();
 });

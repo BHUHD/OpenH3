@@ -228,3 +228,20 @@ fn topups_preserve_frozen_gateway_contract_and_cursor() {
     round_trip::<CloudAccountTopupOrdersResponse>(json!({"items":[order],"has_more":false,"next_before_id":7}));
     assert!(serde_json::from_value::<CloudAccountTopupOrdersResponse>(json!({"items":[],"total":0,"page":1})).is_err());
 }
+
+#[test]
+fn historical_model_source_is_nonsecret_display_data_and_legacy_is_unavailable() {
+    use openh3_common::HistoricalModelSource;
+    let source = json!({"kind":"cloud_account","issuer":"https://fixture.invalid","subject":"actor-a","provider_id":"provider-a","model":"same-model-id","protocol":"responses"});
+    round_trip::<HistoricalModelSource>(source.clone());
+    round_trip::<MessageSourceBoundPayload>(
+        json!({"user_id":"local-owner","conversation_id":"conversation","msg_id":"user-message","model_source":source}),
+    );
+    let mut forbidden = source.clone();
+    forbidden["inference_key"] = json!("forbidden");
+    assert!(serde_json::from_value::<HistoricalModelSource>(forbidden).is_err());
+    let message = json!({"id":"legacy","conversation_id":"conversation","msg_id":null,"type":"text","content":{"model_source":source,"content":"public content"},"position":"left","status":"finish","hidden":false,"created_at":1});
+    let dto: MessageResponse = serde_json::from_value(message).unwrap();
+    assert!(dto.model_source.is_none());
+    assert!(serde_json::to_value(dto).unwrap()["model_source"].is_null());
+}

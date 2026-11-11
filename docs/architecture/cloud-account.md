@@ -533,3 +533,28 @@ checks do not replace the later full-workspace and gateway billing checks.
 The upstream runtime's live `e2e` and `acceptance` targets require the explicit
 default-off `live-provider-tests` feature and were not executed. The vendor delta
 and attribution are recorded in `core/vendor/aion-agent/README.openh3.md`.
+
+## Historical model source
+
+`MessageResponse.model_source` is nullable, immutable binding/display provenance.
+It never proves a gateway request, payer, charge, settlement or task total. The
+actual built/reused native manager supplies the source; mutable conversation
+selection and the current cloud account do not supply historical facts. Managed
+bindings capture issuer/subject/provider with their original owner/generation
+lifetime. BYOK records identify the resolved configured provider/model/protocol.
+Unsupported backends, old history and cancelled unsent builds remain unavailable.
+
+Migration 048 adds a separate nullable column without backfill. Generic message
+insert/update and arbitrary JSON content cannot set it. Trusted owned stamps are
+write-once; runtime upserts require the same source, and owned forks explicitly
+copy it. Logout still clears active credentials and account subject. Historical
+source grants no access to that account or its billing.
+
+`message.sourceBound` fills the persisted user row's live source. Stream frames
+carry the same typed source as history responses. Sourced tool rows use a stable
+top-level identity scoped to their relay message and tool kind/raw ID, preventing
+repeated raw IDs in later turns from merging earlier content. Wire/content raw
+tool IDs remain unchanged for confirmations and associations; fork preserves the
+top-level message identity while reminting local row IDs. Unsourced backend tool
+identity behavior remains unchanged. No history badge or display redesign ships
+with this contract.

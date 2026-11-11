@@ -415,6 +415,7 @@ mod tests {
             hidden: false,
             created_at: 1,
             backend_turn_id: None,
+            model_source: None,
         };
         let hint = build_unfinished_task_context(&[plan.clone()]).unwrap();
         let mut user = plan.clone();
@@ -450,6 +451,7 @@ mod tests {
             hidden: false,
             created_at,
             backend_turn_id: None,
+            model_source: None,
         };
         let history = vec![
             row("plan:p", "plan", serde_json::json!({ "entries": (0..100).map(|_| serde_json::json!({"content": huge_label, "status": "pending"})).collect::<Vec<_>>() }), 1),
@@ -475,6 +477,7 @@ mod tests {
             hidden: false,
             created_at: 1,
             backend_turn_id: None,
+            model_source: None,
         };
 
         assert_eq!(
@@ -497,6 +500,7 @@ mod tests {
                 hidden: false,
                 created_at: 1,
                 backend_turn_id: None,
+                model_source: None,
             };
             assert_eq!(classify_recovery_action(&row), StartupRecoveryAction::SettleToolRow);
         }
@@ -548,6 +552,7 @@ mod tests {
             hidden: false,
             created_at: 1,
             backend_turn_id: None,
+            model_source: None,
         };
 
         assert_eq!(

@@ -116,7 +116,17 @@ impl SqliteConversationRepository {
         }
     }
 
-    async fn upsert_message_once(&self, user_id: &str, message: &MessageRow) -> Result<(), DbError> {
+    async fn upsert_message_once(
+        &self,
+        user_id: &str,
+        message: &MessageRow,
+        source: Option<&openh3_common::HistoricalModelSource>,
+        runtime: bool,
+    ) -> Result<(), DbError> {
+        let source = source
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|_| DbError::Conflict("Invalid model source".into()))?;
         // Writer-lock-first transaction; see `insert_message_once` for why.
         let mut connection = self.pool.acquire().await?;
         sqlx::query("BEGIN IMMEDIATE").execute(&mut *connection).await?;
@@ -125,8 +135,8 @@ impl SqliteConversationRepository {
             let result = sqlx::query(
                 "INSERT INTO messages \
                 (id, conversation_id, msg_id, type, content, position, \
-                 status, hidden, created_at, backend_turn_id) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+                 status, hidden, created_at, backend_turn_id, model_source) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                 content = CASE \
                     WHEN messages.status IN ('finish', 'error') AND excluded.status = 'work' THEN \
@@ -156,7 +166,7 @@ impl SqliteConversationRepository {
                AND EXISTS ( \
                     SELECT 1 FROM conversations c \
                     WHERE c.id = messages.conversation_id AND c.user_id = ? \
-               )",
+               ) AND (? = 0 OR messages.model_source IS excluded.model_source)",
             )
             .bind(&message.id)
             .bind(&message.conversation_id)
@@ -168,7 +178,9 @@ impl SqliteConversationRepository {
             .bind(message.hidden)
             .bind(message.created_at)
             .bind(&message.backend_turn_id)
+            .bind(&source)
             .bind(user_id)
+            .bind(runtime)
             .execute(&mut *connection)
             .await?;
 
@@ -292,6 +304,22 @@ impl SqliteConversationRepository {
 
 #[async_trait::async_trait]
 impl IConversationRepository for SqliteConversationRepository {
+    async fn stamp_message_source(
+        &self,
+        user_id: &str,
+        conversation_id: &str,
+        id: &str,
+        source: &openh3_common::HistoricalModelSource,
+    ) -> Result<(), DbError> {
+        let source = serde_json::to_string(source).map_err(|_| DbError::Conflict("Invalid model source".into()))?;
+        let result = sqlx::query("UPDATE messages SET model_source = ? WHERE id = ? AND conversation_id = ? AND (model_source IS NULL OR model_source = ?) AND EXISTS (SELECT 1 FROM conversations WHERE id = messages.conversation_id AND user_id = ?)")
+            .bind(&source).bind(id).bind(conversation_id).bind(&source).bind(user_id).execute(&self.pool).await?;
+        if result.rows_affected() == 0 {
+            return Err(DbError::Conflict("Model source unavailable or already bound".into()));
+        }
+        Ok(())
+    }
+
     // ── Conversation CRUD ───────────────────────────────────────────
 
     async fn get(&self, user_id: &str, id: &str) -> Result<Option<ConversationRow>, DbError> {
@@ -971,7 +999,18 @@ impl IConversationRepository for SqliteConversationRepository {
     }
 
     async fn upsert_message(&self, user_id: &str, message: &MessageRow) -> Result<(), DbError> {
-        self.upsert_message_once(user_id, message).await
+        self.upsert_message_once(user_id, message, None, false).await
+    }
+
+    async fn upsert_runtime_message(
+        &self,
+        user_id: &str,
+        message: &MessageRow,
+        source: Option<&openh3_common::HistoricalModelSource>,
+    ) -> Result<(), DbError> {
+        self.ensure_conversation_for_user(user_id, &message.conversation_id)
+            .await?;
+        self.upsert_message_once(user_id, message, source, true).await
     }
 
     async fn update_message(
@@ -1095,8 +1134,8 @@ impl IConversationRepository for SqliteConversationRepository {
                 sqlx::query(
                     "INSERT INTO messages \
                         (id, conversation_id, msg_id, type, content, position, \
-                         status, hidden, created_at, backend_turn_id) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+                         status, hidden, created_at, backend_turn_id, model_source) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
                 )
                 .bind(openh3_common::generate_id())
                 .bind(target_conversation_id)
@@ -1107,6 +1146,7 @@ impl IConversationRepository for SqliteConversationRepository {
                 .bind(&row.status)
                 .bind(row.hidden)
                 .bind(row.created_at)
+                .bind(&row.model_source)
                 .execute(&mut *connection)
                 .await?;
                 copied += 1;
@@ -1237,6 +1277,7 @@ impl IConversationRepository for SqliteConversationRepository {
                         hidden: row.try_get("hidden")?,
                         created_at: row.try_get("created_at")?,
                         backend_turn_id: row.try_get("backend_turn_id")?,
+                        model_source: row.try_get("model_source")?,
                     },
                 })
             })
@@ -1651,6 +1692,7 @@ mod tests {
             hidden: false,
             created_at: now,
             backend_turn_id: None,
+            model_source: None,
         }
     }
 
@@ -2643,5 +2685,170 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(f.effective_limit(), 50);
+    }
+}
+
+#[cfg(test)]
+mod historical_source_tests {
+    #[tokio::test]
+    async fn historical_source_upgrade_keeps_legacy_content_and_source_unavailable() {
+        use sqlx::migrate::Migrator;
+        use std::borrow::Cow;
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .max_connections(1)
+            // Match the production migrator's table-rebuild connection settings.
+            .connect_with(
+                sqlx::sqlite::SqliteConnectOptions::new()
+                    .in_memory(true)
+                    .foreign_keys(false)
+                    .pragma("legacy_alter_table", "ON"),
+            )
+            .await
+            .unwrap();
+        let full = Migrator::new(std::path::Path::new("migrations")).await.unwrap();
+        let previous = Migrator {
+            migrations: Cow::Owned(
+                full.iter()
+                    .filter(|migration| migration.version < 48)
+                    .cloned()
+                    .collect(),
+            ),
+            ignore_missing: false,
+            locking: true,
+            no_tx: false,
+        };
+        previous.run(&pool).await.unwrap();
+        sqlx::query("INSERT INTO users (id,username,password_hash,created_at,updated_at) VALUES ('legacy-owner','legacy-owner','',1,1)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO conversations (id,user_id,name,type,model,extra,created_at,updated_at) VALUES ('legacy','legacy-owner','legacy','aionrs','{\"model\":\"current-selection\"}','{\"model_source\":{\"subject\":\"forged\"}}',1,1)").execute(&pool).await.unwrap();
+        let content = r#"[{"call_id":"legacy","model_source":{"subject":"unverified"}}]"#;
+        sqlx::query("INSERT INTO messages (id,conversation_id,type,content,created_at) VALUES ('legacy-row','legacy','tool_group',?,1)").bind(content).execute(&pool).await.unwrap();
+        full.run(&pool).await.unwrap();
+        full.run(&pool).await.unwrap();
+        let upgraded: (String, Option<String>) =
+            sqlx::query_as("SELECT content,model_source FROM messages WHERE id='legacy-row'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(upgraded, (content.into(), None));
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM messages")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn historical_source_has_dedicated_nullable_storage() {
+        let db = crate::init_database_memory().await.unwrap();
+        let columns: Vec<String> = sqlx::query_scalar("SELECT name FROM pragma_table_info('messages')")
+            .fetch_all(db.pool())
+            .await
+            .unwrap();
+        assert!(
+            columns.iter().any(|name| name == "model_source"),
+            "history needs storage separate from public content"
+        );
+    }
+    #[tokio::test]
+    async fn historical_source_is_owned_write_once_and_forked_outside_arbitrary_content() {
+        use super::*;
+        use openh3_common::HistoricalModelSource;
+        let db = crate::init_database_memory().await.unwrap();
+        let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        for id in ["source", "fork"] {
+            sqlx::query("INSERT INTO conversations (id,user_id,name,type,extra,created_at,updated_at) VALUES (?,?,'source','aionrs','{}',1,1)")
+                .bind(id).bind(&owner).execute(db.pool()).await.unwrap();
+        }
+        let repo = SqliteConversationRepository::new(db.pool().clone());
+        let source = HistoricalModelSource::CloudAccount {
+            issuer: "https://fixture.invalid".into(),
+            subject: "actor-a".into(),
+            provider_id: "provider-a".into(),
+            model: "actual-model".into(),
+            protocol: "responses".into(),
+        };
+        let forged = HistoricalModelSource::Byok {
+            provider_id: "forged".into(),
+            provider: "forged".into(),
+            model: "forged".into(),
+            protocol: "forged".into(),
+        };
+        let mut row = MessageRow {
+            id: "m1".into(),
+            conversation_id: "source".into(),
+            msg_id: Some("m1".into()),
+            r#type: "tool_group".into(),
+            content: r#"[{"arbitrary":[1,2],"model_source":{"subject":"forged"}}]"#.into(),
+            position: Some("left".into()),
+            status: Some("finish".into()),
+            hidden: false,
+            created_at: 2,
+            backend_turn_id: None,
+            model_source: Some(serde_json::to_string(&forged).unwrap()),
+        };
+        repo.insert_message(&owner, &row).await.unwrap();
+        assert!(
+            repo.get_message(&owner, "source", "m1")
+                .await
+                .unwrap()
+                .unwrap()
+                .model_source
+                .is_none(),
+            "generic insert must ignore even a forged row field"
+        );
+        assert!(
+            repo.stamp_message_source("foreign", "source", "m1", &source)
+                .await
+                .is_err()
+        );
+        repo.stamp_message_source(&owner, "source", "m1", &source)
+            .await
+            .unwrap();
+        assert!(
+            repo.stamp_message_source(&owner, "source", "m1", &forged)
+                .await
+                .is_err()
+        );
+        repo.update_message(
+            &owner,
+            "source",
+            "m1",
+            &MessageRowUpdate {
+                content: Some("[3,4]".into()),
+                status: None,
+                hidden: None,
+            },
+        )
+        .await
+        .unwrap();
+        row.content = "[5,6]".into();
+        repo.upsert_message(&owner, &row).await.unwrap();
+        let stored = repo.get_message(&owner, "source", "m1").await.unwrap().unwrap();
+        assert_eq!(stored.content, "[5,6]");
+        assert_eq!(
+            stored.model_source.as_deref(),
+            Some(serde_json::to_string(&source).unwrap().as_str())
+        );
+        assert!(
+            repo.copy_messages_up_to("foreign", "source", "fork", (2, "m1"))
+                .await
+                .is_err()
+        );
+        assert_eq!(
+            repo.copy_messages_up_to(&owner, "source", "fork", (2, "m1"))
+                .await
+                .unwrap(),
+            1
+        );
+        let copied: (String, String) =
+            sqlx::query_as("SELECT content,model_source FROM messages WHERE conversation_id='fork'")
+                .fetch_one(db.pool())
+                .await
+                .unwrap();
+        assert_eq!(copied, (stored.content, stored.model_source.unwrap()));
+        assert!(repo.get_message("foreign", "source", "m1").await.unwrap().is_none());
     }
 }

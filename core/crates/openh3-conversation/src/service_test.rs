@@ -2988,6 +2988,7 @@ async fn list_artifacts_includes_legacy_cron_trigger_messages() {
             hidden: false,
             created_at: 1234,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -4857,6 +4858,7 @@ async fn restart_runtime_preserves_persisted_messages() {
             hidden: false,
             created_at: 1234,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6038,6 +6040,7 @@ async fn latest_conversation_error_message_prefers_error_detail() {
             hidden: false,
             created_at: 10,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6360,6 +6363,7 @@ async fn startup_recovery_closes_stale_runtime_messages_without_failure_tip() {
             hidden: false,
             created_at: 1,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6377,6 +6381,7 @@ async fn startup_recovery_closes_stale_runtime_messages_without_failure_tip() {
             hidden: false,
             created_at: 2,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6488,6 +6493,7 @@ async fn restart_task_context_scenario(completed: bool, plan_only: bool, fail_fi
                 hidden: false,
                 created_at,
                 backend_turn_id: Some("backend-old-turn".into()),
+                model_source: None,
             },
         )
         .await
@@ -9472,6 +9478,7 @@ async fn insert_raw_message_persists_row_and_broadcasts_stream() {
         hidden: false,
         created_at: 1234,
         backend_turn_id: None,
+        model_source: None,
     };
 
     svc.insert_raw_message("user_1", &row).await.unwrap();

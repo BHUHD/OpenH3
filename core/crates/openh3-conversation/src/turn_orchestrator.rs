@@ -45,6 +45,7 @@ pub(crate) struct TurnStartInput {
     pub turn_claim: TurnClaim,
     /// User row carrying a bounded recovery hint. No tool execution is stored.
     pub recovery_user_message_id: Option<String>,
+    pub persisted_user_message_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,6 +77,7 @@ struct TurnAttemptInput {
     continuation_count: usize,
     defer_clean_terminal_errors: bool,
     recovery_user_message_id: Option<String>,
+    persisted_user_message_id: Option<String>,
     /// Shared by every attempt of this turn — see the field's use in run_attempt.
     superseding_tips: SupersedingTipTotals,
 }
@@ -283,25 +285,6 @@ impl ConversationTurnOrchestrator {
                 && agent.agent_type() == AgentType::Acp
                 && lifecycle == RuntimeLifecycleState::Active
                 && aggregate_summary.safe_to_auto_replay();
-            let relay = StreamRelay::new(
-                input.conv_id.clone(),
-                msg_id,
-                input.turn_id.clone(),
-                input.user_id.clone(),
-                self.service.conversation_repo().clone(),
-                self.service.broadcaster().clone(),
-            )
-            .with_skill_resolver(self.service.skill_resolver())
-            .with_allowed_skill_names(input.allowed_skill_names.clone())
-            .with_runtime_state(Arc::clone(&runtime_state))
-            .with_persistence(persistence.clone())
-            .with_turn_completion(false)
-            .with_defer_clean_terminal_errors(defer_clean_terminal_errors)
-            // A replay spawns a fresh CLI whose own retry counter starts at one,
-            // but from the user's side it is still the same stalled prompt and
-            // the same card counting up — so these totals span the attempts.
-            .with_superseding_tip_totals(input.superseding_tips.clone());
-
             let rx = agent.subscribe();
             if let Some(mode) = input
                 .required_runtime_mode
@@ -368,6 +351,52 @@ impl ConversationTurnOrchestrator {
                     }
                 }
             }
+            // Read the concrete built/reused binding after cancellation/mode checks;
+            // never consult today's mutable conversation model or account here.
+            let model_source = agent.historical_source(&input.user_id);
+            if let (Some(id), Some(source)) = (input.persisted_user_message_id.as_deref(), model_source.as_ref()) {
+                match self
+                    .service
+                    .conversation_repo()
+                    .stamp_message_source(&input.user_id, &input.conv_id, id, source)
+                    .await
+                {
+                    Ok(()) => self
+                        .service
+                        .broadcaster()
+                        .broadcast(openh3_api_types::WebSocketMessage::new(
+                            "message.sourceBound",
+                            serde_json::to_value(openh3_api_types::MessageSourceBoundPayload {
+                                user_id: input.user_id.clone(),
+                                conversation_id: input.conv_id.clone(),
+                                msg_id: id.to_owned(),
+                                model_source: source.clone(),
+                            })
+                            .unwrap_or_default(),
+                        )),
+                    Err(_) => warn!(conversation_id = %input.conv_id, "Could not persist historical model source"),
+                }
+            }
+            let relay = StreamRelay::new(
+                input.conv_id.clone(),
+                msg_id,
+                input.turn_id.clone(),
+                input.user_id.clone(),
+                self.service.conversation_repo().clone(),
+                self.service.broadcaster().clone(),
+            )
+            .with_model_source(model_source)
+            .with_skill_resolver(self.service.skill_resolver())
+            .with_allowed_skill_names(input.allowed_skill_names.clone())
+            .with_runtime_state(Arc::clone(&runtime_state))
+            .with_persistence(persistence.clone())
+            .with_turn_completion(false)
+            .with_defer_clean_terminal_errors(defer_clean_terminal_errors)
+            // A replay spawns a fresh CLI whose own retry counter starts at one,
+            // but from the user's side it is still the same stalled prompt and
+            // the same card counting up — so these totals span the attempts.
+            .with_superseding_tip_totals(input.superseding_tips.clone());
+
             let send_agent = agent.clone();
             let conv_id_send = input.conv_id.clone();
             let turn_id_for_send = input.turn_id.clone();
@@ -507,6 +536,7 @@ impl ConversationTurnOrchestrator {
                     continuation_count: 0,
                     defer_clean_terminal_errors: !replayed,
                     recovery_user_message_id: input.recovery_user_message_id.clone(),
+                    persisted_user_message_id: input.persisted_user_message_id.clone(),
                     superseding_tips: superseding_tips.clone(),
                 })
                 .await

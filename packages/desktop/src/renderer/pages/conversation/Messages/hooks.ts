@@ -8,6 +8,7 @@ import { ipcBridge } from '@/common';
 import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from '@/common/chat/chatLib';
 import {
   composeMessage,
+  toolMessageKey,
   mergeAcpToolCallContent,
   mergeTextMessageContent,
   normalizeAgentStreamError,
@@ -103,10 +104,10 @@ export function buildMessageIndex(list: TMessage[]): MessageIndex {
       msgIdIndex.set(msgIndexKey, i);
     }
     if (msg.type === 'tool_call' && msg.content?.call_id) {
-      call_idIndex.set(msg.content.call_id, i);
+      call_idIndex.set(toolMessageKey(msg, msg.content.call_id), i);
     }
     if (msg.type === 'acp_tool_call' && msg.content?.update?.tool_call_id) {
-      tool_call_idIndex.set(msg.content.update.tool_call_id, i);
+      tool_call_idIndex.set(toolMessageKey(msg, msg.content.update.tool_call_id), i);
     }
     if (msg.type === 'permission' && msg.content?.call_id) {
       permission_call_idIndex.set(msg.content.call_id, i);
@@ -155,6 +156,12 @@ export function composeMessageWithIndex(
     if (msgIndexKey) {
       index.msgIdIndex.set(msgIndexKey, 0);
     }
+    if (firstMessage.type === 'tool_call' && firstMessage.content.call_id) {
+      index.call_idIndex.set(toolMessageKey(firstMessage, firstMessage.content.call_id), 0);
+    }
+    if (firstMessage.type === 'acp_tool_call' && firstMessage.content.update?.tool_call_id) {
+      index.tool_call_idIndex.set(toolMessageKey(firstMessage, firstMessage.content.update.tool_call_id), 0);
+    }
     return [firstMessage];
   }
 
@@ -188,7 +195,13 @@ export function composeMessageWithIndex(
     const existingIdx = list.findIndex((item) => item.type === 'tips' && item.content?.supersedes_key === key);
     if (existingIdx >= 0) {
       const newList = list.slice();
-      newList[existingIdx] = { ...list[existingIdx], ...message, content: message.content } as TMessage;
+      const existing = list[existingIdx];
+      newList[existingIdx] = {
+        ...existing,
+        ...message,
+        content: message.content,
+        ...(existing.model_source ? { model_source: existing.model_source } : {}),
+      } as TMessage;
       return newList;
     }
     const newIdx = list.length;
@@ -200,7 +213,7 @@ export function composeMessageWithIndex(
   // tool_call: 使用 call_idIndex 快速查找
   // tool_call: use call_idIndex for fast lookup
   if (message.type === 'tool_call' && message.content?.call_id) {
-    const existingIdx = index.call_idIndex.get(message.content.call_id);
+    const existingIdx = index.call_idIndex.get(toolMessageKey(message, message.content.call_id));
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'tool_call') {
@@ -228,7 +241,7 @@ export function composeMessageWithIndex(
       });
     }
     const newIdx = list.length;
-    index.call_idIndex.set(message.content.call_id, newIdx);
+    index.call_idIndex.set(toolMessageKey(message, message.content.call_id), newIdx);
     const msgIndexKey = getMessageIndexKey(message);
     if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
     return list.concat(message);
@@ -254,7 +267,7 @@ export function composeMessageWithIndex(
 
   // acp_tool_call: use tool_call_idIndex for fast lookup
   if (message.type === 'acp_tool_call' && message.content?.update?.tool_call_id) {
-    const existingIdx = index.tool_call_idIndex.get(message.content.update.tool_call_id);
+    const existingIdx = index.tool_call_idIndex.get(toolMessageKey(message, message.content.update.tool_call_id));
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'acp_tool_call') {
@@ -266,7 +279,7 @@ export function composeMessageWithIndex(
     }
     // 未找到，添加新消息并更新索引
     const newIdx = list.length;
-    index.tool_call_idIndex.set(message.content.update.tool_call_id, newIdx);
+    index.tool_call_idIndex.set(toolMessageKey(message, message.content.update.tool_call_id), newIdx);
     const msgIndexKey = getMessageIndexKey(message);
     if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
     return list.concat(sanitizeMessageForList(message));
@@ -279,7 +292,12 @@ export function composeMessageWithIndex(
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'permission') {
         const newList = list.slice();
-        newList[existingIdx] = { ...existingMsg, ...message, content: message.content };
+        newList[existingIdx] = {
+          ...existingMsg,
+          ...message,
+          content: message.content,
+          ...(existingMsg.model_source ? { model_source: existingMsg.model_source } : {}),
+        };
         return newList;
       }
     }
@@ -395,6 +413,7 @@ export function composeMessageWithIndex(
         ...existingMsg,
         ...message,
         content: message.content,
+        ...(existingMsg.model_source ? { model_source: existingMsg.model_source } : {}),
       } as TMessage;
       return newList;
     }
@@ -413,7 +432,7 @@ export function composeMessageWithIndex(
   // Merge other message types with same msg_id
   const newList = list.slice();
   const lastIdx = newList.length - 1;
-  newList[lastIdx] = { ...last, ...message };
+  newList[lastIdx] = { ...last, ...message, ...(last.model_source ? { model_source: last.model_source } : {}) };
   return newList;
 }
 
@@ -451,10 +470,10 @@ export const useMergeLiveMessage = () => {
           const msgIndexKey = getMessageIndexKey(msg);
           if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
           if (msg.type === 'tool_call' && msg.content?.call_id) {
-            index.call_idIndex.set(msg.content.call_id, newIdx);
+            index.call_idIndex.set(toolMessageKey(msg, msg.content.call_id), newIdx);
           }
           if (msg.type === 'acp_tool_call' && msg.content?.update?.tool_call_id) {
-            index.tool_call_idIndex.set(msg.content.update.tool_call_id, newIdx);
+            index.tool_call_idIndex.set(toolMessageKey(msg, msg.content.update.tool_call_id), newIdx);
           }
           if (msg.type === 'permission' && msg.content?.call_id) {
             index.permission_call_idIndex.set(msg.content.call_id, newIdx);
@@ -788,10 +807,23 @@ const getMessageMergeKey = (message: TMessage): string => {
 };
 
 const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMessage => {
-  if (persisted.type === 'text' && live.type === 'text') {
-    return preferTextMessageVersion(persisted, live);
-  }
-  return persisted;
+  const preferred =
+    persisted.type === 'text' && live.type === 'text' ? preferTextMessageVersion(persisted, live) : persisted;
+  // User sources bind an exact DB row. Stream row IDs are minted client-side,
+  // but their msg_id is the server's persisted row ID. A raw duplicate msg_id
+  // satisfies neither identity and must not inherit a live source.
+  const sameRow =
+    persisted.conversation_id === live.conversation_id &&
+    persisted.type === live.type &&
+    (persisted.id === live.id ||
+      (persisted.position !== 'right' &&
+        live.position !== 'right' &&
+        persisted.id === persisted.msg_id &&
+        persisted.msg_id === live.msg_id));
+  return {
+    ...preferred,
+    model_source: persisted.model_source ?? (sameRow ? live.model_source : persisted.model_source),
+  };
 };
 
 function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[], currentList: TMessage[]): TMessage[] {
@@ -1013,6 +1045,24 @@ export const useMessageLstCache = (key: string) => {
           index
         );
       });
+    });
+  }, [key, update]);
+
+  useEffect(() => {
+    if (!key) return;
+    return ipcBridge.conversation.sourceBound.on((payload) => {
+      if (payload.conversation_id !== key) return;
+      update((list) =>
+        list.map((message) =>
+          message.id === payload.msg_id &&
+          message.msg_id === payload.msg_id &&
+          message.type === 'text' &&
+          message.position === 'right' &&
+          !message.model_source
+            ? { ...message, model_source: payload.model_source }
+            : message
+        )
+      );
     });
   }, [key, update]);
 

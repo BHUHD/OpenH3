@@ -20,10 +20,30 @@ impl ManagedCredentials {
     }
 }
 
+/// Nonsecret identity tied to the exact lifetime returned by the resolver.
+pub struct ManagedAccountIdentity {
+    pub owner: String,
+    pub issuer: String,
+    pub subject: String,
+    pub provider_id: String,
+    pub generation: i64,
+}
+pub struct ManagedAccountBinding {
+    pub lifetime: watch::Receiver<bool>,
+    pub identity: Option<ManagedAccountIdentity>,
+}
+
 /// The composition root bridges this port to the account domain.
 #[async_trait::async_trait]
 pub trait ManagedCredentialResolver: Send + Sync {
     async fn subscribe(&self, owner: &str, provider: &str) -> Result<watch::Receiver<bool>, ProviderError>;
+    /// Legacy/test resolvers without authenticated identity stay unavailable.
+    async fn binding(&self, owner: &str, provider: &str) -> Result<ManagedAccountBinding, ProviderError> {
+        Ok(ManagedAccountBinding {
+            lifetime: self.subscribe(owner, provider).await?,
+            identity: None,
+        })
+    }
     async fn resolve(
         &self,
         owner: &str,
@@ -41,6 +61,7 @@ pub struct ManagedProvider {
     model: String,
     mode: OpenAiApiMode,
     lifetime: watch::Receiver<bool>,
+    source: Option<openh3_common::HistoricalModelSource>,
 }
 impl ManagedProvider {
     pub async fn bind(
@@ -50,7 +71,28 @@ impl ManagedProvider {
         model: String,
         mode: OpenAiApiMode,
     ) -> Result<Arc<Self>, ProviderError> {
-        let lifetime = resolver.subscribe(&owner, &provider).await?;
+        let binding = resolver.binding(&owner, &provider).await?;
+        let lifetime = binding.lifetime;
+        let source = match binding.identity {
+            Some(identity) => {
+                if identity.owner != owner
+                    || identity.provider_id != provider
+                    || identity.subject.is_empty()
+                    || identity.issuer.is_empty()
+                    || identity.generation < 0
+                {
+                    return Err(cancelled_error());
+                }
+                Some(openh3_common::HistoricalModelSource::CloudAccount {
+                    issuer: identity.issuer,
+                    subject: identity.subject,
+                    provider_id: provider.clone(),
+                    model: model.clone(),
+                    protocol: protocol_name(mode).into(),
+                })
+            }
+            None => None,
+        };
         if *lifetime.borrow() {
             return Err(cancelled_error());
         }
@@ -61,10 +103,25 @@ impl ManagedProvider {
             model,
             mode,
             lifetime,
+            source,
         }))
+    }
+    /// No account reads: only facts captured with this binding's lifetime.
+    pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
+        if owner != self.owner || *self.lifetime.borrow() || self.lifetime.has_changed().is_err() {
+            return None;
+        }
+        self.source.clone()
     }
     pub async fn cancelled(&self) {
         cancelled(self.lifetime.clone()).await
+    }
+}
+
+pub(crate) fn protocol_name(mode: OpenAiApiMode) -> &'static str {
+    match mode {
+        OpenAiApiMode::ChatCompletions => "chat_completions",
+        OpenAiApiMode::Responses => "responses",
     }
 }
 

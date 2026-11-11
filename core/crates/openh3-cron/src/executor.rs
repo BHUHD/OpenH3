@@ -325,6 +325,7 @@ impl JobExecutor {
             hidden: false,
             created_at: openh3_common::now_ms(),
             backend_turn_id: None,
+            model_source: None,
         };
 
         let user_id = self.resolve_target_conversation_user_id(conversation_id).await?;

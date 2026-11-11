@@ -280,3 +280,23 @@ mod tests {
         assert_eq!(v.get_update_type(), None);
     }
 }
+
+/// Immutable, nonsecret facts from the agent binding used for a historical turn.
+/// This is display provenance, never evidence of a gateway request or charge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum HistoricalModelSource {
+    CloudAccount {
+        issuer: String,
+        subject: String,
+        provider_id: String,
+        model: String,
+        protocol: String,
+    },
+    Byok {
+        provider_id: String,
+        provider: String,
+        model: String,
+        protocol: String,
+    },
+}

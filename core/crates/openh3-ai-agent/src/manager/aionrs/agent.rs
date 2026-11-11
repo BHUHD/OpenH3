@@ -109,6 +109,7 @@ fn build_aionrs_final_input_dump_value(
 
 pub struct AionrsAgentManager {
     managed_provider: Option<Arc<ManagedProvider>>,
+    byok_source: Option<(String, openh3_common::HistoricalModelSource)>,
     runtime: AgentRuntime,
     engine: Mutex<AgentEngine>,
     /// Static slash command metadata captured at bootstrap so UI lookups do
@@ -146,6 +147,20 @@ impl Drop for AionrsAgentManager {
 }
 
 impl AionrsAgentManager {
+    pub(crate) fn with_byok_source(mut self, owner: String, source: openh3_common::HistoricalModelSource) -> Self {
+        self.byok_source = Some((owner, source));
+        self
+    }
+    pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
+        if let Some(provider) = &self.managed_provider {
+            return provider.historical_source(owner);
+        }
+        self.byok_source
+            .as_ref()
+            .filter(|(bound_owner, _)| bound_owner == owner)
+            .map(|(_, source)| source.clone())
+    }
+
     pub async fn new(
         conversation_id: String,
         workspace: String,
@@ -354,6 +369,7 @@ impl AionrsAgentManager {
 
         Ok(Self {
             managed_provider,
+            byok_source: None,
             runtime,
             engine: Mutex::new(engine),
             slash_commands,

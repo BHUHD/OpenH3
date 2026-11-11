@@ -151,6 +151,18 @@ pub trait IConversationRepository: Send + Sync {
         Ok(None)
     }
 
+    /// Stamp trusted binding facts once, scoped to the local conversation owner.
+    /// Generic insert/upsert/update never accept these facts.
+    async fn stamp_message_source(
+        &self,
+        _user_id: &str,
+        _conversation_id: &str,
+        _id: &str,
+        _source: &openh3_common::HistoricalModelSource,
+    ) -> Result<(), DbError> {
+        Ok(())
+    }
+
     /// Inserts a new message row.
     async fn insert_message(&self, user_id: &str, message: &MessageRow) -> Result<(), DbError>;
 
@@ -173,6 +185,21 @@ pub trait IConversationRepository: Send + Sync {
             }
             Err(err) => Err(err),
         }
+    }
+
+    /// Runtime upserts must not merge content into a row from another binding.
+    async fn upsert_runtime_message(
+        &self,
+        user_id: &str,
+        message: &MessageRow,
+        source: Option<&openh3_common::HistoricalModelSource>,
+    ) -> Result<(), DbError> {
+        self.upsert_message(user_id, message).await?;
+        if let Some(source) = source {
+            self.stamp_message_source(user_id, &message.conversation_id, &message.id, source)
+                .await?;
+        }
+        Ok(())
     }
 
     /// Partially updates a message. Returns `DbError::NotFound` if ID is missing.

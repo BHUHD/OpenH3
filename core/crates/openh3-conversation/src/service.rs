@@ -3717,6 +3717,7 @@ impl ConversationService {
                 hidden,
                 created_at: now_ms(),
                 backend_turn_id: None,
+                model_source: None,
             };
             if let Err(e) = self.conversation_repo.insert_message(user_id, &user_msg).await {
                 warn!(msg_id = %user_msg_id, error = %ErrorChain(&e), "Failed to insert mid-turn user message");
@@ -3993,6 +3994,7 @@ impl ConversationService {
             hidden: req.hidden,
             created_at: now_ms(),
             backend_turn_id: None,
+            model_source: None,
         };
         if !self
             .runtime_persistence()
@@ -4074,6 +4076,7 @@ impl ConversationService {
             turn_id: turn_id.clone(),
             turn_claim,
             recovery_user_message_id,
+            persisted_user_message_id: Some(user_msg_id.clone()),
         });
 
         info!(
@@ -4114,12 +4117,13 @@ impl ConversationService {
 
         let turn_id = Self::mint_turn_id();
         let turn_claim = self.runtime_state.try_claim_turn(&request.conversation_id, &turn_id)?;
+        let mut persisted_user_message_id = None;
         if request.persist_user_message {
             let user_msg_id = Self::mint_msg_id();
             let user_msg = openh3_db::models::MessageRow {
                 id: user_msg_id.clone(),
                 conversation_id: request.conversation_id.clone(),
-                msg_id: Some(user_msg_id),
+                msg_id: Some(user_msg_id.clone()),
                 r#type: "text".into(),
                 content: serde_json::json!({ "content": request.content }).to_string(),
                 position: Some("right".into()),
@@ -4127,6 +4131,7 @@ impl ConversationService {
                 hidden: request.user_message_hidden,
                 created_at: now_ms(),
                 backend_turn_id: None,
+                model_source: None,
             };
             if self
                 .runtime_persistence()
@@ -4143,6 +4148,12 @@ impl ConversationService {
                 self.complete_released_turn(&request.user_id, &request.conversation_id, &turn_id, was_deleting)
                     .await;
                 return Err(e.into());
+            }
+            if self
+                .runtime_persistence()
+                .allows(&request.conversation_id, RuntimeWriteKind::UserMessage)
+            {
+                persisted_user_message_id = Some(user_msg_id);
             }
         }
         if let Some(on_started) = request.on_started.as_ref() {
@@ -4197,6 +4208,7 @@ impl ConversationService {
                 turn_id: turn_id.clone(),
                 turn_claim,
                 recovery_user_message_id: None,
+                persisted_user_message_id,
             })
             .await;
 
