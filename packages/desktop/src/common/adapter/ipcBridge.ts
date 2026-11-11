@@ -1913,6 +1913,8 @@ export interface IResponseMessage {
   type: string;
   data: unknown;
   msg_id: string;
+  /** Exact DB row identity for a persisted raw-insertion notification. */
+  persisted_message_id?: string;
   turn_id?: string;
   conversation_id: string;
   created_at?: number;

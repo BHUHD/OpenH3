@@ -117,9 +117,9 @@ pub use conversation::{
     ConversationResponse, ConversationRuntimeStateKind, ConversationRuntimeSummary, CreateConversationRequest,
     EnsureConversationRuntimeResponse, ForkCapabilityView, ForkConversationRequest, ListConversationsQuery,
     ListMessagesQuery, McpRuntimeSnapshot, MessageListResponse, MessageResponse, MessageSearchItem,
-    MessageSearchResponse, MessageSourceBoundPayload, MessageStatusChangedPayload, PromptCapabilityView,
-    SearchMessagesQuery, SendMessageRequest, SendMessageResponse, SessionRef, UpdateConversationArtifactRequest,
-    UpdateConversationRequest,
+    MessageSearchResponse, MessageSourceBoundPayload, MessageStatusChangedPayload, PersistedMessageStreamPayload,
+    PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse, SessionRef,
+    UpdateConversationArtifactRequest, UpdateConversationRequest,
 };
 pub use conversation_tools::{
     CONVERSATION_TOOLS_SCHEMA_VERSION, ConversationCliEnvelope, ConversationCliMeta, ConversationCreateAssistant,

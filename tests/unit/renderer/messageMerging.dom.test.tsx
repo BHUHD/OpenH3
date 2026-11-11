@@ -11,6 +11,8 @@ import { ipcBridge } from '@/common';
 import { useAuthContextSafe } from '@/renderer/hooks/context/AuthContext';
 import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import {
+  composeMessage,
+  ephemeralStreamMessage,
   transformMessage,
   type IMessageAcpToolCall,
   type IMessageText,
@@ -24,6 +26,7 @@ import {
   useAddOrUpdateMessage,
   useMessageLstCache,
   useMessageList,
+  useUpdateMessageList,
   normalizeDbMessage,
   usePrependHistoryPage,
   useReplaceWithAnchorWindow,
@@ -604,6 +607,198 @@ describe('message merging', () => {
   });
 });
 
+describe('raw insertion live row identity', () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'actor-a',
+    provider_id: 'provider-a',
+    model: 'actual-model',
+    protocol: 'responses',
+  } as const;
+  const original = (): TMessage =>
+    normalizeDbMessage({
+      ...createTextMessage('assistant-original', 'actual A answer'),
+      id: 'assistant-original',
+      model_source: source,
+    });
+  const rawFrame = (
+    identified: boolean,
+    text = 'Distinct raw content longer than the authentic A answer'
+  ): TMessage => {
+    const envelope = {
+      type: 'text',
+      conversation_id: CONVERSATION_ID,
+      msg_id: 'assistant-original',
+      data: { content: text },
+      position: 'left' as const,
+      status: 'finish' as const,
+      replace: true,
+      hidden: false,
+      ...(identified ? { persisted_message_id: 'raw-row', model_source: null } : {}),
+    };
+    const frame = transformMessage(envelope);
+    if (!frame) throw new Error('Expected raw text frame');
+    return frame;
+  };
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it.each([
+    ['optimized', true],
+    ['legacy', true],
+    ['optimized', false],
+    ['legacy', false],
+  ] as const)(
+    'keeps raw and native rows separate in both arrival orders (%s, identified=%s)',
+    async (mode, identified) => {
+      const { result } = renderHook(
+        () => {
+          const update = useUpdateMessageList();
+          const add = useAddOrUpdateMessage();
+          return {
+            rows: useMessageList(),
+            prepend: usePrependHistoryPage(),
+            add: (message: TMessage) =>
+              mode === 'optimized' ? add(message) : update((rows) => composeMessage(message, rows)),
+            clear: () => update([]),
+          };
+        },
+        { wrapper: TestWrapper }
+      );
+      const raw = rawFrame(identified);
+      const authentic = original();
+      act(() => result.current.add(raw));
+      await flushMessageQueue();
+      act(() => result.current.prepend([authentic]));
+      expect(result.current.rows).toEqual([authentic, raw]);
+      act(() => result.current.clear());
+      act(() => result.current.add(authentic));
+      await flushMessageQueue();
+      act(() => result.current.add(raw));
+      await flushMessageQueue();
+      expect(result.current.rows).toEqual([authentic, raw]);
+      expect(raw.model_source ?? null).toBeNull();
+      if (identified) {
+        expect(raw.id).toBe('raw-row');
+        const updated = rawFrame(true, 'updated raw content');
+        act(() => result.current.add(updated));
+        await flushMessageQueue();
+        expect(result.current.rows).toEqual([authentic, updated]);
+        act(() => result.current.prepend([normalizeDbMessage({ ...updated })]));
+        expect(result.current.rows).toEqual([authentic, normalizeDbMessage(updated)]);
+        const tail = createTextMessage('other-segment', 'another row');
+        act(() => result.current.add(tail));
+        await flushMessageQueue();
+        const late = rawFrame(true, 'late update to exact raw row');
+        act(() => result.current.add(late));
+        await flushMessageQueue();
+        expect(result.current.rows).toEqual([authentic, late, tail]);
+      }
+    }
+  );
+
+  it.each(['optimized', 'legacy'] as const)(
+    'keeps native chunks and final overrides apart from a prior raw row (%s)',
+    async (mode) => {
+      const { result } = renderHook(
+        () => {
+          const update = useUpdateMessageList();
+          const add = useAddOrUpdateMessage();
+          return {
+            rows: useMessageList(),
+            add: (message: TMessage | undefined) =>
+              mode === 'optimized' ? add(message) : update((rows) => composeMessage(message, rows)),
+          };
+        },
+        { wrapper: TestWrapper }
+      );
+      const raw = rawFrame(true);
+      act(() => result.current.add(raw));
+      act(() =>
+        result.current.add(
+          transformMessage({
+            type: 'content',
+            conversation_id: CONVERSATION_ID,
+            msg_id: 'assistant-original',
+            data: 'partial',
+            model_source: source,
+          })
+        )
+      );
+      await flushMessageQueue();
+      // A present turn_id, even undefined in an in-memory frame, is not the old
+      // raw producer envelope. Actual native envelopes serialize their turn key.
+      act(() =>
+        result.current.add(
+          transformMessage({
+            type: 'text',
+            conversation_id: CONVERSATION_ID,
+            msg_id: 'assistant-original',
+            turn_id: undefined,
+            data: 'native final',
+            replace: true,
+            position: 'left',
+            status: 'finish',
+            model_source: source,
+          })
+        )
+      );
+      await flushMessageQueue();
+      expect(result.current.rows).toHaveLength(2);
+      expect(result.current.rows[0]).toEqual(raw);
+      expect(result.current.rows[1].model_source).toEqual(source);
+      expect(result.current.rows[1].content).toEqual({ content: 'native final', replace: true });
+    }
+  );
+
+  it.each([
+    ['optimized', 'left'],
+    ['legacy', 'left'],
+    ['optimized', 'right'],
+    ['legacy', 'right'],
+  ] as const)('keeps the reloaded raw row distinct from a later native frame (%s, %s)', async (mode, position) => {
+    const raw = normalizeDbMessage({
+      ...(JSON.parse(JSON.stringify(rawFrame(true))) as TMessage),
+      position,
+    });
+    function Wrapper({ children }: PropsWithChildren) {
+      return <MessageListProvider value={[raw]}>{children}</MessageListProvider>;
+    }
+    const { result } = renderHook(
+      () => {
+        const update = useUpdateMessageList();
+        const add = useAddOrUpdateMessage();
+        return {
+          rows: useMessageList(),
+          add: (message: TMessage | undefined) =>
+            mode === 'optimized' ? add(message) : update((rows) => composeMessage(message, rows)),
+        };
+      },
+      { wrapper: Wrapper }
+    );
+    act(() =>
+      result.current.add(
+        transformMessage({
+          type: 'content',
+          conversation_id: CONVERSATION_ID,
+          msg_id: 'assistant-original',
+          data: 'authentic native',
+          model_source: source,
+        })
+      )
+    );
+    await flushMessageQueue();
+    expect(result.current.rows).toHaveLength(2);
+    expect(result.current.rows[0]).toEqual(raw);
+    expect(result.current.rows[1].content).toEqual({ content: 'authentic native' });
+    expect(result.current.rows[1].model_source).toEqual(source);
+  });
+});
+
 it('applies a server source event to the exact user row and keeps its immutable source', async () => {
   type SourcePayload = Parameters<Parameters<typeof ipcBridge.conversation.sourceBound.on>[0]>[0];
   let emit: ((payload: SourcePayload) => void) | undefined;
@@ -908,7 +1103,8 @@ describe('historical source reconciliation lifecycle', () => {
     const raw = { ...row('raw'), id: 'raw-duplicate' };
     await act(async () => resolvePage?.(page([row(), raw])));
     expect(result.current.messages[0].model_source).toEqual(source);
-    expect(result.current.messages[1]).toEqual(raw);
+    expect(result.current.messages[1]).toEqual(normalizeDbMessage(raw));
+    expect(JSON.parse(JSON.stringify(result.current.messages[1]))).toEqual(raw);
   });
 
   it('does not let a page containing only a raw duplicate suppress the authentic sourced row', async () => {
@@ -1105,7 +1301,7 @@ describe('historical source previous-page reconciliation', () => {
     const { result } = renderPreviousPage([raw]);
     act(() => result.current.prepend([original]));
     expect(result.current.messages).toEqual([original, raw]);
-    expect(Object.getOwnPropertySymbols(raw)).toEqual([]);
+    expect(raw[ephemeralStreamMessage]).toBeUndefined();
     expect(JSON.parse(JSON.stringify(frame))).toEqual(expect.objectContaining({ msg_id: 'assistant-original' }));
   });
 

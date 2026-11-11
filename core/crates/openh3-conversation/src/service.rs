@@ -23,9 +23,9 @@ use openh3_api_types::{
     ConversationNameUpdatedPayload, ConversationResponse, ConversationRuntimeSummary, CreateConversationRequest,
     EnsureConversationRuntimeResponse, ForkCapabilityView, ForkConversationRequest, ListConversationsQuery,
     ListMessagesQuery, McpRuntimeSnapshot, MessageListResponse, MessageResponse, MessageSearchResponse,
-    PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse, SessionMcpServer,
-    SessionMcpTransport, TEAM_MCP_SERVER_NAME, TeamMcpSelection, TeamSessionBinding, UpdateConversationArtifactRequest,
-    UpdateConversationRequest, WebSocketMessage, assistant_avatar_response_value,
+    PersistedMessageStreamPayload, PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse,
+    SessionMcpServer, SessionMcpTransport, TEAM_MCP_SERVER_NAME, TeamMcpSelection, TeamSessionBinding,
+    UpdateConversationArtifactRequest, UpdateConversationRequest, WebSocketMessage, assistant_avatar_response_value,
     assistant_avatar_response_value_with_version, assistant_mcp_binding_fingerprint,
 };
 use openh3_api_types::{ChatFileRef, SessionRef};
@@ -4325,17 +4325,23 @@ impl ConversationService {
         let msg_id = row.msg_id.clone().unwrap_or_else(|| row.id.clone());
         let content_value: serde_json::Value =
             serde_json::from_str(&row.content).unwrap_or_else(|_| serde_json::Value::String(row.content.clone()));
-        let payload = serde_json::json!({
-            "user_id": user_id,
-            "conversation_id": row.conversation_id,
-            "msg_id": msg_id,
-            "type": row.r#type,
-            "data": content_value,
-            "position": row.position,
-            "status": row.status,
-            "hidden": row.hidden,
-            "replace": true,
-        });
+        let payload = PersistedMessageStreamPayload {
+            user_id: user_id.into(),
+            conversation_id: row.conversation_id.clone(),
+            persisted_message_id: row.id.clone(),
+            msg_id,
+            r#type: row.r#type.clone(),
+            data: content_value,
+            position: row.position.clone(),
+            status: row.status.clone(),
+            hidden: row.hidden,
+            created_at: row.created_at,
+            replace: true,
+            // Generic insert deliberately ignores caller-supplied provenance.
+            model_source: None,
+        };
+        let payload = serde_json::to_value(payload)
+            .map_err(|_| ConversationError::internal("Failed to serialize persisted message notification"))?;
         self.broadcaster
             .broadcast(WebSocketMessage::new("message.stream", payload));
         Ok(())

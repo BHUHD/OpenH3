@@ -79,9 +79,11 @@ type TMessageType =
 // Runtime-only identity: symbols survive our live spread merges but cannot arrive
 // in JSON history. DB normalization/reconciliation clears it once a row is known.
 export const ephemeralStreamMessage = Symbol('ephemeralStreamMessage');
+export const standaloneMessage = Symbol('standaloneMessage');
 
 interface IMessage<T extends TMessageType, Content extends Record<string, any>> {
   [ephemeralStreamMessage]?: true;
+  [standaloneMessage]?: true;
   /**
    * 唯一ID
    */
@@ -130,6 +132,11 @@ interface IMessage<T extends TMessageType, Content extends Record<string, any>> 
 /** Sourced native tools use the server's turn-scoped identity; legacy tools keep raw IDs. */
 export const toolMessageKey = (message: TMessage, rawId: string): string =>
   message.model_source && message.msg_id ? message.msg_id : rawId;
+
+/** Full row notifications cannot join a different row merely by shared msg_id. */
+export const canMergeTextRows = (left: IMessageText, right: IMessageText): boolean =>
+  left.conversation_id === right.conversation_id &&
+  (!(left[standaloneMessage] || right[standaloneMessage]) || left.id === right.id);
 
 export type CronMessageMeta = {
   source: 'cron';
@@ -982,6 +989,13 @@ export const composeMessage = (
     return list.slice();
   };
 
+  if (message.type === 'text' && message[standaloneMessage]) {
+    const existing = list.findIndex(
+      (item) => item.id === message.id && item.conversation_id === message.conversation_id && item.type === 'text'
+    );
+    return existing >= 0 ? updateMessage(existing, message) : pushMessage(message);
+  }
+
   // A superseding tip replaces its predecessor wherever it already sits in the
   // list, rather than being appended: codex reports a stalled turn as a series
   // of attempts ("Reconnecting... 1/5", then 2/5 …), and appending each one
@@ -1107,6 +1121,7 @@ export const composeMessage = (
     return pushMessage(message);
   }
   if (message.type === 'text' && last.type === 'text') {
+    if (!canMergeTextRows(last, message)) return pushMessage(message);
     message.content = mergeTextMessageContent(last.content, message.content);
   }
   return updateMessage(list.length - 1, Object.assign({}, last, message));
@@ -1147,13 +1162,29 @@ export const handleImageGenerationWithWorkspace = (message: TMessage, workspace:
 
 export const transformMessage = (message: IResponseMessage): TMessage | undefined => {
   const transformed = transformMessageInner(message);
-  if (transformed) transformed[ephemeralStreamMessage] = true;
+  // Old raw-insert envelopes omitted row.id. Keep those complete, unanchored
+  // notifications independent/unknown; native final overrides are content
+  // frames with a turn_id key, and remain ordinary streaming replacements.
+  const standalone =
+    message.persisted_message_id !== undefined ||
+    (message.type === 'text' &&
+      !Object.hasOwn(message, 'turn_id') &&
+      message.position !== undefined &&
+      message.status !== undefined &&
+      message.replace === true);
+  if (transformed) {
+    if (standalone) {
+      transformed[standaloneMessage] = true;
+      if (message.persisted_message_id !== undefined) transformed.id = message.persisted_message_id;
+      transformed.model_source = null;
+    } else transformed[ephemeralStreamMessage] = true;
+  }
   // Stamp the backend turn anchor so live-streamed messages gate the fork
   // entry exactly like history-loaded rows (see isForkEnabled).
   if (transformed && message.backend_turn_id) {
     transformed.backend_turn_id = message.backend_turn_id;
   }
-  if (transformed && message.model_source !== undefined) {
+  if (transformed && !standalone && message.model_source !== undefined) {
     transformed.model_source = message.model_source;
   }
   return transformed;

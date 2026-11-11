@@ -9,6 +9,8 @@ import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from 
 import {
   composeMessage,
   ephemeralStreamMessage,
+  standaloneMessage,
+  canMergeTextRows,
   toolMessageKey,
   mergeAcpToolCallContent,
   mergeTextMessageContent,
@@ -314,10 +316,20 @@ export function composeMessageWithIndex(
   // text message: merge only with the latest contiguous streaming chunk.
   // text 消息: 只与最后一条连续的流式片段合并，保留被工具/思考打断后的消息边界。
   if (message.type === 'text' && message.msg_id) {
+    if (message[standaloneMessage]) {
+      const existing = list.findIndex(
+        (item) => item.id === message.id && item.conversation_id === message.conversation_id && item.type === 'text'
+      );
+      if (existing >= 0) {
+        const updated = list.slice();
+        updated[existing] = { ...message, model_source: list[existing].model_source ?? message.model_source };
+        return updated;
+      }
+    }
     const existingIdx = index.msgIdIndex.get(message.msg_id);
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
-      if (existingMsg.type === 'text') {
+      if (existingMsg.type === 'text' && canMergeTextRows(existingMsg, message)) {
         // User messages (right position) are complete — skip if already exists to prevent duplicates
         if (message.position === 'right') {
           return list;
@@ -329,7 +341,7 @@ export function composeMessageWithIndex(
       }
     }
 
-    if (last.type === 'text' && last.msg_id === message.msg_id) {
+    if (last.type === 'text' && last.msg_id === message.msg_id && canMergeTextRows(last, message)) {
       const newList = list.slice();
       newList[newList.length - 1] = {
         ...last,
@@ -804,6 +816,9 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
 
   return {
     ...msg,
+    // A normalized noncanonical row is already persisted independently of its
+    // msg_id (raw insertion/fork); later stream chunks cannot absorb it.
+    ...(msg.msg_id && msg.id !== msg.msg_id ? { [standaloneMessage]: true as const } : {}),
     content: normalizeTextMessageContent((msg as IMessageText).content),
   };
 }
@@ -830,6 +845,7 @@ const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMes
     id: persisted.id,
     msg_id: persisted.msg_id,
     model_source: persisted.model_source ?? live.model_source,
+    ...(persisted[standaloneMessage] || live[standaloneMessage] ? { [standaloneMessage]: true as const } : {}),
   };
   delete merged[ephemeralStreamMessage];
   return merged;

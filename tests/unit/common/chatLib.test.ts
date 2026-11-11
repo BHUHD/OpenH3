@@ -575,6 +575,28 @@ describe('historical model source contract', () => {
     model: 'same-model-id',
     protocol: 'responses',
   } as const;
+  it('renders the persisted raw-stream contract as an exact independent row with unavailable source', () => {
+    const payload: IResponseMessage = {
+      type: 'text',
+      conversation_id: CONVERSATION_ID,
+      msg_id: 'assistant-original',
+      persisted_message_id: 'raw-row',
+      data: { content: 'raw answer', model_source: source },
+      position: 'left',
+      status: 'finish',
+      replace: true,
+      hidden: false,
+      created_at: 1234,
+      // Even a caller-populated field on a raw notification cannot become a badge.
+      model_source: source,
+    };
+    const row = transformMessage(payload);
+    expect(row?.id).toBe('raw-row');
+    expect(row?.msg_id).toBe('assistant-original');
+    expect(row?.model_source).toBeNull();
+    expect(row?.content).toEqual({ content: 'raw answer', replace: true });
+    expect(row?.created_at).toBe(1234);
+  });
   it('preserves server source through live text and tool updates', () => {
     const first = transformMessage({
       type: 'content',
