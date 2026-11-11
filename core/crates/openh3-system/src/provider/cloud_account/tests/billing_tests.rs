@@ -466,6 +466,12 @@ async fn gateway_enforces_success_operation_caps_and_strict_error_caps_for_decla
         ("models", 200, 8 * 1024 * 1024 + 1, false, false),
         ("wallet", 200, 512 * 1024 + 1, false, false),
         ("usage", 200, 2 * 1024 * 1024 + 1, false, false),
+        ("topup/options", 200, 100_000, false, true),
+        ("topup/orders", 200, 128 * 1024 + 1, true, false),
+        ("topup/orders", 200, 128 * 1024 + 1, false, false),
+        ("topup/create", 200, 65537, true, false),
+        ("topup/options", 503, 65537, true, false),
+        ("topup/options", 503, 65537, false, false),
         ("login", 200, 70_000, false, false),
         ("models", 401, 70_000, false, false),
     ] {

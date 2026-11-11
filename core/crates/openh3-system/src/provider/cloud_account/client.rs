@@ -78,6 +78,7 @@ impl Gateway {
                 "models" => 8 * 1024 * 1024,
                 "wallet" => 512 * 1024,
                 "usage" => 2 * 1024 * 1024,
+                "topup/options" | "topup/orders" => 128 * 1024,
                 _ => 65536,
             }
         } else {
@@ -104,6 +105,9 @@ impl Gateway {
                 (400, "invalid_request" | "invalid_password_transport") => Error::Input,
                 (403 | 404, _) => Error::Policy,
                 (429, "rate_limited") => Error::RateLimited { retry_after },
+                (409, "quote_or_idempotency_conflict") => Error::TopupConflict,
+                (409, "wallet_capacity_exceeded") => Error::WalletCapacity,
+                (503, "temporarily_unavailable") if path.starts_with("topup/") => Error::TopupUnavailable,
                 (409, "refresh_conflict") => Error::Conflict,
                 (503, "temporarily_unavailable") => Error::Transport,
                 _ => Error::Protocol,

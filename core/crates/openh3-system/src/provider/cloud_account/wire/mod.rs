@@ -109,3 +109,17 @@ pub(super) struct Device {
 
 mod billing;
 pub(super) use billing::*;
+
+// Strict private wrappers intentionally have no Debug implementation.
+#[derive(Deserialize)]
+#[serde(transparent)]
+pub(super) struct TopupOptions(pub openh3_api_types::CloudAccountTopupOptionsResponse);
+#[derive(Deserialize)]
+#[serde(transparent)]
+pub(super) struct TopupQuote(pub openh3_api_types::CloudAccountTopupQuote);
+#[derive(Deserialize)]
+#[serde(transparent)]
+pub(super) struct TopupOrder(pub openh3_api_types::CloudAccountTopupOrder);
+#[derive(Deserialize)]
+#[serde(transparent)]
+pub(super) struct TopupOrders(pub openh3_api_types::CloudAccountTopupOrdersResponse);

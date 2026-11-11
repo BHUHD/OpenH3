@@ -30,6 +30,10 @@ pub fn route_label(path: &str) -> &'static str {
         "/api/cloud-account/devices" => "cloud.devices",
         "/api/cloud-account/wallet" => "cloud.wallet",
         "/api/cloud-account/models" => "cloud.models",
+        "/api/cloud-account/topup/options" => "cloud.topup-options",
+        "/api/cloud-account/topup/quote" => "cloud.topup-quote",
+        "/api/cloud-account/topup/create" => "cloud.topup-create",
+        "/api/cloud-account/topup/orders" => "cloud.topup-orders",
         "/api/cloud-account/usage" => "cloud.usage",
         "/api/cloud-account/email-code" => "cloud.email-code",
         "/api/cloud-account/register" => "cloud.register",
@@ -158,6 +162,9 @@ fn result<T: Serialize>(value: Result<T, CloudAccountError>) -> Response {
                 Transport => (StatusCode::SERVICE_UNAVAILABLE, "CLOUD_TRANSPORT"),
                 Protocol => (StatusCode::BAD_GATEWAY, "CLOUD_PROTOCOL"),
                 Conflict => (StatusCode::CONFLICT, "CLOUD_CONFLICT"),
+                TopupConflict => (StatusCode::CONFLICT, "CLOUD_TOPUP_CONFLICT"),
+                WalletCapacity => (StatusCode::CONFLICT, "CLOUD_WALLET_CAPACITY"),
+                TopupUnavailable => (StatusCode::SERVICE_UNAVAILABLE, "CLOUD_TOPUP_UNAVAILABLE"),
                 Storage => (StatusCode::INTERNAL_SERVER_ERROR, "CLOUD_STORAGE"),
             };
             let mut response = failure(status, code);
@@ -194,7 +201,13 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
     }
     // Disconnect must remain available even after failed sensitive attempts.
     // The service clears local state first; only the first logout can revoke remotely.
-    if !read && !matches!(label, "cloud.logout" | "cloud.usage") && state.limiter.check_and_increment(&owner).is_err() {
+    if !read
+        && !matches!(
+            label,
+            "cloud.logout" | "cloud.usage" | "cloud.topup-options" | "cloud.topup-quote" | "cloud.topup-orders"
+        )
+        && state.limiter.check_and_increment(&owner).is_err()
+    {
         return result::<()>(Err(CloudAccountError::RateLimited { retry_after: Some(60) }));
     }
     if !read
@@ -229,6 +242,10 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
         "cloud.wallet" => result(service.wallet(&owner).await),
         "cloud.models" => result(service.models(&owner).await),
         "cloud.usage" => call!(usage),
+        "cloud.topup-quote" => call!(topup_quote),
+        "cloud.topup-create" => call!(topup_create),
+        "cloud.topup-orders" => call!(topup_orders),
+        "cloud.topup-options" if decode::<Empty>(&body).is_ok() => result(service.topup_options(&owner).await),
         "cloud.email-code" => call!(email_code),
         "cloud.register" => call!(register),
         "cloud.login" => call!(login),
@@ -244,3 +261,7 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
         _ => failure(StatusCode::BAD_REQUEST, "CLOUD_INPUT_INVALID"),
     }
 }
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Empty {}

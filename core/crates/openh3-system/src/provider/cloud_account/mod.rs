@@ -32,6 +32,12 @@ pub enum CloudAccountError {
     Protocol,
     #[error("Account state changed; retry the operation")]
     Conflict,
+    #[error("Top-up quote or idempotency terms conflict")]
+    TopupConflict,
+    #[error("Wallet capacity exceeded")]
+    WalletCapacity,
+    #[error("Top-up verification or configuration temporarily unavailable")]
+    TopupUnavailable,
     #[error("Account storage unavailable")]
     Storage,
 }

@@ -4,9 +4,9 @@ The native client signs in to one New API user and uses that user's existing
 wallet and billing services. BYOK provider configuration remains independently
 usable. The public local contract is defined in
 [`cloud_account.rs`](../../core/crates/openh3-api-types/src/cloud_account.rs).
-It contains DTOs only; this document does not assert that the routes below are
-already deployed. Contract fixtures are synthetic local serialization tests,
-not recordings of a gateway.
+Core, desktop main and browser transport implement the routes below. This does
+not assert production deployment. Contract fixtures and behavioral HTTP tests use
+controlled loopback servers and SQLite, not production gateway recordings.
 
 ## Trust boundary
 
@@ -63,10 +63,10 @@ Unix seconds. Types below have the `CloudAccount` prefix in Rust.
 | `POST /usage`                   | `UsageQuery` (JSON filter)     | `UsageResponse`                 |
 | `GET /devices`                  | None                           | `DevicesResponse`               |
 | `POST /devices/revoke`          | `RevokeDeviceRequest`          | `RevokeDeviceResponse`          |
-| `GET /topup/options`            | None                           | `TopupOptionsResponse`          |
-| `POST /topup/orders`            | `CreateTopupRequest`           | `TopupOrder`                    |
-| `GET /topup/orders`             | `PageQuery`                    | `TopupOrdersResponse`           |
-| `GET /topup/orders/{order_id}`  | Path order ID                  | `TopupOrder`                    |
+| `POST /topup/options`           | Empty JSON object              | `TopupOptionsResponse`          |
+| `POST /topup/quote`             | `TopupQuoteRequest`            | `TopupQuote`                    |
+| `POST /topup/create`            | `CreateTopupRequest`           | `TopupOrder`                    |
+| `POST /topup/orders`            | `TopupOrdersQuery`             | `TopupOrdersResponse`           |
 
 `SessionResponse.state` is one of:
 
@@ -128,7 +128,10 @@ encryption policy is handled privately by Core rather than exposed to the UI.
 alone do not enforce these bounds. The native usage read additionally caps page
 at 1,000,000 and validates ordered nonnegative Unix times plus model/device byte
 bounds. Usage responses use `page`, `page_size`, `has_more` and `items`, without
-`total`; the earlier order contract remains pending implementation. There are no invented opaque cursors. Order IDs and device IDs are
+`total`. Top-up orders use the gateway cursor `before_id` (nonnegative JS-safe
+integer), `page_size` (0/omitted defaults to 20, otherwise 1–50), optional
+`order_id` (at most 64 bytes) and `status`. Results retain `items`, `has_more`
+and `next_before_id`, without page/total fiction. Order IDs and device IDs are
 opaque remote identifiers; every lookup/revocation must check authenticated
 account ownership, including a request to revoke the current device.
 
@@ -169,20 +172,44 @@ final settlement watermark, lifetime spend or task association is fabricated.
 No raw log other payload, provider secrets or admin-only metadata crosses the
 local API.
 
-Topup options contain an opaque server option ID, payment method, payable money
-and credited quota. Creation accepts only that option ID and an idempotency key;
-the server resolves and validates the option again. Stale prices must be rejected
-or presented for fresh confirmation, never silently replaced after acceptance.
-The idempotency scope is the account plus key and must reject a different option
-under an already-used key. The server returns the authoritative order amounts
-and an optional checkout: `url {url}` or `qr {payload}`, only when the configured
-provider supplies it. QR payloads are validated bounded data, never executable
-markup; they are rendered as a QR code without interpreting them as instructions.
-A checkout URL is an external payment
-handoff; browser return does not prove payment. Only the existing provider
-callback/settlement path can mark an order `success`. Querying an order cannot
-credit a wallet. Status values preserve upstream `pending`, `success`, `failed`
-and `expired`.
+Top-up options retain gateway status and unsupported providers. Initial support is
+EpayV1 signed HTTPS submit URLs only. Quotes retain the original integer amount,
+input unit, payment method, provider, exact decimal CNY payable, credited quota,
+quota unit, conversion/quote versions and `fee_scope: gateway_payable_total`.
+Creation accepts amount, method, 64-byte quote version and the original stable
+owner-scoped idempotency key (16–64 ASCII letters, digits, underscore or hyphen).
+Amounts are bounded to 1–9,007,199,254,740,991 before I/O. The gateway owns pricing,
+configured bounds, capacity and immutable replay; the client never recomputes them.
+A response loss requires deliberate replay with the same key and original terms.
+Quote/idempotency conflict, wallet capacity and temporary verification/configuration
+unavailability have distinct fixed codes; no mutation or 401 is automatically replayed.
+
+Orders preserve owner, order ID, pending/paid/failed/expired state, created/completed
+times and independent handoff status/expiry. `expiry_scope: local_handoff_only`
+does not imply cancellation, refund or remote unpayability. A previously opened
+remote checkout may pay late and credit its original owner once. Only gateway
+fulfillment establishes payment; browser return is never proof. Owned order reads
+never issue checkout URLs or change status. Failed reads remain failures, not empty history.
+
+Create/replay may return a transient checkout URL. Core validates bounded HTTPS,
+userinfo/control/backslash/fragment rejection and known credential exclusion with
+fixed errors. Signed parameters remain byte-for-byte unchanged; there is no invented
+host allowlist. The URL must never enter app history, logs, telemetry, localStorage,
+clipboard or Debug DTOs. There is no client payment ledger or task auto-resume.
+
+Desktop `topupCreateAndOpen` is a deliberate main-only composition of create/replay
+and Electron's mature `shell.openExternal`, bound to that operation's validated result.
+It accepts only original creation fields, never a renderer URL. A narrow main epoch
+fences stale results before and after the opener awaits. Opener failures discard
+all dynamic text and return a fixed code plus the original order without its URL;
+the caller retains the original key. It bypasses the generic shell HTTP path, whose
+logging and dynamic errors are unsuitable for signed URLs. Plain `topupCreate`
+returns the transient result. WebUI can keep a browser-local `browserCloudCheckout`
+closure for a deliberate second click (discard it on identity changes); it uses
+`window.open` on the client browser and never an OS opener on the Core server.
+Its boolean means the open request was attempted, not that a window/payment succeeded.
+UI is separate work. App history exclusion cannot control external browser history
+after a deliberate handoff. Tests inject openers and never launch a browser.
 
 ## Existing New API evidence
 
@@ -268,8 +295,8 @@ URLs. Audit financial transitions through existing gateway billing observability
 Core exposes capabilities, session, me, devices, email-code, register, login,
 auth/verify, password/reset, password/reset/complete, logout and devices/revoke
 under /api/cloud-account. Authenticated billing observations additionally expose
-GET wallet, GET models and POST usage (a bounded typed filter body); topup paths
-remain pending. The billing adapter follows gateway commit
+GET wallet, GET models, POST usage (a bounded typed filter body), and the four
+POST top-up operations above. The billing adapter follows gateway commit
 `dacf661fc0bbb78bca4b2b45c3e9e7b51079d938`, specifically
 `model/native_billing_reads.go` and `service/native_model_catalog.go`.
 Requests use the public DTOs and ApiResponse/ErrorResponse; JSON is capped at
@@ -298,11 +325,12 @@ every inference. Catalog replacement is serialized per owner and SQL CAS binds
 owner, issuer, generation, subject and provider. Unavailable, malformed or failed
 reads remove local admission without affecting a replacement account or BYOK.
 
-Both HTTP hops use finite success-body limits: models 8 MiB, wallet 512 KiB and
-usage 2 MiB; credentials and every error remain capped at 64 KiB. Declared and
+Core, main and the browser cloud HTTP path use finite success-body limits: models 8 MiB, wallet 512 KiB and
+usage 2 MiB, and top-up options/orders 128 KiB; credentials and every error remain capped at 64 KiB. Declared and
 streamed sizes are checked, redirects are disabled, and requests have deadlines
 without retries. These are practical client limits, not support for every
-administrator configuration: oversized responses fail with sanitized protocol or
+administrator configuration: options allow the currently supported 3 methods × 32
+amounts, and orders allow 50 entries. Oversized responses fail with sanitized protocol or
 transport errors without truncation. The client also bounds each evidence field
 to 1 MiB and each expression to the gateway's 65,536-byte limit.
 

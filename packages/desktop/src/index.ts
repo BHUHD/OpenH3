@@ -16,7 +16,7 @@ import { captureBackendStartupFailure, initSentry, scheduleStartupLogReport, set
 initSentry();
 
 import './process/utils/configureConsoleLog';
-import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell } from 'electron';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -235,7 +235,9 @@ const cloudCapability = randomBytes(32).toString('hex');
 backendManager.configureCloudAccount(cloudCapability);
 const cloudClient = createCloudAccountClient(
   () => (backendManager.status === 'running' ? backendManager.port : 0),
-  cloudCapability
+  cloudCapability,
+  fetch,
+  (url) => shell.openExternal(url)
 );
 const cloudRendererUrls = [
   pathToFileURL(path.join(__dirname, '../renderer/index.html')).href,

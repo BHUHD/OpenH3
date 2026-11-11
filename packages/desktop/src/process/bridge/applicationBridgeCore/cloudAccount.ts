@@ -1,8 +1,18 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import type { CloudAccountRequest, CloudAccountResponse } from '@/common/types/platform/cloudAccount';
-import { safeCloudError } from '@/common/adapter/httpBridge/cloudAccount';
+import {
+  cloudCheckout,
+  cloudSuccessLimit,
+  readCloudJson,
+  safeCloudError,
+} from '@/common/adapter/httpBridge/cloudAccount';
 
 const operations = {
+  topupOptions: ['POST', 'topup/options', []],
+  topupQuote: ['POST', 'topup/quote', ['amount', 'payment_method']],
+  topupCreate: ['POST', 'topup/create', ['amount', 'payment_method', 'quote_version', 'idempotency_key']],
+  topupCreateAndOpen: ['POST', 'topup/create', ['amount', 'payment_method', 'quote_version', 'idempotency_key']],
+  topupOrders: ['POST', 'topup/orders', ['order_id', 'before_id', 'page_size', 'status']],
   capabilities: ['GET', 'capabilities', []],
   session: ['GET', 'session', []],
   me: ['GET', 'me', []],
@@ -60,7 +70,47 @@ export function cloudOperation(request: unknown): { method: string; path: string
   const [method, path, keys] = operations[request.operation as keyof typeof operations];
   const input = 'input' in request ? request.input : {};
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-  if (request.operation === 'usage') {
+  if (request.operation.startsWith('topup')) {
+    const v = Object.fromEntries(Object.entries(input));
+    if (Object.keys(v).some((key) => !(keys as readonly string[]).includes(key))) return null;
+    if (request.operation === 'topupOrders') {
+      if (v.order_id !== undefined && (typeof v.order_id !== 'string' || Buffer.byteLength(v.order_id) > 64))
+        return null;
+      if (
+        v.status !== undefined &&
+        (typeof v.status !== 'string' || !['', 'pending', 'paid', 'failed', 'expired'].includes(v.status))
+      )
+        return null;
+      for (const key of ['before_id', 'page_size']) {
+        const value = v[key];
+        if (
+          value !== undefined &&
+          (typeof value !== 'number' ||
+            !Number.isSafeInteger(value) ||
+            value < 0 ||
+            value > (key === 'page_size' ? 50 : Number.MAX_SAFE_INTEGER))
+        )
+          return null;
+      }
+    } else if (request.operation !== 'topupOptions') {
+      if (
+        typeof v.amount !== 'number' ||
+        !Number.isSafeInteger(v.amount) ||
+        v.amount < 1 ||
+        typeof v.payment_method !== 'string' ||
+        !/^[A-Za-z0-9_-]{1,64}$/.test(v.payment_method)
+      )
+        return null;
+      if (
+        request.operation !== 'topupQuote' &&
+        (typeof v.quote_version !== 'string' ||
+          Buffer.byteLength(v.quote_version) !== 64 ||
+          typeof v.idempotency_key !== 'string' ||
+          !/^[A-Za-z0-9_-]{16,64}$/.test(v.idempotency_key))
+      )
+        return null;
+    }
+  } else if (request.operation === 'usage') {
     const values = Object.fromEntries(Object.entries(input));
     if (Object.keys(values).some((key) => !(keys as readonly string[]).includes(key))) return null;
     for (const [key, value] of Object.entries(values)) {
@@ -91,42 +141,22 @@ export function cloudOperation(request: unknown): { method: string; path: string
   return { method, path, ...(method === 'POST' ? { body } : {}) };
 }
 
-async function boundedJson(response: Response, successLimit = 65536): Promise<unknown> {
-  const limit = response.ok ? successLimit : 65536;
-  const declared = response.headers.get('content-length');
-  if (declared && (!/^\d+$/.test(declared) || Number(declared) > limit)) {
-    await response.body?.cancel();
-    throw new Error('Cloud account request failed');
-  }
-  if (!response.body) throw new Error('Cloud account request failed');
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      size += part.value.length;
-      if (size > limit) throw new Error('Cloud account request failed');
-      chunks.push(part.value);
-    }
-    return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
-  } finally {
-    await reader.cancel();
-  }
-}
-
 /** Main-only client. CSRF is bootstrapped from Core and never exposed to preload. */
 export function createCloudAccountClient(
   port: () => number,
   capability: string,
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
+  openCheckout?: (url: string) => Promise<void>
 ): (request: CloudAccountRequest) => Promise<CloudAccountResponse> {
+  let epoch = 0;
   let csrf: string | undefined;
   let csrfPort: number | undefined;
   return async (request) => {
     const operation = cloudOperation(request);
     if (!operation) return safeCloudError({ code: 'CLOUD_INPUT_INVALID' });
+    // Close the main-response/open gap when a local identity action is in flight.
+    if (['login', 'logout', 'passwordResetComplete', 'revokeDevice', 'verify'].includes(request.operation)) epoch++;
+    const originalEpoch = epoch;
     const currentPort = port();
     if (!Number.isInteger(currentPort) || currentPort < 1 || currentPort > 65535) return safeCloudError(null);
     if (csrfPort !== currentPort) {
@@ -142,17 +172,20 @@ export function createCloudAccountClient(
             redirect: 'error',
             signal: AbortSignal.timeout(25000),
           });
-          if (bootstrap.status === 401 || bootstrap.status === 403) return safeCloudError(await boundedJson(bootstrap));
+          if (bootstrap.status === 401 || bootstrap.status === 403)
+            return safeCloudError(await readCloudJson(bootstrap));
           const cookie = bootstrap.headers.getSetCookie().find((v) => v.startsWith('aionui-csrf-token='));
           csrf = cookie?.split(';')[0].slice('aionui-csrf-token='.length);
           // Health is entirely local: logout never waits for remote refresh.
-          if (!csrf || !/^[a-f0-9]{64}$/.test(csrf)) return safeCloudError(await boundedJson(bootstrap));
+          if (!csrf || !/^[a-f0-9]{64}$/.test(csrf)) return safeCloudError(await readCloudJson(bootstrap));
           await bootstrap.body?.cancel();
         }
         headers.Cookie = `aionui-csrf-token=${csrf}`;
         headers['x-csrf-token'] = csrf;
         headers['Content-Type'] = 'application/json';
       }
+      if (request.operation.startsWith('topup') && originalEpoch !== epoch)
+        return safeCloudError({ code: 'CLOUD_CONFLICT' });
       const response = await fetcher(`${base}${operation.path}`, {
         method: operation.method,
         headers,
@@ -161,15 +194,9 @@ export function createCloudAccountClient(
         signal: AbortSignal.timeout(25000),
       });
       // Finite per-operation success limits; errors and credentials stay 64 KiB.
-      const successLimit =
-        operation.path === 'models'
-          ? 8 * 1024 * 1024
-          : operation.path === 'wallet'
-            ? 512 * 1024
-            : operation.path === 'usage'
-              ? 2 * 1024 * 1024
-              : 65536;
-      const body = await boundedJson(response, successLimit);
+      const body = await readCloudJson(response, cloudSuccessLimit(operation.path));
+      if (request.operation.startsWith('topup') && originalEpoch !== epoch)
+        return safeCloudError({ code: 'CLOUD_CONFLICT' });
       if (!response.ok) {
         const retry = response.headers.get('retry-after');
         return { ...safeCloudError(body), ...(retry && /^\d{1,5}$/.test(retry) ? { retry_after: Number(retry) } : {}) };
@@ -177,8 +204,27 @@ export function createCloudAccountClient(
       // Successful Core responses are exclusively renderer-safe public DTOs.
       if (!body || typeof body !== 'object' || !('success' in body) || body.success !== true || !('data' in body))
         return safeCloudError(null);
+      if (request.operation.startsWith('topup') && originalEpoch !== epoch)
+        return safeCloudError({ code: 'CLOUD_CONFLICT' });
+      if (request.operation === 'topupCreateAndOpen') {
+        const url = cloudCheckout(body.data, request.input);
+        // Retain the committed order context, never the signed URL, on opener failure.
+        const { checkout_url: _checkout, ...order } =
+          body.data as import('@/common/types/platform/cloudAccount').CloudTopupOrder;
+        if (!url || !openCheckout) return { ...safeCloudError({ code: 'CLOUD_CHECKOUT_UNAVAILABLE' }), order };
+        try {
+          await openCheckout(url);
+        } catch {
+          if (originalEpoch !== epoch) return safeCloudError({ code: 'CLOUD_CONFLICT' });
+          return { ...safeCloudError({ code: 'CLOUD_CHECKOUT_OPEN_FAILED' }), order };
+        }
+        if (originalEpoch !== epoch) return safeCloudError({ code: 'CLOUD_CONFLICT' });
+        return { success: true, data: order };
+      }
       return { success: true, data: body.data as Extract<CloudAccountResponse, { success: true }>['data'] };
     } catch {
+      if (request.operation.startsWith('topup') && originalEpoch !== epoch)
+        return safeCloudError({ code: 'CLOUD_CONFLICT' });
       return safeCloudError(null);
     }
   };

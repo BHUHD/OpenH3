@@ -1,6 +1,6 @@
 /** Renderer-safe native account operations; no URL, headers or owner inputs. */
 export type CloudAccountRequest =
-  | { operation: 'capabilities' | 'session' | 'me' | 'devices' | 'logout' | 'wallet' | 'models' }
+  | { operation: 'capabilities' | 'session' | 'me' | 'devices' | 'logout' | 'wallet' | 'models' | 'topupOptions' }
   | {
       operation: 'usage';
       input: {
@@ -10,6 +10,17 @@ export type CloudAccountRequest =
         end_time?: number;
         model?: string;
         device_id?: string;
+      };
+    }
+  | { operation: 'topupQuote'; input: { amount: number; payment_method: string } }
+  | { operation: 'topupCreate' | 'topupCreateAndOpen'; input: CloudTopupCreateInput }
+  | {
+      operation: 'topupOrders';
+      input: {
+        order_id?: string;
+        before_id?: number;
+        page_size?: number;
+        status?: '' | 'pending' | 'paid' | 'failed' | 'expired';
       };
     }
   | { operation: 'emailCode'; input: { email: string; purpose: 'registration' | 'password_reset' } }
@@ -38,6 +49,10 @@ export type CloudSession =
   | { state: 'connected'; account: CloudProfile }
   | { state: 'verification_required'; verification: CloudVerification };
 export type CloudAccountData =
+  | CloudTopupQuote
+  | CloudTopupOrder
+  | CloudTopupOptions
+  | CloudTopupOrders
   | CloudSession
   | CloudWallet
   | CloudModels
@@ -73,7 +88,13 @@ export type CloudAccountData =
 /** Sanitized result shared by preload and the main-process bridge. */
 export type CloudAccountResponse =
   | { success: true; data: CloudAccountData }
-  | { success: false; error: string; code: string; retry_after?: number };
+  | {
+      success: false;
+      error: string;
+      code: string;
+      retry_after?: number;
+      order?: Omit<CloudTopupOrder, 'checkout_url'>;
+    };
 
 export type CloudQuota = { amount: string; unit: string };
 export type CloudQuotaView = { status: string; amount?: CloudQuota; reason?: string };
@@ -175,3 +196,41 @@ export type CloudUsage = {
       }[]
     | null;
 };
+
+export type CloudTopupCreateInput = {
+  amount: number;
+  payment_method: string;
+  quote_version: string;
+  idempotency_key: string;
+};
+export type CloudTopupQuote = {
+  amount: number;
+  amount_unit: 'USD' | 'CNY' | 'TOKENS' | 'CUSTOM';
+  payment_method: string;
+  provider: 'epay_v1';
+  payable_money: string;
+  currency: 'CNY';
+  credited_quota: string;
+  quota_unit: 'new_api_quota';
+  conversion_version: string;
+  quote_version: string;
+  fee_scope: 'gateway_payable_total';
+};
+export type CloudTopupOptions = {
+  options: CloudTopupQuote[];
+  status: 'available' | 'unavailable';
+  unsupported_providers: string[];
+};
+/** Transient handoff only: never persist, log, copy or send through generic shell IPC. */
+export type CloudTopupOrder = CloudTopupQuote & {
+  order_id: string;
+  owner_id: string;
+  status: 'pending' | 'paid' | 'failed' | 'expired';
+  created_at: number;
+  completed_at: number;
+  handoff_expires_at: number;
+  handoff_status: 'available' | 'unavailable' | 'expired';
+  expiry_scope: 'local_handoff_only';
+  checkout_url?: string;
+};
+export type CloudTopupOrders = { items: CloudTopupOrder[]; has_more: boolean; next_before_id: number };

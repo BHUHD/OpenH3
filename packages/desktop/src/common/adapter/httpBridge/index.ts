@@ -6,7 +6,7 @@
  * so existing renderer code works without changes.
  */
 
-import { isCloudAccountPath, safeCloudError } from './cloudAccount';
+import { isCloudAccountPath, cloudSuccessLimit, readCloudJson, safeCloudError } from './cloudAccount';
 import { refreshSession, WS_CLOSE_POLICY_VIOLATION } from '../sessionRefresh';
 
 // ---------------------------------------------------------------------------
@@ -207,6 +207,7 @@ function sendHttpRequest(
 ): Promise<Response> {
   const url = `${getBaseUrl()}${path}`;
   return fetch(url, {
+    ...(isCloudAccountPath(path) ? { redirect: 'error' as const, signal: AbortSignal.timeout(25000) } : {}),
     credentials: isWebUiBrowserMode() ? 'include' : 'same-origin',
     method,
     headers,
@@ -270,6 +271,31 @@ export async function httpRequest<T>(
     }
   }
 
+  if (cloud) {
+    let envelope: unknown;
+    try {
+      envelope = await readCloudJson(response, cloudSuccessLimit(path.slice('/api/cloud-account/'.length)));
+    } catch {
+      throw new BackendHttpError({ method, path, status: 502, body: { code: 'CLOUD_PROTOCOL' } });
+    }
+    if (!response.ok) {
+      const retry = response.headers.get('retry-after');
+      const safe = {
+        ...safeCloudError(envelope),
+        ...(retry && /^\d{1,5}$/.test(retry) ? { details: { retry_after: Number(retry) } } : {}),
+      };
+      throw new BackendHttpError({ method, path, status: response.status, body: safe });
+    }
+    if (
+      !envelope ||
+      typeof envelope !== 'object' ||
+      !('success' in envelope) ||
+      envelope.success !== true ||
+      !('data' in envelope)
+    )
+      throw new BackendHttpError({ method, path, status: 502, body: { code: 'CLOUD_PROTOCOL' } });
+    return envelope.data as T;
+  }
   if (!response.ok) {
     // Response body can only be consumed once — read as text, then try JSON
     const rawText = await response.text().catch(() => '');
@@ -278,14 +304,6 @@ export async function httpRequest<T>(
       errorBody = JSON.parse(rawText);
     } catch {
       errorBody = rawText;
-    }
-    if (cloud) {
-      const retry = response.headers.get('retry-after');
-      const safe = {
-        ...safeCloudError(errorBody),
-        ...(retry && /^\d{1,5}$/.test(retry) ? { details: { retry_after: Number(retry) } } : {}),
-      };
-      throw new BackendHttpError({ method, path, status: response.status, body: safe });
     }
     if (options?.silentStatuses?.includes(response.status)) {
       console.debug(`[httpBridge] ${method} ${path} → ${response.status} (silenced)`, errorBody);
@@ -302,13 +320,7 @@ export async function httpRequest<T>(
     return undefined as T;
   }
 
-  let json: unknown;
-  try {
-    json = await response.json();
-  } catch (error) {
-    if (cloud) throw new BackendHttpError({ method, path, status: 502, body: { code: 'CLOUD_PROTOCOL' } });
-    throw error;
-  }
+  const json: unknown = await response.json();
   // Backend wraps in { success, data, ... } — unwrap when present
   if (json && typeof json === 'object' && 'data' in json) {
     return json.data as T;

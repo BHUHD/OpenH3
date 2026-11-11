@@ -1346,3 +1346,5 @@ async fn device_password_verification_is_target_bound_and_never_puts_password_in
     assert!(body.get("proof").is_none());
     assert_eq!(req.headers.get("authorization").unwrap(), "Bearer desktop-secret");
 }
+
+mod topup_tests;

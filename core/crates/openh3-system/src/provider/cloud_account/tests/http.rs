@@ -470,3 +470,156 @@ async fn reads_do_not_spend_sensitive_action_budget_and_errors_keep_codes() {
     assert_eq!(r.status(), StatusCode::TOO_MANY_REQUESTS);
     assert_eq!(r.headers()["retry-after"], "17");
 }
+
+#[tokio::test]
+async fn topup_routes_preserve_guards_exact_methods_inputs_and_no_store_failures() {
+    let (app, server, _db, _) = router(true).await;
+    for suffix in ["options", "quote", "create", "orders"] {
+        let p = format!("/topup/{suffix}");
+        response(&app, request("POST", &p, "{}", &[]), StatusCode::UNAUTHORIZED).await;
+        response(&app, request("GET", &p, "", &[CAP]), StatusCode::METHOD_NOT_ALLOWED).await;
+        response(&app, request("POST", &p, "{}", &[CAP, CSRF[0]]), StatusCode::FORBIDDEN).await;
+        response(
+            &app,
+            request(
+                "POST",
+                &format!("{p}?sign=SIGNED_SENTINEL"),
+                "{}",
+                &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+            ),
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
+    }
+    for body in [
+        r#"{"amount":10,"amount":20,"payment_method":"alipay"}"#,
+        r#"{"amount":"10","payment_method":"alipay"}"#,
+        r#"{"amount":0,"payment_method":"alipay"}"#,
+        r#"{"amount":9007199254740992,"payment_method":"alipay"}"#,
+        r#"{"amount":10,"payment_method":"alipay","payable_money":"0.01"}"#,
+        r#"{"amount":10,"payment_method":{}}"#,
+    ] {
+        let r = response(
+            &app,
+            request("POST", "/topup/quote", body, &[CAP, CSRF[0], CSRF[1], CSRF[2]]),
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
+        assert_eq!(r["code"], "CLOUD_INPUT_INVALID");
+    }
+    response(
+        &app,
+        request(
+            "POST",
+            "/topup/orders",
+            r#"{"before_id":1,"before_id":2}"#,
+            &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+        ),
+        StatusCode::BAD_REQUEST,
+    )
+    .await;
+    response(
+        &app,
+        request(
+            "POST",
+            "/topup/options",
+            r#"{"url":"SIGNED_SENTINEL"}"#,
+            &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+        ),
+        StatusCode::BAD_REQUEST,
+    )
+    .await;
+    assert!(server.received_requests().await.unwrap().is_empty());
+}
+#[tokio::test]
+async fn topup_routes_use_the_real_service_mapping_and_fixed_gateway_error_codes() {
+    let (app, server, _db, _) = router(true).await;
+    mount_login(&server).await;
+    Mock::given(path("/api/openh3/activate"))
+        .respond_with(ok(active()))
+        .mount(&server)
+        .await;
+    response(
+        &app,
+        request(
+            "POST",
+            "/login",
+            r#"{"username":"alice","password":"fixture-password"}"#,
+            &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+        ),
+        StatusCode::OK,
+    )
+    .await;
+    let mut created = super::topup_tests::order("pending", "available", true);
+    created["checkout_url"] = json!("https://pay.example/submit.php?sign=controlled-signature");
+    for (suffix, input, data) in [
+        (
+            "options",
+            json!({}),
+            json!({"options":[],"status":"unavailable","unsupported_providers":["stripe"]}),
+        ),
+        (
+            "quote",
+            json!({"amount":10,"payment_method":"alipay"}),
+            super::topup_tests::quote(),
+        ),
+        (
+            "create",
+            json!({"amount":10,"payment_method":"alipay","quote_version":"b".repeat(64),"idempotency_key":"stable-original-key"}),
+            created,
+        ),
+        (
+            "orders",
+            json!({}),
+            json!({"items":[super::topup_tests::order("paid","expired",false)],"has_more":false,"next_before_id":1}),
+        ),
+    ] {
+        Mock::given(method("POST"))
+            .and(path(format!("/api/openh3/topup/{suffix}")))
+            .respond_with(ok(data.clone()))
+            .up_to_n_times(1)
+            .expect(1)
+            .mount(&server)
+            .await;
+        let r = response(
+            &app,
+            request(
+                "POST",
+                &format!("/topup/{suffix}"),
+                &input.to_string(),
+                &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+            ),
+            StatusCode::OK,
+        )
+        .await;
+        assert_eq!(r["data"], data);
+    }
+    for (status, code, expected) in [
+        (409, "quote_or_idempotency_conflict", "CLOUD_TOPUP_CONFLICT"),
+        (409, "wallet_capacity_exceeded", "CLOUD_WALLET_CAPACITY"),
+        (503, "temporarily_unavailable", "CLOUD_TOPUP_UNAVAILABLE"),
+    ] {
+        Mock::given(path("/api/openh3/topup/quote"))
+            .respond_with(
+                ResponseTemplate::new(status)
+                    .set_body_json(json!({"success":false,"code":code,"message":"SIGNED_SENTINEL"})),
+            )
+            .up_to_n_times(1)
+            .expect(1)
+            .mount(&server)
+            .await;
+        let r = response(
+            &app,
+            request(
+                "POST",
+                "/topup/quote",
+                r#"{"amount":10,"payment_method":"alipay"}"#,
+                &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+            ),
+            StatusCode::from_u16(status).unwrap(),
+        )
+        .await;
+        assert_eq!(r["code"], expected);
+        assert!(!r.to_string().contains("SIGNED_SENTINEL"));
+    }
+}

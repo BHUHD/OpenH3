@@ -425,63 +425,94 @@ pub enum CloudAccountRevokeDeviceResponse {
     VerificationRequired { verification: CloudAccountVerification },
 }
 
+/// Frozen gateway terms. Monetary strings are never locally recomputed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct CloudAccountTopupOption {
-    pub id: String,
-    pub label: String,
+pub struct CloudAccountTopupQuote {
+    pub amount: i64,
+    pub amount_unit: String,
     pub payment_method: String,
-    pub payable: CloudAccountMoney,
-    pub credit: CloudAccountQuota,
+    pub provider: String,
+    pub payable_money: String,
+    pub currency: String,
+    pub credited_quota: String,
+    pub quota_unit: String,
+    pub conversion_version: String,
+    pub quote_version: String,
+    pub fee_scope: String,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountTopupOptionsResponse {
-    pub items: Vec<CloudAccountTopupOption>,
+    pub options: Vec<CloudAccountTopupQuote>,
+    pub status: String,
+    pub unsupported_providers: Vec<String>,
 }
-
-#[derive(Debug, Deserialize)]
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountTopupQuoteRequest {
+    pub amount: i64,
+    pub payment_method: String,
+}
+#[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountCreateTopupRequest {
-    pub option_id: String,
+    pub amount: i64,
+    pub payment_method: String,
+    pub quote_version: String,
     pub idempotency_key: String,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CloudAccountTopupStatus {
     Pending,
-    Success,
+    Paid,
     Failed,
     Expired,
 }
-
-/// A payment handoff supplied by the configured provider, never proof of payment.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CloudAccountCheckout {
-    Url { url: String },
-    Qr { payload: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+/// Transient create/replay result. Never Debug, persist, log or copy checkout_url.
+/// Local handoff expiry does not cancel a previously opened remote checkout.
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountTopupOrder {
-    pub id: String,
+    pub amount: i64,
+    pub amount_unit: String,
+    pub payment_method: String,
+    pub provider: String,
+    pub payable_money: String,
+    pub currency: String,
+    pub credited_quota: String,
+    pub quota_unit: String,
+    pub conversion_version: String,
+    pub quote_version: String,
+    pub fee_scope: String,
+    pub order_id: String,
+    pub owner_id: String,
     pub status: CloudAccountTopupStatus,
     pub created_at: i64,
-    pub payable: CloudAccountMoney,
-    pub credit: CloudAccountQuota,
-    /// Present only while a usable provider checkout is available.
-    pub checkout: Option<CloudAccountCheckout>,
+    pub completed_at: i64,
+    pub handoff_expires_at: i64,
+    pub handoff_status: String,
+    pub expiry_scope: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkout_url: Option<String>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountTopupOrdersQuery {
+    #[serde(default)]
+    pub order_id: String,
+    #[serde(default)]
+    pub before_id: i64,
+    #[serde(default)]
+    pub page_size: u32,
+    #[serde(default)]
+    pub status: String,
+}
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountTopupOrdersResponse {
-    pub page: u32,
-    pub page_size: u32,
-    pub total: u64,
     pub items: Vec<CloudAccountTopupOrder>,
+    pub has_more: bool,
+    pub next_before_id: i64,
 }

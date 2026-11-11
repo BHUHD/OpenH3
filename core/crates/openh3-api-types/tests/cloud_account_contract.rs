@@ -206,34 +206,25 @@ fn sensitive_device_revoke_has_purpose_bound_reauthentication() {
 }
 
 #[test]
-fn topups_use_server_options_and_authoritative_order_amounts() {
-    round_trip::<CloudAccountTopupOptionsResponse>(json!({"items":[{
-        "id":"option-1", "label":"Credit pack", "payment_method":"stripe",
-        "payable":{"amount":"10.00","currency":"USD"}, "credit":{"amount":"5000000","unit":"new_api_quota"}
-    }]}));
-    let request: CloudAccountCreateTopupRequest =
-        serde_json::from_value(json!({"option_id":"option-1","idempotency_key":"operation-1"})).unwrap();
-    assert_eq!(request.option_id, "option-1");
-    assert!(
-        serde_json::from_value::<CloudAccountCreateTopupRequest>(
-            json!({"option_id":"option-1","idempotency_key":"operation-1","amount":"0.01"})
-        )
-        .is_err()
+fn topups_preserve_frozen_gateway_contract_and_cursor() {
+    let quote = json!({"amount":10,"amount_unit":"USD","payment_method":"alipay","provider":"epay_v1","payable_money":"71.23","currency":"CNY","credited_quota":"5000000","quota_unit":"new_api_quota","conversion_version":"a".repeat(64),"quote_version":"b".repeat(64),"fee_scope":"gateway_payable_total"});
+    round_trip::<CloudAccountTopupQuote>(quote.clone());
+    round_trip::<CloudAccountTopupOptionsResponse>(
+        json!({"options":[quote.clone()],"status":"available","unsupported_providers":["stripe"]}),
     );
-    let order = json!({
-        "id":"order-1", "status":"pending", "created_at":1800000000,
-        "payable":{"amount":"10.00","currency":"USD"}, "credit":{"amount":"5000000","unit":"new_api_quota"},
-        "checkout":{"kind":"url", "url":"https://pay.example/checkout/1"}
-    });
+    round_trip::<CloudAccountCreateTopupRequest>(
+        json!({"amount":10,"payment_method":"alipay","quote_version":"b".repeat(64),"idempotency_key":"stable-original-key"}),
+    );
+    for bad in [
+        r#"{"amount":10,"amount":20,"payment_method":"alipay"}"#,
+        r#"{"amount":"10","payment_method":"alipay"}"#,
+        r#"{"amount":10,"payment_method":"alipay","owner_id":"42"}"#,
+    ] {
+        assert!(serde_json::from_str::<CloudAccountTopupQuoteRequest>(bad).is_err());
+    }
+    let mut order = quote;
+    for (key,value) in json!({"order_id":"NATIVE1","owner_id":"42","status":"paid","created_at":100,"completed_at":200,"handoff_expires_at":150,"handoff_status":"expired","expiry_scope":"local_handoff_only"}).as_object().unwrap() { order[key] = value.clone(); }
     round_trip::<CloudAccountTopupOrder>(order.clone());
-    round_trip::<CloudAccountTopupOrdersResponse>(json!({"page":1,"page_size":20,"total":1,"items":[order]}));
-}
-
-#[test]
-fn provider_checkout_can_supply_a_qr_payload_without_a_url() {
-    round_trip::<CloudAccountTopupOrder>(json!({
-        "id":"order-qr", "status":"pending", "created_at":1800000000,
-        "payable":{"amount":"10.00","currency":"CNY"}, "credit":{"amount":"500000","unit":"new_api_quota"},
-        "checkout":{"kind":"qr", "payload":"provider-issued-payment-payload"}
-    }));
+    round_trip::<CloudAccountTopupOrdersResponse>(json!({"items":[order],"has_more":false,"next_before_id":7}));
+    assert!(serde_json::from_value::<CloudAccountTopupOrdersResponse>(json!({"items":[],"total":0,"page":1})).is_err());
 }

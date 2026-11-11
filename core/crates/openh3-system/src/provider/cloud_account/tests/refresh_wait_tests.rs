@@ -64,6 +64,24 @@ async fn gateway(State(f): State<Arc<RefreshGateway>>, request: Request) -> Json
             f.reads.lock().unwrap().push(auth);
             json!({"read_started_at":1,"as_of":1,"status":"available","completeness":"not_reconciled","items":[],"page":1,"page_size":20,"has_more":false})
         }
+        "/api/openh3/topup/options" => {
+            f.reads.lock().unwrap().push(auth);
+            json!({"options":[],"status":"unavailable","unsupported_providers":["stripe"]})
+        }
+        "/api/openh3/topup/quote" => {
+            f.reads.lock().unwrap().push(auth);
+            super::topup_tests::quote()
+        }
+        "/api/openh3/topup/create" => {
+            f.reads.lock().unwrap().push(auth);
+            let mut o = super::topup_tests::order("pending", "available", true);
+            o["owner_id"] = json!(format!("actor-{actor}"));
+            o
+        }
+        "/api/openh3/topup/orders" => {
+            f.reads.lock().unwrap().push(auth);
+            json!({"items":[],"has_more":false,"next_before_id":0})
+        }
         _ => panic!("unexpected fixture route"),
     };
     Json(json!({"success":true,"code":"ok","message":"ok","data":data}))
@@ -151,11 +169,42 @@ async fn queued_reads(replace: bool) {
         let owner = owner.clone();
         async move { svc.session(&owner).await }
     });
+    let topup = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move {
+            svc.topup_create(&owner,serde_json::from_value(json!({"amount":10,"payment_method":"alipay","quote_version":"b".repeat(64),"idempotency_key":"stable-original-key"})).unwrap()).await
+        }
+    });
+    let options = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.topup_options(&owner).await }
+    });
+    let quote = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move {
+            svc.topup_quote(
+                &owner,
+                serde_json::from_value(json!({"amount":10,"payment_method":"alipay"})).unwrap(),
+            )
+            .await
+        }
+    });
+    let orders = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move {
+            svc.topup_orders(&owner, serde_json::from_value(json!({})).unwrap())
+                .await
+        }
+    });
     let flight = svc.flights.lock().await.get(&owner).unwrap().clone();
     // The map, refresh holder and this observation own three handles.
-    // Four more prove every spawned call reached the held refresh
+    // Eight more prove every spawned call reached the held refresh
     // mutex, after its original SQL snapshot completed in usable().
-    while Arc::strong_count(&flight) != 7 {
+    while Arc::strong_count(&flight) != 11 {
         tokio::task::yield_now().await;
     }
     if replace {
@@ -186,6 +235,8 @@ async fn queued_reads(replace: bool) {
     let refreshed = refresh.await.unwrap();
     let (models, wallet, usage, session) = tokio::join!(models, wallet, usage, session);
     let (models, wallet, usage, session) = (models.unwrap(), wallet.unwrap(), usage.unwrap(), session.unwrap());
+    let (topup, options, quote, orders) = tokio::join!(topup, options, quote, orders);
+    let (topup, options, quote, orders) = (topup.unwrap(), options.unwrap(), quote.unwrap(), orders.unwrap());
     server.abort();
     let _ = server.await;
     assert_eq!(f.refreshes.load(Ordering::SeqCst), 1);
@@ -195,6 +246,10 @@ async fn queued_reads(replace: bool) {
         assert_eq!(wallet.unwrap_err(), CloudAccountError::Conflict);
         assert_eq!(usage.unwrap_err(), CloudAccountError::Conflict);
         assert_eq!(session.unwrap_err(), CloudAccountError::Conflict);
+        assert_eq!(topup.err().unwrap(), CloudAccountError::Conflict);
+        assert_eq!(options.unwrap_err(), CloudAccountError::Conflict);
+        assert_eq!(quote.unwrap_err(), CloudAccountError::Conflict);
+        assert_eq!(orders.err().unwrap(), CloudAccountError::Conflict);
         assert!(f.reads.lock().unwrap().is_empty());
         assert_eq!(*f.activated.lock().unwrap(), vec!["Bearer synthetic-access-0"]);
         let (state, models): (String, String) = sqlx::query_as(
@@ -215,7 +270,11 @@ async fn queued_reads(replace: bool) {
         wallet.unwrap();
         usage.unwrap();
         session.unwrap();
-        assert_eq!(*f.reads.lock().unwrap(), vec!["Bearer synthetic-rotated-A"; 3]);
+        topup.unwrap();
+        options.unwrap();
+        quote.unwrap();
+        orders.unwrap();
+        assert_eq!(*f.reads.lock().unwrap(), vec!["Bearer synthetic-rotated-A"; 7]);
         assert_eq!(*f.activated.lock().unwrap(), vec!["Bearer synthetic-access-0"]);
     }
 }
