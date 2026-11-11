@@ -6,6 +6,7 @@ use tokio::sync::Notify;
 const INITIALIZE: u8 = 1;
 const ADMIT: u8 = 2;
 const DISCONNECT: u8 = 3;
+const CATALOG: u8 = 4;
 
 /// Scheduling wrapper only; every operation still executes real SQLite SQL.
 struct RepositoryBarrier {
@@ -33,6 +34,18 @@ impl RepositoryBarrier {
 }
 #[async_trait::async_trait]
 impl ICloudAccountRepository for RepositoryBarrier {
+    async fn replace_catalog(&self, p: openh3_db::SaveCloudCatalog<'_>) -> std::result::Result<(), DbError> {
+        self.pause(CATALOG).await;
+        self.inner.replace_catalog(p).await
+    }
+    async fn model_allowed(
+        &self,
+        p: openh3_db::SaveCloudCatalog<'_>,
+        model: &str,
+        protocol: &str,
+    ) -> std::result::Result<bool, DbError> {
+        self.inner.model_allowed(p, model, protocol).await
+    }
     async fn load(&self, owner: &str, issuer: &str) -> std::result::Result<Option<CloudAccountRow>, DbError> {
         self.inner.load(owner, issuer).await
     }
@@ -62,6 +75,52 @@ impl ICloudAccountRepository for RepositoryBarrier {
     }
     async fn save_active(&self, p: SaveCloudAccount<'_>) -> std::result::Result<(), DbError> {
         self.inner.save_active(p).await
+    }
+}
+
+#[tokio::test]
+async fn catalog_write_after_replacement_cannot_admit_old_provider_or_modify_new_one() {
+    let server = MockServer::start().await;
+    let (db, repo, svc, owner) = fixture_with_barrier(server.uri(), 0).await;
+    for (route, value) in [
+        ("capabilities", capabilities()),
+        ("login", pending()),
+        ("activate", active()),
+        ("revoke", json!({"state":"revoked"})),
+    ] {
+        Mock::given(path(format!("/api/openh3/{route}")))
+            .respond_with(ok(value))
+            .mount(&server)
+            .await;
+    }
+    svc.login(&owner, login()).await.unwrap();
+    let old = svc.read(&owner).await.unwrap().unwrap();
+    Mock::given(path("/api/openh3/models"))
+        .respond_with(ok(super::billing_tests::catalog(vec![super::billing_tests::model(
+            "chat",
+            "ChatCompletions",
+        )])))
+        .mount(&server)
+        .await;
+    repo.armed.store(CATALOG, Ordering::SeqCst);
+    let read = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.models(&owner).await }
+    });
+    repo.wait().await;
+    svc.logout(&owner).await.unwrap();
+    svc.login(&owner, login()).await.unwrap();
+    let new = svc.read(&owner).await.unwrap().unwrap();
+    repo.release.notify_one();
+    assert_eq!(read.await.unwrap().unwrap_err(), CloudAccountError::Conflict);
+    for provider in [&old.provider_id, &new.provider_id] {
+        let models: String = sqlx::query_scalar("SELECT models FROM providers WHERE id=?")
+            .bind(provider)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(models, "[]");
     }
 }
 async fn fixture_with_barrier(

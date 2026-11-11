@@ -16,10 +16,24 @@ impl ManagedCredentialResolver for AccountCredentials {
             .await
             .map_err(|_| account_error())
     }
-    async fn resolve(&self, owner: &str, provider: &str) -> Result<ManagedCredentials, ProviderError> {
+    async fn resolve(
+        &self,
+        owner: &str,
+        provider: &str,
+        model: &str,
+        mode: aion_config::compat::OpenAiApiMode,
+    ) -> Result<ManagedCredentials, ProviderError> {
+        let protocol = match mode {
+            aion_config::compat::OpenAiApiMode::ChatCompletions => "ChatCompletions",
+            aion_config::compat::OpenAiApiMode::Responses => "Responses",
+        };
         let credentials = self
             .0
             .inference_credentials(owner, provider)
+            .await
+            .map_err(|_| account_error())?;
+        self.0
+            .authorize_model(owner, provider, model, protocol)
             .await
             .map_err(|_| account_error())?;
         Ok(ManagedCredentials::new(

@@ -50,6 +50,9 @@ pub enum ModelImageInputCapability {
 /// Missing values retain automatic capability and protocol resolution.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModelSettings {
+    /// Service-owned verification for managed accounts; ignored for BYOK.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supports_tools: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image_input: Option<ModelImageInputCapability>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

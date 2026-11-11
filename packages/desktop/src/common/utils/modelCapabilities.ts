@@ -104,6 +104,12 @@ export const hasSpecificModelCapability = (
   modelName: string,
   type: ModelType
 ): boolean | undefined => {
+  if (_platformModel.managed_by === 'cloud_account') {
+    if (!_platformModel.models?.includes(modelName)) return false;
+    if (type === 'text') return true;
+    if (type === 'function_calling') return _platformModel.model_settings?.[modelName]?.supports_tools === true;
+    return false;
+  }
   const baseModelName = getBaseModelName(modelName);
   const exclusions = CAPABILITY_EXCLUSIONS[type];
   const pattern = CAPABILITY_PATTERNS[type];

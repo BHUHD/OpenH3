@@ -24,7 +24,13 @@ impl ManagedCredentials {
 #[async_trait::async_trait]
 pub trait ManagedCredentialResolver: Send + Sync {
     async fn subscribe(&self, owner: &str, provider: &str) -> Result<watch::Receiver<bool>, ProviderError>;
-    async fn resolve(&self, owner: &str, provider: &str) -> Result<ManagedCredentials, ProviderError>;
+    async fn resolve(
+        &self,
+        owner: &str,
+        provider: &str,
+        model: &str,
+        mode: OpenAiApiMode,
+    ) -> Result<ManagedCredentials, ProviderError>;
 }
 
 /// Shared by the parent engine and native child agents. Its identity/model is immutable.
@@ -87,7 +93,7 @@ impl LlmProvider for ManagedProvider {
         let credentials = tokio::select! {
             biased;
             _ = self.cancelled() => return Err(cancelled_error()),
-            result = self.resolver.resolve(&self.owner, &self.provider) => result?,
+            result = self.resolver.resolve(&self.owner, &self.provider, &self.model, self.mode) => result?,
         };
         let provider = OpenAIProvider::new_managed(
             &credentials.key,

@@ -71,12 +71,24 @@ impl Gateway {
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse::<u64>().ok())
             .map(|v| v.min(86400));
-        if response.content_length().is_some_and(|n| n > 65536) {
+        // Finite practical success limits, not a promise to fit every admin
+        // configuration. Credentials and all error bodies remain at 64 KiB.
+        let limit = if status == 200 {
+            match path {
+                "models" => 8 * 1024 * 1024,
+                "wallet" => 512 * 1024,
+                "usage" => 2 * 1024 * 1024,
+                _ => 65536,
+            }
+        } else {
+            65536
+        };
+        if response.content_length().is_some_and(|n| n > limit as u64) {
             return Err(Error::Protocol);
         }
         let mut bytes = Vec::new();
         while let Some(chunk) = response.chunk().await.map_err(|_| Error::Transport)? {
-            if bytes.len() + chunk.len() > 65536 {
+            if bytes.len() + chunk.len() > limit {
                 return Err(Error::Protocol);
             }
             bytes.extend_from_slice(&chunk);

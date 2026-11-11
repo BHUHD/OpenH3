@@ -206,6 +206,7 @@ async fn aionrs_factory_respects_use_model_override() {
 struct AccountResolver {
     endpoint: String,
     lifetime: tokio::sync::watch::Sender<bool>,
+    mode: aion_config::compat::OpenAiApiMode,
 }
 #[async_trait::async_trait]
 impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
@@ -222,9 +223,13 @@ impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
         &self,
         owner: &str,
         provider: &str,
+        model: &str,
+        mode: aion_config::compat::OpenAiApiMode,
     ) -> Result<openh3_ai_agent::managed::ManagedCredentials, openh3_ai_agent::managed::ProviderError> {
         assert_eq!(owner, TEST_USER_ID);
         assert_eq!(provider, "managed-factory");
+        assert_eq!(model, "gpt-5.4");
+        assert_eq!(mode, self.mode);
         Ok(openh3_ai_agent::managed::ManagedCredentials::new(
             self.endpoint.clone(),
             "synthetic-managed-factory".into(),
@@ -234,107 +239,133 @@ impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
 
 #[tokio::test]
 async fn managed_factory_requires_verified_row_and_preserves_actual_selected_model() {
+    use aion_config::compat::OpenAiApiMode;
     use axum::{Json, Router, http::HeaderMap, routing::post};
-    let requests = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let app = Router::new().route(
-        "/v1/chat/completions",
-        post({
-            let requests = requests.clone();
-            move |headers: HeaderMap, Json(body): Json<serde_json::Value>| {
-                requests.lock().unwrap().push((headers, body));
-                async {
-                    (
-                        [("content-type", "text/event-stream")],
-                        "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n",
-                    )
+    for (mode, stored_mode, path, stream) in [
+        (
+            OpenAiApiMode::ChatCompletions,
+            "chat_completions",
+            "/v1/chat/completions",
+            "data: {\"choices\":[{\"delta\":{\"content\":\"OK\"},\"finish_reason\":\"stop\"}]}\n\n",
+        ),
+        (
+            OpenAiApiMode::Responses,
+            "responses",
+            "/v1/responses",
+            "data: {\"type\":\"response.output_text.delta\",\"delta\":\"OK\"}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"status\":\"completed\",\"output\":[],\"usage\":{\"input_tokens\":1,\"output_tokens\":1}}}\n\n",
+        ),
+    ] {
+        let requests = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let app = Router::new().route(
+            path,
+            post({
+                let requests = requests.clone();
+                move |headers: HeaderMap, Json(body): Json<serde_json::Value>| {
+                    requests.lock().unwrap().push((headers, body));
+                    async move { ([("content-type", "text/event-stream")], stream) }
                 }
-            }
-        }),
-    );
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
-    let (repo, registry, sessions, db) = setup().await;
-    insert_test_provider(&*repo, "managed-factory", "new-api").await;
-    sqlx::query("UPDATE providers SET managed_by='cloud_account', api_key_encrypted='must not decrypt', base_url='http://127.0.0.1:1' WHERE id='managed-factory'").execute(db.pool()).await.unwrap();
-    let resolver = Arc::new(AccountResolver {
-        endpoint,
-        lifetime: tokio::sync::watch::channel(false).0,
-    });
-    let factory = make_factory(repo.clone(), registry.clone(), sessions.clone(), Some(resolver));
-    let dir = tempfile::tempdir().unwrap();
-    let options = || {
-        make_aionrs_options(
-            &format!("managed-{}", uuid::Uuid::now_v7()),
-            dir.path().to_str().unwrap(),
-            ProviderWithModel {
-                provider_id: "managed-factory".into(),
-                model: "gpt-4o".into(),
-                use_model: Some("gpt-5.4".into()),
-            },
-            Default::default(),
-        )
-    };
-    assert!(
-        factory(options())
+            }),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let (repo, registry, sessions, db) = setup().await;
+        insert_test_provider(&*repo, "managed-factory", "new-api").await;
+        sqlx::query("UPDATE providers SET managed_by='cloud_account', api_key_encrypted='must not decrypt', base_url='http://127.0.0.1:1' WHERE id='managed-factory'").execute(db.pool()).await.unwrap();
+        let resolver = Arc::new(AccountResolver {
+            endpoint,
+            lifetime: tokio::sync::watch::channel(false).0,
+            mode,
+        });
+        let factory = make_factory(repo.clone(), registry.clone(), sessions.clone(), Some(resolver));
+        let dir = tempfile::tempdir().unwrap();
+        let options = |use_model| {
+            make_aionrs_options(
+                &format!("managed-{}", uuid::Uuid::now_v7()),
+                dir.path().to_str().unwrap(),
+                ProviderWithModel {
+                    provider_id: "managed-factory".into(),
+                    model: "gpt-5.4".into(),
+                    use_model,
+                },
+                Default::default(),
+            )
+        };
+        // Even redirecting to the same admitted ID is forbidden for managed rows.
+        assert!(
+            factory(options(Some("gpt-5.4".into())))
+                .await
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("selection is unavailable")
+        );
+        assert!(
+            factory(options(None))
+                .await
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("protocol is unverified")
+        );
+        sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
+            .bind(r#"{"gpt-5.4":{"openaiApiMode":"chat_completions"}}"#)
+            .execute(db.pool())
             .await
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("protocol is unverified")
-    );
-    sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
-        .bind(r#"{"gpt-5.4":{"openaiApiMode":"chat_completions"}}"#)
-        .execute(db.pool())
-        .await
-        .unwrap();
-    // Persisted API types use snake_case; a misspelled catalog field must fail closed.
-    assert!(factory(options()).await.is_err());
-    sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
-        .bind(r#"{"gpt-5.4":{"openai_api_mode":"chat_completions"}}"#)
-        .execute(db.pool())
-        .await
-        .unwrap();
-    let missing = make_factory(repo, registry, sessions, None);
-    assert!(
-        missing(options())
+            .unwrap();
+        // Persisted API types use snake_case; a misspelled catalog field must fail closed.
+        assert!(factory(options(None)).await.is_err());
+        sqlx::query("UPDATE providers SET model_settings=? WHERE id='managed-factory'")
+            .bind(serde_json::json!({"gpt-5.4":{"openai_api_mode":stored_mode}}).to_string())
+            .execute(db.pool())
             .await
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("resolver unavailable")
-    );
-    sqlx::query("UPDATE providers SET models='[]' WHERE id='managed-factory'")
-        .execute(db.pool())
-        .await
-        .unwrap();
-    assert!(
-        factory(options())
+            .unwrap();
+        let missing = make_factory(repo, registry, sessions, None);
+        assert!(
+            missing(options(None))
+                .await
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("resolver unavailable")
+        );
+        sqlx::query("UPDATE providers SET models='[]' WHERE id='managed-factory'")
+            .execute(db.pool())
             .await
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("selection is unavailable")
-    );
-    assert!(requests.lock().unwrap().is_empty());
-    sqlx::query("UPDATE providers SET models='[\"gpt-5.4\"]' WHERE id='managed-factory'")
-        .execute(db.pool())
-        .await
-        .unwrap();
-    let agent = factory(options()).await.unwrap();
-    agent
-        .send_message(openh3_ai_agent::types::SendMessageData {
-            content: "Reply OK".into(),
-            msg_id: "factory-message".into(),
-            turn_id: None,
-            files: vec![],
-            inject_skills: vec![],
-        })
-        .await
-        .unwrap();
-    let calls = requests.lock().unwrap();
-    assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0].0["authorization"], "Bearer synthetic-managed-factory");
-    assert_eq!(calls[0].1["model"], "gpt-5.4");
-    server.abort();
+            .unwrap();
+        assert!(
+            factory(options(None))
+                .await
+                .err()
+                .unwrap()
+                .to_string()
+                .contains("selection is unavailable")
+        );
+        assert!(requests.lock().unwrap().is_empty());
+        sqlx::query("UPDATE providers SET models='[\"gpt-5.4\"]' WHERE id='managed-factory'")
+            .execute(db.pool())
+            .await
+            .unwrap();
+        let agent = factory(options(None)).await.unwrap();
+        agent
+            .send_message(openh3_ai_agent::types::SendMessageData {
+                content: "Reply OK".into(),
+                msg_id: "factory-message".into(),
+                turn_id: None,
+                files: vec![],
+                inject_skills: vec![],
+            })
+            .await
+            .unwrap();
+        let calls = requests.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0["authorization"], "Bearer synthetic-managed-factory");
+        assert_eq!(calls[0].1["model"], "gpt-5.4");
+        assert_eq!(calls[0].1.get("input").is_some(), mode == OpenAiApiMode::Responses);
+        assert_eq!(
+            calls[0].1.get("messages").is_some(),
+            mode == OpenAiApiMode::ChatCompletions
+        );
+        server.abort();
+    }
 }

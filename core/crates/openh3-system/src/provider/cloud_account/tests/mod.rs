@@ -1,4 +1,5 @@
 use super::*;
+mod billing_tests;
 mod http;
 mod lifetime_tests;
 #[path = "race_tests.rs"]

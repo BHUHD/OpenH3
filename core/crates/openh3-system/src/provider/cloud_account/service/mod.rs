@@ -22,6 +22,7 @@ pub struct CloudAccountService {
     enabled: bool,
     pub(super) flows: Mutex<HashMap<String, LocalFlow>>,
     flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    pub(super) catalog_flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     ceremonies: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     pub(super) lifetimes: Mutex<HashMap<(String, i64), tokio::sync::watch::Sender<bool>>>,
 }
@@ -67,6 +68,7 @@ impl CloudAccountService {
             enabled: config.enabled,
             flows: Mutex::new(HashMap::new()),
             flights: Mutex::new(HashMap::new()),
+            catalog_flights: Mutex::new(HashMap::new()),
             ceremonies: Mutex::new(HashMap::new()),
             lifetimes: Mutex::new(HashMap::new()),
         })
@@ -461,3 +463,6 @@ fn validate_credentials(c: &Credentials) -> Result<()> {
     }
     Ok(())
 }
+
+mod billing;
+mod validation;

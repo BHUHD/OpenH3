@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createServer } from 'node:http';
+import { hasSpecificModelCapability } from '@/common/utils/modelCapabilities';
+import type { IProvider } from '@/common/config/storage';
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
 import {
   cloudOperation,
@@ -14,6 +17,117 @@ afterEach(() => {
 });
 
 describe('native account transport', () => {
+  it('uses explicit official capabilities while preserving BYOK name matching', () => {
+    const official = {
+      managed_by: 'cloud_account',
+      models: ['gpt-4o', 'plain-id'],
+      model_settings: { 'gpt-4o': { supports_tools: false }, 'plain-id': { supports_tools: true } },
+    } as unknown as IProvider;
+    expect(hasSpecificModelCapability(official, 'gpt-4o', 'vision')).toBe(false);
+    expect(hasSpecificModelCapability(official, 'gpt-4o', 'function_calling')).toBe(false);
+    expect(hasSpecificModelCapability(official, 'plain-id', 'function_calling')).toBe(true);
+    expect(hasSpecificModelCapability(official, 'unverified', 'text')).toBe(false);
+    expect(hasSpecificModelCapability({} as IProvider, 'gpt-4o', 'vision')).toBe(true);
+  });
+  it('reads a legitimate large catalog over loopback and bounds declared, chunked and error bodies', async () => {
+    for (const variant of ['large', 'declared', 'chunked', 'error'] as const) {
+      let calls = 0;
+      const server = createServer((request, response) => {
+        calls++;
+        expect(request.method).toBe('GET');
+        expect(request.url).toBe('/api/cloud-account/models');
+        expect(request.headers['x-openh3-cloud-capability']).toBe('synthetic-capability');
+        if (variant === 'declared') {
+          response.writeHead(200, { 'content-length': String(8 * 1024 * 1024 + 1) });
+          response.flushHeaders();
+          return;
+        }
+        const payload = JSON.stringify(
+          variant === 'error'
+            ? { code: 'CLOUD_AUTH_REQUIRED', error: 'x'.repeat(70000) }
+            : {
+                success: true,
+                data: {
+                  status: 'available',
+                  models: [
+                    {
+                      model_id: 'verified-model',
+                      display_name: 'Verified',
+                      provider: 'Loopback',
+                      purpose: 'text',
+                      protocol: 'ChatCompletions',
+                      input_capabilities: ['text'],
+                      supports_tools: true,
+                      context_limit: 4096,
+                      max_output_tokens: 64,
+                      compatibility_version: 'fixture-v1',
+                      evidence: 'x'.repeat(variant === 'large' ? 100000 : 8 * 1024 * 1024),
+                      quotes: [
+                        {
+                          group: 'default',
+                          kind: 'request',
+                          unit: 'USD_per_request',
+                          group_ratio: '1',
+                          cache_write_mode: 'none',
+                          version: 'v1',
+                          quota_per_usd: '500000',
+                          per_request: '0',
+                        },
+                      ],
+                    },
+                  ],
+                  quote_semantics: 'observed_rules_not_frozen_final_charge',
+                },
+              }
+        );
+        response.writeHead(variant === 'error' ? 401 : 200, { 'content-type': 'application/json' });
+        response.write(payload.slice(0, 50000));
+        response.end(payload.slice(50000));
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('Missing test listener');
+      try {
+        const client = createCloudAccountClient(() => address.port, 'synthetic-capability');
+        const result = await client({ operation: 'models' });
+        expect(result.success).toBe(variant === 'large');
+        if (!result.success) expect(result.code).toBe('CLOUD_TRANSPORT');
+        expect(calls).toBe(1);
+      } finally {
+        server.closeAllConnections();
+        await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+      }
+    }
+  });
+  it('admits only bounded typed billing reads using fixed operations', () => {
+    expect(cloudOperation({ operation: 'wallet' })).toEqual({ method: 'GET', path: 'wallet' });
+    expect(cloudOperation({ operation: 'models' })).toEqual({ method: 'GET', path: 'models' });
+    expect(
+      cloudOperation({
+        operation: 'usage',
+        input: { page: 2, page_size: 100, start_time: 1, end_time: 2, model: 'm', device_id: 'd' },
+      })
+    ).toEqual({
+      method: 'POST',
+      path: 'usage',
+      body: '{"page":2,"page_size":100,"start_time":1,"end_time":2,"model":"m","device_id":"d"}',
+    });
+    for (const input of [
+      { page: '1' },
+      { page: 0 },
+      { page: 1000001 },
+      { page: 1.5 },
+      { page_size: 101 },
+      { start_time: -1 },
+      { start_time: 2, end_time: 1 },
+      { model: '模'.repeat(86) },
+      { device_id: 'd'.repeat(65) },
+      { headers: {} },
+      { page: null },
+    ]) {
+      expect(cloudOperation({ operation: 'usage', input })).toBeNull();
+    }
+  });
   it('does not proceed past local-auth bootstrap rejection even with a cookie', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       new Response('{"code":"LOCAL_AUTH_REQUIRED"}', {
@@ -104,7 +218,7 @@ describe('native account transport', () => {
     for (const request of [
       null,
       { operation: '__proto__' },
-      { operation: 'wallet' },
+      { operation: 'wallet', input: { owner: 'other' } },
       { operation: 'session', headers: {} },
       { operation: 'login', input: { owner: 'other' } },
       { operation: 'login', input: { password: {} } },

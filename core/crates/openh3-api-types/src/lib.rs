@@ -92,19 +92,19 @@ pub use channel::{
 };
 pub use chat_file::ChatFileRef;
 pub use cloud_account::{
-    CloudAccountAllowance, CloudAccountAntiBot, CloudAccountAvailability, CloudAccountCapabilitiesResponse,
-    CloudAccountCheckout, CloudAccountCreateTopupRequest, CloudAccountDevice, CloudAccountDeviceStatus,
+    CloudAccountAntiBot, CloudAccountAvailability, CloudAccountCapabilitiesResponse, CloudAccountCheckout,
+    CloudAccountConditionalSurcharge, CloudAccountCreateTopupRequest, CloudAccountDevice, CloudAccountDeviceStatus,
     CloudAccountDevicesResponse, CloudAccountEmailCodePurpose, CloudAccountEmailCodeRequest, CloudAccountLoginRequest,
-    CloudAccountLogoutResponse, CloudAccountModel, CloudAccountModelPrice, CloudAccountModelsResponse,
-    CloudAccountMoney, CloudAccountPageQuery, CloudAccountPasswordResetCompleteRequest,
-    CloudAccountPasswordResetCompleteResponse, CloudAccountPasswordResetRequest, CloudAccountPasswordResetResponse,
-    CloudAccountProfile, CloudAccountQuota, CloudAccountRate, CloudAccountRegisterRequest,
-    CloudAccountRegisterResponse, CloudAccountRemoteRevocation, CloudAccountRevokeDeviceRequest,
-    CloudAccountRevokeDeviceResponse, CloudAccountSessionResponse, CloudAccountSubscription, CloudAccountSubscriptions,
-    CloudAccountTopupOption, CloudAccountTopupOptionsResponse, CloudAccountTopupOrder, CloudAccountTopupOrdersResponse,
-    CloudAccountTopupStatus, CloudAccountUsage, CloudAccountUsageQuantity, CloudAccountUsageResponse,
-    CloudAccountVerification, CloudAccountVerificationMethod, CloudAccountVerificationPurpose,
-    CloudAccountVerifyRequest, CloudAccountVerifyResponse, CloudAccountWalletBalance, CloudAccountWalletResponse,
+    CloudAccountLogoutResponse, CloudAccountModel, CloudAccountModelsResponse, CloudAccountMoney,
+    CloudAccountPageQuery, CloudAccountPasswordResetCompleteRequest, CloudAccountPasswordResetCompleteResponse,
+    CloudAccountPasswordResetRequest, CloudAccountPasswordResetResponse, CloudAccountPriceQuote, CloudAccountProfile,
+    CloudAccountQuota, CloudAccountQuotaView, CloudAccountRegisterRequest, CloudAccountRegisterResponse,
+    CloudAccountRemoteRevocation, CloudAccountRevokeDeviceRequest, CloudAccountRevokeDeviceResponse,
+    CloudAccountSessionResponse, CloudAccountSubscription, CloudAccountSubscriptions, CloudAccountTopupOption,
+    CloudAccountTopupOptionsResponse, CloudAccountTopupOrder, CloudAccountTopupOrdersResponse, CloudAccountTopupStatus,
+    CloudAccountUsage, CloudAccountUsageQuery, CloudAccountUsageResponse, CloudAccountVerification,
+    CloudAccountVerificationMethod, CloudAccountVerificationPurpose, CloudAccountVerifyRequest,
+    CloudAccountVerifyResponse, CloudAccountWalletResponse,
 };
 pub use confirmation::{ApprovalCheckQuery, ApprovalCheckResponse, ConfirmRequest, ConfirmationListResponse};
 pub use connection_test::TestBedrockConnectionRequest;

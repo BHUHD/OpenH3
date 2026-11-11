@@ -106,3 +106,6 @@ pub(super) struct Device {
     #[serde(rename = "ip")]
     pub _ip: String,
 }
+
+mod billing;
+pub(super) use billing::*;

@@ -36,6 +36,8 @@ struct Gateway {
     closed: Notify,
     revoke_started: Notify,
     release_revoke: Notify,
+    responses: AtomicBool,
+    withdrawn: AtomicBool,
 }
 struct Silent(Arc<Gateway>);
 impl futures_util::Stream for Silent {
@@ -72,6 +74,15 @@ async fn gateway(State(state): State<Arc<Gateway>>, request: Request) -> Respons
     let bytes = axum::body::to_bytes(request.into_body(), 1024 * 1024).await.unwrap();
     let body: Value = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
     if path.starts_with("/v1/") {
+        if state.responses.load(Ordering::SeqCst) {
+            assert_eq!(path, "/v1/responses");
+            assert!(body.get("input").is_some());
+            assert!(body.get("messages").is_none());
+        } else {
+            assert_eq!(path, "/v1/chat/completions");
+            assert!(body.get("messages").is_some());
+            assert!(body.get("input").is_none());
+        }
         state.calls.lock().unwrap().push((auth, body));
         state.opened.notify_one();
         if state.silent.load(Ordering::SeqCst) {
@@ -101,6 +112,21 @@ async fn gateway(State(state): State<Arc<Gateway>>, request: Request) -> Respons
         "/api/openh3/token" => {
             state.refreshes.fetch_add(1, Ordering::SeqCst);
             json!({"credentials":credentials()})
+        }
+        "/api/openh3/models" => {
+            let protocol = if state.responses.load(Ordering::SeqCst) {
+                "Responses"
+            } else {
+                "ChatCompletions"
+            };
+            let models = if state.withdrawn.load(Ordering::SeqCst) {
+                vec![]
+            } else {
+                vec![
+                    json!({"model_id":"verified-model","display_name":"Verified","provider":"Loopback","purpose":"text","protocol":protocol,"input_capabilities":["text"],"supports_tools":false,"context_limit":4096,"max_output_tokens":64,"compatibility_version":"fixture-v1","evidence":"loopback-only","quotes":[{"group":"default","kind":"request","unit":"USD_per_request","group_ratio":"1","cache_write_mode":"none","version":"v1","quota_per_usd":"500000","per_request":"0"}]}),
+                ]
+            };
+            json!({"status":"available","quote_semantics":"observed_rules_not_frozen_final_charge","models":models})
         }
         "/api/openh3/revoke" => {
             state.revoke_started.notify_one();
@@ -153,6 +179,7 @@ async fn login(service: &CloudAccountService, owner: &str) {
         )
         .await
         .unwrap();
+    service.models(owner).await.unwrap();
 }
 async fn wait(notify: &Notify) {
     tokio::time::timeout(Duration::from_secs(5), notify.notified())
@@ -164,6 +191,9 @@ async fn wait(notify: &Notify) {
 async fn real_account_refresh_logout_closes_silent_socket_before_revoke_and_never_adopts_replacement() {
     for mode in [OpenAiApiMode::ChatCompletions, OpenAiApiMode::Responses] {
         let state = Arc::new(Gateway::default());
+        state
+            .responses
+            .store(mode == OpenAiApiMode::Responses, Ordering::SeqCst);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let endpoint = format!("http://{}", listener.local_addr().unwrap());
         let app = Router::new().route("/{*path}", any(gateway)).with_state(state.clone());
@@ -217,6 +247,15 @@ async fn real_account_refresh_logout_closes_silent_socket_before_revoke_and_neve
         );
         manager.send_message(message()).await.unwrap();
         wait(&state.opened).await;
+        // This engine retains its old model and mode. A locally observed
+        // withdrawal must block its next invocation before HTTP is emitted.
+        state.withdrawn.store(true, Ordering::SeqCst);
+        service.models(&owner).await.unwrap();
+        let error = manager.send_message(message()).await.unwrap_err();
+        assert!(format!("{error:?}").contains("Managed account authentication required"));
+        assert_eq!(state.calls.lock().unwrap().len(), 1);
+        state.withdrawn.store(false, Ordering::SeqCst);
+        service.models(&owner).await.unwrap();
         let encrypted: String = sqlx::query_scalar("SELECT encrypted FROM cloud_accounts WHERE owner=?")
             .bind(&owner)
             .fetch_one(db.pool())

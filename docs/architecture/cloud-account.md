@@ -60,7 +60,7 @@ Unix seconds. Types below have the `CloudAccount` prefix in Rust.
 | `POST /logout`                  | Empty JSON object              | `LogoutResponse`                |
 | `GET /wallet`                   | None                           | `WalletResponse`                |
 | `GET /models`                   | None                           | `ModelsResponse`                |
-| `GET /usage`                    | `PageQuery`                    | `UsageResponse`                 |
+| `POST /usage`                   | `UsageQuery` (JSON filter)     | `UsageResponse`                 |
 | `GET /devices`                  | None                           | `DevicesResponse`               |
 | `POST /devices/revoke`          | `RevokeDeviceRequest`          | `RevokeDeviceResponse`          |
 | `GET /topup/options`            | None                           | `TopupOptionsResponse`          |
@@ -125,8 +125,10 @@ encryption policy is handled privately by Core rather than exposed to the UI.
 
 `PageQuery` uses `page` and `page_size`, defaulting to 1 and 20. Routes must reject
 `page < 1` and `page_size` outside 1–100 before remote I/O; Rust unsigned fields
-alone do not enforce these bounds. Responses use `page`, `page_size`, `total`
-and `items`. There are no invented opaque cursors. Order IDs and device IDs are
+alone do not enforce these bounds. The native usage read additionally caps page
+at 1,000,000 and validates ordered nonnegative Unix times plus model/device byte
+bounds. Usage responses use `page`, `page_size`, `has_more` and `items`, without
+`total`; the earlier order contract remains pending implementation. There are no invented opaque cursors. Order IDs and device IDs are
 opaque remote identifiers; every lookup/revocation must check authenticated
 account ownership, including a request to revoke the current device.
 
@@ -153,19 +155,19 @@ retain that time when serving a cached value, so the UI can identify stale data.
   `limited {amount}`, `unlimited` or `unavailable`. An unlimited device token does
   not imply unlimited wallet funds. This field is not a maximum device count.
 
-`ModelPrice` is `rates`, `expression`, `description` or `unavailable`. Rates carry
-a server-provided monetary price and per-quantity unit. Expression text and its
-server-provided description are display-only. Request-dependent, plugin and
-tiered pricing must not be flattened into a fictitious fixed input/output pair.
-The description must retain applicable group/context caveats. Model availability
-is filtered for the authenticated account by the server.
+Catalog models retain verification evidence, protocol, text/tools capabilities,
+context/output limits and ordered per-group quotes. Quotes preserve token,
+request and dynamic-expression pricing fields, group ratio, quota conversion,
+cache write semantics and disclosed surcharges. Expression text is display-only.
+The exact current installed contract and its supported intersection are described
+below under Implemented account transport.
 
-The usage endpoint exposes settled consumption records only. Pending charges
-are unavailable unless a future gateway source supplies reliable pending state;
-the adapter must never fabricate pending records. Usage records contain the
-settled server charge and only quantities actually present in the record.
-No raw log `other` payload, provider secrets or admin-only
-metadata crosses the local API.
+Usage exposes consume and refund log observations with original debit/credit
+direction and nullable quota. They are explicitly not reconciled; unavailable
+logging and unsupported log databases remain unavailable. No pending charge,
+final settlement watermark, lifetime spend or task association is fabricated.
+No raw log other payload, provider secrets or admin-only metadata crosses the
+local API.
 
 Topup options contain an opaque server option ID, payment method, payable money
 and credited quota. Creation accepts only that option ID and an idempotency key;
@@ -263,9 +265,13 @@ URLs. Audit financial transitions through existing gateway billing observability
 
 ## Implemented account transport
 
-Core exposes only capabilities, session, me, devices, email-code, register, login,
+Core exposes capabilities, session, me, devices, email-code, register, login,
 auth/verify, password/reset, password/reset/complete, logout and devices/revoke
-under /api/cloud-account. Billing, wallet, model and topup paths are not installed.
+under /api/cloud-account. Authenticated billing observations additionally expose
+GET wallet, GET models and POST usage (a bounded typed filter body); topup paths
+remain pending. The billing adapter follows gateway commit
+`dacf661fc0bbb78bca4b2b45c3e9e7b51079d938`, specifically
+`model/native_billing_reads.go` and `service/native_model_catalog.go`.
 Requests use the public DTOs and ApiResponse/ErrorResponse; JSON is capped at
 16 KiB, unknown fields and queries are rejected, and every response is no-store.
 Local-auth, cloud-auth, verification, policy, rate-limit and transport failures have
@@ -273,6 +279,32 @@ distinct fixed codes. Rate-limit responses retain Retry-After. Neither transport
 replays cloud operations after a 401. Polling reads do not consume the per-user
 sensitive-action budget. Logout also bypasses that budget so failed attempts
 cannot prevent local disconnect.
+
+Wallet and usage timestamps are original observation times, not settlement
+watermarks. Signed quota strings, unavailable reasons, subscription reset state,
+refund direction, nullable usage quota, exact token strings and pagination
+`has_more` survive unchanged. Usage is `not_reconciled`; it has no total or
+inferred lifetime spend. Only known funding fields cross the boundary.
+
+Catalog prices preserve ordered per-group quotes, expression semantics/version,
+cache rates/modes and all disclosed surcharges. They describe observed rules,
+never a frozen final charge. The supported selection intersection uses exact
+model IDs with one verified protocol per ID; IDs verified for both protocols are
+shown with `ambiguous_model_protocol` and neither variant is admitted. Official
+capabilities use verified text/tools data, with no model-name heuristics. Each
+managed invocation checks its immutable model and protocol against the current
+local admission, including reused engines. The gateway independently rechecks
+every inference. Catalog replacement is serialized per owner and SQL CAS binds
+owner, issuer, generation, subject and provider. Unavailable, malformed or failed
+reads remove local admission without affecting a replacement account or BYOK.
+
+Both HTTP hops use finite success-body limits: models 8 MiB, wallet 512 KiB and
+usage 2 MiB; credentials and every error remain capped at 64 KiB. Declared and
+streamed sizes are checked, redirects are disabled, and requests have deadlines
+without retries. These are practical client limits, not support for every
+administrator configuration: oversized responses fail with sanitized protocol or
+transport errors without truncation. The client also bounds each evidence field
+to 1 MiB and each expression to the gateway's 65,536-byte limit.
 
 Configuration is read once at process bootstrap and can be injected as typed
 CloudAccountTransportConfig in tests. OPENH3_CLOUD_ACCOUNT_ENABLED=1 opts in;

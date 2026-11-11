@@ -158,6 +158,7 @@ pub(super) async fn build(
             .map_err(|_| AgentError::bad_request("Invalid managed model permissions"))?
             .unwrap_or_default();
         if row.managed_by.as_deref() != Some("cloud_account")
+            || model.use_model.is_some()
             || !row.enabled
             || !models.contains(&model_id)
             || enabled.get(&model_id) == Some(&false)

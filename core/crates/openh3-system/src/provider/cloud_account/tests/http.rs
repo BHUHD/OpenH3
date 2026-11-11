@@ -49,6 +49,111 @@ const CSRF: [(&str, &str); 3] = [
 ];
 
 #[tokio::test]
+async fn guarded_billing_reads_reject_ambiguous_filters_before_gateway_io() {
+    let (app, server, _db, _) = router(true).await;
+    for (method, path) in [("GET", "/usage"), ("POST", "/wallet"), ("POST", "/models")] {
+        response(
+            &app,
+            request(method, path, "{}", &[CAP, CSRF[0], CSRF[1], CSRF[2]]),
+            StatusCode::METHOD_NOT_ALLOWED,
+        )
+        .await;
+    }
+    for body in [
+        r#"{"page":1,"page":2}"#,
+        r#"{"page":null}"#,
+        r#"{"page":"1"}"#,
+        r#"{"start_time":-1}"#,
+        r#"{"start_time":2,"end_time":1}"#,
+        r#"{"owner":"other"}"#,
+        r#"{"model":{}}"#,
+    ] {
+        let result = response(
+            &app,
+            request("POST", "/usage", body, &[CAP, CSRF[0], CSRF[1], CSRF[2]]),
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
+        assert_eq!(result["code"], "CLOUD_INPUT_INVALID");
+    }
+    for path in ["/wallet?x=1", "/models?x=1", "/usage?x=1"] {
+        response(
+            &app,
+            request(
+                if path.starts_with("/usage") { "POST" } else { "GET" },
+                path,
+                "",
+                &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+            ),
+            StatusCode::BAD_REQUEST,
+        )
+        .await;
+    }
+    assert!(server.received_requests().await.unwrap().is_empty());
+    for path in ["/wallet", "/models"] {
+        response(&app, request("GET", path, "", &[]), StatusCode::UNAUTHORIZED).await;
+    }
+    response(
+        &app,
+        request("POST", "/usage", "{}", &[CAP, CSRF[0]]),
+        StatusCode::FORBIDDEN,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn authenticated_local_billing_routes_use_actual_gateway_contracts() {
+    let (app, server, _, _) = router(true).await;
+    mount_login(&server).await;
+    Mock::given(path("/api/openh3/activate"))
+        .respond_with(ok(active()))
+        .mount(&server)
+        .await;
+    response(
+        &app,
+        request(
+            "POST",
+            "/login",
+            r#"{"username":"alice","password":"fixture-password"}"#,
+            &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+        ),
+        StatusCode::OK,
+    )
+    .await;
+    let wallet = json!({"read_started_at":1,"as_of":1,"wallet_balance":{"status":"unavailable","reason":"batch_updates_enabled"},"device_limit":{"status":"unlimited"},"billing_preference":"wallet_only","subscriptions":{"status":"available","items":[]}});
+    let usage = json!({"read_started_at":1,"as_of":1,"status":"unavailable","reason":"consume_logging_disabled","completeness":"not_reconciled","items":null,"page":1,"page_size":20,"has_more":false});
+    for (method_name, suffix, data) in [
+        ("GET", "/wallet", wallet),
+        (
+            "GET",
+            "/models",
+            super::billing_tests::catalog(vec![super::billing_tests::model("chat", "ChatCompletions")]),
+        ),
+        ("POST", "/usage", usage),
+    ] {
+        Mock::given(method(method_name))
+            .and(path(format!("/api/openh3{suffix}")))
+            .respond_with(ok(data.clone()))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let output = response(
+            &app,
+            request(
+                method_name,
+                suffix,
+                if method_name == "POST" { "{}" } else { "" },
+                &[CAP, CSRF[0], CSRF[1], CSRF[2]],
+            ),
+            StatusCode::OK,
+        )
+        .await;
+        assert_eq!(output["data"], data);
+        assert!(!output.to_string().contains("secret"));
+    }
+}
+
+#[tokio::test]
 async fn gateway_failures_have_distinct_safe_codes_without_replay() {
     for (status, gateway_code, expected_status, expected_code) in [
         (

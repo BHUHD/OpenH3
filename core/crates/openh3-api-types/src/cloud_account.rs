@@ -213,81 +213,115 @@ pub struct CloudAccountQuota {
     pub unit: String,
 }
 
+// Gateway billing observations are exact server values, never a local ledger.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CloudAccountWalletBalance {
-    Available { amount: CloudAccountQuota },
-    Unavailable {},
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountQuotaView {
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<CloudAccountQuota>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
-
-/// An unlimited token limit is not an unlimited wallet balance.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CloudAccountAllowance {
-    Limited { amount: CloudAccountQuota },
-    Unlimited {},
-    Unavailable {},
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountSubscription {
+    pub allowance_state: String,
     pub id: String,
-    pub remaining: CloudAccountAllowance,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remaining: Option<CloudAccountQuota>,
+    pub unlimited: bool,
+    pub used: CloudAccountQuota,
     pub expires_at: i64,
+    pub next_reset_at: i64,
+    pub allow_wallet_overflow: bool,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "status", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CloudAccountSubscriptions {
-    Available { items: Vec<CloudAccountSubscription> },
-    Unavailable {},
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountSubscriptions {
+    pub status: String,
+    pub items: Vec<CloudAccountSubscription>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountWalletResponse {
-    /// Gateway snapshot time. Never replace a cached snapshot's time with now.
+    pub read_started_at: i64,
     pub as_of: i64,
-    pub wallet_balance: CloudAccountWalletBalance,
+    pub wallet_balance: CloudAccountQuotaView,
     pub subscriptions: CloudAccountSubscriptions,
-    pub device_limit: CloudAccountAllowance,
+    pub device_limit: CloudAccountQuotaView,
+    pub billing_preference: String,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct CloudAccountRate {
-    pub label: String,
-    pub price: CloudAccountMoney,
-    pub per: CloudAccountQuota,
+pub struct CloudAccountConditionalSurcharge {
+    pub usd: String,
+    pub condition: String,
 }
-
-/// Display-only pricing. Never evaluate expressions or derive charges in the UI.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CloudAccountModelPrice {
-    Rates { rates: Vec<CloudAccountRate> },
-    Expression { expression: String, description: String },
-    Description { description: String },
-    Unavailable {},
+#[serde(deny_unknown_fields)]
+pub struct CloudAccountPriceQuote {
+    pub group: String,
+    pub kind: String,
+    pub unit: String,
+    pub group_ratio: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_read: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_write: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_write_1h: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_write_12h: Option<String>,
+    pub cache_write_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub per_request: Option<String>,
+    pub version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_surcharges_usd_per_1000_calls: Option<std::collections::BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implied_search_usd_per_request: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expression: Option<String>,
+    pub quota_per_usd: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expression_semantics: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conditional_violation_surcharge: Option<CloudAccountConditionalSurcharge>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountModel {
-    pub id: String,
-    pub name: String,
-    pub price: CloudAccountModelPrice,
+    pub model_id: String,
+    pub display_name: String,
+    pub provider: String,
+    pub purpose: String,
+    pub protocol: String,
+    pub input_capabilities: Vec<String>,
+    pub supports_tools: bool,
+    pub context_limit: i64,
+    pub max_output_tokens: u64,
+    pub compatibility_version: String,
+    pub evidence: String,
+    pub quotes: Vec<CloudAccountPriceQuote>,
+    /// Local supported intersection; never changes the authoritative model ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub selection_unavailable_reason: Option<String>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountModelsResponse {
-    pub items: Vec<CloudAccountModel>,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub quote_semantics: String,
+    pub models: Vec<CloudAccountModel>,
 }
-
-/// Routes must enforce `page >= 1` and `1 <= page_size <= 100` before I/O.
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountPageQuery {
     #[serde(default = "first_page")]
@@ -295,40 +329,61 @@ pub struct CloudAccountPageQuery {
     #[serde(default = "default_page_size")]
     pub page_size: u32,
 }
-
 fn first_page() -> u32 {
     1
 }
-
 fn default_page_size() -> u32 {
     20
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct CloudAccountUsageQuantity {
-    pub name: String,
-    pub quantity: CloudAccountQuota,
+pub struct CloudAccountUsageQuery {
+    #[serde(default = "first_page")]
+    pub page: u32,
+    #[serde(default = "default_page_size")]
+    pub page_size: u32,
+    #[serde(default)]
+    pub start_time: i64,
+    #[serde(default)]
+    pub end_time: i64,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub device_id: String,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountUsage {
     pub id: String,
-    pub model: String,
     pub created_at: i64,
-    pub charge: CloudAccountQuota,
-    /// Only quantities present in the authoritative usage record are included.
-    pub quantities: Vec<CloudAccountUsageQuantity>,
+    pub kind: String,
+    pub quota: Option<CloudAccountQuota>,
+    pub direction: String,
+    pub model: String,
+    pub prompt_tokens: String,
+    pub completion_tokens: String,
+    pub request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub funding: Option<std::collections::BTreeMap<String, String>>,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct CloudAccountUsageResponse {
+    pub read_started_at: i64,
+    pub as_of: i64,
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    pub completeness: String,
+    /// Disabled logging may return null; never convert it into reconciled zero spend.
+    pub items: Option<Vec<CloudAccountUsage>>,
     pub page: u32,
     pub page_size: u32,
-    pub total: u64,
-    pub items: Vec<CloudAccountUsage>,
+    pub has_more: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

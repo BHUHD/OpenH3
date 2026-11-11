@@ -12,6 +12,17 @@ pub struct SaveCloudAccount<'a> {
     pub state: &'a str,
 }
 
+/// Service-owned admission snapshot, bound to the exact authenticated grant.
+pub struct SaveCloudCatalog<'a> {
+    pub owner: &'a str,
+    pub issuer: &'a str,
+    pub generation: i64,
+    pub subject: &'a str,
+    pub provider_id: &'a str,
+    /// Exact model IDs paired with one verified protocol each. No aliases.
+    pub models: &'a [(String, String, bool)],
+}
+
 #[async_trait::async_trait]
 pub trait ICloudAccountRepository: Send + Sync {
     async fn load(&self, owner: &str, issuer: &str) -> Result<Option<CloudAccountRow>, DbError>;
@@ -27,6 +38,8 @@ pub trait ICloudAccountRepository: Send + Sync {
     async fn save_pending(&self, input: SaveCloudAccount<'_>) -> Result<(), DbError>;
     /// CAS commit of activation or rotation, including the provider enabled flag.
     async fn save_active(&self, input: SaveCloudAccount<'_>) -> Result<(), DbError>;
+    async fn replace_catalog(&self, input: SaveCloudCatalog<'_>) -> Result<(), DbError>;
+    async fn model_allowed(&self, input: SaveCloudCatalog<'_>, model: &str, protocol: &str) -> Result<bool, DbError>;
 }
 
 pub struct SqliteCloudAccountRepository {
@@ -81,6 +94,50 @@ fn conflict() -> DbError {
 
 #[async_trait::async_trait]
 impl ICloudAccountRepository for SqliteCloudAccountRepository {
+    async fn replace_catalog(&self, p: SaveCloudCatalog<'_>) -> Result<(), DbError> {
+        // Validate everything before opening a write transaction. The service
+        // owns capability/pricing validation; this port admits only known modes.
+        let mut ids = Vec::new();
+        let mut settings = std::collections::BTreeMap::new();
+        for (id, protocol, supports_tools) in p.models {
+            if id.is_empty() || id.len() > 255 || ids.contains(id) {
+                return Err(conflict());
+            }
+            let mode = match protocol.as_str() {
+                "ChatCompletions" => "chat_completions",
+                "Responses" => "responses",
+                _ => return Err(conflict()),
+            };
+            ids.push(id.clone());
+            settings.insert(
+                id,
+                serde_json::json!({"image_input":"unsupported","openai_api_mode":mode,"supports_tools":supports_tools}),
+            );
+        }
+        let models = serde_json::to_string(&ids).map_err(|_| conflict())?;
+        let settings = serde_json::to_string(&settings).map_err(|_| conflict())?;
+        let mut tx = self.pool.begin().await?;
+        if sqlx::query("UPDATE providers SET models = ?, model_settings = ?, model_enabled = NULL, model_protocols = NULL WHERE id = ? AND user_id = ? AND managed_by = 'cloud_account' AND EXISTS (SELECT 1 FROM cloud_accounts WHERE owner = ? AND issuer = ? AND generation = ? AND subject = ? AND provider_id = providers.id AND state = 'active')")
+            .bind(models).bind(settings).bind(p.provider_id).bind(p.owner).bind(p.owner).bind(p.issuer).bind(p.generation).bind(p.subject).execute(&mut *tx).await?.rows_affected() != 1 { return Err(conflict()); }
+        tx.commit().await?;
+        Ok(())
+    }
+    async fn model_allowed(&self, p: SaveCloudCatalog<'_>, model: &str, protocol: &str) -> Result<bool, DbError> {
+        let row: Option<(String, String)> = sqlx::query_as("SELECT models, model_settings FROM providers WHERE id = ? AND user_id = ? AND managed_by = 'cloud_account' AND enabled = 1 AND EXISTS (SELECT 1 FROM cloud_accounts WHERE owner = ? AND issuer = ? AND generation = ? AND subject = ? AND provider_id = providers.id AND state = 'active')")
+            .bind(p.provider_id).bind(p.owner).bind(p.owner).bind(p.issuer).bind(p.generation).bind(p.subject).fetch_optional(&self.pool).await?;
+        let Some((models, settings)) = row else {
+            return Ok(false);
+        };
+        let models: Vec<String> = serde_json::from_str(&models).map_err(|_| conflict())?;
+        let settings: std::collections::BTreeMap<String, serde_json::Value> =
+            serde_json::from_str(&settings).map_err(|_| conflict())?;
+        let mode = match protocol {
+            "ChatCompletions" => "chat_completions",
+            "Responses" => "responses",
+            _ => return Ok(false),
+        };
+        Ok(models.iter().any(|id| id == model) && settings.get(model).is_some_and(|s| s["openai_api_mode"] == mode))
+    }
     async fn load(&self, owner: &str, issuer: &str) -> Result<Option<CloudAccountRow>, DbError> {
         Ok(
             sqlx::query_as("SELECT * FROM cloud_accounts WHERE owner = ? AND issuer = ?")

@@ -529,6 +529,8 @@ export type ModelOpenAiApiMode = 'chat_completions' | 'responses';
 export type ModelImageInputCapability = 'supported' | 'unsupported';
 
 export type ModelSettings = {
+  /** Service-owned verification for official managed selections. */
+  supports_tools?: boolean;
   image_input?: ModelImageInputCapability;
   openai_api_mode?: ModelOpenAiApiMode;
 };
@@ -597,6 +599,8 @@ export interface IProvider {
    * capability and OpenAI API mode resolution.
    */
   model_settings?: Record<string, ModelSettings>;
+  /** Core-owned providers reject generic credential/config mutations. */
+  managed_by?: string;
   is_full_url?: boolean;
 }
 

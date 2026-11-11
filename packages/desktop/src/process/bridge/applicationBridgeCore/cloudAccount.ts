@@ -7,6 +7,9 @@ const operations = {
   session: ['GET', 'session', []],
   me: ['GET', 'me', []],
   devices: ['GET', 'devices', []],
+  wallet: ['GET', 'wallet', []],
+  models: ['GET', 'models', []],
+  usage: ['POST', 'usage', ['page', 'page_size', 'start_time', 'end_time', 'model', 'device_id']],
   logout: ['POST', 'logout', []],
   emailCode: ['POST', 'email-code', ['email', 'purpose']],
   register: ['POST', 'register', ['username', 'email', 'password', 'verification_code']],
@@ -57,7 +60,27 @@ export function cloudOperation(request: unknown): { method: string; path: string
   const [method, path, keys] = operations[request.operation as keyof typeof operations];
   const input = 'input' in request ? request.input : {};
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
-  if (
+  if (request.operation === 'usage') {
+    const values = Object.fromEntries(Object.entries(input));
+    if (Object.keys(values).some((key) => !(keys as readonly string[]).includes(key))) return null;
+    for (const [key, value] of Object.entries(values)) {
+      if (key === 'model' || key === 'device_id') {
+        if (typeof value !== 'string' || Buffer.byteLength(value) > (key === 'model' ? 256 : 64)) return null;
+      } else if (
+        typeof value !== 'number' ||
+        !Number.isSafeInteger(value) ||
+        value < (key === 'page' || key === 'page_size' ? 1 : 0) ||
+        value > (key === 'page' ? 1000000 : key === 'page_size' ? 100 : Number.MAX_SAFE_INTEGER)
+      )
+        return null;
+    }
+    if (
+      typeof values.end_time === 'number' &&
+      values.end_time !== 0 &&
+      values.end_time < (typeof values.start_time === 'number' ? values.start_time : 0)
+    )
+      return null;
+  } else if (
     Object.entries(input).some(
       ([key, value]) => !(keys as readonly string[]).includes(key) || typeof value !== 'string' || value.length > 16384
     )
@@ -68,7 +91,13 @@ export function cloudOperation(request: unknown): { method: string; path: string
   return { method, path, ...(method === 'POST' ? { body } : {}) };
 }
 
-async function boundedJson(response: Response): Promise<unknown> {
+async function boundedJson(response: Response, successLimit = 65536): Promise<unknown> {
+  const limit = response.ok ? successLimit : 65536;
+  const declared = response.headers.get('content-length');
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > limit)) {
+    await response.body?.cancel();
+    throw new Error('Cloud account request failed');
+  }
   if (!response.body) throw new Error('Cloud account request failed');
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -78,7 +107,7 @@ async function boundedJson(response: Response): Promise<unknown> {
       const part = await reader.read();
       if (part.done) break;
       size += part.value.length;
-      if (size > 65536) throw new Error('Cloud account request failed');
+      if (size > limit) throw new Error('Cloud account request failed');
       chunks.push(part.value);
     }
     return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
@@ -131,7 +160,16 @@ export function createCloudAccountClient(
         redirect: 'error',
         signal: AbortSignal.timeout(25000),
       });
-      const body = await boundedJson(response);
+      // Finite per-operation success limits; errors and credentials stay 64 KiB.
+      const successLimit =
+        operation.path === 'models'
+          ? 8 * 1024 * 1024
+          : operation.path === 'wallet'
+            ? 512 * 1024
+            : operation.path === 'usage'
+              ? 2 * 1024 * 1024
+              : 65536;
+      const body = await boundedJson(response, successLimit);
       if (!response.ok) {
         const retry = response.headers.get('retry-after');
         return { ...safeCloudError(body), ...(retry && /^\d{1,5}$/.test(retry) ? { retry_after: Number(retry) } : {}) };

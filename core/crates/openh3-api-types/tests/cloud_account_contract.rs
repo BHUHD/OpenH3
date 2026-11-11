@@ -124,48 +124,30 @@ fn email_code_is_purpose_bound() {
 }
 
 #[test]
-fn wallet_distinguishes_each_authoritative_source_and_unavailable_data() {
-    round_trip::<CloudAccountWalletResponse>(json!({
-        "as_of":1800000000,
-        "wallet_balance":{"status":"available","amount":{"amount":"9007199254740991","unit":"new_api_quota"}},
-        "subscriptions":{"status":"available","items":[{
-            "id":"subscription-1", "remaining":{"status":"limited","amount":{"amount":"250000","unit":"new_api_quota"}},
-            "expires_at":1800000000
-        }]},
-        "device_limit":{"status":"unlimited"}
-    }));
-    round_trip::<CloudAccountWalletResponse>(json!({
-        "as_of":1800000000,
-        "wallet_balance":{"status":"unavailable"}, "subscriptions":{"status":"unavailable"},
-        "device_limit":{"status":"unavailable"}
-    }));
-    assert!(serde_json::from_value::<CloudAccountQuota>(json!({"amount":1.5,"unit":"new_api_quota"})).is_err());
-    assert!(serde_json::from_value::<CloudAccountMoney>(json!({"amount":"1.50"})).is_err());
-}
-
-#[test]
-fn models_support_rates_expressions_and_unavailable_prices() {
-    round_trip::<CloudAccountModelsResponse>(json!({"items":[
-        {"id":"text-model", "name":"Text model", "price":{"kind":"rates","rates":[
-            {"label":"Input", "price":{"amount":"2.50","currency":"USD"},"per":{"amount":"1000000","unit":"tokens"}}
-        ]}},
-        {"id":"dynamic-model", "name":"Dynamic model", "price":{"kind":"expression","expression":"v1:p * 2.5 + c * 15","description":"Server evaluates actual usage"}},
-        {"id":"plugin-model", "name":"Plugin model", "price":{"kind":"description","description":"Price depends on resolution and duration"}},
-        {"id":"unknown-model", "name":"Unknown model", "price":{"kind":"unavailable"}}
-    ]}));
-}
-
-#[test]
-fn usage_uses_numbered_pages_and_string_quantities() {
-    round_trip::<CloudAccountUsageResponse>(json!({"page":1,"page_size":20,"total":1,"items":[{
-        "id":"log-1", "model":"model-a", "created_at":1800000000,
-        "charge":{"amount":"125","unit":"new_api_quota"},
-        "quantities":[{"name":"input", "quantity":{"amount":"1000","unit":"tokens"}}]
-    }]}));
-    let request: CloudAccountPageQuery = serde_json::from_value(json!({})).unwrap();
-    assert_eq!((request.page, request.page_size), (1, 20));
-    assert!(serde_json::from_value::<CloudAccountPageQuery>(json!({"cursor":"fake"})).is_err());
-    assert!(serde_json::from_value::<CloudAccountPageQuery>(json!({"page":-1})).is_err());
+fn billing_observations_preserve_unavailability_and_no_total() {
+    round_trip::<CloudAccountWalletResponse>(
+        json!({"read_started_at":100,"as_of":101,"wallet_balance":{"status":"available","amount":{"amount":"-42","unit":"new_api_quota"}},"device_limit":{"status":"unlimited"},"billing_preference":"wallet_only","subscriptions":{"status":"available","items":[]}}),
+    );
+    round_trip::<CloudAccountModelsResponse>(
+        json!({"status":"unavailable","reason":"native_inference_unavailable","quote_semantics":"observed_rules_not_frozen_final_charge","models":[]}),
+    );
+    round_trip::<CloudAccountUsageResponse>(
+        json!({"read_started_at":100,"as_of":101,"status":"unavailable","reason":"consume_logging_disabled","completeness":"not_reconciled","page":1,"page_size":20,"has_more":false,"items":null}),
+    );
+    assert!(
+        serde_json::from_value::<CloudAccountUsageResponse>(json!({"page":1,"page_size":20,"total":0,"items":[]}))
+            .is_err()
+    );
+    let q: CloudAccountUsageQuery = serde_json::from_value(json!({})).unwrap();
+    assert_eq!((q.page, q.page_size), (1, 20));
+    for input in [
+        r#"{"page":1,"page":2}"#,
+        r#"{"page":"1"}"#,
+        r#"{"page":null}"#,
+        r#"{"start_time":-1,"owner":"bad"}"#,
+    ] {
+        assert!(serde_json::from_str::<CloudAccountUsageQuery>(input).is_err());
+    }
 }
 
 #[test]

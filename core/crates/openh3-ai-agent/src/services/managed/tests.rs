@@ -33,12 +33,42 @@ struct BlockedResolver {
     lifetime: watch::Sender<bool>,
     entered: tokio::sync::Notify,
 }
+
+#[tokio::test]
+async fn forged_request_model_is_rejected_before_credential_resolution_or_http() {
+    let resolver = Arc::new(Resolver {
+        endpoint: "http://127.0.0.1:1".into(),
+        lifetime: watch::channel(false).0,
+        resolutions: AtomicUsize::new(0),
+    });
+    let provider = ManagedProvider::bind(
+        resolver.clone(),
+        "owner".into(),
+        "original-provider".into(),
+        "verified".into(),
+        OpenAiApiMode::Responses,
+    )
+    .await
+    .unwrap();
+    let request = LlmRequest {
+        model: "forged".into(),
+        system: String::new(),
+        messages: vec![],
+        tools: vec![],
+        max_tokens: None,
+        thinking: None,
+        reasoning_effort: None,
+    };
+    let error = provider.stream(&request).await.unwrap_err();
+    assert!(matches!(error,ProviderError::Parse(message) if message=="Managed model differs from verified selection"));
+    assert_eq!(resolver.resolutions.load(Ordering::SeqCst), 0);
+}
 #[async_trait::async_trait]
 impl ManagedCredentialResolver for BlockedResolver {
     async fn subscribe(&self, _: &str, _: &str) -> Result<watch::Receiver<bool>, ProviderError> {
         Ok(self.lifetime.subscribe())
     }
-    async fn resolve(&self, _: &str, _: &str) -> Result<ManagedCredentials, ProviderError> {
+    async fn resolve(&self, _: &str, _: &str, _: &str, _: OpenAiApiMode) -> Result<ManagedCredentials, ProviderError> {
         self.entered.notify_one();
         std::future::pending().await
     }
@@ -91,7 +121,13 @@ impl ManagedCredentialResolver for Resolver {
         assert_eq!((owner, provider), ("owner", "original-provider"));
         Ok(self.lifetime.subscribe())
     }
-    async fn resolve(&self, owner: &str, provider: &str) -> Result<ManagedCredentials, ProviderError> {
+    async fn resolve(
+        &self,
+        owner: &str,
+        provider: &str,
+        _: &str,
+        _: OpenAiApiMode,
+    ) -> Result<ManagedCredentials, ProviderError> {
         assert_eq!((owner, provider), ("owner", "original-provider"));
         let index = self.resolutions.fetch_add(1, Ordering::SeqCst);
         Ok(ManagedCredentials::new(
