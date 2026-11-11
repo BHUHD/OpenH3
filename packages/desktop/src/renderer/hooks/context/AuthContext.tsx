@@ -337,3 +337,8 @@ export function useAuth(): AuthContextValue {
   }
   return context;
 }
+
+/** Read the local auth lifecycle when mounted within the application shell. */
+export function useAuthContextSafe(): AuthContextValue | undefined {
+  return useContext(AuthContext);
+}

@@ -16,7 +16,9 @@ import {
   preferTextMessageVersion,
   sanitizeAcpToolCallContent,
 } from '@/common/chat/chatLib';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useAuthContextSafe } from '@/renderer/hooks/context/AuthContext';
+import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import { createContext } from '@renderer/utils/ui/createContext';
 import {
   DEFAULT_MESSAGE_PAGE_LIMIT,
@@ -806,23 +808,27 @@ const getMessageMergeKey = (message: TMessage): string => {
   return `id:${message.id}`;
 };
 
+// User rows require exact DB identity. Stream row IDs are minted client-side,
+// but their msg_id is the server's persisted row ID. A raw duplicate msg_id
+// satisfies neither identity and must not inherit or suppress a live row.
+const isSameHistoryRow = (persisted: TMessage, live: TMessage): boolean =>
+  persisted.conversation_id === live.conversation_id &&
+  persisted.type === live.type &&
+  (persisted.id === live.id ||
+    (persisted.position !== 'right' &&
+      live.position !== 'right' &&
+      persisted.id === persisted.msg_id &&
+      persisted.msg_id === live.msg_id));
+
 const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMessage => {
+  if (!isSameHistoryRow(persisted, live)) return persisted;
   const preferred =
     persisted.type === 'text' && live.type === 'text' ? preferTextMessageVersion(persisted, live) : persisted;
-  // User sources bind an exact DB row. Stream row IDs are minted client-side,
-  // but their msg_id is the server's persisted row ID. A raw duplicate msg_id
-  // satisfies neither identity and must not inherit a live source.
-  const sameRow =
-    persisted.conversation_id === live.conversation_id &&
-    persisted.type === live.type &&
-    (persisted.id === live.id ||
-      (persisted.position !== 'right' &&
-        live.position !== 'right' &&
-        persisted.id === persisted.msg_id &&
-        persisted.msg_id === live.msg_id));
   return {
     ...preferred,
-    model_source: persisted.model_source ?? (sameRow ? live.model_source : persisted.model_source),
+    id: persisted.id,
+    msg_id: persisted.msg_id,
+    model_source: persisted.model_source ?? live.model_source,
   };
 };
 
@@ -833,17 +839,12 @@ function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[]
   if (!sameConversation.length) return foldSupersededTips(messages);
 
   const currentById = new Map(sameConversation.map((message) => [message.id, message]));
-  const currentByKey = new Map(sameConversation.map((message) => [getMessageMergeKey(message), message]));
-  const loadedIds = new Set(messages.map((message) => message.id));
-  const loadedKeys = new Set(messages.map(getMessageMergeKey));
 
   const mergedMessages = messages.map((message) => {
-    const live = currentById.get(message.id) ?? currentByKey.get(getMessageMergeKey(message));
+    const live = currentById.get(message.id) ?? sameConversation.find((current) => isSameHistoryRow(message, current));
     return live ? preferPersistedOrLiveMessage(message, live) : message;
   });
-  const liveOnly = sameConversation.filter(
-    (message) => !loadedIds.has(message.id) && !loadedKeys.has(getMessageMergeKey(message))
-  );
+  const liveOnly = sameConversation.filter((live) => !messages.some((persisted) => isSameHistoryRow(persisted, live)));
 
   // Fold after the concat, not before: the live card and the persisted rows of
   // the same retry run reach this point as separate entries (a persisted tip has
@@ -962,11 +963,88 @@ export const useLoadAnchorMessageWindow = (conversationId?: string) => {
   );
 };
 
+type SourceBoundPayload = Parameters<Parameters<typeof ipcBridge.conversation.sourceBound.on>[0]>[0];
+type MessageSourceScope = {
+  conversationId: string;
+  ownerId?: string;
+  active: boolean;
+  acceptsEvents: boolean;
+  waitForOwner: boolean;
+  pending: Map<string, SourceBoundPayload>;
+};
+
+const isSourceBoundRow = (message: TMessage, payload: SourceBoundPayload): boolean =>
+  message.conversation_id === payload.conversation_id &&
+  message.id === payload.msg_id &&
+  message.msg_id === payload.msg_id &&
+  message.type === 'text' &&
+  message.position === 'right';
+
+const applyPendingModelSources = (list: TMessage[], scope: MessageSourceScope): TMessage[] => {
+  if (!scope.active || !scope.ownerId || !scope.pending.size) return list;
+  const events = [...scope.pending.values()];
+  let changed = false;
+  const next = list.map((message) => {
+    if (message.model_source) return message;
+    const payload = events.find((event) => event.user_id === scope.ownerId && isSourceBoundRow(message, event));
+    if (!payload) return message;
+    changed = true;
+    return { ...message, model_source: payload.model_source };
+  });
+  return changed ? next : list;
+};
+
 export const useMessageLstCache = (key: string) => {
   const update = useUpdateMessageList();
   const list = useMessageList();
   const setLoading = useUpdateMessageListLoading();
   const setPagination = useUpdateMessagePaginationState();
+  const auth = useAuthContextSafe();
+  const authOwnerId = auth?.user?.id;
+  const authStatus = auth?.status;
+  const hasAuthContext = auth !== undefined;
+  const sourceScope = useMemo<MessageSourceScope>(
+    () => ({
+      conversationId: key,
+      ownerId: authOwnerId,
+      active: true,
+      acceptsEvents: !hasAuthContext || authStatus === 'authenticated',
+      waitForOwner: hasAuthContext && !authOwnerId,
+      pending: new Map(),
+    }),
+    [key, authOwnerId, authStatus, hasAuthContext]
+  );
+
+  useEffect(() => {
+    sourceScope.active = true;
+    if (sourceScope.acceptsEvents && sourceScope.waitForOwner) {
+      // Desktop AuthContext deliberately has no user. Resolve the backend's
+      // local owner, independently of the mutable cloud account identity.
+      void resolveCurrentUserId().then((ownerId) => {
+        if (!sourceScope.active) return;
+        sourceScope.ownerId = ownerId;
+        for (const [id, event] of sourceScope.pending) {
+          if (event.user_id !== ownerId) sourceScope.pending.delete(id);
+        }
+        update((current) => applyPendingModelSources(current, sourceScope));
+      });
+    }
+    return () => {
+      sourceScope.active = false;
+      sourceScope.pending.clear();
+    };
+  }, [sourceScope, update]);
+
+  useEffect(() => {
+    // Drain only after React committed the exact row, keeping functional
+    // updates pure even when React invokes them more than once.
+    for (const [id, event] of sourceScope.pending) {
+      if (list.some((message) => message.model_source && isSourceBoundRow(message, event))) {
+        sourceScope.pending.delete(id);
+      }
+    }
+    if (sourceScope.pending.size) update((current) => applyPendingModelSources(current, sourceScope));
+  }, [list, sourceScope, update]);
   // Mirrors the current list into a ref so the turnCompleted handler below
   // can inspect it synchronously without re-subscribing to the WS event on
   // every list change (useState's functional updater runs asynchronously,
@@ -976,13 +1054,19 @@ export const useMessageLstCache = (key: string) => {
     listRef.current = list;
   }, [list]);
   const loadMessages = useCallback(async (): Promise<TMessage[]> => {
+    if (!sourceScope.active || !sourceScope.acceptsEvents) return [];
     const result = await loadLatestConversationMessages(key, {
       limit: DEFAULT_MESSAGE_PAGE_LIMIT,
       contentMode: 'compact',
     });
+    if (!sourceScope.active) return [];
     const messages = result?.items?.map(normalizeDbMessage);
     if (messages && Array.isArray(messages)) {
-      update((currentList) => mergeLoadedPageWithCurrent(key, messages, currentList));
+      update((currentList) =>
+        sourceScope.active
+          ? applyPendingModelSources(mergeLoadedPageWithCurrent(key, messages, currentList), sourceScope)
+          : currentList
+      );
       setPagination({
         oldestCursor: result.oldest_cursor ?? undefined,
         newestCursor: result.newest_cursor ?? undefined,
@@ -994,7 +1078,7 @@ export const useMessageLstCache = (key: string) => {
       return messages;
     }
     return [];
-  }, [key, setPagination, update]);
+  }, [key, setPagination, sourceScope, update]);
 
   useEffect(() => {
     if (!key) return;
@@ -1021,7 +1105,7 @@ export const useMessageLstCache = (key: string) => {
     }
 
     return ipcBridge.conversation.userCreated.on((payload) => {
-      if (payload.conversation_id !== key) {
+      if (!sourceScope.active || !sourceScope.acceptsEvents || payload.conversation_id !== key) {
         return;
       }
 
@@ -1046,25 +1130,22 @@ export const useMessageLstCache = (key: string) => {
         );
       });
     });
-  }, [key, update]);
+  }, [key, sourceScope, update]);
 
   useEffect(() => {
     if (!key) return;
     return ipcBridge.conversation.sourceBound.on((payload) => {
-      if (payload.conversation_id !== key) return;
-      update((list) =>
-        list.map((message) =>
-          message.id === payload.msg_id &&
-          message.msg_id === payload.msg_id &&
-          message.type === 'text' &&
-          message.position === 'right' &&
-          !message.model_source
-            ? { ...message, model_source: payload.model_source }
-            : message
-        )
-      );
+      if (!sourceScope.active || !sourceScope.acceptsEvents || payload.conversation_id !== sourceScope.conversationId)
+        return;
+      if (sourceScope.ownerId && payload.user_id !== sourceScope.ownerId) return;
+      // Standalone history surfaces without AuthContext retain the first local
+      // event owner for this mount; the application resolves its owner above.
+      if (!sourceScope.waitForOwner) sourceScope.ownerId ??= payload.user_id;
+      const id = JSON.stringify([payload.user_id, payload.msg_id]);
+      if (!sourceScope.pending.has(id)) sourceScope.pending.set(id, payload);
+      update((current) => applyPendingModelSources(current, sourceScope));
     });
-  }, [key, update]);
+  }, [key, sourceScope, update]);
 
   useEffect(() => {
     if (!key) {
@@ -1077,7 +1158,7 @@ export const useMessageLstCache = (key: string) => {
     // server-assigned id message.userCreated used to add the row — never by
     // text/time.
     return ipcBridge.conversation.statusChanged.on((payload) => {
-      if (payload.conversation_id !== key) {
+      if (!sourceScope.active || payload.conversation_id !== key) {
         return;
       }
 
@@ -1085,7 +1166,7 @@ export const useMessageLstCache = (key: string) => {
         list.map((message) => (message.msg_id === payload.msg_id ? { ...message, status: payload.status } : message))
       );
     });
-  }, [key, update]);
+  }, [key, sourceScope, update]);
 
   useEffect(() => {
     if (!key) {
@@ -1102,7 +1183,7 @@ export const useMessageLstCache = (key: string) => {
     // loadMessages's merge (preferPersistedOrLiveMessage) lets DB truth win
     // without disturbing anything else in the list.
     return ipcBridge.conversation.turnCompleted.on((payload) => {
-      if (payload.session_id !== key) {
+      if (!sourceScope.active || payload.session_id !== key) {
         return;
       }
 
@@ -1116,7 +1197,7 @@ export const useMessageLstCache = (key: string) => {
         });
       }
     });
-  }, [key, loadMessages]);
+  }, [key, loadMessages, sourceScope]);
 };
 
 export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) => {

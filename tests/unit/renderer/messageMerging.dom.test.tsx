@@ -8,6 +8,8 @@ import React, { type PropsWithChildren } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ipcBridge } from '@/common';
+import { useAuthContextSafe } from '@/renderer/hooks/context/AuthContext';
+import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import {
   transformMessage,
   type IMessageAcpToolCall,
@@ -45,6 +47,9 @@ vi.mock('@/common', () => ({
     },
   },
 }));
+
+vi.mock('@/renderer/hooks/context/AuthContext', () => ({ useAuthContextSafe: vi.fn() }));
+vi.mock('@/renderer/hooks/system/currentUserId', () => ({ resolveCurrentUserId: vi.fn() }));
 
 const CONVERSATION_ID = 'conversation-1';
 
@@ -253,12 +258,15 @@ describe('message merging', () => {
     act(() => {
       result.current.replaceWithAnchorWindow(CONVERSATION_ID, [
         createTextMessage('user-anchor', 'anchor'),
-        createTextMessage('agent-1', 'partial'),
+        // Persisted text segments use the server message ID as their row ID;
+        // only live transformMessage frames have a client-minted row ID.
+        { ...createTextMessage('agent-1', 'partial'), id: 'agent-1' },
       ]);
     });
 
     expect(result.current.messages.map((message) => message.msg_id)).toEqual(['user-anchor', 'agent-1', 'agent-2']);
     expect((result.current.messages[1] as IMessageText).content.content).toBe('partial streaming response');
+    expect(result.current.messages[1].id).toBe('agent-1');
     expect((result.current.messages[2] as IMessageText).content.content).toBe('live tail');
   });
 
@@ -783,4 +791,245 @@ it('keeps a bound user source when an older history page completes after the liv
   expect(result.current.messages[0].model_source).toEqual(source);
   expect(result.current.messages[1].model_source).toEqual(source);
   expect(result.current.messages[2].model_source).toBeNull();
+});
+
+describe('historical source reconciliation lifecycle', () => {
+  type SourcePayload = Parameters<Parameters<typeof ipcBridge.conversation.sourceBound.on>[0]>[0];
+  type HistoryPage = Awaited<ReturnType<typeof ipcBridge.database.getConversationMessages.invoke>>;
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'actor-a',
+    provider_id: 'provider-a',
+    model: 'actual-model',
+    protocol: 'responses',
+  } as const;
+  const row = (content = 'A longer authentic user prompt'): IMessageText => ({
+    ...createTextMessage('user-row', content),
+    id: 'user-row',
+    position: 'right',
+    model_source: null,
+  });
+  const page = (items: IMessageText[]): HistoryPage => ({
+    items,
+    oldest_cursor: null,
+    newest_cursor: null,
+    has_more_before: false,
+    has_more_after: false,
+  });
+  const localAuth = (owner: string | null): NonNullable<ReturnType<typeof useAuthContextSafe>> => ({
+    user: owner ? { id: owner, username: owner } : null,
+    status: 'authenticated',
+    ready: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+    refresh: vi.fn(),
+    clearAuthCache: vi.fn(),
+  });
+  const payload = (userId = 'local-owner', conversationId = CONVERSATION_ID): SourcePayload => ({
+    user_id: userId,
+    conversation_id: conversationId,
+    msg_id: 'user-row',
+    model_source: source,
+  });
+  let emit: ((event: SourcePayload) => void) | undefined;
+  let unsubscribe: ReturnType<typeof vi.fn>;
+
+  function Harness({ conversationId = CONVERSATION_ID }: { conversationId?: string }) {
+    useMessageLstCache(conversationId);
+    return {
+      messages: useMessageList(),
+      add: useAddOrUpdateMessage(),
+      replace: useReplaceWithAnchorWindow(),
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(useAuthContextSafe).mockReturnValue(localAuth('local-owner'));
+    vi.mocked(resolveCurrentUserId).mockResolvedValue('local-owner');
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockReset().mockResolvedValue(page([]));
+    unsubscribe = vi.fn();
+    vi.mocked(ipcBridge.conversation.sourceBound.on).mockImplementation((callback) => {
+      emit = callback;
+      return unsubscribe;
+    });
+  });
+
+  afterEach(() => {
+    vi.mocked(useAuthContextSafe).mockReturnValue(undefined);
+  });
+
+  it.each([
+    'raw',
+    'A longer authentic user prompt',
+    'A much longer raw payload that still has its own persisted identity',
+  ])('preserves the exact raw row identity and content when its text is %s', async (rawText) => {
+    const { result } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => result.current.add(row()));
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    const raw = { ...row(rawText), id: 'raw-duplicate' };
+    act(() => result.current.replace(CONVERSATION_ID, [row(), raw]));
+    expect(result.current.messages[1]).toEqual(raw);
+    act(() => emit?.(payload()));
+    expect(result.current.messages.map((message) => message.id)).toEqual(['user-row', 'raw-duplicate']);
+    expect(result.current.messages[0].model_source).toEqual(source);
+    expect(result.current.messages[1]).toEqual(raw);
+  });
+
+  it('retains the exact binding before an older initial snapshot installs the user row', async () => {
+    let resolvePage: ((value: HistoryPage) => void) | undefined;
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePage = resolve;
+        })
+    );
+    const { result } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    act(() => {
+      emit?.(payload('foreign-owner'));
+      emit?.(payload('local-owner', 'foreign-conversation'));
+      emit?.(payload());
+      emit?.({ ...payload(), model_source: { ...source, subject: 'replacement' } });
+    });
+    expect(result.current.messages).toEqual([]);
+    const raw = { ...row('raw'), id: 'raw-duplicate' };
+    await act(async () => resolvePage?.(page([row(), raw])));
+    expect(result.current.messages[0].model_source).toEqual(source);
+    expect(result.current.messages[1]).toEqual(raw);
+  });
+
+  it('does not let a page containing only a raw duplicate suppress the authentic sourced row', async () => {
+    const { result } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const authentic = { ...row(), model_source: source };
+    act(() => result.current.add(authentic));
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    const raw = { ...row('raw'), id: 'raw-duplicate' };
+    act(() => result.current.replace(CONVERSATION_ID, [raw]));
+    expect(result.current.messages).toEqual([raw, authentic]);
+  });
+
+  it('applies a retained binding when the exact userCreated row appears later', async () => {
+    let emitUserCreated: Parameters<typeof ipcBridge.conversation.userCreated.on>[0] | undefined;
+    vi.mocked(ipcBridge.conversation.userCreated.on).mockImplementation((callback) => {
+      emitUserCreated = callback;
+      return () => {};
+    });
+    const { result } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => emit?.(payload()));
+    act(() =>
+      emitUserCreated?.({
+        conversation_id: CONVERSATION_ID,
+        msg_id: 'user-row',
+        content: 'hello',
+        position: 'right',
+        status: 'finish',
+        hidden: false,
+        created_at: 1,
+      })
+    );
+    expect(result.current.messages[0].model_source).toEqual(source);
+  });
+
+  it('fences pending events, callbacks and HTTP responses across a local owner switch', async () => {
+    const pages: Array<(value: HistoryPage) => void> = [];
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pages.push(resolve);
+        })
+    );
+    const { result, rerender } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    const oldEmit = emit;
+    act(() => emit?.(payload()));
+    vi.mocked(useAuthContextSafe).mockReturnValue(localAuth('owner-b'));
+    rerender({});
+    expect(unsubscribe).toHaveBeenCalled();
+    act(() => oldEmit?.(payload()));
+    await act(async () => pages[0](page([row()])));
+    expect(result.current.messages).toEqual([]);
+    await act(async () => pages[1](page([row()])));
+    expect(result.current.messages[0].model_source).toBeNull();
+    act(() => emit?.(payload()));
+    expect(result.current.messages[0].model_source).toBeNull();
+    act(() => emit?.({ ...payload('owner-b'), model_source: { ...source, subject: 'actor-b' } }));
+    expect(
+      result.current.messages[0].model_source?.kind === 'cloud_account' &&
+        result.current.messages[0].model_source.subject
+    ).toBe('actor-b');
+  });
+
+  it('clears pending bindings and fences old responses when the conversation changes', async () => {
+    const pages: Array<(value: HistoryPage) => void> = [];
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pages.push(resolve);
+        })
+    );
+    const { result, rerender } = renderHook(Harness, {
+      wrapper: CacheWrapper,
+      initialProps: { conversationId: CONVERSATION_ID },
+    });
+    const oldEmit = emit;
+    act(() => emit?.(payload()));
+    rerender({ conversationId: 'other-conversation' });
+    act(() => oldEmit?.(payload()));
+    await act(async () => pages[0](page([row()])));
+    expect(result.current.messages).toEqual([]);
+    await act(async () => pages[1](page([{ ...row(), conversation_id: 'other-conversation' }])));
+    expect(result.current.messages[0].model_source).toBeNull();
+    rerender({ conversationId: CONVERSATION_ID });
+    await act(async () => pages[2](page([row()])));
+    expect(result.current.messages[0].model_source).toBeNull();
+  });
+
+  it('releases pending bindings and callbacks on unmount instead of carrying them into a new mount', async () => {
+    const first = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const oldEmit = emit;
+    act(() => emit?.(payload()));
+    first.unmount();
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(page([row()]));
+    const second = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    act(() => oldEmit?.(payload()));
+    expect(second.result.current.messages[0].model_source).toBeNull();
+  });
+
+  it('filters pending desktop events using the resolved local owner while AuthContext has a null user', async () => {
+    vi.mocked(useAuthContextSafe).mockReturnValue(localAuth(null));
+    let resolveOwner: ((owner: string | undefined) => void) | undefined;
+    vi.mocked(resolveCurrentUserId).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveOwner = resolve;
+        })
+    );
+    vi.mocked(ipcBridge.database.getConversationMessages.invoke).mockResolvedValue(page([row()]));
+    const { result } = renderHook(Harness, { wrapper: CacheWrapper, initialProps: {} });
+    act(() => {
+      emit?.(payload('foreign-owner'));
+      emit?.(payload());
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.messages[0].model_source).toBeNull();
+    await act(async () => resolveOwner?.('local-owner'));
+    expect(result.current.messages[0].model_source).toEqual(source);
+  });
 });
