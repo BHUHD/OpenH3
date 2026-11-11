@@ -40,6 +40,17 @@ fn quote(q: &CloudAccountTopupQuote) -> Result<()> {
     }
     Ok(())
 }
+/// Exclude only credentials belonging to the currently authenticated grant.
+fn contains_grant_secret(value: &str, s: &Stored) -> bool {
+    [
+        Some(s.credentials.access_token.as_str()),
+        Some(s.credentials.refresh_token.as_str()),
+        s.inference_key.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|secret| !secret.is_empty() && value.contains(secret))
+}
 /// Parse for safety, retain the original signed bytes for the handoff.
 fn checkout(value: &str, s: &Stored) -> Result<()> {
     if value.len() > 8192
@@ -48,12 +59,7 @@ fn checkout(value: &str, s: &Stored) -> Result<()> {
             .split(['/', '?', '#'])
             .next()
             .is_some_and(|authority| authority.contains('@'))
-        || [&s.credentials.access_token, &s.credentials.refresh_token]
-            .iter()
-            .any(|secret| !secret.is_empty() && value.contains(secret.as_str()))
-        || s.inference_key
-            .as_ref()
-            .is_some_and(|secret| !secret.is_empty() && value.contains(secret))
+        || contains_grant_secret(value, s)
         || value.chars().any(|c| c.is_control() || c.is_whitespace() || c == '\\')
     {
         return Err(Error::Protocol);
@@ -65,6 +71,13 @@ fn checkout(value: &str, s: &Stored) -> Result<()> {
         || u.password().is_some()
         || u.fragment().is_some()
     {
+        return Err(Error::Protocol);
+    }
+    // Decode only for inspection. This covers the original path/authority/query
+    // bytes (including text URL canonicalization may remove), while host_str
+    // also checks the URL parser's canonical hostname. Never rewrite the handoff.
+    let decoded = percent_encoding::percent_decode_str(value).decode_utf8_lossy();
+    if contains_grant_secret(&decoded, s) || u.host_str().is_some_and(|host| contains_grant_secret(host, s)) {
         return Err(Error::Protocol);
     }
     for (key, value) in u.query_pairs() {
@@ -79,12 +92,8 @@ fn checkout(value: &str, s: &Stored) -> Result<()> {
                 | "authorization"
                 | "password"
         ) || value.chars().any(|c| c.is_control() || c == '\\')
-            || [&s.credentials.access_token, &s.credentials.refresh_token]
-                .iter()
-                .any(|secret| !secret.is_empty() && value.contains(secret.as_str()))
-            || s.inference_key
-                .as_ref()
-                .is_some_and(|secret| !secret.is_empty() && value.contains(secret))
+            || contains_grant_secret(&key, s)
+            || contains_grant_secret(&value, s)
         {
             return Err(Error::Protocol);
         }

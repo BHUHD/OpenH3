@@ -400,3 +400,61 @@ async fn topup_private_wire_rejects_unknown_duplicate_and_nondecimal_terms_with_
         CloudAccountError::Protocol
     );
 }
+
+#[tokio::test]
+async fn topup_encoded_current_grant_secrets_cannot_cross_public_checkout_components() {
+    let (server, _, svc, owner) = connected().await;
+    for encoded in ["desktop%2Dsecret", "refresh%2Dsecret", "raw%2Dinference%2Dsecret"] {
+        for url in [
+            format!("https://pay.example/{encoded}/submit?sign=controlled-signature"),
+            format!("https://{encoded}.example/submit?sign=controlled-signature"),
+            format!("https://pay.example/submit?{encoded}=1&sign=controlled-signature"),
+            format!("https://pay.example/submit?value={encoded}&sign=controlled-signature"),
+        ] {
+            let mut response = order("pending", "available", true);
+            response["checkout_url"] = json!(url);
+            Mock::given(method("POST"))
+                .and(path("/api/openh3/topup/create"))
+                .respond_with(ok(response))
+                .up_to_n_times(1)
+                .mount(&server)
+                .await;
+            let result = svc.topup_create(&owner, create()).await;
+            assert!(
+                matches!(result, Err(CloudAccountError::Protocol)),
+                "known credential escaped its URL component"
+            );
+        }
+    }
+    // The same exclusion retains the existing raw and decoded-value controls.
+    for url in [
+        "https://pay.example/desktop-secret/submit?sign=controlled-signature",
+        "https://pay.example/submit?value=desktop%2Dsecret&sign=controlled-signature",
+    ] {
+        let mut response = order("pending", "available", true);
+        response["checkout_url"] = json!(url);
+        Mock::given(method("POST"))
+            .and(path("/api/openh3/topup/create"))
+            .respond_with(ok(response))
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+        assert!(matches!(
+            svc.topup_create(&owner, create()).await,
+            Err(CloudAccountError::Protocol)
+        ));
+    }
+    // Valid signed bytes, including escapes and a secret-like but unknown value,
+    // remain exactly as issued. The boundary knows only this grant's credentials.
+    let url = "https://pay.example/signed%2Dsubmit?sign=A%2Bb%2F%3D&notify_url=https%3A%2F%2Fgateway.example%2Fnotify&other%2Dfield=unrelated%2Dtoken";
+    let mut response = order("pending", "available", true);
+    response["checkout_url"] = json!(url);
+    Mock::given(method("POST"))
+        .and(path("/api/openh3/topup/create"))
+        .respond_with(ok(response))
+        .up_to_n_times(1)
+        .mount(&server)
+        .await;
+    let result = svc.topup_create(&owner, create()).await.unwrap();
+    assert_eq!(result.checkout_url.as_deref(), Some(url));
+}

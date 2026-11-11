@@ -4209,6 +4209,7 @@ dependencies = [
  "openh3-db",
  "openh3-realtime",
  "openh3-runtime",
+ "percent-encoding",
  "reqwest",
  "rsa",
  "semver",
