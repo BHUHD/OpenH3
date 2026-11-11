@@ -122,7 +122,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
       if (available_models.length === 0) continue;
       providerModelGroups.push({
         key: provider.id,
-        title: provider.name,
+        title: `${t(provider.managed_by === 'cloud_account' ? 'settings.cloudAccount.official' : 'settings.cloudAccount.byok')} · ${provider.name}`,
         models: available_models.map((modelName) => {
           const id = providerCompositeId(provider.id, modelName);
           providerModelLookup.set(id, { provider, modelName });

@@ -593,3 +593,30 @@ tool IDs remain unchanged for confirmations and associations; fork preserves the
 top-level message identity while reminting local row IDs. Unsourced backend tool
 identity behavior remains unchanged. No history badge or display redesign ships
 with this contract.
+
+## Native account panels
+
+The shared account lifecycle owns wallet, usage, devices and catalog UI reads.
+Every read and device confirmation retains its original owner, operation epoch
+and read publication; replacement owners and same-account generations cannot
+publish old data, errors or device results. Failed same-session refreshes retain
+the original wallet observation with a stale label and its original timestamps.
+Wallet quota, device limits and subscription allowances remain separate exact
+strings. Usage filters and pagination expose the actual gateway log page and
+completeness; an empty page never establishes zero spending or a task total.
+
+Device removal uses the existing purpose-bound proof form and refreshes the
+authoritative list after confirmation. Official catalog rules are display-only
+quotes. Only persisted allowed provider models enter selectors; withdrawal or a
+changed observed protocol requires deliberate selection. Official selection is
+separate from BYOK and cannot be restored by assistant defaults. Managed rows
+have account controls instead of generic edit, delete or health actions; the
+direct generic editors also reject them.
+
+Message headers display their immutable historical source, original model and
+protocol, including unknown legacy history. Official text and error tips provide
+manual account/wallet controls and BYOK guidance without restarting work or
+classifying generic supplier errors as proven financial failures. Source alone
+still supplies no request association or task cost. Payment entry and order
+flows remain a later UI slice. These panel checks use DOM and controlled IPC
+fixtures; they do not establish visual, Electron or paid-inference behavior.

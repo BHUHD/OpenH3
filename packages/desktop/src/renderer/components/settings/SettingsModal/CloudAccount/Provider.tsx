@@ -5,6 +5,9 @@ import type {
   CloudCapabilities,
   CloudSession,
   CloudVerification,
+  CloudWallet,
+  CloudModels,
+  CloudAccountResponse,
 } from '@/common/types/platform/cloudAccount';
 import type { IProvider } from '@/common/config/storage';
 import { useAuth } from '@/renderer/hooks/context/AuthContext';
@@ -17,6 +20,9 @@ type ReadScope = { ticket: Ticket; publication: number };
 type ReadError = Error & ReadScope;
 type Snapshot = ReadScope & { session: CloudSession; capabilities: CloudCapabilities };
 type State = {
+  catalog?: CloudModels;
+  catalogPending?: boolean;
+  catalogRead?: boolean;
   session?: CloudSession;
   capabilities?: CloudCapabilities;
   revision: number;
@@ -30,7 +36,17 @@ type State = {
   proofPurpose?: CloudVerification['purpose'];
   reset?: { challenge_id: string; expires_at: number };
 };
+export type OwnedRead = (request: CloudAccountRequest) => Promise<CloudAccountResponse | undefined>;
 type Lifecycle = State & {
+  scope: string;
+  readOwned: OwnedRead;
+  wallet?: CloudWallet;
+  walletLoading: boolean;
+  walletFailed: boolean;
+  refreshWallet: () => void;
+  refreshCatalog: () => Promise<void>;
+  deviceTarget?: { id: string; label: string; current: boolean };
+  chooseDevice: (target: { id: string; label: string; current: boolean }) => void;
   available: boolean;
   reload: () => void;
   switchView: (view: View) => void;
@@ -63,6 +79,13 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   const [state, setState] = useState<State>(empty);
   const fence = useRef({ owner, epoch: 0 });
   const readPublication = useRef(0);
+  const catalogFlight = useRef<ReadScope | undefined>(undefined);
+  const [deviceTarget, setDeviceTarget] = useState<{
+    target: NonNullable<Lifecycle['deviceTarget']>;
+    ticket: Ticket;
+  }>();
+  const [resourceRevision, setResourceRevision] = useState(0);
+  const targetRef = useRef<Lifecycle['deviceTarget']>(undefined);
   const identityFlight = useRef<(Ticket & { generation?: string; operation: string; failed?: boolean }) | undefined>(
     undefined
   );
@@ -72,6 +95,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   if (fence.current.owner !== owner) {
     fence.current = { owner, epoch: fence.current.epoch + 1 };
     generation.current = undefined;
+    targetRef.current = undefined;
   }
   const renderedOwner = useRef(owner);
   const belongs = renderedOwner.current === owner;
@@ -161,6 +185,8 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     const changed = generation.current !== undefined && generation.current !== nextGeneration;
     generation.current = nextGeneration;
     if (changed) {
+      targetRef.current = undefined;
+      setDeviceTarget(undefined);
       fence.current.epoch++;
       void clearProviders();
       void mutate('providers');
@@ -179,9 +205,12 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   const cancel = useCallback(() => {
     if (!matches({ owner, epoch: renderEpoch })) return;
     fence.current.epoch++;
+    targetRef.current = undefined;
+    setDeviceTarget(undefined);
     setState((previous) => ({
       ...previous,
       busy: false,
+      catalogPending: false,
       view: 'login',
       challenge: undefined,
       reset: undefined,
@@ -212,18 +241,33 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       // ambiguous credential mutations. The ticket is captured before awaiting.
       fence.current.epoch++;
       const ticket = { ...fence.current };
+      const target = targetRef.current;
+      if (target) setDeviceTarget({ target, ticket });
+      if (
+        request.operation === 'verify' &&
+        current.proofPurpose === 'device_revocation' &&
+        (!target ||
+          current.challenge?.purpose !== 'device_revocation' ||
+          current.challenge.challenge_id !== request.input.challenge_id)
+      )
+        return;
       const identity = identityOperations.has(request.operation);
       if (identity)
         identityFlight.current = { ...ticket, generation: generation.current, operation: request.operation };
       setState((previous) => ({
         ...previous,
         busy: true,
+        catalogPending: false,
         error: undefined,
         ...(identity
           ? { session: undefined, challenge: undefined, reset: undefined, revision: previous.revision + 1 }
           : {}),
       }));
-      if (identity) void clearProviders();
+      if (identity) {
+        targetRef.current = undefined;
+        setDeviceTarget(undefined);
+        void clearProviders();
+      }
       const result = await requestCloudAccount(request);
       if (!matches(ticket)) return;
       if (identity && identityFlight.current) {
@@ -253,6 +297,22 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       if (connected && 'generation' in connected) generation.current = connected.generation;
       if (request.operation === 'logout' || request.operation === 'passwordResetComplete')
         generation.current = undefined;
+      const revoked =
+        target &&
+        data &&
+        (('status' in data && data.status === 'revoked') || ('result' in data && data.result === 'device_revoked'));
+      if (revoked) {
+        targetRef.current = undefined;
+        setDeviceTarget(undefined);
+        setResourceRevision((value) => value + 1);
+        if (target.current) {
+          generation.current = undefined;
+          readPublication.current++;
+          void query.mutate(undefined, { revalidate: false });
+          void clearProviders();
+          void mutate('providers');
+        }
+      }
       setState((previous) => {
         let next: State = { ...previous, busy: false, error: undefined };
         if (request.operation === 'register')
@@ -286,13 +346,25 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
             ...next,
             view: 'proof',
             challenge: data.verification,
-            proofPurpose: 'password_reset',
+            proofPurpose: request.operation === 'revokeDevice' ? 'device_revocation' : 'password_reset',
             revision: next.revision + 1,
+          };
+        if (revoked)
+          next = {
+            ...next,
+            challenge: undefined,
+            proofPurpose: undefined,
+            notice: 'deviceRevoked',
+            revision: next.revision + 1,
+            ...(target?.current ? { session: undefined } : {}),
           };
         if (connected)
           next = {
             ...next,
             session: connected,
+            catalogPending: connected.state === 'connected',
+            catalogRead: false,
+            catalog: undefined,
             view: connected.state === 'verification_required' ? 'proof' : 'login',
             challenge: connected.state === 'verification_required' ? connected.verification : undefined,
             proofPurpose: connected.state === 'verification_required' ? 'login' : undefined,
@@ -307,6 +379,9 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
         if (!matches(ticket)) return;
         setState((previous) => ({
           ...previous,
+          catalogPending: false,
+          catalogRead: true,
+          catalog: catalog.success && catalog.data && 'models' in catalog.data ? catalog.data : undefined,
           notice:
             !catalog.success || (catalog.data && 'status' in catalog.data && catalog.data.status === 'unavailable')
               ? 'catalogFailed'
@@ -318,10 +393,83 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
         if (request.operation !== 'login') void query.mutate();
       }
     },
-    [clearProviders, matches, mutate, query.mutate, owner, renderEpoch]
+    [clearProviders, matches, mutate, query.mutate, owner, renderEpoch, current.challenge, current.proofPurpose]
   );
+  const scope = `${owner ?? ''}:${fence.current.epoch}:${readPublication.current}:${generation.current ?? ''}:${resourceRevision}`;
+  const publication = readPublication.current;
+  const readOwned = useCallback<OwnedRead>(
+    async (request) => {
+      const original = { ticket: { owner, epoch: renderEpoch }, publication };
+      if (!matchesRead(original) || current.session?.state !== 'connected') return;
+      const result = await requestCloudAccount(request);
+      if (!matchesRead(original)) return;
+      if (request.operation === 'models') void mutate('providers');
+      if (result.success === false && (result.code === 'CLOUD_AUTH_REQUIRED' || result.code === 'CLOUD_CONFLICT'))
+        void query.mutate();
+      return result;
+    },
+    [owner, renderEpoch, publication, current.session?.state, matchesRead, mutate, query.mutate]
+  );
+  const walletQuery = useSWR<{ scope: string; wallet: CloudWallet }, Error & { scope: string }>(
+    current.session?.state === 'connected' ? ['cloud-wallet', scope] : null,
+    async () => {
+      const result = await readOwned({ operation: 'wallet' });
+      if (!result?.success || !result.data || !('wallet_balance' in result.data))
+        throw Object.assign(new Error('CLOUD_TRANSPORT'), { scope });
+      return { scope, wallet: result.data };
+    },
+    { shouldRetryOnError: false, revalidateOnFocus: false, revalidateOnReconnect: false }
+  );
+  useEffect(() => {
+    if (targetRef.current && current.session?.state !== 'connected') {
+      targetRef.current = undefined;
+      setDeviceTarget(undefined);
+    }
+  }, [scope, current.session?.state]);
   const value: Lifecycle = {
     ...current,
+    scope,
+    readOwned,
+    wallet: walletQuery.data?.scope === scope ? walletQuery.data.wallet : undefined,
+    walletLoading: walletQuery.isValidating,
+    walletFailed: walletQuery.error?.scope === scope,
+    refreshWallet: () => {
+      void walletQuery.mutate();
+    },
+    refreshCatalog: async () => {
+      if (current.catalogPending || (catalogFlight.current && matchesRead(catalogFlight.current))) return;
+      const original = { ticket: { owner, epoch: renderEpoch }, publication };
+      if (!matchesRead(original)) return;
+      catalogFlight.current = original;
+      setState((previous) => ({ ...previous, catalogPending: true }));
+      const result = await readOwned({ operation: 'models' });
+      if (catalogFlight.current === original) catalogFlight.current = undefined;
+      if (!matchesRead(original)) return;
+      setState((previous) => ({
+        ...previous,
+        catalogPending: false,
+        catalogRead: true,
+        catalog: result?.success && result.data && 'models' in result.data ? result.data : undefined,
+        notice: result?.success ? undefined : 'catalogFailed',
+      }));
+    },
+    deviceTarget:
+      current.session?.state === 'connected' && deviceTarget && matches(deviceTarget.ticket)
+        ? deviceTarget.target
+        : undefined,
+    chooseDevice: (target) => {
+      if (!matches({ owner, epoch: renderEpoch })) return;
+      fence.current.epoch++;
+      targetRef.current = target;
+      setDeviceTarget({ target, ticket: { ...fence.current } });
+      setState((previous) => ({
+        ...previous,
+        challenge: undefined,
+        proofPurpose: undefined,
+        busy: false,
+        catalogPending: false,
+      }));
+    },
     error: current.error ?? (query.error && matchesRead(query.error) ? 'CLOUD_TRANSPORT' : undefined),
     available: !!owner,
     run,

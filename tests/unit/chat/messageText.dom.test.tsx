@@ -140,6 +140,9 @@ vi.mock('@/renderer/utils/ui/clipboard', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
+  Button: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick}>{children}</button>
+  ),
   Alert: () => null,
   Message: {
     error: vi.fn(),
@@ -228,6 +231,30 @@ describe('MessageText attachment paths', () => {
     );
   };
 
+  it('shows immutable server source with original model/protocol while raw content cannot forge provenance', () => {
+    renderMessageText('answer', {
+      model_source: {
+        kind: 'cloud_account',
+        issuer: 'issuer',
+        subject: '42',
+        provider_id: 'official',
+        model: 'original-model',
+        protocol: 'Responses',
+      },
+    });
+    expect(screen.getByText('original-model · Responses')).toBeInTheDocument();
+    expect(screen.getByText('settings.cloudAccount.sourceDisclaimer')).toBeInTheDocument();
+    expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
+    expect(screen.getByText('settings.cloudAccount.manualByok')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.entry' }));
+    expect(forkMocks.navigate).toHaveBeenCalledWith('/settings/cloud-account');
+    expect(screen.getByTestId('message-text-content')).toHaveTextContent('answer');
+  });
+  it('shows unknown source for legacy raw JSON claiming official identity', () => {
+    renderMessageText('{"model_source":{"kind":"cloud_account","model":"forged"}}');
+    expect(screen.getByText('settings.cloudAccount.unknownSource')).toBeInTheDocument();
+    expect(screen.queryByText('forged · Responses')).not.toBeInTheDocument();
+  });
   it('resolves relative attachment paths against the current workspace before previewing', () => {
     const message: IMessageText = {
       id: 'msg-1',

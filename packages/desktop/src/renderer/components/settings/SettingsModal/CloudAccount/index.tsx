@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useCloudAccount } from './Provider';
 import { AccountForm } from './AccountForm';
 import { ProofForm } from './ProofForm';
+import { ConnectedPanels } from './Panels';
 
 export const CloudAccount: React.FC = () => {
   const cloud = useCloudAccount();
@@ -25,7 +26,7 @@ export const CloudAccount: React.FC = () => {
           ? 'verificationFailed'
           : 'requestFailed';
   return (
-    <section className='w-full max-w-480px text-t-primary' aria-label={t('settings.cloudAccount.title')}>
+    <section className='w-full max-w-720px text-t-primary' aria-label={t('settings.cloudAccount.title')}>
       <Typography.Title heading={5} className='!mt-0'>
         {t('settings.cloudAccount.title')}
       </Typography.Title>
@@ -51,6 +52,7 @@ export const CloudAccount: React.FC = () => {
         <>
           <Typography.Paragraph>{session.account.display_name || session.account.username}</Typography.Paragraph>
           {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
+          <ConnectedPanels />
           <Button
             onClick={() => {
               void cloud.run({ operation: 'logout' });

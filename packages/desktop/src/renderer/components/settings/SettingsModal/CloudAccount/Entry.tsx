@@ -13,7 +13,15 @@ export const CloudAccountEntry: React.FC<{ collapsed?: boolean; disconnectedOnly
   const { t } = useTranslation();
   if (!cloud || (disconnectedOnly && cloud.session?.state === 'connected')) return null;
   const account = cloud.session?.state === 'connected' ? cloud.session.account : undefined;
-  const label = account?.display_name || account?.username || t('settings.cloudAccount.entry');
+  const identity = account?.display_name || account?.username || t('settings.cloudAccount.entry');
+  const amount = cloud.wallet?.wallet_balance;
+  const balance =
+    amount?.status === 'available' && amount.amount
+      ? `${amount.amount.amount} ${amount.amount.unit}`
+      : t('settings.cloudAccount.unavailable');
+  const label = account
+    ? `${identity} · ${balance}${cloud.walletFailed && cloud.wallet ? ` · ${t('settings.cloudAccount.stale')}` : ''}`
+    : identity;
   return <EntryButton label={label} collapsed={collapsed} />;
 };
 const EntryButton: React.FC<{ label: string; collapsed?: boolean }> = ({ label, collapsed }) => {

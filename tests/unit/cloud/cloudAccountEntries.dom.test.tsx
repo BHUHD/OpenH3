@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, Outlet } from 'react-router-dom';
-import { SWRConfig } from 'swr';
+import { SWRConfig, useSWRConfig } from 'swr';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { useAionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
@@ -42,7 +42,10 @@ vi.mock('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent
 vi.mock('@/renderer/components/settings/SettingsModal/contents/ExtensionSettingsTabContent', () => ({
   default: () => null,
 }));
-import { CloudAccountProvider } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
+import {
+  useCloudAccount,
+  CloudAccountProvider,
+} from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import SettingsModal from '@/renderer/components/settings/SettingsModal';
 import SettingsSider from '@/renderer/pages/settings/components/SettingsSider';
 import { getBuiltinSettingsNavItems } from '@/renderer/pages/settings/components/SettingsPageWrapper';
@@ -277,4 +280,92 @@ it('clears a rehydrated official selection using the existing disabled-provider 
     )
   );
   await waitFor(() => expect(screen.getByTestId('current-selection')).toHaveTextContent('none'));
+});
+
+it('includes persisted tool-less official models and requires explicit reselection after protocol replacement or withdrawal', async () => {
+  const official = {
+    id: 'official',
+    name: 'Managed',
+    platform: 'openai',
+    base_url: '',
+    api_key: '',
+    managed_by: 'cloud_account',
+    enabled: true,
+    models: ['plain-text', 'tools-text'],
+    model_settings: {
+      'plain-text': { supports_tools: false, openai_api_mode: 'responses' },
+      'tools-text': { supports_tools: true, openai_api_mode: 'chat_completions' },
+    },
+  } as IProvider;
+  f.providers = [official];
+  f.request.mockImplementation(async (r: CloudAccountRequest) => ({
+    success: true,
+    data:
+      r.operation === 'capabilities'
+        ? {
+            availability: 'available',
+            registration_enabled: true,
+            password_login_enabled: true,
+            password_reset_enabled: false,
+            email_verification_required: false,
+            anti_bot: 'not_required',
+            password_min_length: 8,
+            password_max_length: 128,
+          }
+        : {
+            state: 'connected',
+            generation: '1',
+            account: { id: '42', username: 'alice', display_name: 'Alice', email: null },
+          },
+  }));
+  const select = vi.fn().mockResolvedValue(true);
+  const Current = () => {
+    const { mutate } = useSWRConfig();
+    const selection = useAionrsModelSelection({
+      initialModel: fromApiModel({ provider_id: 'official', model: 'plain-text' }),
+      onSelectModel: select,
+    });
+    return (
+      <>
+        <span data-testid='selected'>{selection.current_model?.use_model ?? 'none'}</span>
+        <AionrsModelSelector selection={selection} />
+        <button onClick={() => void mutate('providers')}>refresh persisted providers</button>
+      </>
+    );
+  };
+  const Ready = () => (useCloudAccount().session?.state === 'connected' ? <Current /> : null);
+  render(
+    host(
+      <MemoryRouter>
+        <Ready />
+      </MemoryRouter>
+    )
+  );
+  await waitFor(() => expect(screen.getByTestId('selected')).toHaveTextContent('plain-text'));
+  fireEvent.click(screen.getByTestId('aionrs-model-selector'));
+  expect(await screen.findByText('settings.cloudAccount.official · Managed')).toBeInTheDocument();
+  expect((await screen.findAllByText('plain-text')).length).toBeGreaterThan(1);
+  f.providers = [
+    {
+      ...official,
+      model_settings: {
+        ...official.model_settings,
+        'plain-text': { supports_tools: false, openai_api_mode: 'chat_completions' },
+      },
+    },
+  ];
+  fireEvent.click(screen.getByText('refresh persisted providers'));
+  await waitFor(() => expect(screen.getByTestId('selected')).toHaveTextContent('none'));
+  f.providers = [official];
+  fireEvent.click(screen.getByText('refresh persisted providers'));
+  expect(screen.getByTestId('selected')).toHaveTextContent('none');
+  expect(select).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByTestId('aionrs-model-selector'));
+  const options = await screen.findAllByText('tools-text');
+  fireEvent.click(options[0]);
+  await waitFor(() => expect(screen.getByTestId('selected')).toHaveTextContent('tools-text'));
+  f.providers = [{ ...official, models: ['plain-text'] }];
+  fireEvent.click(screen.getByText('refresh persisted providers'));
+  await waitFor(() => expect(screen.getByTestId('selected')).toHaveTextContent('none'));
+  expect(select).toHaveBeenCalledTimes(1);
 });

@@ -55,30 +55,67 @@ export const useAionrsModelSelection = ({
     [allProviders]
   );
 
+  const observedProtocol = useRef<{ key: string; protocol?: string } | undefined>(undefined);
+  const selectedKey = storedModel ? `${storedModel.id}:${storedModel.use_model}` : '';
+  const actualProvider = configuredProviders?.find((provider) => provider.id === storedModel?.id);
+  const protocol = storedModel ? actualProvider?.model_settings?.[storedModel.use_model]?.openai_api_mode : undefined;
+  if (observedProtocol.current?.key !== selectedKey)
+    observedProtocol.current = {
+      key: selectedKey,
+      protocol: storedModel?.model_settings?.[storedModel.use_model]?.openai_api_mode ?? protocol,
+    };
+  if (!observedProtocol.current.protocol && protocol) observedProtocol.current.protocol = protocol;
+  const protocolChanged =
+    !!observedProtocol.current.protocol && !!protocol && observedProtocol.current.protocol !== protocol;
   const current_model =
     storedModel &&
     managedSelection.current === storedModel.id &&
     cloud &&
-    (cloud.session?.state !== 'connected' || !providers.some((provider) => provider.id === storedModel.id))
+    (protocolChanged ||
+      cloud.session?.state !== 'connected' ||
+      !providers.some(
+        (provider) => provider.id === storedModel.id && getAvailableModels(provider).includes(storedModel.use_model)
+      ))
       ? undefined
       : storedModel;
   useEffect(() => {
+    if (cloud?.session?.state === 'connected' && configuredProviders === undefined) return;
     if (storedModel && managedSelection.current === storedModel.id && cloud && !current_model)
       setCurrentModel(undefined);
-  }, [cloud?.session, current_model, storedModel]);
+  }, [cloud?.session, current_model, storedModel, configuredProviders]);
 
+  const selectionAuthority = useRef({ scope: cloud?.scope, providers });
+  selectionAuthority.current = { scope: cloud?.scope, providers };
   const handleSelectModel = useCallback(
     async (provider: IProvider, modelName: string) => {
+      const scope = cloud?.scope;
+      if (
+        provider.managed_by === 'cloud_account' &&
+        (cloud?.session?.state !== 'connected' ||
+          !providers.some((p) => p.id === provider.id && getAvailableModels(p).includes(modelName)))
+      )
+        return;
       const selected = {
         ...(provider as unknown as TProviderWithModel),
         use_model: modelName,
       } as TProviderWithModel;
       const ok = await onSelectModel(provider, modelName);
-      if (ok) {
+      if (
+        ok &&
+        (provider.managed_by !== 'cloud_account' ||
+          (selectionAuthority.current.scope === scope &&
+            selectionAuthority.current.providers.some(
+              (p) => p.id === provider.id && getAvailableModels(p).includes(modelName)
+            )))
+      ) {
+        observedProtocol.current = {
+          key: `${provider.id}:${modelName}`,
+          protocol: provider.model_settings?.[modelName]?.openai_api_mode,
+        };
         setCurrentModel(selected);
       }
     },
-    [onSelectModel]
+    [onSelectModel, cloud?.scope, cloud?.session?.state, providers, getAvailableModels]
   );
 
   const getDisplayModelName = useCallback(

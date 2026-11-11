@@ -5,12 +5,14 @@ import { Message } from '@arco-design/web-react';
 import { BackendHttpError } from '@/common/adapter/httpBridge';
 import AionrsSendBox from '@/renderer/pages/conversation/platforms/aionrs/AionrsSendBox';
 import type { AionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
+import type { IProvider } from '@/common/config/storage';
 import type { TeamSendBoxRuntime } from '@/renderer/pages/team/components/teamSendRuntime';
 import { resetGuidDraft, useGuidDraft } from '@/renderer/pages/guid/hooks/useGuidDraft';
 import { beginComfySelectionChange } from '@/renderer/pages/conversation/runtime/Creation/useComfySelectionPending';
 import { templateSnapshotFixture } from '../../contentCatalog/galleryFixture';
 const bindComfy = vi.fn().mockResolvedValue({ ok: true });
 const requestInstall = vi.fn();
+const mobile = vi.hoisted(() => ({ enabled: false }));
 vi.mock('@/common/chat/document/creation/comfyApi', () => ({
   comfyApi: {
     bind: (...args: unknown[]) => bindComfy(...args),
@@ -137,7 +139,19 @@ vi.mock('@/renderer/components/chat/SendBox', () => ({
 vi.mock('@/renderer/components/agent/AgentModeSelector', () => ({ default: () => null }));
 vi.mock('@/renderer/components/chat/CommandQueuePanel', () => ({ default: () => null }));
 vi.mock('@/renderer/components/chat/MobileActionSheet', () => ({
-  default: () => null,
+  default: ({
+    entries,
+  }: {
+    entries: Array<{ submenu?: { options: Array<{ key: string; description?: string }> } }>;
+  }) => (
+    <div>
+      {entries
+        .flatMap((entry) => entry.submenu?.options ?? [])
+        .map((option) => (
+          <span key={option.key}>{option.description}</span>
+        ))}
+    </div>
+  ),
   useAttachEntry: () => ({ entries: [], hiddenFileInput: null }),
 }));
 vi.mock('@/renderer/components/chat/ThoughtDisplay', () => ({ default: () => null }));
@@ -164,7 +178,7 @@ vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
   }),
 }));
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
-  useLayoutContext: () => ({ isMobile: false }),
+  useLayoutContext: () => ({ isMobile: mobile.enabled }),
 }));
 vi.mock('@/renderer/hooks/chat/useAutoTitle', () => ({
   useAutoTitle: () => ({
@@ -317,12 +331,37 @@ const modelSelection = {
 describe('AionrsSendBox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mobile.enabled = false;
     ensureConversationRuntimeMock.mockResolvedValue({ recovered: false, config_options: [], runtime: null });
     useTeamPermissionMock.mockReturnValue(null);
     draftContentRef.current = '';
     runtimeViewIsProcessingRef.current = false;
     sessionStorage.clear();
     requestInstall.mockReset().mockResolvedValue({ id: 'install-1', state: 'running' });
+  });
+  it('labels official and BYOK models separately in the actual mobile action sheet without sending', () => {
+    mobile.enabled = true;
+    const providers: IProvider[] = [
+      {
+        id: 'official',
+        name: 'Managed',
+        platform: 'openai',
+        base_url: '',
+        api_key: '',
+        managed_by: 'cloud_account',
+        models: ['plain'],
+      },
+      { id: 'byok', name: 'Own', platform: 'openai', base_url: '', api_key: '', models: ['own-model'] },
+    ];
+    render(
+      <AionrsSendBox
+        conversation_id='conv-1'
+        modelSelection={{ ...modelSelection, providers, getAvailableModels: (p) => p.models }}
+      />
+    );
+    expect(screen.getByText('settings.cloudAccount.official · Managed')).toBeInTheDocument();
+    expect(screen.getByText('settings.cloudAccount.byok · Own')).toBeInTheDocument();
+    expect(sendMessageInvokeMock).not.toHaveBeenCalled();
   });
 
   it('keeps the Guid draft until the initial aionrs message is accepted', async () => {

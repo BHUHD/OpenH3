@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { CloudAccountEntry } from '../CloudAccount/Entry';
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
 import { supportsOpenAiApiMode } from '@/common/utils/modelCapabilities';
@@ -120,6 +121,7 @@ const ModelModalContent: React.FC = () => {
    * The caller is expected to have mutated the id-bearing record already.
    */
   const persistPlatform = async (platform: IProvider): Promise<void> => {
+    if (platform.managed_by === 'cloud_account') return;
     const existing = (data || []).some((item) => item.id === platform.id);
     if (existing) {
       const { id, ...body } = platform;
@@ -130,6 +132,11 @@ const ModelModalContent: React.FC = () => {
   };
 
   const updatePlatform = (platform: IProvider, success: () => void) => {
+    if (
+      platform.managed_by === 'cloud_account' ||
+      data?.some((item) => item.id === platform.id && item.managed_by === 'cloud_account')
+    )
+      return;
     const existing = (data || []).find((item) => item.id === platform.id);
     const nextArray = existing
       ? (data || []).map((item) => (item.id === platform.id ? { ...item, ...platform } : item))
@@ -157,6 +164,7 @@ const ModelModalContent: React.FC = () => {
   };
 
   const removePlatform = (id: string) => {
+    if (data?.some((item) => item.id === id && item.managed_by === 'cloud_account')) return;
     const nextArray = (data ?? []).filter((item: IProvider) => item.id !== id);
     void mutate(nextArray, false);
     ipcBridge.mode.deleteProvider
@@ -204,6 +212,7 @@ const ModelModalContent: React.FC = () => {
 
   // Execute provider/model health check without creating a conversation.
   const performHealthCheck = async (platform: IProvider, modelName: string) => {
+    if (platform.managed_by === 'cloud_account') return;
     const loadingKey = `${platform.id}-${modelName}`;
     setHealthCheckLoading((prev) => ({ ...prev, [loadingKey]: true }));
 
@@ -282,14 +291,20 @@ const ModelModalContent: React.FC = () => {
 
   const clearAllHealthData = () => {
     if (!data) return;
-    const nextArray: IProvider[] = data.map((platform: IProvider) => ({
-      ...platform,
-      model_health: undefined as IProvider['model_health'],
-    }));
+    const nextArray: IProvider[] = data.map((platform: IProvider) =>
+      platform.managed_by === 'cloud_account'
+        ? platform
+        : {
+            ...platform,
+            model_health: undefined as IProvider['model_health'],
+          }
+    );
     void mutate(nextArray, false);
 
     Promise.all(
-      (data || []).map((platform) => ipcBridge.mode.updateProvider.invoke({ id: platform.id, model_health: {} }))
+      (data || [])
+        .filter((platform) => platform.managed_by !== 'cloud_account')
+        .map((platform) => ipcBridge.mode.updateProvider.invoke({ id: platform.id, model_health: {} }))
     )
       .then(() => {
         void mutate();
@@ -422,6 +437,18 @@ const ModelModalContent: React.FC = () => {
         ) : (
           <div className='space-y-16px'>
             {(data || []).map((platform: IProvider) => {
+              if (platform.managed_by === 'cloud_account')
+                return (
+                  <section
+                    key={platform.id}
+                    className='border border-solid border-[var(--color-border-2)] rd-8px p-12px text-t-primary'
+                  >
+                    <div>{platform.name}</div>
+                    <Tag>{t('settings.cloudAccount.managed')}</Tag>
+                    <div className='text-12px text-t-secondary mt-8px'>{t('settings.cloudAccount.managedNotice')}</div>
+                    <CloudAccountEntry />
+                  </section>
+                );
               const key = platform.id;
               const isExpanded = collapseKey[platform.id] ?? false;
               return (

@@ -94,7 +94,7 @@ const AionrsModelSelector: React.FC<{
     if (!models.length) continue;
     modelGroups.push({
       key: provider.id,
-      title: provider.name,
+      title: `${t(provider.managed_by === 'cloud_account' ? 'settings.cloudAccount.official' : 'settings.cloudAccount.byok')} · ${provider.name}`,
       models: models.map((modelName) => {
         const id = compositeId(provider.id, modelName);
         modelLookup.set(id, { provider, modelName });

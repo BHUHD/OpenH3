@@ -1,3 +1,4 @@
+import { OfficialFailure } from '@/renderer/components/settings/SettingsModal/CloudAccount/History/Failure';
 /**
  * @license
  * Copyright 2025 AionUi (aionui.com)
@@ -61,7 +62,7 @@ const resolveAgentTipBody = (
   });
 };
 
-const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => {
+const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
   const { t } = useTranslation();
   const { content, type, code, params } = message.content;
   const structuredError = type === 'error' ? message.content.error : undefined;
@@ -248,4 +249,10 @@ const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => {
   );
 };
 
+const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => (
+  <div className='min-w-0 w-full'>
+    <MessageTipsBody message={message} />
+    <OfficialFailure message={message} />
+  </div>
+);
 export default MessageTips;

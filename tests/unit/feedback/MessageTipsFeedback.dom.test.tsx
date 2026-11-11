@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -50,6 +50,11 @@ vi.mock('react-i18next', () => ({
 }));
 
 const openFeedbackMock = vi.fn(() => Promise.resolve());
+const recovery = vi.hoisted(() => ({ refreshWallet: vi.fn(), navigate: vi.fn() }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => recovery.navigate }));
+vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/Provider', () => ({
+  useOptionalCloudAccount: () => ({ session: { state: 'connected' }, refreshWallet: recovery.refreshWallet }),
+}));
 vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
   useFeedback: () => ({ openFeedback: openFeedbackMock }),
 }));
@@ -120,6 +125,42 @@ describe('MessageTips — FeedbackButton wiring', () => {
   afterEach(() => {
     cleanup();
   });
+  it.each(['plain', 'json', 'structured'] as const)(
+    'keeps manual official recovery outside the %s error body without treating billing text as financial proof',
+    (shape) => {
+      recovery.refreshWallet.mockClear();
+      recovery.navigate.mockClear();
+      const message = buildTips(
+        'error',
+        shape === 'json' ? '{"error":"insufficient funds"}' : 'insufficient funds',
+        shape === 'structured'
+          ? {
+              message: 'insufficient funds',
+              code: 'USER_LLM_PROVIDER_BILLING_REQUIRED',
+              ownership: 'user_llm_provider',
+            }
+          : undefined
+      );
+      message.model_source = {
+        kind: 'cloud_account',
+        issuer: 'fixture',
+        subject: '42',
+        provider_id: 'official',
+        model: 'original',
+        protocol: 'Responses',
+      };
+      const view = render(<MessageTips message={message} />);
+      expect(screen.getByText('settings.cloudAccount.failureUnknown')).toBeInTheDocument();
+      expect(screen.getByText('settings.cloudAccount.manualByok')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.refreshWallet' }));
+      fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.entry' }));
+      expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
+      expect(recovery.navigate).toHaveBeenCalledWith('/settings/cloud-account');
+      view.rerender(<MessageTips message={{ ...message, model_source: null }} />);
+      expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
+      expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('does not render FeedbackButton on success tips', () => {
     render(<MessageTips message={buildTips('success')} />);

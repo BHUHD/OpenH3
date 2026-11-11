@@ -457,7 +457,7 @@ const GuidPage: React.FC = () => {
                 ...matchedProvider,
                 use_model: resolvedDefaults.modelId,
               },
-              { persistPreference: false }
+              { persistPreference: false, automatic: true }
             );
           }
         } else {
