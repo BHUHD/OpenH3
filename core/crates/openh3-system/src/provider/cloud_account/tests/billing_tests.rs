@@ -169,6 +169,106 @@ async fn queued_catalog_request_keeps_original_account_before_waiting() {
 }
 
 #[tokio::test]
+async fn queued_catalog_reads_reload_same_grant_credentials_before_io() {
+    for expire in [true, false] {
+        tokio::time::timeout(std::time::Duration::from_secs(5), queued_catalog_credentials(expire))
+            .await
+            .unwrap();
+    }
+}
+
+async fn queued_catalog_credentials(expire: bool) {
+    let (server, db, svc, owner) = connected().await;
+    let mut stored = svc.read(&owner).await.unwrap().unwrap();
+    let gate = Arc::new(tokio::sync::Mutex::new(()));
+    svc.catalog_flights.lock().await.insert(owner.clone(), gate.clone());
+    let held = gate.lock().await;
+    let first = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.models(&owner).await }
+    });
+    let second = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.models(&owner).await }
+    });
+    // Map + observer + two callers: both original credential reads completed
+    // and both public calls are now waiting at the catalog mutex.
+    while Arc::strong_count(&gate) != 4 {
+        tokio::task::yield_now().await;
+    }
+    let mut fresh = creds();
+    fresh["access_token"] = json!("synthetic-fresh-access");
+    fresh["refresh_token"] = json!("synthetic-fresh-refresh");
+    fresh["session_expires_at"] = json!(stored.credentials.session_expires_at);
+    if expire {
+        // Deterministically model elapsed expiry while the catalog is queued.
+        stored.credentials.access_expires_at = now() - 1;
+    } else {
+        // A different operation rotated this same grant while it was queued.
+        stored.credentials = serde_json::from_value(fresh.clone()).unwrap();
+    }
+    sqlx::query("UPDATE cloud_accounts SET encrypted=? WHERE owner=?")
+        .bind(openh3_common::encrypt_string(&serde_json::to_string(&stored).unwrap(), &[7; 32]).unwrap())
+        .bind(&owner)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/openh3/token"))
+        .respond_with(ok(json!({"credentials":fresh})))
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/openh3/models"))
+        .respond_with(
+            ResponseTemplate::new(401)
+                .set_body_json(json!({"success":false,"code":"authentication_failed","message":"fixed fixture error"})),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(path("/api/openh3/models"))
+        .and(wiremock::matchers::header(
+            "authorization",
+            "Bearer synthetic-fresh-access",
+        ))
+        .respond_with(ok(catalog(vec![model("fresh", "Responses")])))
+        .with_priority(1)
+        .mount(&server)
+        .await;
+    drop(held);
+    let (first, second) = tokio::join!(first, second);
+    first.unwrap().unwrap();
+    second.unwrap().unwrap();
+    let (state, models): (String, String) = sqlx::query_as(
+        "SELECT c.state,p.models FROM cloud_accounts c JOIN providers p ON p.id=c.provider_id WHERE c.owner=?",
+    )
+    .bind(&owner)
+    .fetch_one(db.pool())
+    .await
+    .unwrap();
+    assert_eq!(state, "active");
+    assert_eq!(models, "[\"fresh\"]");
+    let current = svc.read(&owner).await.unwrap().unwrap();
+    assert_eq!(current.generation, stored.generation);
+    assert_eq!(current.provider_id, stored.provider_id);
+    assert_eq!(current.credentials.access_token, "synthetic-fresh-access");
+    assert_eq!(current.credentials.refresh_token, "synthetic-fresh-refresh");
+    let requests = server.received_requests().await.unwrap();
+    assert_eq!(
+        requests.iter().filter(|r| r.url.path().ends_with("/token")).count(),
+        usize::from(expire)
+    );
+    let models: Vec<_> = requests.iter().filter(|r| r.url.path().ends_with("/models")).collect();
+    assert_eq!(models.len(), 2);
+    assert!(
+        models
+            .iter()
+            .all(|r| r.headers["authorization"] == "Bearer synthetic-fresh-access")
+    );
+}
+
+#[tokio::test]
 async fn signed_wallet_and_refund_usage_remain_authoritative_and_filters_precede_io() {
     let (server, _, svc, owner) = connected().await;
     let wallet = json!({"read_started_at":100,"as_of":101,"wallet_balance":{"status":"available","amount":{"amount":"-12","unit":"new_api_quota"}},"device_limit":{"status":"unlimited"},"billing_preference":"subscription_first","subscriptions":{"status":"available","items":[{"allowance_state":"reset_pending","id":"s1","remaining":{"amount":"-1","unit":"new_api_quota"},"unlimited":false,"used":{"amount":"20","unit":"new_api_quota"},"expires_at":200,"next_reset_at":99,"allow_wallet_overflow":true}]}});

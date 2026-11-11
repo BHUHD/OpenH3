@@ -61,7 +61,9 @@ impl CloudAccountService {
             .or_insert_with(|| Arc::new(Mutex::new(())))
             .clone();
         let _flight = flight.lock().await;
-        self.check_generation(owner, s.generation).await?;
+        // The queue can outlive access expiry or a same-grant rotation. Reload
+        // and refresh only the captured grant before authenticated HTTP.
+        let s = self.usable_grant(s).await?;
         let response = self
             .gateway()?
             .get::<Catalog>("models", Some(&s.credentials.access_token))
