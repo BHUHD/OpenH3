@@ -11,16 +11,20 @@ fn round_trip<T: DeserializeOwned + Serialize>(fixture: Value) {
 #[test]
 fn session_states_are_explicit_and_do_not_carry_gateway_credentials() {
     for state in ["disabled", "unconfigured", "disconnected", "reauth_required"] {
-        round_trip::<CloudAccountSessionResponse>(json!({"state": state}));
+        let mut fixture = json!({"state": state});
+        if !matches!(state, "disabled" | "unconfigured") {
+            fixture["generation"] = json!("12");
+        }
+        round_trip::<CloudAccountSessionResponse>(fixture);
     }
     round_trip::<ApiResponse<CloudAccountSessionResponse>>(json!({
         "success": true,
-        "data": {"state": "connected", "account": {
+        "data": {"state": "connected", "generation":"12", "account": {
             "id": "42", "username": "alice", "display_name": "Alice", "email": "alice@example.com"
         }}
     }));
     round_trip::<CloudAccountSessionResponse>(json!({
-        "state": "verification_required", "verification": {
+        "state": "verification_required", "generation":"12", "verification": {
             "challenge_id": "local-opaque-handle", "expires_at": 1800000000, "purpose":"login",
             "methods": ["totp", "backup_code"]
         }
@@ -38,7 +42,7 @@ fn upstream_secrets_and_admin_fields_are_rejected_by_public_response_types() {
         "role",
         "admin_permissions",
     ] {
-        let mut fixture = json!({"state": "disconnected"});
+        let mut fixture = json!({"state": "disconnected", "generation":"12"});
         fixture[forbidden] = json!("must-not-pass-through");
         let error = serde_json::from_value::<CloudAccountSessionResponse>(fixture).unwrap_err();
         assert!(error.to_string().contains("unknown field"), "{error}");
@@ -51,7 +55,8 @@ fn upstream_secrets_and_admin_fields_are_rejected_by_public_response_types() {
 fn capabilities_report_required_unsupported_bot_challenges() {
     round_trip::<CloudAccountCapabilitiesResponse>(json!({
         "availability":"available", "registration_enabled":true, "email_verification_required":true,
-        "password_login_enabled":true, "password_reset_enabled":true, "anti_bot":"unsupported_required"
+        "password_login_enabled":true, "password_reset_enabled":true, "anti_bot":"unsupported_required",
+        "password_min_length":null, "password_max_length":null
     }));
 }
 
@@ -200,9 +205,11 @@ fn sensitive_device_revoke_has_purpose_bound_reauthentication() {
     );
     round_trip::<CloudAccountVerifyResponse>(json!({"result":"device_revoked"}));
     round_trip::<CloudAccountRevokeDeviceResponse>(json!({"status":"revoked"}));
-    round_trip::<CloudAccountVerifyResponse>(json!({"result":"login", "session":{"state":"connected","account":{
-        "id":"42","username":"alice","display_name":"Alice","email":null
-    }}}));
+    round_trip::<CloudAccountVerifyResponse>(
+        json!({"result":"login", "session":{"state":"connected","generation":"12","account":{
+            "id":"42","username":"alice","display_name":"Alice","email":null
+        }}}),
+    );
 }
 
 #[test]

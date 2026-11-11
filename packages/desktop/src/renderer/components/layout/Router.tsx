@@ -14,6 +14,7 @@ const SkillsSettings = React.lazy(() => import('@renderer/pages/settings/SkillsS
 const SkillDetailPage = React.lazy(() => import('@renderer/pages/settings/SkillsSettings/SkillDetailPage'));
 const ToolsSettings = React.lazy(() => import('@renderer/pages/settings/ToolsSettings'));
 const AppearanceSettings = React.lazy(() => import('@renderer/pages/settings/AppearanceSettings'));
+const CloudAccountSettings = React.lazy(() => import('@renderer/components/settings/SettingsModal/CloudAccount/Page'));
 const ModeSettings = React.lazy(() => import('@renderer/pages/settings/ModeSettings'));
 const SystemSettings = React.lazy(() => import('@renderer/pages/settings/SystemSettings'));
 const WebuiSettings = React.lazy(() => import('@renderer/pages/settings/WebuiSettings'));
@@ -80,6 +81,7 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
             path='/team/:id'
             element={TEAM_MODE_ENABLED ? withRouteFallback(TeamIndex) : <Navigate to='/guid' replace />}
           />
+          <Route path='/settings/cloud-account' element={withRouteFallback(CloudAccountSettings)} />
           <Route path='/settings/model' element={withRouteFallback(ModeSettings)} />
           <Route path='/assistants' element={withRouteFallback(AssistantSettings)} />
           {/* Assistants moved out of Settings to a top-level entry; keep a redirect

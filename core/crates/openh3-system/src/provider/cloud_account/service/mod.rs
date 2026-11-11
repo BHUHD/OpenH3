@@ -88,6 +88,10 @@ impl CloudAccountService {
     }
     pub(super) async fn policy(&self) -> Result<Capabilities> {
         let policy: Capabilities = self.gateway()?.get("capabilities", None).await?;
+        Self::validate_policy(&policy)?;
+        Ok(policy)
+    }
+    fn validate_policy(policy: &Capabilities) -> Result<()> {
         if policy.turnstile_required
             || policy.turnstile_supported
             || policy.passkey_supported
@@ -101,7 +105,7 @@ impl CloudAccountService {
         {
             return Err(Error::Policy);
         }
-        Ok(policy)
+        Ok(())
     }
     pub async fn capabilities(&self) -> Result<CloudAccountCapabilitiesResponse> {
         let availability = if !self.enabled {
@@ -118,12 +122,17 @@ impl CloudAccountService {
             password_login_enabled: false,
             password_reset_enabled: false,
             anti_bot: CloudAccountAntiBot::NotRequired,
+            password_min_length: None,
+            password_max_length: None,
         };
         if let Some(gateway) = &self.gateway {
             let p: Capabilities = gateway.get("capabilities", None).await?;
-            result.registration_enabled = p.register && !p.turnstile_required;
-            result.password_login_enabled = p.login && !p.turnstile_required;
-            result.password_reset_enabled = p.password_reset && !p.turnstile_required;
+            let supported = Self::validate_policy(&p).is_ok();
+            result.password_min_length = supported.then_some(p.password_min_length);
+            result.password_max_length = supported.then_some(p.password_max_length);
+            result.registration_enabled = p.register && supported;
+            result.password_login_enabled = p.login && supported;
+            result.password_reset_enabled = p.password_reset && supported;
             result.email_verification_required = p.email_verification_required;
             if p.turnstile_required {
                 result.anti_bot = CloudAccountAntiBot::UnsupportedRequired;
@@ -189,11 +198,18 @@ impl CloudAccountService {
                 let encrypted = self.encrypt(&stored)?;
                 self.repo.save_pending(stored.params(&encrypted)).await?;
                 tracing::info!("Cloud account pending grant saved");
-                self.session(owner).await
+                let stored = self.usable_grant(stored).await?;
+                Ok(CloudAccountSessionResponse::Connected {
+                    generation: stored.generation.to_string(),
+                    account: stored.account,
+                })
             }
             AuthResult::Flow(flow) if flow.purpose == "openh3_login" => {
                 let verification = self.keep_flow(owner, generation, request_id, flow, None, None).await?;
-                Ok(CloudAccountSessionResponse::VerificationRequired { verification })
+                Ok(CloudAccountSessionResponse::VerificationRequired {
+                    generation: generation.to_string(),
+                    verification,
+                })
             }
             _ => Err(Error::Protocol),
         }
@@ -327,25 +343,44 @@ impl CloudAccountService {
         if self.gateway.is_none() {
             return Ok(CloudAccountSessionResponse::Unconfigured {});
         }
+        let original_generation = self.generation(owner).await?;
         match self.usable(owner).await {
-            Ok(Some(s)) => Ok(CloudAccountSessionResponse::Connected { account: s.account }),
-            Err(Error::Authentication) => Ok(CloudAccountSessionResponse::ReauthRequired {}),
+            Ok(Some(s)) => {
+                self.check_generation(owner, original_generation).await?;
+                Ok(CloudAccountSessionResponse::Connected {
+                    generation: s.generation.to_string(),
+                    account: s.account,
+                })
+            }
+            Err(Error::Authentication) => {
+                self.check_generation(owner, original_generation + 1).await?;
+                Ok(CloudAccountSessionResponse::ReauthRequired {
+                    generation: (original_generation + 1).to_string(),
+                })
+            }
             Err(e) => Err(e),
             Ok(None) => {
                 let row = self.repo.load(owner, self.gateway()?.issuer()).await?;
+                self.check_generation(owner, original_generation).await?;
                 if row.is_some_and(|r| r.state == "reauth_required") {
-                    return Ok(CloudAccountSessionResponse::ReauthRequired {});
+                    return Ok(CloudAccountSessionResponse::ReauthRequired {
+                        generation: original_generation.to_string(),
+                    });
                 }
                 let flows = self.flows.lock().await;
+                self.check_generation(owner, original_generation).await?;
                 if let Some((id, flow)) = flows
                     .iter()
                     .find(|(_, f)| f.owner == owner && f.flow.purpose == "openh3_login" && f.flow.expires_at > now())
                 {
                     return Ok(CloudAccountSessionResponse::VerificationRequired {
+                        generation: flow.generation.to_string(),
                         verification: flow.public(id)?,
                     });
                 }
-                Ok(CloudAccountSessionResponse::Disconnected {})
+                Ok(CloudAccountSessionResponse::Disconnected {
+                    generation: original_generation.to_string(),
+                })
             }
         }
     }
@@ -381,7 +416,10 @@ impl CloudAccountService {
             return Err(Error::Protocol);
         }
         self.check_generation(owner, stored.generation).await?;
-        Ok(CloudAccountSessionResponse::Connected { account })
+        Ok(CloudAccountSessionResponse::Connected {
+            generation: stored.generation.to_string(),
+            account,
+        })
     }
     pub async fn logout(&self, owner: &str) -> Result<CloudAccountLogoutResponse> {
         use CloudAccountRemoteRevocation::*;

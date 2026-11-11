@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { CloudAccountEntry } from '@/renderer/components/settings/SettingsModal/CloudAccount/Entry';
+
 import React, { useSyncExternalStore } from 'react';
 import {
   getSidebarUpdateState,
@@ -82,6 +84,7 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
 
   return (
     <div className='shrink-0 sider-footer mt-auto pt-8px pb-8px border-t border-solid border-[var(--color-border-2)] border-s-0 border-e-0 border-b-0'>
+      <CloudAccountEntry collapsed={collapsed} />
       <div className={classNames('flex', collapsed ? 'flex-col gap-2px' : 'items-center gap-2px')}>
         <Tooltip {...siderTooltipProps} content={isSettings ? t('common.back') : t('common.settings')} position='right'>
           <div

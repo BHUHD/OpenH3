@@ -197,7 +197,7 @@ async fn registration_email_bound_to_owner_and_not_a_login() {
     ));
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::Disconnected {}
+        CloudAccountSessionResponse::Disconnected { .. }
     ));
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM providers WHERE managed_by IS NOT NULL")
         .fetch_one(db.pool())
@@ -312,7 +312,7 @@ async fn refresh_singleflight_and_logout_disable_without_remote_confirmation() {
     );
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::Disconnected {}
+        CloudAccountSessionResponse::Disconnected { .. }
     ));
     let enabled: bool = sqlx::query_scalar("SELECT enabled FROM providers WHERE id=?")
         .bind(stored.provider_id)
@@ -338,7 +338,7 @@ async fn decryption_failure_requires_auth_and_clears_credentials() {
         .unwrap();
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::ReauthRequired {}
+        CloudAccountSessionResponse::ReauthRequired { .. }
     ));
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM providers WHERE managed_by IS NOT NULL AND enabled=1")
         .fetch_one(db.pool())
@@ -467,12 +467,16 @@ async fn copied_ciphertext_cannot_cross_owner_or_issuer() {
     sqlx::query("INSERT INTO users(id,user_type,username,password_hash,status,session_generation,created_at,updated_at) VALUES ('owner-b','local','owner-b','','active',0,1,1)").execute(db.pool()).await.unwrap();
     assert!(matches!(
         svc.session("owner-b").await.unwrap(),
-        CloudAccountSessionResponse::Disconnected {}
+        CloudAccountSessionResponse::Disconnected { .. }
     ));
+    sqlx::query("DELETE FROM cloud_accounts WHERE owner = 'owner-b'")
+        .execute(db.pool())
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO cloud_accounts(owner,issuer,generation,subject,device_id,provider_id,encrypted,state) SELECT 'owner-b',issuer,generation,subject,device_id,provider_id,encrypted,state FROM cloud_accounts WHERE owner=?").bind(&owner).execute(db.pool()).await.unwrap();
     assert!(matches!(
         svc.session("owner-b").await.unwrap(),
-        CloudAccountSessionResponse::ReauthRequired {}
+        CloudAccountSessionResponse::ReauthRequired { .. }
     ));
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
@@ -546,8 +550,9 @@ async fn external_identity_adoption_does_not_transfer_cloud_grants_or_managed_pr
 async fn mfa_handles_are_owner_bound_invalidated_by_new_login_and_restart() {
     let (server, db, svc, owner) = fixture().await;
     Mock::given(method("POST")).and(path("/api/openh3/login")).respond_with(ok(json!({"state":"verification_required","purpose":"openh3_login","flow_token":"private-login-flow","expires_at":now()+600,"resend_at":0,"methods":["totp","backup_code"]}))).expect(2).mount(&server).await;
-    let CloudAccountSessionResponse::VerificationRequired { verification: first } =
-        svc.login(&owner, login()).await.unwrap()
+    let CloudAccountSessionResponse::VerificationRequired {
+        verification: first, ..
+    } = svc.login(&owner, login()).await.unwrap()
     else {
         panic!()
     };
@@ -563,8 +568,9 @@ async fn mfa_handles_are_owner_bound_invalidated_by_new_login_and_restart() {
         .unwrap_err(),
         CloudAccountError::Input
     );
-    let CloudAccountSessionResponse::VerificationRequired { verification: second } =
-        svc.login(&owner, login()).await.unwrap()
+    let CloudAccountSessionResponse::VerificationRequired {
+        verification: second, ..
+    } = svc.login(&owner, login()).await.unwrap()
     else {
         panic!()
     };
@@ -695,7 +701,7 @@ async fn auth_failure_invalidates_but_transport_and_proof_failures_preserve_gran
     assert!(*lifetime.borrow());
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::ReauthRequired {}
+        CloudAccountSessionResponse::ReauthRequired { .. }
     ));
     let enabled: i64 = sqlx::query_scalar("SELECT count(*) FROM providers WHERE enabled=1 AND managed_by IS NOT NULL")
         .fetch_one(db.pool())
@@ -839,7 +845,7 @@ async fn recovery_mfa_reset_cleanup_and_devices_keep_private_fields_private() {
     assert!(*lifetime.borrow());
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::ReauthRequired {}
+        CloudAccountSessionResponse::ReauthRequired { .. }
     ));
     assert_eq!(
         svc.password_reset_complete(
@@ -976,7 +982,7 @@ async fn delayed_login_activation_and_refresh_cannot_resurrect_logout() {
         assert_eq!(worker.await.unwrap().unwrap_err(), CloudAccountError::Conflict);
         assert!(matches!(
             svc.session(&owner).await.unwrap(),
-            CloudAccountSessionResponse::Disconnected {}
+            CloudAccountSessionResponse::Disconnected { .. }
         ));
         let count: i64 =
             sqlx::query_scalar("SELECT count(*) FROM providers WHERE managed_by IS NOT NULL AND enabled=1")
@@ -1198,7 +1204,7 @@ async fn corrupt_grant_logout_clears_locally_and_reports_unconfirmed() {
     );
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::Disconnected {}
+        CloudAccountSessionResponse::Disconnected { .. }
     ));
     assert_eq!(
         svc.logout(&owner).await.unwrap().remote_revocation,
@@ -1228,7 +1234,7 @@ async fn active_absolute_expiry_disables_even_while_access_token_is_fresh() {
     let before = server.received_requests().await.unwrap().len();
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::ReauthRequired {}
+        CloudAccountSessionResponse::ReauthRequired { .. }
     ));
     assert_eq!(server.received_requests().await.unwrap().len(), before);
     let enabled: bool = sqlx::query_scalar("SELECT enabled FROM providers WHERE id=?")

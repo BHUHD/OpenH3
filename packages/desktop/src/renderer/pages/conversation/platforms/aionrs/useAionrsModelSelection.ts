@@ -4,9 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
+
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
-import { useModelProviderList } from '@/renderer/hooks/agent/useModelProviderList';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useModelProviderList, useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export type AionrsModelSelection = {
   current_model?: TProviderWithModel;
@@ -25,19 +27,45 @@ export const useAionrsModelSelection = ({
   initialModel,
   onSelectModel,
 }: UseAionrsModelSelectionOptions): AionrsModelSelection => {
-  const [current_model, setCurrentModel] = useState<TProviderWithModel | undefined>(initialModel);
+  const cloud = useOptionalCloudAccount();
+  const [storedModel, setCurrentModel] = useState<TProviderWithModel | undefined>(initialModel);
 
   useEffect(() => {
     setCurrentModel(initialModel);
   }, [initialModel?.id, initialModel?.use_model]);
 
   const { providers: allProviders, getAvailableModels, formatModelLabel } = useModelProviderList();
+  const { data: configuredProviders } = useProvidersQuery();
+  // Conversation rehydration deliberately contains only provider ID + model.
+  // Resolve management from the same providers SWR key, including tombstones,
+  // and retain that classification for this selection when logout clears cache.
+  const managedSelection = useRef<string | undefined>(undefined);
+  if (
+    storedModel &&
+    (storedModel.managed_by === 'cloud_account' ||
+      configuredProviders?.some(
+        (provider) => provider.id === storedModel.id && provider.managed_by === 'cloud_account'
+      ))
+  )
+    managedSelection.current = storedModel.id;
 
   // AionCore does not support Google Auth — filter it out
   const providers = useMemo(
     () => allProviders.filter((p) => !p.platform?.toLowerCase().includes('gemini-with-google-auth')),
     [allProviders]
   );
+
+  const current_model =
+    storedModel &&
+    managedSelection.current === storedModel.id &&
+    cloud &&
+    (cloud.session?.state !== 'connected' || !providers.some((provider) => provider.id === storedModel.id))
+      ? undefined
+      : storedModel;
+  useEffect(() => {
+    if (storedModel && managedSelection.current === storedModel.id && cloud && !current_model)
+      setCurrentModel(undefined);
+  }, [cloud?.session, current_model, storedModel]);
 
   const handleSelectModel = useCallback(
     async (provider: IProvider, modelName: string) => {

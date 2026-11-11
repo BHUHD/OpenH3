@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { CloudAccountProvider } from './components/settings/SettingsModal/CloudAccount/Provider';
+
 // Sentry must be initialized first
 // Use electron-specific renderer package only inside Electron; fall back to the
 // browser SDK when running as a web server (no window.electronAPI).
@@ -307,6 +309,12 @@ const RuntimeFailureDialogs: React.FC = () => {
 // in per-hook with `revalidateOnFocus: true`.
 const SWR_DEFAULTS = { revalidateOnFocus: false } as const;
 
+const CloudThemeProvider: React.FC<PropsWithChildren> = ({ children }) => (
+  <CloudAccountProvider>
+    <ThemeProvider>{children}</ThemeProvider>
+  </CloudAccountProvider>
+);
+
 const AppProviders: React.FC<PropsWithChildren> = ({ children }) =>
   React.createElement(
     SWRConfig,
@@ -315,7 +323,7 @@ const AppProviders: React.FC<PropsWithChildren> = ({ children }) =>
       AuthProvider,
       null,
       React.createElement(
-        ThemeProvider,
+        CloudThemeProvider,
         null,
         React.createElement(
           PreviewProvider,

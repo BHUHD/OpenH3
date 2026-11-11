@@ -30,6 +30,8 @@ pub struct CloudAccountCapabilitiesResponse {
     pub password_login_enabled: bool,
     pub password_reset_enabled: bool,
     pub anti_bot: CloudAccountAntiBot,
+    pub password_min_length: Option<usize>,
+    pub password_max_length: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -75,10 +77,20 @@ pub struct CloudAccountVerification {
 pub enum CloudAccountSessionResponse {
     Disabled {},
     Unconfigured {},
-    Disconnected {},
-    VerificationRequired { verification: CloudAccountVerification },
-    Connected { account: CloudAccountProfile },
-    ReauthRequired {},
+    Disconnected {
+        generation: String,
+    },
+    VerificationRequired {
+        generation: String,
+        verification: CloudAccountVerification,
+    },
+    Connected {
+        generation: String,
+        account: CloudAccountProfile,
+    },
+    ReauthRequired {
+        generation: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

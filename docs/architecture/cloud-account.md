@@ -88,6 +88,15 @@ remote flow and login attempt. Another user cannot complete it. A new attempt
 invalidates the old local handle; expired or consumed challenges cannot be
 replayed. The gateway's `flow_token` stays private to Core.
 
+Session responses with a configured gateway carry `generation` as a decimal
+string, taken from the exact original SQLite grant or challenge snapshot.
+It changes on login admission, local disconnect and invalidation, including
+reconnecting the same remote account. Refreshing the same grant preserves it.
+Disabled and unconfigured responses remain readable without a generation or
+gateway. A delayed original session/profile read must fail with conflict if its
+grant changes; an independently fetched newer generation must never label old
+account data.
+
 `RegisterResponse` is only `{"status":"registered"}`. It creates no local
 connection and requires a separate login. Registration always accepts an email
 input; `verification_code` is conditional on the advertised policy. The server
@@ -122,6 +131,29 @@ ceremony that this native flow cannot perform. Affected actions must fail closed
 with a useful native error; the client must not silently bypass Turnstile. When
 availability is `disabled` or `unconfigured`, action flags are false. Password
 encryption policy is handled privately by Core rather than exposed to the UI.
+Validated nonsecret `password_min_length` and `password_max_length` are exposed
+only when the native policy is supported; otherwise both are null and action
+flags are false. These codepoint limits apply to registration and replacement
+passwords. Existing login and password proof do not impose registration minimums.
+
+The renderer mounts one account lifecycle inside the authenticated application
+providers, shared by modal settings, routed settings, sidebar and model menu.
+The local WebUI user ID takes precedence; desktop waits for the existing Core
+current-user resolver. Remote account IDs are never local owner IDs. SWR schedules
+status reads and existing `providers` cache refreshes. Form operations capture
+the original owner and transient epoch; cancellation, owner replacement and an
+unrelated grant generation change discard late results and clear form secrets.
+Reads during an identity mutation cannot overwrite that mutation's expected
+local transition or discard its remote revocation outcome. Official provider
+admission remains Core-owned; authentication does not select a model or send a
+request. Catalog refresh failure preserves connected account status and also
+revalidates the providers cache.
+
+Registration is acknowledged as creating a service account, without claiming
+acceptance of unseen terms. Deployment prerequisite: the operator must supply
+service terms; published legal content or a terms URL is not configured by this
+feature. Email input is omitted in the native form when verification is disabled,
+and the UI explains that no email is bound in that case.
 
 `PageQuery` uses `page` and `page_size`, defaulting to 1 and 20. Routes must reject
 `page < 1` and `page_size` outside 1–100 before remote I/O; Rust unsigned fields

@@ -7,6 +7,7 @@ const INITIALIZE: u8 = 1;
 const ADMIT: u8 = 2;
 const DISCONNECT: u8 = 3;
 const CATALOG: u8 = 4;
+const LOAD_SNAPSHOT: u8 = 5;
 
 /// Scheduling wrapper only; every operation still executes real SQLite SQL.
 struct RepositoryBarrier {
@@ -47,7 +48,9 @@ impl ICloudAccountRepository for RepositoryBarrier {
         self.inner.model_allowed(p, model, protocol).await
     }
     async fn load(&self, owner: &str, issuer: &str) -> std::result::Result<Option<CloudAccountRow>, DbError> {
-        self.inner.load(owner, issuer).await
+        let row = self.inner.load(owner, issuer).await?;
+        self.pause(LOAD_SNAPSHOT).await;
+        Ok(row)
     }
     async fn ensure_generation(&self, owner: &str, issuer: &str) -> std::result::Result<i64, DbError> {
         self.pause(INITIALIZE).await;
@@ -334,7 +337,7 @@ async fn atomic_logout_revokes_grant_committed_while_waiting() {
     );
     assert!(matches!(
         svc.session(&owner).await.unwrap(),
-        CloudAccountSessionResponse::Disconnected {}
+        CloudAccountSessionResponse::Disconnected { .. }
     ));
 }
 
@@ -379,4 +382,148 @@ async fn subscription_waiting_behind_logout_cannot_survive_invalidation() {
     logout.await.unwrap().unwrap();
     assert!(subscribe.await.unwrap().is_err());
     assert!(*life.borrow());
+}
+
+#[tokio::test]
+async fn session_original_snapshot_cannot_be_relabelled_after_same_account_relogin() {
+    let server = MockServer::start().await;
+    let (_db, repo, svc, owner) = fixture_with_barrier(server.uri(), 0).await;
+    for (route, value) in [
+        ("capabilities", capabilities()),
+        ("login", pending()),
+        ("activate", active()),
+        ("revoke", json!({"state":"revoked"})),
+    ] {
+        Mock::given(path(format!("/api/openh3/{route}")))
+            .respond_with(ok(value))
+            .mount(&server)
+            .await;
+    }
+    let first = serde_json::to_value(svc.login(&owner, login()).await.unwrap()).unwrap();
+    repo.armed.store(LOAD_SNAPSHOT, Ordering::SeqCst);
+    let old = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.session(&owner).await }
+    });
+    repo.wait().await;
+    svc.logout(&owner).await.unwrap();
+    let second = serde_json::to_value(svc.login(&owner, login()).await.unwrap()).unwrap();
+    assert_eq!(first["account"], second["account"]);
+    assert_ne!(first["generation"], second["generation"]);
+    repo.release.notify_one();
+    assert_eq!(old.await.unwrap().unwrap_err(), CloudAccountError::Conflict);
+    assert_eq!(
+        serde_json::to_value(svc.session(&owner).await.unwrap()).unwrap(),
+        second
+    );
+}
+
+#[tokio::test]
+async fn safe_capabilities_hide_invalid_password_policy_and_crypto_material() {
+    let (server, _db, svc, _owner) = fixture().await;
+    server.reset().await;
+    let mut policy = capabilities();
+    policy["password_min_length"] = json!(0);
+    Mock::given(path("/api/openh3/capabilities"))
+        .respond_with(ok(policy))
+        .mount(&server)
+        .await;
+    let result = svc.capabilities().await.unwrap();
+    assert!(!result.registration_enabled && !result.password_login_enabled && !result.password_reset_enabled);
+    assert!(result.password_min_length.is_none());
+    server.reset().await;
+    Mock::given(path("/api/openh3/capabilities"))
+        .respond_with(ok(capabilities()))
+        .mount(&server)
+        .await;
+    let result = svc.capabilities().await.unwrap();
+    assert_eq!(result.password_min_length, Some(8));
+    let public = serde_json::to_string(&result).unwrap();
+    assert!(!public.contains("encryption") && !public.contains("public_key"));
+}
+
+#[tokio::test]
+async fn stale_corrupt_session_cannot_label_a_concurrent_logout_as_reauthentication() {
+    let server = MockServer::start().await;
+    let (db, repo, svc, owner) = fixture_with_barrier(server.uri(), 0).await;
+    for (route, value) in [
+        ("capabilities", capabilities()),
+        ("login", pending()),
+        ("activate", active()),
+    ] {
+        Mock::given(path(format!("/api/openh3/{route}")))
+            .respond_with(ok(value))
+            .mount(&server)
+            .await;
+    }
+    svc.login(&owner, login()).await.unwrap();
+    sqlx::query("UPDATE cloud_accounts SET encrypted='malformed' WHERE owner=?")
+        .bind(&owner)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    repo.armed.store(LOAD_SNAPSHOT, Ordering::SeqCst);
+    let old = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.session(&owner).await }
+    });
+    repo.wait().await;
+    svc.logout(&owner).await.unwrap();
+    repo.release.notify_one();
+    assert_eq!(old.await.unwrap().unwrap_err(), CloudAccountError::Conflict);
+    let row = repo
+        .inner
+        .load(&owner, svc.gateway().unwrap().issuer())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(row.state, "disconnected");
+}
+
+#[tokio::test]
+async fn me_keeps_original_generation_while_same_account_reconnects() {
+    let (endpoint, mut rx, server) = barrier_gateway().await;
+    let (_db, _repo, svc, owner) = fixture_with_barrier(endpoint, 0).await;
+    let first = start_login(&svc, &owner);
+    exchange(&mut rx, "capabilities")
+        .await
+        .respond
+        .send(capabilities())
+        .unwrap();
+    exchange(&mut rx, "login").await.respond.send(pending()).unwrap();
+    exchange(&mut rx, "activate").await.respond.send(active()).unwrap();
+    let first = serde_json::to_value(first.await.unwrap().unwrap()).unwrap();
+    let old = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.me(&owner).await }
+    });
+    let delayed = exchange(&mut rx, "me").await;
+    let logout = tokio::spawn({
+        let svc = svc.clone();
+        let owner = owner.clone();
+        async move { svc.logout(&owner).await }
+    });
+    exchange(&mut rx, "revoke")
+        .await
+        .respond
+        .send(json!({"state":"revoked"}))
+        .unwrap();
+    logout.await.unwrap().unwrap();
+    let second = start_login(&svc, &owner);
+    exchange(&mut rx, "capabilities")
+        .await
+        .respond
+        .send(capabilities())
+        .unwrap();
+    exchange(&mut rx, "login").await.respond.send(pending()).unwrap();
+    exchange(&mut rx, "activate").await.respond.send(active()).unwrap();
+    let second = serde_json::to_value(second.await.unwrap().unwrap()).unwrap();
+    delayed.respond.send(json!({"account":account()})).unwrap();
+    assert_eq!(old.await.unwrap().unwrap_err(), CloudAccountError::Conflict);
+    assert_eq!(first["account"], second["account"]);
+    assert_ne!(first["generation"], second["generation"]);
+    server.abort();
 }

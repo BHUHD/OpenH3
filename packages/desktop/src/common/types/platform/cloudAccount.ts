@@ -1,3 +1,14 @@
+export type CloudCapabilities = {
+  availability: 'disabled' | 'unconfigured' | 'available';
+  registration_enabled: boolean;
+  email_verification_required: boolean;
+  password_login_enabled: boolean;
+  password_reset_enabled: boolean;
+  anti_bot: 'not_required' | 'unsupported_required';
+  password_min_length: number | null;
+  password_max_length: number | null;
+};
+
 /** Renderer-safe native account operations; no URL, headers or owner inputs. */
 export type CloudAccountRequest =
   | { operation: 'capabilities' | 'session' | 'me' | 'devices' | 'logout' | 'wallet' | 'models' | 'topupOptions' }
@@ -45,9 +56,10 @@ export type CloudVerification = {
   methods: ('totp' | 'backup_code' | 'password')[];
 };
 export type CloudSession =
-  | { state: 'disabled' | 'unconfigured' | 'disconnected' | 'reauth_required' }
-  | { state: 'connected'; account: CloudProfile }
-  | { state: 'verification_required'; verification: CloudVerification };
+  | { state: 'disabled' | 'unconfigured' }
+  | { state: 'disconnected' | 'reauth_required'; generation: string }
+  | { state: 'connected'; generation: string; account: CloudProfile }
+  | { state: 'verification_required'; generation: string; verification: CloudVerification };
 export type CloudAccountData =
   | CloudTopupQuote
   | CloudTopupOrder
@@ -57,14 +69,7 @@ export type CloudAccountData =
   | CloudWallet
   | CloudModels
   | CloudUsage
-  | {
-      availability: 'disabled' | 'unconfigured' | 'available';
-      registration_enabled: boolean;
-      email_verification_required: boolean;
-      password_login_enabled: boolean;
-      password_reset_enabled: boolean;
-      anti_bot: 'not_required' | 'unsupported_required';
-    }
+  | CloudCapabilities
   | { status: 'registered' | 'revoked' }
   | { status: 'ready'; challenge_id: string; expires_at: number }
   | { status: 'verification_required'; verification: CloudVerification }
@@ -93,6 +98,7 @@ export type CloudAccountResponse =
       error: string;
       code: string;
       retry_after?: number;
+      details?: { retry_after: number };
       order?: Omit<CloudTopupOrder, 'checkout_url'>;
     };
 
