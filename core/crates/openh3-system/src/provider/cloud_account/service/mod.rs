@@ -21,7 +21,7 @@ pub struct CloudAccountService {
     pub(super) gateway: Option<Gateway>,
     enabled: bool,
     pub(super) flows: Mutex<HashMap<String, LocalFlow>>,
-    flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    pub(super) flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     pub(super) catalog_flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     ceremonies: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     pub(super) lifetimes: Mutex<HashMap<(String, i64), tokio::sync::watch::Sender<bool>>>,
@@ -251,6 +251,15 @@ impl CloudAccountService {
         result
     }
     async fn usable(&self, owner: &str) -> Result<Option<Stored>> {
+        let Some(original) = self.read(owner).await? else {
+            return Ok(None);
+        };
+        self.usable_grant(original).await.map(Some)
+    }
+    async fn usable_grant(&self, original: Stored) -> Result<Stored> {
+        // Bind identity before either refresh-flight wait. Reload credentials
+        // afterward so concurrent callers share a rotation within this grant.
+        let owner = original.owner.as_str();
         let flight = self
             .flights
             .lock()
@@ -259,8 +268,21 @@ impl CloudAccountService {
             .or_insert_with(|| Arc::new(Mutex::new(())))
             .clone();
         let _flight = flight.lock().await;
-        let Some(mut stored) = self.read(owner).await? else {
-            return Ok(None);
+        let row = self.repo.load(owner, &original.issuer).await?.ok_or(Error::Conflict)?;
+        if row.owner != original.owner
+            || row.issuer != original.issuer
+            || row.generation != original.generation
+            || row.subject.as_ref() != Some(&original.account.id)
+            || row.provider_id.as_ref() != Some(&original.provider_id)
+            || row.device_id.as_ref() != Some(&original.credentials.device_id)
+        {
+            return Err(Error::Conflict);
+        }
+        // Compare indexed identity before decoding/invalidation as well: an old
+        // caller must not invalidate a malformed replacement grant.
+        let mut stored = match self.decode(&row) {
+            Ok(stored) => stored,
+            Err(_) => return self.invalidate_auth(&original, Err(Error::Authentication)).await,
         };
         let gateway = self.gateway()?;
         if stored.inference_key.is_some() && stored.credentials.session_expires_at <= now() {
@@ -296,7 +318,7 @@ impl CloudAccountService {
             tracing::info!("Cloud account connected");
         }
         self.check_generation(owner, stored.generation).await?;
-        Ok(Some(stored))
+        Ok(stored)
     }
     pub async fn session(&self, owner: &str) -> Result<CloudAccountSessionResponse> {
         if !self.enabled {
@@ -341,10 +363,7 @@ impl CloudAccountService {
         if previous.provider_id != provider_id {
             return Err(Error::Conflict);
         }
-        let s = self.connected(owner).await?;
-        if s.provider_id != provider_id || s.generation != previous.generation {
-            return Err(Error::Conflict);
-        }
+        let s = self.usable_grant(previous).await?;
         self.check_generation(owner, s.generation).await?;
         Ok(CloudAccountInferenceCredentials {
             endpoint: s.issuer,
