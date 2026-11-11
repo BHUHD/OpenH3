@@ -144,7 +144,9 @@ status reads and existing `providers` cache refreshes. Form operations capture
 the original owner and transient epoch; cancellation, owner replacement and an
 unrelated grant generation change discard late results and clear form secrets.
 Reads during an identity mutation cannot overwrite that mutation's expected
-local transition or discard its remote revocation outcome. Official provider
+local transition or discard its remote revocation outcome. Completed login and
+proof results establish a SWR publication boundary so an earlier read cannot
+replace them at the same generation; later reads remain valid. Official provider
 admission remains Core-owned; authentication does not select a model or send a
 request. Catalog refresh failure preserves connected account status and also
 revalidates the providers cache.

@@ -2,7 +2,7 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SWRConfig } from 'swr';
-import type { CloudAccountRequest, CloudAccountResponse } from '@/common/types/platform/cloudAccount';
+import type { CloudAccountRequest, CloudAccountResponse, CloudSession } from '@/common/types/platform/cloudAccount';
 
 const f = vi.hoisted(() => ({
   owner: 'owner-a',
@@ -637,3 +637,78 @@ it('fails closed for unsupported anti-bot policy and omits unverified email regi
   expect(await screen.findByText('settings.cloudAccount.antiBotRequired')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'settings.cloudAccount.login' })).toBeDisabled();
 });
+
+it.each(['login', 'verify'] as const)(
+  'keeps completed %s ahead of older equal-generation reads while accepting later reads',
+  async (operation) => {
+    let reads = 0;
+    let finishRead: (value: CloudAccountResponse) => void = vi.fn();
+    let finishOperation: (value: CloudAccountResponse) => void = vi.fn();
+    let finishCatalog: (value: CloudAccountResponse) => void = vi.fn();
+    const pending: CloudSession = {
+      state: 'verification_required',
+      generation: '2',
+      verification: {
+        purpose: 'login',
+        challenge_id: 'login-handle',
+        expires_at: Math.floor(Date.now() / 1000) + 60,
+        methods: ['totp'],
+      },
+    };
+    let current: CloudSession = { state: 'disconnected', generation: '1' };
+    f.request.mockImplementation(async (request) => {
+      if (request.operation === 'capabilities') return { success: true, data: capabilities };
+      if (request.operation === 'login' && operation === 'verify') return { success: true, data: pending };
+      if (request.operation === operation)
+        return new Promise((resolve) => {
+          finishOperation = resolve;
+        });
+      if (request.operation === 'session' && ++reads === 2)
+        return new Promise((resolve) => {
+          finishRead = resolve;
+        });
+      if (request.operation === 'models')
+        return new Promise((resolve) => {
+          finishCatalog = resolve;
+        });
+      return { success: true, data: current };
+    });
+    mount();
+    await fill('username', 'alice');
+    await fill('password', 'password');
+    await click('login');
+    if (operation === 'verify') {
+      await fill('proofCode', '123456');
+      await click('verify');
+    }
+    await waitFor(() => expect(f.request.mock.calls.some(([request]) => request.operation === operation)).toBe(true));
+    await click('refresh');
+    await waitFor(() => expect(reads).toBe(2));
+    current = {
+      state: 'connected',
+      generation: '2',
+      account: { id: '42', username: 'alice', display_name: 'Current Alice', email: null },
+    };
+    await act(async () =>
+      finishOperation({ success: true, data: operation === 'login' ? current : { result: 'login', session: current } })
+    );
+    expect(await screen.findByText('Current Alice')).toBeInTheDocument();
+    await waitFor(() => expect(f.request.mock.calls.some(([request]) => request.operation === 'models')).toBe(true));
+    await act(async () =>
+      finishRead({
+        success: true,
+        data: operation === 'login' ? { state: 'disconnected', generation: '2' } : pending,
+      })
+    );
+    expect(screen.getByText('Current Alice')).toBeInTheDocument();
+    expect(screen.queryByLabelText('settings.cloudAccount.proofCode')).not.toBeInTheDocument();
+    // The catalog continuation still belongs to this operation after publication.
+    await act(async () => finishCatalog({ success: false, code: 'CLOUD_TRANSPORT', error: 'PRIVATE RAW' }));
+    expect(await screen.findByText('settings.cloudAccount.catalogFailed')).toBeInTheDocument();
+    // A later read of this same grant is authoritative and may update the profile.
+    current = { ...current, account: { ...current.account, display_name: 'Refreshed Alice' } };
+    await click('refresh');
+    expect(await screen.findByText('Refreshed Alice')).toBeInTheDocument();
+    expect(reads).toBe(3);
+  }
+);

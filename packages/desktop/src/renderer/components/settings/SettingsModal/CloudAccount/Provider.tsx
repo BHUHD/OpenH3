@@ -231,6 +231,12 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       let connected: CloudSession | undefined;
       if (request.operation === 'login') connected = data as CloudSession;
       if (data && 'result' in data && data.result === 'login') connected = data.session;
+      if (connected) {
+        // Publish through SWR's mutation boundary: reads begun before this
+        // completed login/proof cannot replace it, even at the same generation.
+        // Keep the original operation ticket valid for its catalog continuation.
+        void query.mutate(undefined, { revalidate: false });
+      }
       if (connected && 'generation' in connected) generation.current = connected.generation;
       if (request.operation === 'logout' || request.operation === 'passwordResetComplete')
         generation.current = undefined;
