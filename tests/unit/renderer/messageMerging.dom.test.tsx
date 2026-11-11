@@ -15,6 +15,7 @@ import {
   type IMessageAcpToolCall,
   type IMessageText,
   type IMessageThinking,
+  type TMessage,
 } from '@/common/chat/chatLib';
 import {
   MessageListLoadingProvider,
@@ -23,6 +24,7 @@ import {
   useAddOrUpdateMessage,
   useMessageLstCache,
   useMessageList,
+  usePrependHistoryPage,
   useReplaceWithAnchorWindow,
 } from '@/renderer/pages/conversation/Messages/hooks';
 
@@ -1031,5 +1033,82 @@ describe('historical source reconciliation lifecycle', () => {
     expect(result.current.messages[0].model_source).toBeNull();
     await act(async () => resolveOwner?.('local-owner'));
     expect(result.current.messages[0].model_source).toEqual(source);
+  });
+});
+
+describe('historical source previous-page reconciliation', () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'actor-a',
+    provider_id: 'provider-a',
+    model: 'actual-model',
+    protocol: 'responses',
+  } as const;
+  const userRow = (content = 'authentic A prompt'): IMessageText => ({
+    ...createTextMessage('user-row', content),
+    id: 'user-row',
+    position: 'right',
+    model_source: null,
+  });
+  function renderPreviousPage(initial: TMessage[]) {
+    function Wrapper({ children }: PropsWithChildren) {
+      return <MessageListProvider value={initial}>{children}</MessageListProvider>;
+    }
+    return renderHook(() => ({ messages: useMessageList(), prepend: usePrependHistoryPage() }), { wrapper: Wrapper });
+  }
+
+  it('keeps a sourced authentic row from a previous page distinct from a current raw duplicate msg_id', () => {
+    const raw = { ...userRow('raw'), id: 'raw-duplicate' };
+    const authentic = { ...userRow(), model_source: source };
+    const { result } = renderPreviousPage([raw]);
+    act(() => result.current.prepend([authentic]));
+    expect(result.current.messages).toEqual([authentic, raw]);
+  });
+
+  it('refreshes the exact overlapping user row with its persisted original source', () => {
+    const current = userRow();
+    const persisted = { ...current, model_source: source };
+    const { result } = renderPreviousPage([current]);
+    act(() => result.current.prepend([persisted]));
+    expect(result.current.messages).toEqual([persisted]);
+  });
+
+  it.each([null, { ...source, subject: 'replacement' }])(
+    'preserves the current immutable source and richer live text when an overlapping page source is %j',
+    (incomingSource) => {
+      const current = { ...userRow('A richer original live user prompt'), model_source: source };
+      const { result } = renderPreviousPage([current]);
+      act(() => result.current.prepend([{ ...userRow('short'), model_source: incomingSource }]));
+      expect(result.current.messages).toEqual([current]);
+    }
+  );
+
+  it.each(['stream', 'fork'] as const)(
+    'preserves the persisted %s row identity and richer left text while reconciling source',
+    (kind) => {
+      const current: IMessageText = {
+        ...createTextMessage('original-segment', 'A richer streaming response'),
+        id: kind === 'stream' ? 'client-stream-row' : 'fork-row',
+        model_source: null,
+      };
+      const persisted: IMessageText = {
+        ...current,
+        id: kind === 'stream' ? 'original-segment' : 'fork-row',
+        content: { content: 'partial' },
+        model_source: source,
+      };
+      const { result } = renderPreviousPage([current]);
+      act(() => result.current.prepend([persisted]));
+      expect(result.current.messages).toEqual([{ ...persisted, content: current.content }]);
+    }
+  );
+
+  it('keeps ordinary unsourced previous-page order and richer overlapping text without duplicate rows', () => {
+    const older: IMessageText = { ...userRow('older'), id: 'older-row', msg_id: 'older-row' };
+    const current = userRow('A richer current unsourced prompt');
+    const { result } = renderPreviousPage([current]);
+    act(() => result.current.prepend([older, userRow('short')]));
+    expect(result.current.messages).toEqual([older, current]);
   });
 });

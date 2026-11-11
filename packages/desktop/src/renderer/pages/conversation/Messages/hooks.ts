@@ -803,11 +803,6 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
   };
 }
 
-const getMessageMergeKey = (message: TMessage): string => {
-  if (message.msg_id) return `${message.type}:${message.msg_id}`;
-  return `id:${message.id}`;
-};
-
 // User rows require exact DB identity. Stream row IDs are minted client-side,
 // but their msg_id is the server's persisted row ID. A raw duplicate msg_id
 // satisfies neither identity and must not inherit or suppress a live row.
@@ -856,14 +851,22 @@ function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[]
 export function prependHistoryMessages(currentList: TMessage[], messages: TMessage[]): TMessage[] {
   if (!messages.length) return currentList;
 
-  const currentIds = new Set(currentList.map((message) => message.id));
-  const currentKeys = new Set(currentList.map(getMessageMergeKey));
   const uniqueHistory = messages.filter(
-    (message) => !currentIds.has(message.id) && !currentKeys.has(getMessageMergeKey(message))
+    (persisted) => !currentList.some((current) => isSameHistoryRow(persisted, current))
   );
+  const reconciledCurrent = currentList.map((current) => {
+    const persisted =
+      messages.find((message) => message.id === current.id && isSameHistoryRow(message, current)) ??
+      messages.find((message) => isSameHistoryRow(message, current));
+    if (!persisted) return current;
+    return {
+      ...preferPersistedOrLiveMessage(persisted, current),
+      model_source: current.model_source ?? persisted.model_source,
+    };
+  });
   // Folding the combined list (not the page alone) also covers a retry run whose
   // attempts straddle a page boundary.
-  return uniqueHistory.length ? foldSupersededTips([...uniqueHistory, ...currentList]) : currentList;
+  return foldSupersededTips([...uniqueHistory, ...reconciledCurrent]);
 }
 
 export const usePrependHistoryPage = () => {
