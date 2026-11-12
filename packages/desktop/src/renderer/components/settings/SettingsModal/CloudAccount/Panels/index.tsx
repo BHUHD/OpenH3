@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Field, Panel, ReadState, useSafeLabel, WalletPanel } from './Wallet';
 import { DevicesPanel } from './Devices';
 import { UsagePanel } from './Usage';
+import { PurchasePanel } from './Purchase';
 export function CatalogPanel() {
   const cloud = useCloudAccount();
   useEffect(() => {
@@ -76,6 +77,7 @@ export function ConnectedPanels() {
   return (
     <div className='flex flex-col gap-12px my-16px'>
       <WalletPanel />
+      <PurchasePanel />
       <UsagePanel />
       <DevicesPanel />
       <CatalogPanel />

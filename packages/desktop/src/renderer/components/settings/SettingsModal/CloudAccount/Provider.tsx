@@ -39,6 +39,9 @@ type State = {
 export type OwnedRead = (request: CloudAccountRequest) => Promise<CloudAccountResponse | undefined>;
 type Lifecycle = State & {
   scope: string;
+  accountKey: string;
+  captureScope: () => () => boolean;
+  refreshBilling: () => void;
   readOwned: OwnedRead;
   wallet?: CloudWallet;
   walletLoading: boolean;
@@ -429,6 +432,28 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   const value: Lifecycle = {
     ...current,
     scope,
+    // Intent identity survives unrelated read/dialog epochs. Consumers never parse it.
+    accountKey: JSON.stringify([
+      owner,
+      current.session?.state === 'connected' ? current.session.account.id : null,
+      generation.current,
+    ]),
+    captureScope: () => {
+      const original = { ticket: { owner, epoch: renderEpoch }, publication };
+      const originalGeneration = generation.current;
+      return () => matchesRead(original) && originalGeneration === generation.current;
+    },
+    refreshBilling: () => {
+      if (!matchesRead({ ticket: { owner, epoch: renderEpoch }, publication })) return;
+      void walletQuery.mutate();
+      void mutate(
+        (key) =>
+          Array.isArray(key) &&
+          key[0] === 'cloud-read' &&
+          key[1] === scope &&
+          (key[2] as CloudAccountRequest | undefined)?.operation === 'usage'
+      );
+    },
     readOwned,
     wallet: walletQuery.data?.scope === scope ? walletQuery.data.wallet : undefined,
     walletLoading: walletQuery.isValidating,
