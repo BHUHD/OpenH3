@@ -90,7 +90,9 @@ const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
           })
         : t('conversation.agentError.fallbackTitle');
     const body = neutralOfficial
-      ? undefined
+      ? errorCode === 'USER_LLM_PROVIDER_TOOL_CAPABILITY'
+        ? t('conversation.agentError.codes.USER_LLM_PROVIDER_TOOL_CAPABILITY.body')
+        : undefined
       : errorCode
         ? t(
             structuredError?.workspacePath

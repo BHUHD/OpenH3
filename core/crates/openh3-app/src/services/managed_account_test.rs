@@ -133,7 +133,7 @@ async fn gateway(State(state): State<Arc<Gateway>>, request: Request) -> Respons
                 vec![]
             } else {
                 vec![
-                    json!({"model_id":"verified-model","display_name":"Verified","provider":"Loopback","purpose":"text","protocol":protocol,"input_capabilities":["text"],"supports_tools":false,"context_limit":4096,"max_output_tokens":64,"compatibility_version":"fixture-v1","evidence":"loopback-only","quotes":[{"group":"default","kind":"request","unit":"USD_per_request","group_ratio":"1","cache_write_mode":"none","version":"v1","quota_per_usd":"500000","per_request":"0"}]}),
+                    json!({"model_id":"verified-model","display_name":"Verified","provider":"Loopback","purpose":"text","protocol":protocol,"input_capabilities":["text"],"supports_tools":true,"context_limit":4096,"max_output_tokens":64,"compatibility_version":"fixture-v1","evidence":"loopback-only","quotes":[{"group":"default","kind":"request","unit":"USD_per_request","group_ratio":"1","cache_write_mode":"none","version":"v1","quota_per_usd":"500000","per_request":"0"}]}),
                 ]
             };
             json!({"status":"available","quote_semantics":"observed_rules_not_frozen_final_charge","models":models})
@@ -177,6 +177,836 @@ fn message() -> SendMessageData {
         files: vec![],
         inject_skills: vec![],
     }
+}
+
+// This is deliberately separate from the synthetic account unit fixture above:
+// native Gin routers, SQL accounting and real Redis are in the opt-in Go host.
+async fn actual_state(client: &reqwest::Client, endpoint: &str) -> Value {
+    client
+        .get(format!("{endpoint}/_fixture/observations"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+#[ignore = "requires NATIVE_DESKTOP_FIXTURE_DIR and the isolated real gateway host"]
+async fn actual_gateway_auth_devices_mfa_and_smtp_recovery() {
+    use openh3_api_types::*;
+    use openh3_system::provider::cloud_account::CloudAccountError;
+    let fixture = std::path::PathBuf::from(std::env::var("NATIVE_DESKTOP_FIXTURE_DIR").unwrap());
+    let endpoint = std::fs::read_to_string(fixture.join("endpoint")).unwrap();
+    assert!(endpoint.starts_with("http://127.0.0.1:"));
+    let db1 = init_database_memory().await.unwrap();
+    let db2 = init_database_memory().await.unwrap();
+    let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+        .fetch_one(db1.pool())
+        .await
+        .unwrap();
+    let make = |db: &openh3_db::Database| {
+        CloudAccountService::new(
+            Arc::new(SqliteCloudAccountRepository::new(db.pool().clone())),
+            [8; 32],
+            CloudAccountConfig {
+                enabled: true,
+                endpoint: Some(endpoint.clone()),
+                allow_insecure_loopback: true,
+            },
+        )
+        .unwrap()
+    };
+    let first = make(&db1);
+    let second = make(&db2);
+    let username = format!("auth{}", timestamp());
+    first
+        .register(
+            &owner,
+            CloudAccountRegisterRequest {
+                username: username.clone(),
+                email: String::new(),
+                password: "synthetic-password".into(),
+                verification_code: None,
+            },
+        )
+        .await
+        .unwrap();
+    let login_request = || CloudAccountLoginRequest {
+        username: username.clone(),
+        password: "synthetic-password".into(),
+    };
+    let client = reqwest::Client::new();
+    let initial = actual_state(&client, &endpoint).await;
+    client
+        .post(format!("{endpoint}/_fixture/lose-response/activate"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    assert_eq!(
+        first.login(&owner, login_request()).await.unwrap_err(),
+        CloudAccountError::Transport
+    );
+    assert_eq!(
+        actual_state(&client, &endpoint).await["activation_calls"]
+            .as_u64()
+            .unwrap(),
+        initial["activation_calls"].as_u64().unwrap() + 1
+    );
+    let pending_provider: String =
+        sqlx::query_scalar("SELECT provider_id FROM cloud_accounts WHERE owner=? AND state='pending'")
+            .bind(&owner)
+            .fetch_one(db1.pool())
+            .await
+            .unwrap();
+    let CloudAccountSessionResponse::Connected { account, .. } = first.session(&owner).await.unwrap() else {
+        panic!("actual activation required")
+    };
+    let active_provider: String =
+        sqlx::query_scalar("SELECT provider_id FROM cloud_accounts WHERE owner=? AND state='active'")
+            .bind(&owner)
+            .fetch_one(db1.pool())
+            .await
+            .unwrap();
+    assert_eq!(active_provider, pending_provider);
+    let activated = actual_state(&client, &endpoint).await;
+    let actor_id: i64 = account.id.parse().unwrap();
+    assert_eq!(
+        activated["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|s| s["UserId"] == actor_id)
+            .count(),
+        1
+    );
+    // Expire only the disposable encrypted client's observation, then lose one
+    // committed rotation response and recover its mature 30-second successor.
+    let encrypted: String = sqlx::query_scalar("SELECT encrypted FROM cloud_accounts WHERE owner=?")
+        .bind(&owner)
+        .fetch_one(db1.pool())
+        .await
+        .unwrap();
+    let mut stored: Value =
+        serde_json::from_str(&openh3_common::decrypt_string(&encrypted, &[8; 32]).unwrap()).unwrap();
+    let old_refresh = stored["credentials"]["refresh_token"].clone();
+    stored["credentials"]["access_expires_at"] = json!(timestamp());
+    let expired = openh3_common::encrypt_string(&stored.to_string(), &[8; 32]).unwrap();
+    sqlx::query("UPDATE cloud_accounts SET encrypted=? WHERE owner=?")
+        .bind(expired)
+        .bind(&owner)
+        .execute(db1.pool())
+        .await
+        .unwrap();
+    client
+        .post(format!("{endpoint}/_fixture/lose-response/token"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    assert_eq!(first.session(&owner).await.unwrap_err(), CloudAccountError::Transport);
+    assert!(matches!(
+        first.session(&owner).await.unwrap(),
+        CloudAccountSessionResponse::Connected { .. }
+    ));
+    let refreshed = actual_state(&client, &endpoint).await;
+    assert_eq!(
+        refreshed["refresh_calls"].as_u64().unwrap(),
+        activated["refresh_calls"].as_u64().unwrap() + 2
+    );
+    assert_eq!(
+        refreshed["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["UserId"] == actor_id)
+            .unwrap()["Version"]
+            .as_i64()
+            .unwrap(),
+        activated["sessions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["UserId"] == actor_id)
+            .unwrap()["Version"]
+            .as_i64()
+            .unwrap()
+    );
+    let encrypted: String = sqlx::query_scalar("SELECT encrypted FROM cloud_accounts WHERE owner=?")
+        .bind(&owner)
+        .fetch_one(db1.pool())
+        .await
+        .unwrap();
+    let saved: Value = serde_json::from_str(&openh3_common::decrypt_string(&encrypted, &[8; 32]).unwrap()).unwrap();
+    assert_ne!(saved["credentials"]["refresh_token"], old_refresh);
+    assert_eq!(saved["credentials"]["device_id"], stored["credentials"]["device_id"]);
+    client
+        .post(format!("{endpoint}/_fixture/catalog/ambiguous"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    let catalog = first.models(&owner).await.unwrap();
+    assert_eq!(catalog.models.len(), 2);
+    assert!(
+        catalog
+            .models
+            .iter()
+            .all(|m| m.selection_unavailable_reason.as_deref() == Some("ambiguous_model_protocol"))
+    );
+    for protocol in ["ChatCompletions", "Responses"] {
+        assert_eq!(
+            first
+                .authorize_model(&owner, &active_provider, "fixture-chat", protocol)
+                .await
+                .unwrap_err(),
+            CloudAccountError::Policy
+        );
+    }
+    assert_eq!(
+        actual_state(&client, &endpoint).await["supplier_attempts"],
+        initial["supplier_attempts"]
+    );
+    client
+        .post(format!("{endpoint}/_fixture/catalog/normal"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    let CloudAccountSessionResponse::Connected {
+        account: other_account, ..
+    } = second.login(&owner, login_request()).await.unwrap()
+    else {
+        panic!("second device activation required")
+    };
+    assert_eq!(account.id, other_account.id);
+    let devices = first.devices(&owner).await.unwrap();
+    assert_eq!(devices.items.len(), 2);
+    let other = devices.items.iter().find(|d| !d.current).unwrap();
+    let revoked = first
+        .revoke_device(
+            &owner,
+            CloudAccountRevokeDeviceRequest {
+                device_id: other.id.clone(),
+            },
+        )
+        .await
+        .unwrap();
+    match revoked {
+        CloudAccountRevokeDeviceResponse::VerificationRequired { verification } => {
+            assert_eq!(verification.purpose, CloudAccountVerificationPurpose::DeviceRevocation);
+            assert!(matches!(
+                first
+                    .verify(
+                        &owner,
+                        CloudAccountVerifyRequest::Password {
+                            challenge_id: verification.challenge_id,
+                            password: "synthetic-password".into()
+                        }
+                    )
+                    .await
+                    .unwrap(),
+                CloudAccountVerifyResponse::DeviceRevoked {}
+            ));
+        }
+        CloudAccountRevokeDeviceResponse::Revoked {} => {}
+    }
+    assert_eq!(second.me(&owner).await.unwrap_err(), CloudAccountError::Authentication);
+    assert!(matches!(
+        first.me(&owner).await.unwrap(),
+        CloudAccountSessionResponse::Connected { .. }
+    ));
+    client
+        .post(format!("{endpoint}/_fixture/factor/{username}"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    let CloudAccountSessionResponse::VerificationRequired { verification, .. } =
+        second.login(&owner, login_request()).await.unwrap()
+    else {
+        panic!("MFA must be required")
+    };
+    assert!(
+        verification
+            .methods
+            .contains(&CloudAccountVerificationMethod::BackupCode)
+    );
+    assert_eq!(
+        second
+            .verify(
+                "different-local-owner",
+                CloudAccountVerifyRequest::BackupCode {
+                    challenge_id: verification.challenge_id.clone(),
+                    code: "ABCD-EFGH".into()
+                }
+            )
+            .await
+            .unwrap_err(),
+        CloudAccountError::Input
+    );
+    assert!(matches!(
+        second
+            .verify(
+                &owner,
+                CloudAccountVerifyRequest::BackupCode {
+                    challenge_id: verification.challenge_id,
+                    code: "ABCD-EFGH".into()
+                }
+            )
+            .await
+            .unwrap(),
+        CloudAccountVerifyResponse::Login {
+            session: CloudAccountSessionResponse::Connected { .. }
+        }
+    ));
+    let old_provider: String = sqlx::query_scalar("SELECT provider_id FROM cloud_accounts WHERE owner=?")
+        .bind(&owner)
+        .fetch_one(db2.pool())
+        .await
+        .unwrap();
+    assert_eq!(
+        second.login(&owner, login_request()).await.unwrap_err(),
+        CloudAccountError::Conflict
+    );
+    second.logout(&owner).await.unwrap();
+    let CloudAccountSessionResponse::VerificationRequired { verification, .. } =
+        second.login(&owner, login_request()).await.unwrap()
+    else {
+        panic!("MFA must remain required")
+    };
+    assert_eq!(
+        second
+            .verify(
+                &owner,
+                CloudAccountVerifyRequest::BackupCode {
+                    challenge_id: verification.challenge_id,
+                    code: "ABCD-EFGH".into()
+                }
+            )
+            .await
+            .unwrap_err(),
+        CloudAccountError::Verification
+    );
+    let email = format!("{username}@synthetic.test");
+    first
+        .email_code(
+            &owner,
+            CloudAccountEmailCodeRequest {
+                email: email.clone(),
+                purpose: CloudAccountEmailCodePurpose::PasswordReset,
+            },
+        )
+        .await
+        .unwrap();
+    // Recovery delivery is intentionally asynchronous and its proof is unusable
+    // until the real SMTP completion is committed to the existing flow.
+    let mail: Value = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let mail: Value = client
+                .get(format!("{endpoint}/_fixture/mail?user={username}"))
+                .send()
+                .await
+                .unwrap()
+                .error_for_status()
+                .unwrap()
+                .json()
+                .await
+                .unwrap();
+            if mail["ready"] == true && mail["code"].as_str().is_some_and(|code| code.len() == 6) {
+                break mail;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let CloudAccountPasswordResetResponse::VerificationRequired { verification } = first
+        .password_reset(
+            &owner,
+            CloudAccountPasswordResetRequest {
+                email,
+                code: mail["code"].as_str().unwrap().into(),
+            },
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("recovery must retain MFA")
+    };
+    let factor: Value = client
+        .get(format!("{endpoint}/_fixture/factor/{username}"))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let CloudAccountVerifyResponse::PasswordResetReady { challenge_id, .. } = first
+        .verify(
+            &owner,
+            CloudAccountVerifyRequest::Totp {
+                challenge_id: verification.challenge_id,
+                code: factor["totp"].as_str().unwrap().into(),
+            },
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("verified recovery required")
+    };
+    let reset = first
+        .password_reset_complete(
+            &owner,
+            CloudAccountPasswordResetCompleteRequest {
+                challenge_id,
+                new_password: "synthetic-new-password".into(),
+            },
+        )
+        .await
+        .unwrap();
+    assert!(!reset.session_cleanup_pending);
+    assert_eq!(first.me(&owner).await.unwrap_err(), CloudAccountError::Authentication);
+    assert_eq!(
+        second.login(&owner, login_request()).await.unwrap_err(),
+        CloudAccountError::Verification
+    );
+    assert!(matches!(
+        second
+            .login(
+                &owner,
+                CloudAccountLoginRequest {
+                    username: username.clone(),
+                    password: "synthetic-new-password".into()
+                }
+            )
+            .await
+            .unwrap(),
+        CloudAccountSessionResponse::VerificationRequired { .. }
+    ));
+    // A replacement remains a separate ordinary wallet and cannot revive A's grant.
+    let replacement = format!("replace{}", timestamp());
+    second
+        .register(
+            &owner,
+            CloudAccountRegisterRequest {
+                username: replacement.clone(),
+                email: String::new(),
+                password: "synthetic-password".into(),
+                verification_code: None,
+            },
+        )
+        .await
+        .unwrap();
+    let CloudAccountSessionResponse::Connected {
+        account: replacement_account,
+        ..
+    } = second
+        .login(
+            &owner,
+            CloudAccountLoginRequest {
+                username: replacement.clone(),
+                password: "synthetic-password".into(),
+            },
+        )
+        .await
+        .unwrap()
+    else {
+        panic!("replacement activation required")
+    };
+    assert_ne!(replacement_account.id, account.id);
+    assert!(matches!(
+        second.inference_credentials(&owner, &old_provider).await,
+        Err(CloudAccountError::Conflict)
+    ));
+    second.logout(&owner).await.unwrap();
+    let state = actual_state(&client, &endpoint).await;
+    let actors: Vec<_> = state["users"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|u| u["Username"] == username || u["Username"] == replacement)
+        .collect();
+    assert_eq!(actors.len(), 2);
+    for actor in &actors {
+        assert_eq!(actor["Role"], 1);
+        assert_eq!(actor["Quota"], 100000);
+        assert_eq!(actor["UsedQuota"], 0);
+        assert_eq!(actor["RequestCount"], 0);
+    }
+    std::fs::write(fixture.join("auth-observations.json"), serde_json::to_vec_pretty(&json!({ "actors": actors, "mfa_backup_one_use": true, "smtp_recovery_requires_totp": true, "devices": state["sessions"], "tokens": state["tokens"] })).unwrap()).unwrap();
+}
+
+#[tokio::test]
+#[ignore = "requires NATIVE_DESKTOP_FIXTURE_DIR and the isolated real gateway host"]
+async fn actual_gateway_engine_verified_tools_boundary() {
+    let fixture = std::path::PathBuf::from(std::env::var("NATIVE_DESKTOP_FIXTURE_DIR").unwrap());
+    let endpoint = std::fs::read_to_string(fixture.join("endpoint")).unwrap();
+    assert!(endpoint.starts_with("http://127.0.0.1:"));
+    let db = init_database_memory().await.unwrap();
+    let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    let service = Arc::new(
+        CloudAccountService::new(
+            Arc::new(SqliteCloudAccountRepository::new(db.pool().clone())),
+            [7; 32],
+            CloudAccountConfig {
+                enabled: true,
+                endpoint: Some(endpoint.clone()),
+                allow_insecure_loopback: true,
+            },
+        )
+        .unwrap(),
+    );
+    let username = format!("engine{}", timestamp());
+    service
+        .register(
+            &owner,
+            openh3_api_types::CloudAccountRegisterRequest {
+                username: username.clone(),
+                email: "".into(),
+                password: "synthetic-password".into(),
+                verification_code: None,
+            },
+        )
+        .await
+        .unwrap();
+    service
+        .login(
+            &owner,
+            CloudAccountLoginRequest {
+                username: username.clone(),
+                password: "synthetic-password".into(),
+            },
+        )
+        .await
+        .unwrap();
+    let client = reqwest::Client::new();
+    let mut failed = Vec::new();
+    for tools in [false, true] {
+        client
+            .post(format!("{endpoint}/_fixture/tools/{tools}"))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap();
+        service.models(&owner).await.unwrap();
+        let provider: String = sqlx::query_scalar("SELECT provider_id FROM cloud_accounts WHERE owner=?")
+            .bind(&owner)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        for (mode, model) in [
+            (OpenAiApiMode::ChatCompletions, "fixture-chat"),
+            (OpenAiApiMode::Responses, "fixture-responses"),
+        ] {
+            let managed = ManagedProvider::bind(
+                Arc::new(AccountCredentials(service.clone())),
+                owner.clone(),
+                provider.clone(),
+                model.into(),
+                mode,
+            )
+            .await
+            .unwrap();
+            let dir = tempfile::tempdir().unwrap();
+            let read_path = dir.path().join("synthetic.txt");
+            std::fs::write(&read_path, "SYNTHETIC_TOOL_READ_RESULT").unwrap();
+            let mut cfg = config(dir.path(), mode);
+            cfg.model = model.into();
+            cfg.session_mode = Some("yolo".into());
+            let manager = Arc::new(
+                AionrsAgentManager::new_with_managed_provider(
+                    format!("actual-{tools}-{model}"),
+                    dir.path().to_string_lossy().into(),
+                    cfg,
+                    None,
+                    vec![],
+                    Some(managed.clone()),
+                )
+                .await
+                .unwrap(),
+            );
+            let before = actual_state(&client, &endpoint).await;
+            let result = manager.send_message(message()).await;
+            println!("actual native gateway tools={tools} protocol={mode:?} result={result:?}");
+            if result.is_err() {
+                failed.push((tools, mode));
+                continue;
+            }
+            let after = actual_state(&client, &endpoint).await;
+            assert_eq!(
+                after["supplier_attempts"].as_u64().unwrap(),
+                before["supplier_attempts"].as_u64().unwrap() + 1
+            );
+            let body = after["incoming"].as_array().unwrap().last().unwrap();
+            assert_eq!(body["model"], model);
+            assert_eq!(body.get("tools").is_some(), tools);
+            if tools {
+                client
+                    .post(format!("{endpoint}/_fixture/scenario"))
+                    .json(&json!({"Mode":"read","Path":read_path}))
+                    .send()
+                    .await
+                    .unwrap()
+                    .error_for_status()
+                    .unwrap();
+                manager.send_message(message()).await.unwrap();
+                let after_read = actual_state(&client, &endpoint).await;
+                assert_eq!(
+                    after_read["supplier_attempts"].as_u64().unwrap(),
+                    after["supplier_attempts"].as_u64().unwrap() + 2
+                );
+                assert!(
+                    after_read["calls"]
+                        .as_array()
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .to_string()
+                        .contains("SYNTHETIC_TOOL_READ_RESULT")
+                );
+                // Observing a downgrade fences the existing parent and its shared
+                // child provider before another supplier request or charge.
+                client
+                    .post(format!("{endpoint}/_fixture/tools/false"))
+                    .send()
+                    .await
+                    .unwrap();
+                service.models(&owner).await.unwrap();
+                let error = manager.send_message(message()).await.unwrap_err();
+                assert_eq!(
+                    error.code(),
+                    Some(openh3_api_types::AgentErrorCode::UserLlmProviderToolCapability)
+                );
+                assert_eq!(
+                    actual_state(&client, &endpoint).await["supplier_attempts"],
+                    after_read["supplier_attempts"]
+                );
+                let text_provider = ManagedProvider::bind(
+                    Arc::new(AccountCredentials(service.clone())),
+                    owner.clone(),
+                    provider.clone(),
+                    model.into(),
+                    mode,
+                )
+                .await
+                .unwrap();
+                let old_history = std::fs::read(
+                    dir.path()
+                        .join("sessions/sessions")
+                        .join(format!("actual-{tools}-{model}"))
+                        .join("state.json"),
+                )
+                .unwrap();
+                assert!(String::from_utf8_lossy(&old_history).contains("SYNTHETIC_TOOL_READ_RESULT"));
+                let mut cfg = config(dir.path(), mode);
+                cfg.model = model.into();
+                let text_manager = AionrsAgentManager::new_with_managed_provider(
+                    format!("resumed-text-{model}"),
+                    dir.path().to_string_lossy().into(),
+                    cfg,
+                    Some(serde_json::from_slice(&old_history).unwrap()),
+                    vec![],
+                    Some(text_provider),
+                )
+                .await
+                .unwrap();
+                let error = text_manager.send_message(message()).await.unwrap_err();
+                assert_eq!(
+                    error.code(),
+                    Some(openh3_api_types::AgentErrorCode::UserLlmProviderToolCapability)
+                );
+                assert_eq!(
+                    actual_state(&client, &endpoint).await["supplier_attempts"],
+                    after_read["supplier_attempts"]
+                );
+                client
+                    .post(format!("{endpoint}/_fixture/tools/true"))
+                    .send()
+                    .await
+                    .unwrap();
+                service.models(&owner).await.unwrap();
+                client
+                    .post(format!("{endpoint}/_fixture/scenario"))
+                    .json(&json!({"Mode":"silent"}))
+                    .send()
+                    .await
+                    .unwrap();
+                let pending = tokio::spawn({
+                    let manager = manager.clone();
+                    async move { manager.send_message(message()).await }
+                });
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        if actual_state(&client, &endpoint).await["supplier_attempts"]
+                            .as_u64()
+                            .unwrap()
+                            > after_read["supplier_attempts"].as_u64().unwrap()
+                        {
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                })
+                .await
+                .unwrap();
+                manager.cancel().await.unwrap();
+                tokio::time::timeout(Duration::from_secs(5), pending)
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .unwrap();
+                // Socket/slot closure does not prove the asynchronous refund.
+                let expected_quota = after_read["users"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|u| u["Username"] == username)
+                    .unwrap()["Quota"]
+                    .clone();
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        let state = actual_state(&client, &endpoint).await;
+                        if state["users"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .find(|u| u["Username"] == username)
+                            .unwrap()["Quota"]
+                            == expected_quota
+                        {
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                })
+                .await
+                .unwrap();
+                client
+                    .post(format!("{endpoint}/_fixture/scenario"))
+                    .json(&json!({"Mode":"error"}))
+                    .send()
+                    .await
+                    .unwrap();
+                let prior = actual_state(&client, &endpoint).await;
+                assert!(manager.send_message(message()).await.is_err());
+                assert_eq!(
+                    actual_state(&client, &endpoint).await["supplier_attempts"]
+                        .as_u64()
+                        .unwrap(),
+                    prior["supplier_attempts"].as_u64().unwrap() + 1
+                );
+                tokio::time::timeout(Duration::from_secs(5), async {
+                    loop {
+                        let state = actual_state(&client, &endpoint).await;
+                        if state["users"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .find(|u| u["Username"] == username)
+                            .unwrap()["Quota"]
+                            == expected_quota
+                        {
+                            break;
+                        }
+                        tokio::time::sleep(Duration::from_millis(20)).await;
+                    }
+                })
+                .await
+                .unwrap();
+                client
+                    .post(format!("{endpoint}/_fixture/scenario"))
+                    .json(&json!({"Mode":"text"}))
+                    .send()
+                    .await
+                    .unwrap();
+            }
+        }
+    }
+    service.logout(&owner).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let state = actual_state(&client, &endpoint).await;
+            let user = state["users"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|u| u["Username"] == username)
+                .unwrap();
+            if user["Quota"] == 92000 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    let state = actual_state(&client, &endpoint).await;
+    let user = state["users"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|u| u["Username"] == username)
+        .unwrap();
+    assert_eq!(user["UsedQuota"], 8000);
+    assert_eq!(user["RequestCount"], 8);
+    let user_id = user["ID"].as_i64().unwrap();
+    let session = state["sessions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["UserId"] == user_id)
+        .unwrap();
+    assert!(session["ActivatedAt"].as_i64().unwrap() > 0);
+    assert!(session["RevokedAt"].as_i64().unwrap() > 0);
+    let token = state["tokens"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["Id"] == session["InferenceTokenID"])
+        .unwrap();
+    assert_eq!(token["UserId"], user_id);
+    assert_eq!(token["UsedQuota"], 8000);
+    assert_eq!(token["UnlimitedQuota"], true);
+    assert_eq!(token["RemainQuota"], -8000);
+    let consumes: Vec<_> = state["logs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|l| l["user_id"] == user_id && l["type"] == 2)
+        .collect();
+    assert_eq!(consumes.len(), 8);
+    assert_eq!(consumes.iter().map(|l| l["quota"].as_i64().unwrap()).sum::<i64>(), 8000);
+    let mut request_ids = std::collections::HashSet::new();
+    for log in consumes {
+        assert_eq!(log["token_id"], token["Id"]);
+        assert_eq!(log["quota"], 1000);
+        assert!(request_ids.insert(log["request_id"].as_str().unwrap()));
+    }
+    std::fs::write(
+        fixture.join("engine-observations.json"),
+        serde_json::to_vec_pretty(&state).unwrap(),
+    )
+    .unwrap();
+    assert!(
+        failed.is_empty(),
+        "verified model must work with its declared tools capability: {failed:?}"
+    );
 }
 async fn login(service: &CloudAccountService, owner: &str) {
     service

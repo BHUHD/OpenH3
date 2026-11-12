@@ -302,6 +302,9 @@ impl AionrsAgentManager {
             .structured_children(managed_provider.is_some())
             .runtime_env(runtime_env)
             .extra_skill_dirs(_skill_dirs);
+        if let Some(provider) = &managed_provider {
+            bootstrap = bootstrap.tool_policy(provider.tool_policy());
+        }
         if let Some(session) = resume_session {
             info!(
                 conversation_id = %conversation_id,

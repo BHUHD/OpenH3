@@ -118,6 +118,31 @@ const buildTips = (
   }) as IMessageTips;
 
 describe('MessageTips — FeedbackButton wiring', () => {
+  it('shows an actionable tool capability reason without inferring any official charge', () => {
+    const message = buildTips('error', 'safe capability refusal', {
+      message: 'safe capability refusal',
+      code: 'USER_LLM_PROVIDER_TOOL_CAPABILITY',
+      ownership: 'user_llm_provider',
+      retryable: false,
+      resolution: { kind: 'change_model', target: 'provider_settings' },
+    });
+    message.model_source = {
+      kind: 'cloud_account',
+      issuer: 'fixture',
+      subject: '42',
+      provider_id: 'official',
+      model: 'text',
+      protocol: 'Responses',
+    };
+    render(<MessageTips message={message} />);
+    expect(
+      screen.getByText(
+        'This text-only model cannot continue tool history, or its verified tool support changed. Choose a tools-capable model or start a new conversation.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('settings.cloudAccount.failureUnknown')).toBeInTheDocument();
+    expect(screen.queryByText('Model provider billing is required')).not.toBeInTheDocument();
+  });
   beforeEach(() => {
     openFeedbackMock.mockClear();
   });

@@ -243,8 +243,9 @@ returns the transient result. WebUI can keep a browser-local `browserCloudChecko
 closure for a deliberate second click (discard it on identity changes); it uses
 `window.open` on the client browser and never an OS opener on the Core server.
 Its boolean means the open request was attempted, not that a window/payment succeeded.
-UI is separate work. App history exclusion cannot control external browser history
-after a deliberate handoff. Tests inject openers and never launch a browser.
+The native purchase panel uses this handoff. App history exclusion cannot control
+external browser history after a deliberate handoff. Controlled integration tests
+replace only the physical checkout opener and never navigate to the signed URL.
 
 ## Existing New API evidence
 
@@ -253,8 +254,8 @@ The inspected upstream source is the
 The extracted source archive was committed locally as
 `1f3d563b4a4da8e9cdf9be7b1acb8326fda68add`; that identifier is a local archive
 baseline, not an upstream GitHub commit.
-Paths below are relative to that checkout. They are source evidence, not claims
-that the proposed native endpoints already exist.
+Paths below describe the unextended archive baseline. The native extension is
+implemented separately in the current gateway checkout and validated locally.
 
 | Existing source                                                                          | Verified behavior and reuse boundary                                                                                                                                                                                                                                                                                         |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -462,8 +463,9 @@ whether a gateway or supplier retries a request.
 assembly point. The factory recognizes a managed row before decrypting a BYOK
 key. It requires an enabled model in that row and an explicit persisted
 `ModelSettings.openai_api_mode`. Missing catalog/protocol information fails
-closed. The trusted catalog population remains separate work; current tests
-seed verified metadata. The model selected by the user is preserved.
+closed. The account service persists the gateway's verified catalog under the
+original grant. Controlled desktop integration selects that real catalog and
+checks the emitted model and protocol. The user's selection is preserved.
 
 The managed provider is passed separately from `AionrsResolvedConfig`. The
 configuration and in-process `CliArgs` contain a nonsecret resolver placeholder
@@ -534,8 +536,9 @@ binding, refresh/logout races, stale subscriptions and old-account invalidation.
 The AppServices adapter integration observes silent response-body closure while
 remote revoke is blocked, then verifies old/new billed Authorization actors and
 credential-free config/session files. DEBUG log tests check secret sentinels;
-BYOK recovery remains separately exercised. Catalog, wallet/payment and UI/E2E
-implementation are outside this change.
+BYOK recovery remains separately exercised. Separate gateway and desktop
+integration checks cover catalog, wallet, payment and rendered UI boundaries;
+the scoped tests above alone do not.
 
 `services/managed/tests.rs` exercises eight text-plus-malformed-response cases:
 invalid argument JSON, missing tool ID, missing arguments and broken JSON frames
@@ -617,6 +620,115 @@ Message headers display their immutable historical source, original model and
 protocol, including unknown legacy history. Official text and error tips provide
 manual account/wallet controls and BYOK guidance without restarting work or
 classifying generic supplier errors as proven financial failures. Source alone
-still supplies no request association or task cost. Payment entry and order
-flows remain a later UI slice. These panel checks use DOM and controlled IPC
-fixtures; they do not establish visual, Electron or paid-inference behavior.
+still supplies no request association or task cost. Native purchase options show
+exact money, currency, credited quota and version before deliberate purchase.
+Retries retain their original key and terms. Ambiguous creates do not start a
+second order. Browser checkout needs a second deliberate click. Signed checkout
+URLs are transient handoff material, removed before retaining orders. Login,
+payment and return navigation never resume conversation work.
+
+## Verified tool capability
+
+The verified catalog capability is checked under the original grant when binding
+a managed provider and before each model request. Text-only models use the pinned
+engine's existing empty allow-list policy, controlling definitions and execution.
+Children inherit it (verified: `core/vendor/aion-agent/src/spawner.rs`). BYOK keeps
+its existing bootstrap policy. An observed capability change fences an existing
+binding before supplier I/O. A text-only model cannot continue saved tool history:
+Core preserves that history and returns `USER_LLM_PROVIDER_TOOL_CAPABILITY`, asking
+the user to select a tools-capable model or start a new conversation. It never
+silently removes old tool messages or infers other requests' financial outcomes.
+
+## Build and deployment operations
+
+Use the committed Bun lock with Bun 1.3.3 and Node 24.22.2. The validated dependency
+set uses Electron 37.10.3 and better-sqlite3 12.8.0 (Electron ABI 136). An install
+wrapper's zero exit does not prove native loading; run an actual Electron probe
+or application. Core pins Rust 1.95.0; patched aion crates retain v0.2.11 commit
+`8e61a90329fa9f67c4fdf7e97fe02c24dba33f75`.
+
+```sh
+bun install --frozen-lockfile
+cd core
+cargo +1.95.0 build -p openh3-app --bin openh3-core --offline --locked -j 1
+cargo +1.95.0 test --workspace --offline --locked -j 1
+cd ..
+bunx tsc --noEmit
+bun run package
+```
+
+`package` is an electron-vite build, not signing, an installer or release packaging.
+Release packaging uses separate `dist:*` scripts. Isolated builds must not inherit
+Sentry upload credentials or embedded provider keys. Gateway pins Go 1.26.10 and
+its web package pins Bun 1.4.4 (the committed lock resolves Rsbuild 2.1.6). Build
+normal `web/` assets from its committed lock (`bun install --frozen-lockfile`,
+`bun run build`) before `go build .`, because the daemon embeds `web/dist`.
+
+Core opts in with `OPENH3_CLOUD_ACCOUNT_ENABLED=1` and a trusted root HTTPS
+`OPENH3_CLOUD_ACCOUNT_ENDPOINT` without credentials, query or fragment.
+`OPENH3_CLOUD_ACCOUNT_ALLOW_LOOPBACK_HTTP=1` is a development loopback exception,
+never LAN HTTP or a TLS bypass. Set exact WebUI origins in
+`OPENH3_CLOUD_ACCOUNT_TRUSTED_ORIGINS`. Main creates the private Core capability;
+never place it in renderer configuration. `OPENH3_BACKEND_BIN` selects an intended
+local Core binary for development validation.
+
+Gateway requires `OPENH3_NATIVE_ACCOUNT_ENABLED=true` and administrator-verified
+`OPENH3_NATIVE_INFERENCE_CONFIG`: exact model ID/protocol, text input, tool
+capability, context/output limits, compatibility version and evidence, plus bounded
+request bytes, concurrency, deadline and a longer slot lease. Duplicate IDs in two
+protocols remain listed but unselectable (`ambiguous_model_protocol`). Never infer
+support from names or supplier lists. Configure ordinary channels and mature
+pricing through New API independently of this client.
+
+Keep stable strong gateway `SESSION_SECRET`, `CRYPTO_SECRET`, database/Redis
+credentials and Core's `OPENH3_ENCRYPTION_SECRET` (or its persisted encryption
+root) in deployment secret storage, outside logs/bundles. This encryption root is
+distinct from Core's `JWT_SECRET` signing secret. Do not rotate or regenerate it
+independently of the encrypted data and its recovery plan. Primary `SQL_DSN`, optional separate
+`LOG_SQL_DSN` and Redis must identify the intended environment. Gateway automatic
+migrations add desktop session/token linkage, native auth flows and top-up terms.
+Core migrations 046–048 add managed ownership, encrypted accounts and immutable
+message source. Back up primary/log databases, settings and encryption material
+before upgrade; test restoring them together.
+
+Every gateway instance must use synchronous accounting. Before enabling native
+wallet/inference, stop admission, drain outstanding work and old batch queues,
+then disable `BatchUpdateEnabled` everywhere. A new instance's setting does not
+drain old queues. Mature trust-quota admission can still permit debt; there is no
+zero-overdraft guarantee. Refunds may complete asynchronously. Slot release is
+not a committed-refund receipt, and fixed leases cannot ensure remote cancellation
+through SQL/scheduler stalls. Usage timestamps mark observation start, not a
+settlement watermark. Native ClickHouse usage is explicitly unsupported.
+
+Configure mail through existing gateway SMTP server, port, sender, account/token
+and SSL/STARTTLS settings, with certificate verification. Unverified registration
+email is not bound. Native passkey-only policy remains explicitly unsupported;
+never downgrade it to password-only authentication.
+
+EpayV1 requires compliance confirmation, HTTPS PayAddress/callback, merchant ID/key,
+synchronous accounting and TLS verification. Configure bounded amount options,
+alipay/wxpay/qqpay methods, ordinary discounts, price and quota conversion. Publish
+`/api/payment/native-epay/notify` and `/payment/native-epay/complete`. Exact signed
+callback and bounded read-only single-order query precede first credit. Existing
+TopUp is the sole credit authority; postcommit log/cache effects are separate.
+Original owner, money, currency, quota and versions are immutable. Duplicates and
+out-of-order events cannot credit twice. Local expiry does not cancel checkout:
+late verified payment can credit the original owner. The synthetic 73.00 CNY /
+5,000,000 quota fixture does not prescribe production conversion.
+
+For rollback, stop new native work/payments, drain accepted work/callbacks, and
+revoke affected sessions through supported gateway controls. Do not drop linkage
+or terms, or restore only one database while callbacks can arrive. Keep migrated
+backups and reconcile paid orders/wallets before restoring service. Offline
+disconnect removes the local grant immediately; remote revocation can remain
+unconfirmed and needs an authorized-device check. Historical source grants no
+access to a former account or wallet.
+
+Local integration uses fresh Core/Electron state, actual native routers, separate
+primary/log SQLite, dedicated Redis DB15, synthetic suppliers and a locally
+trusted TLS payment fixture. Only the physical checkout opener is replaced.
+Runtime memory can resolve outside userData, so isolation also checks global and
+project config and generated project paths. Real SMTP/provider behavior, public
+HTTPS, payment reconciliation, signed packaging, backups and operational rollback
+need environment validation. Local fixtures do not certify production readiness
+or live payments.

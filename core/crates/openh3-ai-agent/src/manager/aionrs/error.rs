@@ -102,6 +102,16 @@ pub(super) fn aionrs_runtime_error_summary(error: &AionrsAgentError) -> AionrsRu
 
 fn aionrs_provider_error_to_send_error(error: &ProviderError, detail: String) -> AgentSendError {
     match error {
+        ProviderError::Parse(message) if message == crate::services::managed::TOOL_CAPABILITY_ERROR => {
+            provider_send_error(
+                crate::services::managed::TOOL_CAPABILITY_ERROR,
+                AgentErrorCode::UserLlmProviderToolCapability,
+                detail,
+                false,
+                AgentErrorResolutionKind::ChangeModel,
+                Some(AgentErrorResolutionTarget::ProviderSettings),
+            )
+        }
         ProviderError::Api { status, .. } => aionrs_provider_status_to_send_error(*status, detail),
         ProviderError::RateLimited { body, .. } => provider_send_error(
             "The model provider rate limited the request",

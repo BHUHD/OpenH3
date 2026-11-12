@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, watch};
 
 pub const MANAGED_KEY_PLACEHOLDER: &str = "openh3-managed-credential-resolver";
+pub(crate) const TOOL_CAPABILITY_ERROR: &str = "Managed model tools changed or this text-only model cannot continue tool history; choose a tools-capable model or start a new conversation";
 
 /// Deliberately neither Debug nor Serialize; scoped to one model request.
 pub struct ManagedCredentials {
@@ -36,6 +37,14 @@ pub struct ManagedAccountBinding {
 /// The composition root bridges this port to the account domain.
 #[async_trait::async_trait]
 pub trait ManagedCredentialResolver: Send + Sync {
+    /// Read the verified capability under the same original grant as resolution.
+    async fn supports_tools(
+        &self,
+        owner: &str,
+        provider: &str,
+        model: &str,
+        mode: OpenAiApiMode,
+    ) -> Result<bool, ProviderError>;
     async fn subscribe(&self, owner: &str, provider: &str) -> Result<watch::Receiver<bool>, ProviderError>;
     /// Legacy/test resolvers without authenticated identity stay unavailable.
     async fn binding(&self, owner: &str, provider: &str) -> Result<ManagedAccountBinding, ProviderError> {
@@ -62,6 +71,7 @@ pub struct ManagedProvider {
     mode: OpenAiApiMode,
     lifetime: watch::Receiver<bool>,
     source: Option<openh3_common::HistoricalModelSource>,
+    supports_tools: bool,
 }
 impl ManagedProvider {
     pub async fn bind(
@@ -96,6 +106,7 @@ impl ManagedProvider {
         if *lifetime.borrow() {
             return Err(cancelled_error());
         }
+        let supports_tools = resolver.supports_tools(&owner, &provider, &model, mode).await?;
         Ok(Arc::new(Self {
             resolver,
             owner,
@@ -104,7 +115,15 @@ impl ManagedProvider {
             mode,
             lifetime,
             source,
+            supports_tools,
         }))
+    }
+    pub fn tool_policy(&self) -> aion_agent::tool_policy::ToolPolicy {
+        if self.supports_tools {
+            aion_agent::tool_policy::ToolPolicy::Unrestricted
+        } else {
+            aion_agent::tool_policy::ToolPolicy::allow_only(std::iter::empty::<String>())
+        }
     }
     /// No account reads: only facts captured with this binding's lifetime.
     pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
@@ -146,6 +165,28 @@ impl LlmProvider for ManagedProvider {
             return Err(ProviderError::Parse(
                 "Managed model differs from verified selection".into(),
             ));
+        }
+        let supports_tools = tokio::select! {
+            biased;
+            _ = self.cancelled() => return Err(cancelled_error()),
+            result = self.resolver.supports_tools(&self.owner, &self.provider, &self.model, self.mode) => result?,
+        };
+        if supports_tools != self.supports_tools {
+            return Err(ProviderError::Parse(TOOL_CAPABILITY_ERROR.into()));
+        }
+        if !supports_tools
+            && (!request.tools.is_empty()
+                || request.messages.iter().any(|message| {
+                    message.content.iter().any(|block| {
+                        matches!(
+                            block,
+                            aion_types::message::ContentBlock::ToolUse { .. }
+                                | aion_types::message::ContentBlock::ToolResult { .. }
+                        )
+                    })
+                }))
+        {
+            return Err(ProviderError::Parse(TOOL_CAPABILITY_ERROR.into()));
         }
         let credentials = tokio::select! {
             biased;

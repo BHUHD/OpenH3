@@ -97,14 +97,17 @@ impl CloudAccountService {
     }
     /// Called for each reused managed invocation, using the model and protocol
     /// already immutably bound to that engine. Never polls the gateway.
-    pub async fn authorize_model(&self, owner: &str, provider: &str, model: &str, protocol: &str) -> Result<()> {
+    pub async fn authorize_model(&self, owner: &str, provider: &str, model: &str, protocol: &str) -> Result<bool> {
         let s = self.connected(owner).await?;
         if s.provider_id != provider {
             return Err(Error::Conflict);
         }
-        if !self.repo.model_allowed(s.catalog(&[]), model, protocol).await? {
-            return Err(Error::Policy);
-        }
-        self.check_generation(owner, s.generation).await
+        let tools = self
+            .repo
+            .model_tools(s.catalog(&[]), model, protocol)
+            .await?
+            .ok_or(Error::Policy)?;
+        self.check_generation(owner, s.generation).await?;
+        Ok(tools)
     }
 }

@@ -39,7 +39,13 @@ pub trait ICloudAccountRepository: Send + Sync {
     /// CAS commit of activation or rotation, including the provider enabled flag.
     async fn save_active(&self, input: SaveCloudAccount<'_>) -> Result<(), DbError>;
     async fn replace_catalog(&self, input: SaveCloudCatalog<'_>) -> Result<(), DbError>;
-    async fn model_allowed(&self, input: SaveCloudCatalog<'_>, model: &str, protocol: &str) -> Result<bool, DbError>;
+    /// None denies selection; Some carries the exact verified tool capability.
+    async fn model_tools(
+        &self,
+        input: SaveCloudCatalog<'_>,
+        model: &str,
+        protocol: &str,
+    ) -> Result<Option<bool>, DbError>;
 }
 
 pub struct SqliteCloudAccountRepository {
@@ -122,11 +128,11 @@ impl ICloudAccountRepository for SqliteCloudAccountRepository {
         tx.commit().await?;
         Ok(())
     }
-    async fn model_allowed(&self, p: SaveCloudCatalog<'_>, model: &str, protocol: &str) -> Result<bool, DbError> {
+    async fn model_tools(&self, p: SaveCloudCatalog<'_>, model: &str, protocol: &str) -> Result<Option<bool>, DbError> {
         let row: Option<(String, String)> = sqlx::query_as("SELECT models, model_settings FROM providers WHERE id = ? AND user_id = ? AND managed_by = 'cloud_account' AND enabled = 1 AND EXISTS (SELECT 1 FROM cloud_accounts WHERE owner = ? AND issuer = ? AND generation = ? AND subject = ? AND provider_id = providers.id AND state = 'active')")
             .bind(p.provider_id).bind(p.owner).bind(p.owner).bind(p.issuer).bind(p.generation).bind(p.subject).fetch_optional(&self.pool).await?;
         let Some((models, settings)) = row else {
-            return Ok(false);
+            return Ok(None);
         };
         let models: Vec<String> = serde_json::from_str(&models).map_err(|_| conflict())?;
         let settings: std::collections::BTreeMap<String, serde_json::Value> =
@@ -134,9 +140,12 @@ impl ICloudAccountRepository for SqliteCloudAccountRepository {
         let mode = match protocol {
             "ChatCompletions" => "chat_completions",
             "Responses" => "responses",
-            _ => return Ok(false),
+            _ => return Ok(None),
         };
-        Ok(models.iter().any(|id| id == model) && settings.get(model).is_some_and(|s| s["openai_api_mode"] == mode))
+        Ok(settings
+            .get(model)
+            .filter(|s| models.iter().any(|id| id == model) && s["openai_api_mode"] == mode)
+            .and_then(|s| s["supports_tools"].as_bool()))
     }
     async fn load(&self, owner: &str, issuer: &str) -> Result<Option<CloudAccountRow>, DbError> {
         Ok(

@@ -65,6 +65,9 @@ async fn forged_request_model_is_rejected_before_credential_resolution_or_http()
 }
 #[async_trait::async_trait]
 impl ManagedCredentialResolver for BlockedResolver {
+    async fn supports_tools(&self, _: &str, _: &str, _: &str, _: OpenAiApiMode) -> Result<bool, ProviderError> {
+        Ok(true)
+    }
     async fn subscribe(&self, _: &str, _: &str) -> Result<watch::Receiver<bool>, ProviderError> {
         Ok(self.lifetime.subscribe())
     }
@@ -117,6 +120,9 @@ async fn cancellation_interrupts_shared_provider_credential_resolution() {
 }
 #[async_trait::async_trait]
 impl ManagedCredentialResolver for Resolver {
+    async fn supports_tools(&self, _: &str, _: &str, _: &str, _: OpenAiApiMode) -> Result<bool, ProviderError> {
+        Ok(true)
+    }
     async fn subscribe(&self, owner: &str, provider: &str) -> Result<watch::Receiver<bool>, ProviderError> {
         assert_eq!((owner, provider), ("owner", "original-provider"));
         Ok(self.lifetime.subscribe())
@@ -267,14 +273,15 @@ async fn managed_tools_and_continuation_resolve_each_request_and_keep_selected_m
         manager.send_message(message()).await.unwrap();
         manager.send_message(message()).await.unwrap();
         assert_eq!(resolver.resolutions.load(Ordering::SeqCst), 3);
-        let calls = requests.lock().unwrap();
-        assert_eq!(calls.len(), 3);
-        assert!(calls[1].1.to_string().contains("SYNTHETIC_TOOL_RESULT"));
-        for (i, (auth, body)) in calls.iter().enumerate() {
-            assert_eq!(auth, &format!("Bearer synthetic-actor-{i}"));
-            assert_eq!(body["model"], "test-model");
+        {
+            let calls = requests.lock().unwrap();
+            assert_eq!(calls.len(), 3);
+            assert!(calls[1].1.to_string().contains("SYNTHETIC_TOOL_RESULT"));
+            for (i, (auth, body)) in calls.iter().enumerate() {
+                assert_eq!(auth, &format!("Bearer synthetic-actor-{i}"));
+                assert_eq!(body["model"], "test-model");
+            }
         }
-        drop(calls);
         let different = LlmRequest {
             model: "fork-override".into(),
             system: String::new(),

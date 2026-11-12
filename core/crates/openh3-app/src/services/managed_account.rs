@@ -10,6 +10,26 @@ fn account_error() -> ProviderError {
 }
 #[async_trait::async_trait]
 impl ManagedCredentialResolver for AccountCredentials {
+    async fn supports_tools(
+        &self,
+        owner: &str,
+        provider: &str,
+        model: &str,
+        mode: aion_config::compat::OpenAiApiMode,
+    ) -> Result<bool, ProviderError> {
+        self.0
+            .authorize_model(
+                owner,
+                provider,
+                model,
+                match mode {
+                    aion_config::compat::OpenAiApiMode::ChatCompletions => "ChatCompletions",
+                    aion_config::compat::OpenAiApiMode::Responses => "Responses",
+                },
+            )
+            .await
+            .map_err(|_| account_error())
+    }
     async fn subscribe(&self, owner: &str, provider: &str) -> Result<watch::Receiver<bool>, ProviderError> {
         self.0
             .inference_lifetime(owner, provider)

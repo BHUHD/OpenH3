@@ -325,6 +325,19 @@ struct AccountResolver {
 }
 #[async_trait::async_trait]
 impl openh3_ai_agent::managed::ManagedCredentialResolver for AccountResolver {
+    async fn supports_tools(
+        &self,
+        owner: &str,
+        provider: &str,
+        model: &str,
+        mode: aion_config::compat::OpenAiApiMode,
+    ) -> Result<bool, openh3_ai_agent::managed::ProviderError> {
+        assert_eq!(owner, TEST_USER_ID);
+        assert_eq!(provider, "managed-factory");
+        assert_eq!(model, "gpt-5.4");
+        assert_eq!(mode, self.mode);
+        Ok(true)
+    }
     async fn subscribe(
         &self,
         owner: &str,

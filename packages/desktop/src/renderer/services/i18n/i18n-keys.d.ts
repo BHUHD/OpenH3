@@ -450,6 +450,8 @@ export type I18nKey =
   | 'conversation.agentError.codes.USER_LLM_PROVIDER_RATE_LIMITED.title'
   | 'conversation.agentError.codes.USER_LLM_PROVIDER_TIMEOUT.body'
   | 'conversation.agentError.codes.USER_LLM_PROVIDER_TIMEOUT.title'
+  | 'conversation.agentError.codes.USER_LLM_PROVIDER_TOOL_CAPABILITY.body'
+  | 'conversation.agentError.codes.USER_LLM_PROVIDER_TOOL_CAPABILITY.title'
   | 'conversation.agentError.codes.USER_LLM_PROVIDER_UNSUPPORTED_MODEL.body'
   | 'conversation.agentError.codes.USER_LLM_PROVIDER_UNSUPPORTED_MODEL.title'
   | 'conversation.agentError.codes.WORKSPACE_PATH_RUNTIME_UNAVAILABLE.body'

@@ -39,13 +39,13 @@ impl ICloudAccountRepository for RepositoryBarrier {
         self.pause(CATALOG).await;
         self.inner.replace_catalog(p).await
     }
-    async fn model_allowed(
+    async fn model_tools(
         &self,
         p: openh3_db::SaveCloudCatalog<'_>,
         model: &str,
         protocol: &str,
-    ) -> std::result::Result<bool, DbError> {
-        self.inner.model_allowed(p, model, protocol).await
+    ) -> std::result::Result<Option<bool>, DbError> {
+        self.inner.model_tools(p, model, protocol).await
     }
     async fn load(&self, owner: &str, issuer: &str) -> std::result::Result<Option<CloudAccountRow>, DbError> {
         let row = self.inner.load(owner, issuer).await?;

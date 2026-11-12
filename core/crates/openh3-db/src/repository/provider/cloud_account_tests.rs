@@ -87,19 +87,24 @@ async fn catalog_cas_binds_every_identity_and_rejects_duplicate_ids_atomically()
         .await,
         Err(crate::DbError::Conflict(_))
     ));
-    assert!(repo.model_allowed(input(), "actual-id", "Responses").await.unwrap());
-    assert!(
-        !repo
-            .model_allowed(input(), "actual-id", "ChatCompletions")
-            .await
-            .unwrap()
+    assert_eq!(
+        repo.model_tools(input(), "actual-id", "Responses").await.unwrap(),
+        Some(true)
+    );
+    assert_eq!(
+        repo.model_tools(input(), "gpt-4o", "ChatCompletions").await.unwrap(),
+        Some(false)
+    );
+    assert_eq!(
+        repo.model_tools(input(), "actual-id", "ChatCompletions").await.unwrap(),
+        None
     );
     repo.disconnect(&owner, "https://issuer.test").await.unwrap();
     assert!(matches!(
         repo.replace_catalog(input()).await,
         Err(crate::DbError::Conflict(_))
     ));
-    assert!(!repo.model_allowed(input(), "actual-id", "Responses").await.unwrap());
+    assert_eq!(repo.model_tools(input(), "actual-id", "Responses").await.unwrap(), None);
 }
 
 #[tokio::test]
