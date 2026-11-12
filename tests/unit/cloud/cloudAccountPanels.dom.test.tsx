@@ -1221,4 +1221,151 @@ describe('native purchase and owned orders', () => {
     await click('refreshOrder');
     expect(orderReads()).toHaveLength(reads + 1);
   });
+  it('fences an old pending replay when the already-visible new-intent confirmation is used', async () => {
+    const late = deferred();
+    let attempt = 0;
+    f.request.mockImplementation((r) =>
+      r.operation === 'topupCreateAndOpen'
+        ? ++attempt === 2
+          ? late.promise
+          : Promise.resolve({
+              success: true,
+              data: purchaseOrder({ order_id: attempt === 3 ? 'fresh-order' : 'original-order' }),
+            })
+        : Promise.resolve(purchaseResponse(r))
+    );
+    mount();
+    await buy();
+    await purchaseRegion().findByText('original-order');
+    await click('changePurchase');
+    await click('reopenCheckout');
+    expect(creates()).toHaveLength(2);
+    await click('startNewPurchase');
+    await act(async () => late.resolve({ success: true, data: purchaseOrder() }));
+    await buy();
+    expect(creates()).toHaveLength(3);
+    expect(creates()[1].input).toEqual(creates()[0].input);
+    expect(creates()[2].input.idempotency_key).not.toBe(creates()[0].input.idempotency_key);
+    expect(await purchaseRegion().findByText('fresh-order')).toBeInTheDocument();
+    expect(purchaseRegion().queryByText('original-order')).not.toBeInTheDocument();
+    expect(purchaseRegion().queryByText('settings.cloudAccount.purchaseAmbiguous')).not.toBeInTheDocument();
+  });
+  it('cannot let an old replay settling after the new purchase replace the new intent or clear its state', async () => {
+    const late = deferred();
+    let attempt = 0;
+    f.request.mockImplementation((r) =>
+      r.operation === 'topupCreateAndOpen'
+        ? ++attempt === 2
+          ? late.promise
+          : Promise.resolve({
+              success: true,
+              data: purchaseOrder({ order_id: attempt >= 3 ? 'fresh-order' : 'original-order' }),
+            })
+        : Promise.resolve(purchaseResponse(r))
+    );
+    mount();
+    await buy();
+    await click('changePurchase');
+    await click('reopenCheckout');
+    await click('startNewPurchase');
+    await buy();
+    await purchaseRegion().findByText('fresh-order');
+    await act(async () => late.resolve({ success: true, data: purchaseOrder() }));
+    expect(purchaseRegion().getByText('fresh-order')).toBeInTheDocument();
+    expect(purchaseRegion().queryByText('original-order')).not.toBeInTheDocument();
+    await click('reopenCheckout');
+    expect(creates()[3].input).toEqual(creates()[2].input);
+    expect(window.open).not.toHaveBeenCalled();
+  });
+  it('refreshes authoritative wallet and usage once for paid history recovery without replacing the ambiguous intent', async () => {
+    let recovered = false;
+    f.request.mockImplementation(async (r) =>
+      r.operation === 'topupCreateAndOpen'
+        ? { success: false, code: 'CLOUD_TRANSPORT', error: 'controlled ambiguity' }
+        : r.operation === 'topupOrders' && !r.input.order_id
+          ? {
+              success: true,
+              data: {
+                items: recovered ? [purchaseOrder({ status: 'paid', handoff_status: 'expired' })] : [],
+                has_more: false,
+                next_before_id: recovered ? 17 : 0,
+              },
+            }
+          : purchaseResponse(r)
+    );
+    mount();
+    await buy();
+    await screen.findByText('settings.cloudAccount.purchaseAmbiguous');
+    const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
+    const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
+    recovered = true;
+    await click('refreshOrders');
+    await ownedRegion().findByText('settings.cloudAccount.order_paid');
+    await click('retryPurchase');
+    expect(creates()[1].input).toEqual(creates()[0].input);
+    await waitFor(() => {
+      expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
+      expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
+    });
+    await click('refreshOrders');
+    await click('refreshOrders');
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
+    expect(screen.getByText('-99999999999999999999 new_api_quota')).toBeInTheDocument();
+    expect(purchaseRegion().queryByText('original-order')).not.toBeInTheDocument();
+  });
+  it('deduplicates paid detail and history billing notifications within the same live scope', async () => {
+    let historyPaid = false;
+    f.request.mockImplementation(async (r) =>
+      r.operation === 'topupCreateAndOpen'
+        ? { success: true, data: purchaseOrder({ status: 'paid' }) }
+        : r.operation === 'topupOrders' && !r.input.order_id
+          ? {
+              success: true,
+              data: {
+                items: historyPaid ? [purchaseOrder({ status: 'paid' })] : [],
+                has_more: false,
+                next_before_id: historyPaid ? 17 : 0,
+              },
+            }
+          : purchaseResponse(r)
+    );
+    mount();
+    await screen.findByRole('radio');
+    const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
+    const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
+    await buy();
+    await purchaseRegion().findByText('settings.cloudAccount.order_paid');
+    historyPaid = true;
+    await click('refreshOrders');
+    await ownedRegion().findByText('settings.cloudAccount.order_paid');
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
+  });
+  it('does not refresh billing for an old scope history response arriving after owner replacement', async () => {
+    const late = deferred();
+    let historyReads = 0;
+    f.request.mockImplementation((r) =>
+      r.operation === 'topupOrders' && !r.input.order_id && ++historyReads === 2
+        ? late.promise
+        : Promise.resolve(purchaseResponse(r))
+    );
+    const view = mount();
+    await screen.findByText('settings.cloudAccount.emptyOrders');
+    await click('refreshOrders');
+    f.owner = 'b';
+    view.rerender(view.tree());
+    await screen.findByText('settings.cloudAccount.emptyOrders');
+    const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
+    const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
+    await act(async () =>
+      late.resolve({
+        success: true,
+        data: { items: [purchaseOrder({ status: 'paid' })], has_more: false, next_before_id: 17 },
+      })
+    );
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages);
+    expect(screen.queryByText('original-order')).not.toBeInTheDocument();
+  });
 });

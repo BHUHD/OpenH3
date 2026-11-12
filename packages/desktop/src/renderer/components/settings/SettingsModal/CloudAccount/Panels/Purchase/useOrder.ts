@@ -12,7 +12,6 @@ export function useOrder(initial?: OwnedOrder) {
   const [now, setNow] = useState(Date.now());
   const orderRef = useRef(order);
   const refreshRef = useRef<() => void>(() => {});
-  const paidSeen = useRef(new Set<string>());
   const pollingWindow = useRef<{ id: string; deadline: number } | undefined>(undefined);
   const billing = useRef(cloud.refreshBilling);
   billing.current = cloud.refreshBilling;
@@ -28,11 +27,8 @@ export function useOrder(initial?: OwnedOrder) {
   orderRef.current = order;
   const orderId = order?.order_id;
   useEffect(() => {
-    if (orderId && order?.status === 'paid' && !paidSeen.current.has(orderId)) {
-      paidSeen.current.add(orderId);
-      billing.current();
-    }
-  }, [orderId, order?.status]);
+    if (orderId && order?.status === 'paid') billing.current([orderId]);
+  }, [orderId, order?.status, cloud.scope]);
   useEffect(() => {
     if (!orderId) return;
     let live = true;

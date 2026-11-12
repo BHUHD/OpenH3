@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { Button, Input, InputNumber, Select } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import type { CloudAccountData, CloudAccountRequest, CloudTopupOrders } from '@/common/types/platform/cloudAccount';
@@ -14,6 +14,7 @@ export function Orders() {
   return <History key={cloud.scope} />;
 }
 function History() {
+  const cloud = useCloudAccount();
   const { t } = useTranslation();
   const id = useId();
   const [orderId, setOrderId] = useState('');
@@ -21,6 +22,10 @@ function History() {
   const [size, setSize] = useState(20);
   const [filters, setFilters] = useState<Filters>({ page_size: 20 });
   const orders = useCloudRead({ operation: 'topupOrders', input: filters }, isOrders);
+  useEffect(() => {
+    if (orders.data)
+      cloud.refreshBilling(orders.data.items.filter((order) => order.status === 'paid').map((order) => order.order_id));
+  }, [orders.data, cloud.scope, cloud.refreshBilling]);
   const valid = new TextEncoder().encode(orderId).length <= 64 && Number.isInteger(size) && size >= 1 && size <= 50;
   return (
     <Panel title='ownedOrders'>

@@ -41,7 +41,7 @@ type Lifecycle = State & {
   scope: string;
   accountKey: string;
   captureScope: () => () => boolean;
-  refreshBilling: () => void;
+  refreshBilling: (paidOrderIds: readonly string[]) => void;
   readOwned: OwnedRead;
   wallet?: CloudWallet;
   walletLoading: boolean;
@@ -88,6 +88,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     ticket: Ticket;
   }>();
   const [resourceRevision, setResourceRevision] = useState(0);
+  const paidBilling = useRef({ scope: '', orders: new Set<string>() });
   const targetRef = useRef<Lifecycle['deviceTarget']>(undefined);
   const identityFlight = useRef<(Ticket & { generation?: string; operation: string; failed?: boolean }) | undefined>(
     undefined
@@ -443,8 +444,18 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       const originalGeneration = generation.current;
       return () => matchesRead(original) && originalGeneration === generation.current;
     },
-    refreshBilling: () => {
-      if (!matchesRead({ ticket: { owner, epoch: renderEpoch }, publication })) return;
+    refreshBilling: (paidOrderIds) => {
+      if (
+        current.session?.state !== 'connected' ||
+        !matchesRead({ ticket: { owner, epoch: renderEpoch }, publication })
+      )
+        return;
+      // One scoped notification for paid observations from detail OR history.
+      // This is revalidation deduplication, never a local balance or order status.
+      if (paidBilling.current.scope !== scope) paidBilling.current = { scope, orders: new Set() };
+      const unseen = paidOrderIds.filter((id) => !paidBilling.current.orders.has(id));
+      if (!unseen.length) return;
+      for (const id of unseen) paidBilling.current.orders.add(id);
       void walletQuery.mutate();
       void mutate(
         (key) =>

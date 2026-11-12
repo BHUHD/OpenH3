@@ -230,6 +230,10 @@ function Purchase() {
                 <Alert type='warning' content={t('settings.cloudAccount.newPurchaseWarning')} />
                 <Button
                   onClick={() => {
+                    // This explicit new intent supersedes pending renderer continuations.
+                    // A previously authorized checkout can still exist remotely.
+                    flight.current++;
+                    setBusy(false);
                     intentRef.current = undefined;
                     setKnown(undefined);
                     setIntent(undefined);
