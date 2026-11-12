@@ -1112,6 +1112,72 @@ describe('native purchase and owned orders', () => {
     );
     expect(purchaseRegion().getByText('settings.cloudAccount.order_paid')).toBeInTheDocument();
   });
+  it('accepts an earlier dispatched owned paid result after a later pending observation and refreshes billing once', async () => {
+    const earlier = deferred();
+    let reads = 0;
+    f.request.mockImplementation((r) =>
+      r.operation === 'topupOrders' && r.input.order_id
+        ? ++reads === 1
+          ? earlier.promise
+          : Promise.resolve({ success: true, data: { items: [purchaseOrder()], has_more: false, next_before_id: 17 } })
+        : Promise.resolve(purchaseResponse(r))
+    );
+    mount();
+    await screen.findByRole('radio');
+    vi.useFakeTimers();
+    await buy();
+    await click('refreshOrder');
+    await click('refreshOrder');
+    expect(reads).toBe(2);
+    expect(purchaseRegion().getByText('settings.cloudAccount.order_pending')).toBeInTheDocument();
+    const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
+    const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
+    await act(async () =>
+      earlier.resolve({
+        success: true,
+        data: { items: [purchaseOrder({ status: 'paid' })], has_more: false, next_before_id: 17 },
+      })
+    );
+    expect(purchaseRegion().getByText('settings.cloudAccount.order_paid')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.cloudAccount.reopenCheckout' })).toBeDisabled();
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
+    await click('refreshOrder');
+    expect(purchaseRegion().getByText('settings.cloudAccount.order_paid')).toBeInTheDocument();
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
+    expect(window.open).not.toHaveBeenCalled();
+  });
+  it('continues superseding an earlier nonterminal owned read with the later dispatched read', async () => {
+    const earlier = deferred();
+    let reads = 0;
+    f.request.mockImplementation((r) =>
+      r.operation === 'topupOrders' && r.input.order_id
+        ? ++reads === 1
+          ? earlier.promise
+          : Promise.resolve({ success: true, data: { items: [purchaseOrder()], has_more: false, next_before_id: 17 } })
+        : Promise.resolve(purchaseResponse(r))
+    );
+    mount();
+    await screen.findByRole('radio');
+    vi.useFakeTimers();
+    await buy();
+    await click('refreshOrder');
+    await click('refreshOrder');
+    const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
+    const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
+    await act(async () =>
+      earlier.resolve({
+        success: true,
+        data: { items: [purchaseOrder({ handoff_status: 'expired' })], has_more: false, next_before_id: 17 },
+      })
+    );
+    expect(purchaseRegion().getByText('settings.cloudAccount.order_pending')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.cloudAccount.reopenCheckout' })).toBeEnabled();
+    expect(purchaseRegion().getByText('settings.cloudAccount.handoff_available')).toBeInTheDocument();
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets);
+    expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages);
+  });
   it('refreshes authoritative billing when a deliberate same-intent reopen discovers paid', async () => {
     let reopened = false;
     f.request.mockImplementation(async (r) =>

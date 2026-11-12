@@ -45,12 +45,15 @@ export function useOrder(initial?: OwnedOrder) {
       const currentSequence = ++sequence;
       setLoading(true);
       const result = await cloud.readOwned({ operation: 'topupOrders', input: { order_id: orderId, page_size: 1 } });
-      if (!live || !valid() || currentSequence !== sequence) return;
-      setLoading(false);
+      if (!live || !valid()) return;
       const found =
         result?.success && result.data && 'items' in result.data
           ? result.data.items.find((item) => 'order_id' in item && item.order_id === orderId)
           : undefined;
+      // Dispatch order cannot establish server observation order. A paid result
+      // for this owned order dominates pending even from an earlier request.
+      if (currentSequence !== sequence && (!found || !('order_id' in found) || found.status !== 'paid')) return;
+      setLoading(false);
       if (!found || !('order_id' in found)) {
         setFailed(true);
         return;
