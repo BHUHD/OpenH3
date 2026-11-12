@@ -49,7 +49,7 @@ mod tests {
 
     macro_rules! assert_bedrock_json_snapshot {
         ($name:literal, $value:expr) => {
-            insta::with_settings!({ prepend_module_to_snapshot => false }, {
+            insta::with_settings!({ prepend_module_to_snapshot => false, sort_maps => true }, {
                 insta::assert_json_snapshot!(
                     concat!("aion_providers__bedrock__tests__", $name),
                     $value
