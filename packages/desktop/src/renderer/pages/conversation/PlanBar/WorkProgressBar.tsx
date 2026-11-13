@@ -54,7 +54,11 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   const toggle = () => setExpanded((v) => !v);
 
   return (
-    <div data-work-progress-bar className='shrink-0 border-t border-solid border-3 border-s-0 border-e-0 border-b-0'>
+    <div
+      data-work-progress-bar
+      data-testid='work-progress-bar'
+      className='shrink-0 border-t border-solid border-3 border-s-0 border-e-0 border-b-0'
+    >
       {/* Summary row */}
       <div
         role='button'
