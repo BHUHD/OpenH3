@@ -111,7 +111,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
       style={{
         zIndex: 1,
         transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
-        backgroundColor: 'var(--bg-base)',
+        backgroundColor: 'var(--composer-bg)',
         borderColor: isFileDragging ? 'rgb(var(--primary-3))' : borderColor,
         width: isMobile ? 'calc(100% + 28px)' : undefined,
         marginLeft: isMobile ? -14 : undefined,

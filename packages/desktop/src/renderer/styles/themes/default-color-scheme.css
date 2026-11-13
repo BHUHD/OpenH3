@@ -44,6 +44,7 @@
   --sidebar-bg: var(--bg-2);
   --input-focus-border: var(--aou-3);
   --input-focus-shadow: 0px 0px 0px 3px var(--aou-1);
+  --composer-bg: var(--bg-base);
 
   --brand: var(--primary);
   --brand-light: #eef3fc;
@@ -106,6 +107,7 @@
   --sidebar-bg: var(--bg-base);
   --input-focus-border: var(--aou-4);
   --input-focus-shadow: 0px 0px 0px 3px var(--aou-2);
+  --composer-bg: var(--bg-2);
 
   --brand: var(--primary);
   --brand-light: #25344d;
