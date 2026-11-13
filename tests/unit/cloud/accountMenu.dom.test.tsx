@@ -106,3 +106,30 @@ it('collapsed + not-connected: renders icon button without visible label text', 
   await waitFor(() => expect(f.request).toHaveBeenCalled());
   expect(screen.queryByText('settings.cloudAccount.entry')).not.toBeInTheDocument();
 });
+
+it('logs out the cloud account without invoking WebUI logout', async () => {
+  let connected = true;
+  f.request.mockImplementation(async (request: CloudAccountRequest) => {
+    if (request.operation === 'capabilities') return { success: true, data: capabilities };
+    if (request.operation === 'logout') {
+      connected = false;
+      return { success: true, data: { remote_revocation: 'confirmed' } };
+    }
+    return {
+      success: true,
+      data: connected
+        ? {
+            state: 'connected',
+            generation: '1',
+            account: { id: '1', username: 'alice', display_name: 'Alice', email: null },
+          }
+        : { state: 'disconnected', generation: '2' },
+    };
+  });
+  render(host(<AccountMenu {...baseProps} />));
+  fireEvent.click(await screen.findByRole('button', { name: 'Alice' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'settings.cloudAccount.logout' }));
+  await waitFor(() => expect(f.request).toHaveBeenCalledWith({ operation: 'logout' }));
+  expect(f.onLogout).not.toHaveBeenCalled();
+  expect(await screen.findByRole('button', { name: 'settings.cloudAccount.entry' })).toBeInTheDocument();
+});
