@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "Cloud account",
-    "entry": "Cloud sign in / register",
+    "entry": "Sign in",
     "username": "Username",
     "email": "Email",
     "password": "Password",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "No matching owned orders.",
     "refreshOrders": "Refresh owned orders",
     "firstOrders": "First orders",
-    "moreOrders": "More orders"
+    "moreOrders": "More orders",
+    "skipLogin": "Skip for now",
+    "loginModalTitle": "Sign in / Register",
+    "accountMenu": "Account"
   }
 }

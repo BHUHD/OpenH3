@@ -1489,7 +1489,7 @@
   },
   "cloudAccount": {
     "title": "雲端帳戶",
-    "entry": "雲端帳戶登入 / 註冊",
+    "entry": "登入",
     "username": "使用者名稱",
     "email": "電子郵件",
     "password": "密碼",
@@ -1718,6 +1718,9 @@
     "emptyOrders": "沒有符合條件的本人訂單。",
     "refreshOrders": "重新整理本人訂單",
     "firstOrders": "首批訂單",
-    "moreOrders": "更多訂單"
+    "moreOrders": "更多訂單",
+    "skipLogin": "略過，先使用",
+    "loginModalTitle": "登入 / 註冊",
+    "accountMenu": "帳戶"
   }
 }

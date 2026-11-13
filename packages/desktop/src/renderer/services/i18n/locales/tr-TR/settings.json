@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "Bulut hesabı",
-    "entry": "Buluta giriş / kayıt",
+    "entry": "Giriş yap",
     "username": "Kullanıcı adı",
     "email": "E-posta",
     "password": "Parola",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "Eşleşen siparişiniz yok.",
     "refreshOrders": "Kendi siparişlerimi yenile",
     "firstOrders": "İlk siparişler",
-    "moreOrders": "Diğer siparişler"
+    "moreOrders": "Diğer siparişler",
+    "skipLogin": "Şimdilik atla",
+    "loginModalTitle": "Giriş / Kayıt",
+    "accountMenu": "Hesap"
   }
 }

@@ -25,9 +25,10 @@ const SettingsSider = React.lazy(() => import('@renderer/pages/settings/componen
 interface SiderProps {
   onSessionClick?: () => void;
   collapsed?: boolean;
+  onOpenLogin?: () => void;
 }
 
-const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
+const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false, onOpenLogin }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
@@ -293,6 +294,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         onThemeToggle={handleQuickThemeToggle}
         showLogout={showLogout}
         onLogoutClick={handleLogout}
+        onOpenLogin={onOpenLogin ?? (() => {})}
       />
     </div>
   );

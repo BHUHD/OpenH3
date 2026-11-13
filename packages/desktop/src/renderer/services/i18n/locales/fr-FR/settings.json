@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "Compte cloud",
-    "entry": "Connexion / inscription cloud",
+    "entry": "Connexion",
     "username": "Nom d’utilisateur",
     "email": "Adresse e-mail",
     "password": "Mot de passe",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "Aucune commande correspondante.",
     "refreshOrders": "Actualiser mes commandes",
     "firstOrders": "Premières commandes",
-    "moreOrders": "Autres commandes"
+    "moreOrders": "Autres commandes",
+    "skipLogin": "Ignorer pour l'instant",
+    "loginModalTitle": "Connexion / Inscription",
+    "accountMenu": "Compte"
   }
 }

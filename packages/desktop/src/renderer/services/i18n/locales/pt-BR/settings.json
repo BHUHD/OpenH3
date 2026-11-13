@@ -1490,7 +1490,7 @@
   },
   "cloudAccount": {
     "title": "Conta na nuvem",
-    "entry": "Entrar / cadastrar na nuvem",
+    "entry": "Entrar",
     "username": "Nome de usuário",
     "email": "E-mail",
     "password": "Senha",
@@ -1719,6 +1719,9 @@
     "emptyOrders": "Nenhum pedido próprio correspondente.",
     "refreshOrders": "Atualizar meus pedidos",
     "firstOrders": "Primeiros pedidos",
-    "moreOrders": "Mais pedidos"
+    "moreOrders": "Mais pedidos",
+    "skipLogin": "Pular por ora",
+    "loginModalTitle": "Entrar / Registrar",
+    "accountMenu": "Conta"
   }
 }

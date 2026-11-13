@@ -1489,7 +1489,7 @@
   },
   "cloudAccount": {
     "title": "クラウドアカウント",
-    "entry": "クラウドにログイン / 登録",
+    "entry": "ログイン",
     "username": "ユーザー名",
     "email": "メール",
     "password": "パスワード",
@@ -1718,6 +1718,9 @@
     "emptyOrders": "該当する自分の注文はありません。",
     "refreshOrders": "自分の注文を更新",
     "firstOrders": "最初の注文",
-    "moreOrders": "次の注文"
+    "moreOrders": "次の注文",
+    "skipLogin": "スキップして使う",
+    "loginModalTitle": "ログイン / 登録",
+    "accountMenu": "アカウント"
   }
 }
