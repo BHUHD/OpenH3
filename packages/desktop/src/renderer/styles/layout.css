@@ -302,12 +302,11 @@
   padding: 0;
 }
 .arco-btn.sider-nav-entry:hover {
-  background: var(--fill-3);
+  background: var(--bg-hover);
 }
 .arco-btn.sider-nav-entry[aria-current='page'],
 .chat-history__item[aria-current='page'] {
   background: var(--brand-light) !important;
-  box-shadow: inset 3px 0 0 var(--brand);
   color: var(--brand);
 }
 .arco-btn.sider-nav-entry[aria-current='page'] {
@@ -315,7 +314,7 @@
 }
 .arco-btn.sider-nav-entry:active,
 .arco-btn.sider-section-add:active {
-  background: var(--fill-4);
+  background: var(--bg-active);
 }
 .arco-btn.sider-nav-entry:focus-visible,
 .arco-btn.sider-section-add:focus-visible {
