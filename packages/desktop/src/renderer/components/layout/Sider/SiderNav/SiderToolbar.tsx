@@ -43,7 +43,7 @@ const SiderToolbar: React.FC<SiderToolbarProps> = ({
             aria-current={pathname === '/guid' ? 'page' : undefined}
             className={classNames(
               'sider-nav-entry sider-nav-entry--collapsed',
-              'w-full h-34px flex items-center justify-center cursor-pointer transition-colors text-t-primary rd-8px hover:bg-fill-3 active:bg-fill-4',
+              'w-full h-34px flex items-center justify-center cursor-pointer transition-colors text-t-primary rd-8px hover:bg-hover active:bg-active',
               styles.newChatTrigger
             )}
             onClick={onNewChat}
@@ -71,12 +71,12 @@ const SiderToolbar: React.FC<SiderToolbarProps> = ({
           className={classNames(
             'sider-nav-entry',
             styles.newChatTrigger,
-            'h-34px flex-1 flex items-center justify-start gap-8px ps-10px pe-8px rd-0.5rem cursor-pointer group transition-all bg-transparent text-t-primary hover:bg-fill-3 active:bg-fill-4',
+            'h-34px flex-1 flex items-center justify-start gap-8px ps-10px pe-8px rd-0.5rem cursor-pointer group transition-all bg-transparent text-t-primary hover:bg-hover active:bg-active',
             isMobile && 'sider-action-btn-mobile'
           )}
           onClick={onNewChat}
         >
-          <span className='size-22px rd-6px bg-aou-2 border border-solid border-[var(--color-border-2)] group-hover:bg-fill-3 group-hover:border-transparent flex items-center justify-center shrink-0 transition-colors'>
+          <span className='size-22px rd-6px bg-aou-2 border border-solid border-[var(--color-border-2)] group-hover:bg-hover group-hover:border-transparent flex items-center justify-center shrink-0 transition-colors'>
             <Plus
               theme='outline'
               size='14'
@@ -103,7 +103,7 @@ const SiderToolbar: React.FC<SiderToolbarProps> = ({
             '!p-0 !w-26px !h-26px size-26px rd-6px flex items-center justify-center cursor-pointer shrink-0 transition-colors border border-solid border-transparent text-t-secondary hover:text-t-primary',
             isMobile && 'sider-action-icon-btn-mobile',
             {
-              'hover:bg-fill-3': !isBatchMode,
+              'hover:bg-hover': !isBatchMode,
               'bg-[rgba(var(--primary-6),0.12)] border-[rgba(var(--primary-6),0.24)] !text-primary': isBatchMode,
             }
           )}

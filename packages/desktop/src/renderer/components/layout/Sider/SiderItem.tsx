@@ -58,8 +58,8 @@ const SiderItem: React.FC<SiderItemProps> = ({
         className={classNames(
           'h-34px rd-8px flex items-center gap-8px ps-10px pe-8px cursor-pointer relative overflow-hidden shrink-0 group min-w-0 transition-colors',
           {
-            'hover:bg-fill-3': !selected,
-            '!bg-fill-3': selected,
+            'hover:bg-hover': !selected,
+            '!bg-active': selected,
           }
         )}
         onClick={onClick}
