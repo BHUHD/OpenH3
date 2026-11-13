@@ -348,6 +348,10 @@
       "TEAM_ASSISTANT_FIELD_UNSUPPORTED": {
         "title": "The request used a legacy team identity field",
         "body": "This team action must use assistant_id instead of legacy backend or agent fields."
+      },
+      "USER_LLM_PROVIDER_TOOL_CAPABILITY": {
+        "title": "모델 도구 기능이 변경됨",
+        "body": "텍스트 전용 모델은 도구 기록을 이어갈 수 없거나 검증된 도구 지원이 변경되었습니다. 도구 지원 모델을 선택하거나 새 대화를 시작하세요."
       }
     }
   },

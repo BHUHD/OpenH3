@@ -467,6 +467,12 @@ export const conversation = {
     (p) => `/api/conversations/${p.conversation_id}/artifacts/${p.artifact_id}`,
     (p) => ({ status: p.status })
   ),
+  sourceBound: wsEmitter<{
+    user_id: string;
+    conversation_id: string;
+    msg_id: string;
+    model_source: import('@/common/chat/chatLib').HistoricalModelSource;
+  }>('message.sourceBound'),
   responseStream: wsEmitter<IResponseMessage>('message.stream'),
   userCreated: wsEmitter<{
     conversation_id: string;
@@ -1950,12 +1956,15 @@ export interface IResponseMessage {
   type: string;
   data: unknown;
   msg_id: string;
+  /** Exact DB row identity for a persisted raw-insertion notification. */
+  persisted_message_id?: string;
   turn_id?: string;
   conversation_id: string;
   created_at?: number;
   /** Backend turn anchor (codex Turn.id) for fork gating; mirrors the
    *  persisted messages.backend_turn_id so live frames gate like history. */
   backend_turn_id?: string;
+  model_source?: import('@/common/chat/chatLib').HistoricalModelSource | null;
   hidden?: boolean;
   position?: 'left' | 'right' | 'center' | 'pop';
   status?: 'finish' | 'pending' | 'error' | 'work';

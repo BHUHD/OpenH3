@@ -131,8 +131,13 @@ pub(super) async fn build(
         .map_err(|e| AgentError::internal(format!("Failed to load provider config: {e}")))?
         .ok_or_else(|| AgentError::bad_request(format!("Provider '{provider_id}' not found")))?;
 
-    let api_key = openh3_common::decrypt_string(&row.api_key_encrypted, &deps.encryption_key)
-        .map_err(|e| AgentError::internal(e.to_string()))?;
+    let managed = row.managed_by.is_some();
+    let api_key = if managed {
+        crate::services::managed::MANAGED_KEY_PLACEHOLDER.into()
+    } else {
+        openh3_common::decrypt_string(&row.api_key_encrypted, &deps.encryption_key)
+            .map_err(|e| AgentError::internal(e.to_string()))?
+    };
 
     let model_id = model
         .use_model
@@ -141,17 +146,70 @@ pub(super) async fn build(
         .unwrap_or(&model.model)
         .to_owned();
 
-    let provider = map_aionrs_provider(&row.platform, &model_id, row.model_protocols.as_deref())?;
     let model_overrides = resolve_model_compat_overrides(&model_id, &row.model_settings)?;
+    let managed_provider = if managed {
+        let models: Vec<String> =
+            serde_json::from_str(&row.models).map_err(|_| AgentError::bad_request("Invalid managed model catalog"))?;
+        let enabled: HashMap<String, bool> = row
+            .model_enabled
+            .as_deref()
+            .map(serde_json::from_str)
+            .transpose()
+            .map_err(|_| AgentError::bad_request("Invalid managed model permissions"))?
+            .unwrap_or_default();
+        if row.managed_by.as_deref() != Some("cloud_account")
+            || model.use_model.is_some()
+            || !row.enabled
+            || !models.contains(&model_id)
+            || enabled.get(&model_id) == Some(&false)
+        {
+            return Err(AgentError::bad_request("Managed model selection is unavailable"));
+        }
+        let mode = model_overrides
+            .openai_api_mode
+            .ok_or_else(|| AgentError::bad_request("Managed model protocol is unverified"))?;
+        let resolver = deps
+            .managed_credentials
+            .clone()
+            .ok_or_else(|| AgentError::bad_request("Managed account resolver unavailable"))?;
+        Some(
+            crate::services::managed::ManagedProvider::bind(
+                resolver,
+                ctx.user_id.clone(),
+                provider_id.clone(),
+                model_id.clone(),
+                mode,
+            )
+            .await
+            .map_err(|_| AgentError::bad_request("Managed account authentication required"))?,
+        )
+    } else {
+        None
+    };
+    let provider = if managed {
+        "openai".into()
+    } else {
+        map_aionrs_provider(&row.platform, &model_id, row.model_protocols.as_deref())?
+    };
 
-    let (base_url, mut compat_overrides) = resolve_aionrs_url_and_compat_with_mode(
-        &row.platform,
-        &row.base_url,
-        &provider,
-        &model_id,
-        row.is_full_url,
-        model_overrides.openai_api_mode,
-    );
+    let (base_url, mut compat_overrides) = if managed {
+        (
+            Some("http://127.0.0.1:1".into()),
+            AionrsCompatOverrides {
+                openai_api_mode: model_overrides.openai_api_mode,
+                ..Default::default()
+            },
+        )
+    } else {
+        resolve_aionrs_url_and_compat_with_mode(
+            &row.platform,
+            &row.base_url,
+            &provider,
+            &model_id,
+            row.is_full_url,
+            model_overrides.openai_api_mode,
+        )
+    };
     compat_overrides.image_input = model_overrides.image_input;
 
     if provider == "openai" {
@@ -162,7 +220,7 @@ pub(super) async fn build(
             model = %model_id,
             is_full_url = row.is_full_url,
             api_mode = ?compat_overrides.openai_api_mode.unwrap_or_default(),
-            api_mode_source = if model_overrides.openai_api_mode.is_some() { "user" } else { "automatic" },
+            api_mode_source = if managed { "managed_catalog" } else if model_overrides.openai_api_mode.is_some() { "user" } else { "automatic" },
             "Resolved Aionrs OpenAI transport"
         );
     }
@@ -182,6 +240,7 @@ pub(super) async fn build(
         overrides.fork.as_ref(),
     )?;
 
+    let source_owner = ctx.user_id.clone();
     let config = AionrsResolvedConfig {
         thought_level: overrides.thought_level,
         provider,
@@ -248,12 +307,13 @@ pub(super) async fn build(
     let conversation_id = ctx.conversation_id;
     let workspace = ctx.workspace;
     let had_resume_session = resume_session.is_some();
-    let agent = match AionrsAgentManager::new_with_skill_dirs(
+    let agent = match AionrsAgentManager::new_with_managed_provider(
         conversation_id.clone(),
         workspace.clone(),
         config.clone(),
         resume_session,
         skill_dirs.clone(),
+        managed_provider.clone(),
     )
     .await
     {
@@ -264,10 +324,22 @@ pub(super) async fn build(
             // the same session id and future turns remain durable.
             let persisted = resolve_build_session(&config.session_directory, &workspace, &conversation_id, None)?
                 .ok_or_else(|| AgentError::internal("Aionrs session disappeared after a create race"))?;
-            AionrsAgentManager::new_with_skill_dirs(conversation_id, workspace, config, Some(persisted), skill_dirs)
-                .await?
+            AionrsAgentManager::new_with_managed_provider(
+                conversation_id,
+                workspace,
+                config,
+                Some(persisted),
+                skill_dirs,
+                managed_provider,
+            )
+            .await?
         }
         Err(error) => return Err(error),
+    };
+    let agent = if managed {
+        agent
+    } else {
+        agent.with_byok_source(source_owner, provider_id.clone(), row.platform)
     };
     Ok(AgentInstance::Aionrs(Arc::new(agent)))
 }

@@ -23,9 +23,9 @@ use openh3_api_types::{
     ConversationNameUpdatedPayload, ConversationResponse, ConversationRuntimeSummary, CreateConversationRequest,
     EnsureConversationRuntimeResponse, ForkCapabilityView, ForkConversationRequest, ListConversationsQuery,
     ListMessagesQuery, McpRuntimeSnapshot, MessageListResponse, MessageResponse, MessageSearchResponse,
-    PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse, SessionMcpServer,
-    SessionMcpTransport, TEAM_MCP_SERVER_NAME, TeamMcpSelection, TeamSessionBinding, UpdateConversationArtifactRequest,
-    UpdateConversationRequest, WebSocketMessage, assistant_avatar_response_value,
+    PersistedMessageStreamPayload, PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse,
+    SessionMcpServer, SessionMcpTransport, TEAM_MCP_SERVER_NAME, TeamMcpSelection, TeamSessionBinding,
+    UpdateConversationArtifactRequest, UpdateConversationRequest, WebSocketMessage, assistant_avatar_response_value,
     assistant_avatar_response_value_with_version, assistant_mcp_binding_fingerprint,
 };
 use openh3_api_types::{ChatFileRef, SessionRef};
@@ -3717,6 +3717,7 @@ impl ConversationService {
                 hidden,
                 created_at: now_ms(),
                 backend_turn_id: None,
+                model_source: None,
             };
             if let Err(e) = self.conversation_repo.insert_message(user_id, &user_msg).await {
                 warn!(msg_id = %user_msg_id, error = %ErrorChain(&e), "Failed to insert mid-turn user message");
@@ -3993,6 +3994,7 @@ impl ConversationService {
             hidden: req.hidden,
             created_at: now_ms(),
             backend_turn_id: None,
+            model_source: None,
         };
         if !self
             .runtime_persistence()
@@ -4074,6 +4076,7 @@ impl ConversationService {
             turn_id: turn_id.clone(),
             turn_claim,
             recovery_user_message_id,
+            persisted_user_message_id: Some(user_msg_id.clone()),
         });
 
         info!(
@@ -4114,12 +4117,13 @@ impl ConversationService {
 
         let turn_id = Self::mint_turn_id();
         let turn_claim = self.runtime_state.try_claim_turn(&request.conversation_id, &turn_id)?;
+        let mut persisted_user_message_id = None;
         if request.persist_user_message {
             let user_msg_id = Self::mint_msg_id();
             let user_msg = openh3_db::models::MessageRow {
                 id: user_msg_id.clone(),
                 conversation_id: request.conversation_id.clone(),
-                msg_id: Some(user_msg_id),
+                msg_id: Some(user_msg_id.clone()),
                 r#type: "text".into(),
                 content: serde_json::json!({ "content": request.content }).to_string(),
                 position: Some("right".into()),
@@ -4127,6 +4131,7 @@ impl ConversationService {
                 hidden: request.user_message_hidden,
                 created_at: now_ms(),
                 backend_turn_id: None,
+                model_source: None,
             };
             if self
                 .runtime_persistence()
@@ -4143,6 +4148,12 @@ impl ConversationService {
                 self.complete_released_turn(&request.user_id, &request.conversation_id, &turn_id, was_deleting)
                     .await;
                 return Err(e.into());
+            }
+            if self
+                .runtime_persistence()
+                .allows(&request.conversation_id, RuntimeWriteKind::UserMessage)
+            {
+                persisted_user_message_id = Some(user_msg_id);
             }
         }
         if let Some(on_started) = request.on_started.as_ref() {
@@ -4197,6 +4208,7 @@ impl ConversationService {
                 turn_id: turn_id.clone(),
                 turn_claim,
                 recovery_user_message_id: None,
+                persisted_user_message_id,
             })
             .await;
 
@@ -4313,17 +4325,23 @@ impl ConversationService {
         let msg_id = row.msg_id.clone().unwrap_or_else(|| row.id.clone());
         let content_value: serde_json::Value =
             serde_json::from_str(&row.content).unwrap_or_else(|_| serde_json::Value::String(row.content.clone()));
-        let payload = serde_json::json!({
-            "user_id": user_id,
-            "conversation_id": row.conversation_id,
-            "msg_id": msg_id,
-            "type": row.r#type,
-            "data": content_value,
-            "position": row.position,
-            "status": row.status,
-            "hidden": row.hidden,
-            "replace": true,
-        });
+        let payload = PersistedMessageStreamPayload {
+            user_id: user_id.into(),
+            conversation_id: row.conversation_id.clone(),
+            persisted_message_id: row.id.clone(),
+            msg_id,
+            r#type: row.r#type.clone(),
+            data: content_value,
+            position: row.position.clone(),
+            status: row.status.clone(),
+            hidden: row.hidden,
+            created_at: row.created_at,
+            replace: true,
+            // Generic insert deliberately ignores caller-supplied provenance.
+            model_source: None,
+        };
+        let payload = serde_json::to_value(payload)
+            .map_err(|_| ConversationError::internal("Failed to serialize persisted message notification"))?;
         self.broadcaster
             .broadcast(WebSocketMessage::new("message.stream", payload));
         Ok(())

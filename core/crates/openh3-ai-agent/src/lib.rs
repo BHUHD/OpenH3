@@ -27,6 +27,7 @@ pub mod routes;
 pub(crate) mod runtime_status;
 pub mod runtime_token;
 pub(crate) mod services;
+pub use services::managed;
 pub mod session_agent;
 pub mod session_context;
 pub mod shared_kernel;

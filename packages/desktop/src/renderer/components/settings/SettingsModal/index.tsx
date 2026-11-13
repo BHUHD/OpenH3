@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import CloudAccount from './CloudAccount';
+
 import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
 import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
 import { iconColors } from '@/renderer/styles/colors';
@@ -11,7 +13,7 @@ import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/pl
 import { type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { useExtensionSettingsTabs } from '@/renderer/hooks/system/useExtensionSettingsTabs';
-import { Tabs } from '@arco-design/web-react';
+import { Button, Tabs } from '@arco-design/web-react';
 import { Computer, Earth, Info, LinkCloud, Puzzle, Toolkit } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,7 +57,7 @@ const RESIZE_DEBOUNCE_DELAY = 150;
 /**
  * 内置设置标签页类型 / Built-in settings tab type
  */
-export type BuiltinSettingTab = 'model' | 'agent' | 'tools' | 'webui' | 'system' | 'about';
+export type BuiltinSettingTab = 'cloud-account' | 'model' | 'agent' | 'tools' | 'webui' | 'system' | 'about';
 
 /**
  * 设置标签页类型（内置 + 扩展）/ Settings tab type (built-in + extension)
@@ -136,6 +138,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingTab>(defaultTab);
   const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (visible) setActiveTab(defaultTab);
+  }, [visible, defaultTab]);
   const resizeTimerRef = useRef<number | undefined>(undefined);
   const extensionTabs = useExtensionSettingsTabs();
 
@@ -190,6 +195,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
 
     // Modal built-in tabs (subset — no display/agent route pages)
     const builtinItems: MenuItem[] = [
+      {
+        key: 'cloud-account',
+        label: t('settings.cloudAccount.title'),
+        icon: <LinkCloud theme='outline' size='20' fill={iconColors.secondary} />,
+      },
       {
         key: 'model',
         label: t('settings.model'),
@@ -300,6 +310,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
   // Render built-in tab content (conditional)
   const renderBuiltinContent = () => {
     switch (activeTab) {
+      case 'cloud-account':
+        return visible ? <CloudAccount /> : null;
       case 'model':
         return <ModelModalContent />;
       case 'agent':
@@ -363,7 +375,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
     <OpenH3ScrollArea className='flex-shrink-0 b-color-border-2 scrollbar-hide' style={{ width: `${SIDEBAR_WIDTH}px` }}>
       <div className='flex flex-col gap-2px'>
         {menuItems.map((item) => (
-          <div
+          <Button
+            type='text'
             key={item.key}
             className={classNames(
               'flex items-center px-14px py-10px rd-8px cursor-pointer transition-all duration-150 select-none',
@@ -376,7 +389,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
           >
             <span className='me-12px text-16px line-height-[10px]'>{item.icon}</span>
             <span className='text-14px font-500 flex-1 lh-22px'>{item.label}</span>
-          </div>
+          </Button>
         ))}
       </div>
     </OpenH3ScrollArea>

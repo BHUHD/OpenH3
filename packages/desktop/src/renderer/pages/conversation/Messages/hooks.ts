@@ -8,6 +8,10 @@ import { ipcBridge } from '@/common';
 import type { AgentStreamErrorInfo, IMessageText, IMessageTips, TMessage } from '@/common/chat/chatLib';
 import {
   composeMessage,
+  ephemeralStreamMessage,
+  standaloneMessage,
+  canMergeTextRows,
+  toolMessageKey,
   mergeAcpToolCallContent,
   mergeTextMessageContent,
   normalizeAgentStreamError,
@@ -15,7 +19,9 @@ import {
   preferTextMessageVersion,
   sanitizeAcpToolCallContent,
 } from '@/common/chat/chatLib';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useAuthContextSafe } from '@/renderer/hooks/context/AuthContext';
+import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import { createContext } from '@renderer/utils/ui/createContext';
 import {
   DEFAULT_MESSAGE_PAGE_LIMIT,
@@ -103,10 +109,10 @@ export function buildMessageIndex(list: TMessage[]): MessageIndex {
       msgIdIndex.set(msgIndexKey, i);
     }
     if (msg.type === 'tool_call' && msg.content?.call_id) {
-      call_idIndex.set(msg.content.call_id, i);
+      call_idIndex.set(toolMessageKey(msg, msg.content.call_id), i);
     }
     if (msg.type === 'acp_tool_call' && msg.content?.update?.tool_call_id) {
-      tool_call_idIndex.set(msg.content.update.tool_call_id, i);
+      tool_call_idIndex.set(toolMessageKey(msg, msg.content.update.tool_call_id), i);
     }
     if (msg.type === 'permission' && msg.content?.call_id) {
       permission_call_idIndex.set(msg.content.call_id, i);
@@ -155,6 +161,12 @@ export function composeMessageWithIndex(
     if (msgIndexKey) {
       index.msgIdIndex.set(msgIndexKey, 0);
     }
+    if (firstMessage.type === 'tool_call' && firstMessage.content.call_id) {
+      index.call_idIndex.set(toolMessageKey(firstMessage, firstMessage.content.call_id), 0);
+    }
+    if (firstMessage.type === 'acp_tool_call' && firstMessage.content.update?.tool_call_id) {
+      index.tool_call_idIndex.set(toolMessageKey(firstMessage, firstMessage.content.update.tool_call_id), 0);
+    }
     return [firstMessage];
   }
 
@@ -188,7 +200,13 @@ export function composeMessageWithIndex(
     const existingIdx = list.findIndex((item) => item.type === 'tips' && item.content?.supersedes_key === key);
     if (existingIdx >= 0) {
       const newList = list.slice();
-      newList[existingIdx] = { ...list[existingIdx], ...message, content: message.content } as TMessage;
+      const existing = list[existingIdx];
+      newList[existingIdx] = {
+        ...existing,
+        ...message,
+        content: message.content,
+        ...(existing.model_source ? { model_source: existing.model_source } : {}),
+      } as TMessage;
       return newList;
     }
     const newIdx = list.length;
@@ -200,7 +218,7 @@ export function composeMessageWithIndex(
   // tool_call: 使用 call_idIndex 快速查找
   // tool_call: use call_idIndex for fast lookup
   if (message.type === 'tool_call' && message.content?.call_id) {
-    const existingIdx = index.call_idIndex.get(message.content.call_id);
+    const existingIdx = index.call_idIndex.get(toolMessageKey(message, message.content.call_id));
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'tool_call') {
@@ -228,7 +246,7 @@ export function composeMessageWithIndex(
       });
     }
     const newIdx = list.length;
-    index.call_idIndex.set(message.content.call_id, newIdx);
+    index.call_idIndex.set(toolMessageKey(message, message.content.call_id), newIdx);
     const msgIndexKey = getMessageIndexKey(message);
     if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
     return list.concat(message);
@@ -254,7 +272,7 @@ export function composeMessageWithIndex(
 
   // acp_tool_call: use tool_call_idIndex for fast lookup
   if (message.type === 'acp_tool_call' && message.content?.update?.tool_call_id) {
-    const existingIdx = index.tool_call_idIndex.get(message.content.update.tool_call_id);
+    const existingIdx = index.tool_call_idIndex.get(toolMessageKey(message, message.content.update.tool_call_id));
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'acp_tool_call') {
@@ -266,7 +284,7 @@ export function composeMessageWithIndex(
     }
     // 未找到，添加新消息并更新索引
     const newIdx = list.length;
-    index.tool_call_idIndex.set(message.content.update.tool_call_id, newIdx);
+    index.tool_call_idIndex.set(toolMessageKey(message, message.content.update.tool_call_id), newIdx);
     const msgIndexKey = getMessageIndexKey(message);
     if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
     return list.concat(sanitizeMessageForList(message));
@@ -279,7 +297,12 @@ export function composeMessageWithIndex(
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'permission') {
         const newList = list.slice();
-        newList[existingIdx] = { ...existingMsg, ...message, content: message.content };
+        newList[existingIdx] = {
+          ...existingMsg,
+          ...message,
+          content: message.content,
+          ...(existingMsg.model_source ? { model_source: existingMsg.model_source } : {}),
+        };
         return newList;
       }
     }
@@ -293,10 +316,20 @@ export function composeMessageWithIndex(
   // text message: merge only with the latest contiguous streaming chunk.
   // text 消息: 只与最后一条连续的流式片段合并，保留被工具/思考打断后的消息边界。
   if (message.type === 'text' && message.msg_id) {
+    if (message[standaloneMessage]) {
+      const existing = list.findIndex(
+        (item) => item.id === message.id && item.conversation_id === message.conversation_id && item.type === 'text'
+      );
+      if (existing >= 0) {
+        const updated = list.slice();
+        updated[existing] = { ...message, model_source: list[existing].model_source ?? message.model_source };
+        return updated;
+      }
+    }
     const existingIdx = index.msgIdIndex.get(message.msg_id);
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
-      if (existingMsg.type === 'text') {
+      if (existingMsg.type === 'text' && canMergeTextRows(existingMsg, message)) {
         // User messages (right position) are complete — skip if already exists to prevent duplicates
         if (message.position === 'right') {
           return list;
@@ -308,7 +341,7 @@ export function composeMessageWithIndex(
       }
     }
 
-    if (last.type === 'text' && last.msg_id === message.msg_id) {
+    if (last.type === 'text' && last.msg_id === message.msg_id && canMergeTextRows(last, message)) {
       const newList = list.slice();
       newList[newList.length - 1] = {
         ...last,
@@ -395,6 +428,7 @@ export function composeMessageWithIndex(
         ...existingMsg,
         ...message,
         content: message.content,
+        ...(existingMsg.model_source ? { model_source: existingMsg.model_source } : {}),
       } as TMessage;
       return newList;
     }
@@ -413,7 +447,7 @@ export function composeMessageWithIndex(
   // Merge other message types with same msg_id
   const newList = list.slice();
   const lastIdx = newList.length - 1;
-  newList[lastIdx] = { ...last, ...message };
+  newList[lastIdx] = { ...last, ...message, ...(last.model_source ? { model_source: last.model_source } : {}) };
   return newList;
 }
 
@@ -451,10 +485,10 @@ export const useMergeLiveMessage = () => {
           const msgIndexKey = getMessageIndexKey(msg);
           if (msgIndexKey) index.msgIdIndex.set(msgIndexKey, newIdx);
           if (msg.type === 'tool_call' && msg.content?.call_id) {
-            index.call_idIndex.set(msg.content.call_id, newIdx);
+            index.call_idIndex.set(toolMessageKey(msg, msg.content.call_id), newIdx);
           }
           if (msg.type === 'acp_tool_call' && msg.content?.update?.tool_call_id) {
-            index.tool_call_idIndex.set(msg.content.update.tool_call_id, newIdx);
+            index.tool_call_idIndex.set(toolMessageKey(msg, msg.content.update.tool_call_id), newIdx);
           }
           if (msg.type === 'permission' && msg.content?.call_id) {
             index.permission_call_idIndex.set(msg.content.call_id, newIdx);
@@ -773,25 +807,48 @@ export function foldSupersededTips(messages: TMessage[]): TMessage[] {
  * Normalize a message loaded from backend DB into renderer runtime shape.
  */
 export function normalizeDbMessage(msg: TMessage): TMessage {
+  if (msg[ephemeralStreamMessage]) {
+    msg = { ...msg };
+    delete msg[ephemeralStreamMessage];
+  }
   if (msg.type === 'tips') return normalizeDbTipsMessage(msg);
   if (msg.type !== 'text') return msg;
 
   return {
     ...msg,
+    // A normalized noncanonical row is already persisted independently of its
+    // msg_id (raw insertion/fork); later stream chunks cannot absorb it.
+    ...(msg.msg_id && msg.id !== msg.msg_id ? { [standaloneMessage]: true as const } : {}),
     content: normalizeTextMessageContent((msg as IMessageText).content),
   };
 }
 
-const getMessageMergeKey = (message: TMessage): string => {
-  if (message.msg_id) return `${message.type}:${message.msg_id}`;
-  return `id:${message.id}`;
-};
+// Only actual ephemeral stream rows can reconcile their client ID to the
+// server's canonical row ID. Distinct DB rows (including forks/raw inserts)
+// require exact identity even when their msg_id is the same.
+const isSameHistoryRow = (persisted: TMessage, live: TMessage): boolean =>
+  persisted.conversation_id === live.conversation_id &&
+  persisted.type === live.type &&
+  (persisted.id === live.id ||
+    (live[ephemeralStreamMessage] === true &&
+      persisted.position !== 'right' &&
+      live.position !== 'right' &&
+      persisted.id === persisted.msg_id &&
+      persisted.msg_id === live.msg_id));
 
 const preferPersistedOrLiveMessage = (persisted: TMessage, live: TMessage): TMessage => {
-  if (persisted.type === 'text' && live.type === 'text') {
-    return preferTextMessageVersion(persisted, live);
-  }
-  return persisted;
+  if (!isSameHistoryRow(persisted, live)) return persisted;
+  const preferred =
+    persisted.type === 'text' && live.type === 'text' ? preferTextMessageVersion(persisted, live) : persisted;
+  const merged = {
+    ...preferred,
+    id: persisted.id,
+    msg_id: persisted.msg_id,
+    model_source: persisted.model_source ?? live.model_source,
+    ...(persisted[standaloneMessage] || live[standaloneMessage] ? { [standaloneMessage]: true as const } : {}),
+  };
+  delete merged[ephemeralStreamMessage];
+  return merged;
 };
 
 function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[], currentList: TMessage[]): TMessage[] {
@@ -801,17 +858,12 @@ function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[]
   if (!sameConversation.length) return foldSupersededTips(messages);
 
   const currentById = new Map(sameConversation.map((message) => [message.id, message]));
-  const currentByKey = new Map(sameConversation.map((message) => [getMessageMergeKey(message), message]));
-  const loadedIds = new Set(messages.map((message) => message.id));
-  const loadedKeys = new Set(messages.map(getMessageMergeKey));
 
   const mergedMessages = messages.map((message) => {
-    const live = currentById.get(message.id) ?? currentByKey.get(getMessageMergeKey(message));
+    const live = currentById.get(message.id) ?? sameConversation.find((current) => isSameHistoryRow(message, current));
     return live ? preferPersistedOrLiveMessage(message, live) : message;
   });
-  const liveOnly = sameConversation.filter(
-    (message) => !loadedIds.has(message.id) && !loadedKeys.has(getMessageMergeKey(message))
-  );
+  const liveOnly = sameConversation.filter((live) => !messages.some((persisted) => isSameHistoryRow(persisted, live)));
 
   // Fold after the concat, not before: the live card and the persisted rows of
   // the same retry run reach this point as separate entries (a persisted tip has
@@ -823,14 +875,22 @@ function mergeLoadedPageWithCurrent(conversationId: string, messages: TMessage[]
 export function prependHistoryMessages(currentList: TMessage[], messages: TMessage[]): TMessage[] {
   if (!messages.length) return currentList;
 
-  const currentIds = new Set(currentList.map((message) => message.id));
-  const currentKeys = new Set(currentList.map(getMessageMergeKey));
   const uniqueHistory = messages.filter(
-    (message) => !currentIds.has(message.id) && !currentKeys.has(getMessageMergeKey(message))
+    (persisted) => !currentList.some((current) => isSameHistoryRow(persisted, current))
   );
+  const reconciledCurrent = currentList.map((current) => {
+    const persisted =
+      messages.find((message) => message.id === current.id && isSameHistoryRow(message, current)) ??
+      messages.find((message) => isSameHistoryRow(message, current));
+    if (!persisted) return current;
+    return {
+      ...preferPersistedOrLiveMessage(persisted, current),
+      model_source: current.model_source ?? persisted.model_source,
+    };
+  });
   // Folding the combined list (not the page alone) also covers a retry run whose
   // attempts straddle a page boundary.
-  return uniqueHistory.length ? foldSupersededTips([...uniqueHistory, ...currentList]) : currentList;
+  return foldSupersededTips([...uniqueHistory, ...reconciledCurrent]);
 }
 
 export const usePrependHistoryPage = () => {
@@ -930,11 +990,88 @@ export const useLoadAnchorMessageWindow = (conversationId?: string) => {
   );
 };
 
+type SourceBoundPayload = Parameters<Parameters<typeof ipcBridge.conversation.sourceBound.on>[0]>[0];
+type MessageSourceScope = {
+  conversationId: string;
+  ownerId?: string;
+  active: boolean;
+  acceptsEvents: boolean;
+  waitForOwner: boolean;
+  pending: Map<string, SourceBoundPayload>;
+};
+
+const isSourceBoundRow = (message: TMessage, payload: SourceBoundPayload): boolean =>
+  message.conversation_id === payload.conversation_id &&
+  message.id === payload.msg_id &&
+  message.msg_id === payload.msg_id &&
+  message.type === 'text' &&
+  message.position === 'right';
+
+const applyPendingModelSources = (list: TMessage[], scope: MessageSourceScope): TMessage[] => {
+  if (!scope.active || !scope.ownerId || !scope.pending.size) return list;
+  const events = [...scope.pending.values()];
+  let changed = false;
+  const next = list.map((message) => {
+    if (message.model_source) return message;
+    const payload = events.find((event) => event.user_id === scope.ownerId && isSourceBoundRow(message, event));
+    if (!payload) return message;
+    changed = true;
+    return { ...message, model_source: payload.model_source };
+  });
+  return changed ? next : list;
+};
+
 export const useMessageLstCache = (key: string) => {
   const update = useUpdateMessageList();
   const list = useMessageList();
   const setLoading = useUpdateMessageListLoading();
   const setPagination = useUpdateMessagePaginationState();
+  const auth = useAuthContextSafe();
+  const authOwnerId = auth?.user?.id;
+  const authStatus = auth?.status;
+  const hasAuthContext = auth !== undefined;
+  const sourceScope = useMemo<MessageSourceScope>(
+    () => ({
+      conversationId: key,
+      ownerId: authOwnerId,
+      active: true,
+      acceptsEvents: !hasAuthContext || authStatus === 'authenticated',
+      waitForOwner: hasAuthContext && !authOwnerId,
+      pending: new Map(),
+    }),
+    [key, authOwnerId, authStatus, hasAuthContext]
+  );
+
+  useEffect(() => {
+    sourceScope.active = true;
+    if (sourceScope.acceptsEvents && sourceScope.waitForOwner) {
+      // Desktop AuthContext deliberately has no user. Resolve the backend's
+      // local owner, independently of the mutable cloud account identity.
+      void resolveCurrentUserId().then((ownerId) => {
+        if (!sourceScope.active) return;
+        sourceScope.ownerId = ownerId;
+        for (const [id, event] of sourceScope.pending) {
+          if (event.user_id !== ownerId) sourceScope.pending.delete(id);
+        }
+        update((current) => applyPendingModelSources(current, sourceScope));
+      });
+    }
+    return () => {
+      sourceScope.active = false;
+      sourceScope.pending.clear();
+    };
+  }, [sourceScope, update]);
+
+  useEffect(() => {
+    // Drain only after React committed the exact row, keeping functional
+    // updates pure even when React invokes them more than once.
+    for (const [id, event] of sourceScope.pending) {
+      if (list.some((message) => message.model_source && isSourceBoundRow(message, event))) {
+        sourceScope.pending.delete(id);
+      }
+    }
+    if (sourceScope.pending.size) update((current) => applyPendingModelSources(current, sourceScope));
+  }, [list, sourceScope, update]);
   // Mirrors the current list into a ref so the turnCompleted handler below
   // can inspect it synchronously without re-subscribing to the WS event on
   // every list change (useState's functional updater runs asynchronously,
@@ -944,13 +1081,19 @@ export const useMessageLstCache = (key: string) => {
     listRef.current = list;
   }, [list]);
   const loadMessages = useCallback(async (): Promise<TMessage[]> => {
+    if (!sourceScope.active || !sourceScope.acceptsEvents) return [];
     const result = await loadLatestConversationMessages(key, {
       limit: DEFAULT_MESSAGE_PAGE_LIMIT,
       contentMode: 'compact',
     });
+    if (!sourceScope.active) return [];
     const messages = result?.items?.map(normalizeDbMessage);
     if (messages && Array.isArray(messages)) {
-      update((currentList) => mergeLoadedPageWithCurrent(key, messages, currentList));
+      update((currentList) =>
+        sourceScope.active
+          ? applyPendingModelSources(mergeLoadedPageWithCurrent(key, messages, currentList), sourceScope)
+          : currentList
+      );
       setPagination({
         oldestCursor: result.oldest_cursor ?? undefined,
         newestCursor: result.newest_cursor ?? undefined,
@@ -962,7 +1105,7 @@ export const useMessageLstCache = (key: string) => {
       return messages;
     }
     return [];
-  }, [key, setPagination, update]);
+  }, [key, setPagination, sourceScope, update]);
 
   useEffect(() => {
     if (!key) return;
@@ -989,7 +1132,7 @@ export const useMessageLstCache = (key: string) => {
     }
 
     return ipcBridge.conversation.userCreated.on((payload) => {
-      if (payload.conversation_id !== key) {
+      if (!sourceScope.active || !sourceScope.acceptsEvents || payload.conversation_id !== key) {
         return;
       }
 
@@ -1014,7 +1157,22 @@ export const useMessageLstCache = (key: string) => {
         );
       });
     });
-  }, [key, update]);
+  }, [key, sourceScope, update]);
+
+  useEffect(() => {
+    if (!key) return;
+    return ipcBridge.conversation.sourceBound.on((payload) => {
+      if (!sourceScope.active || !sourceScope.acceptsEvents || payload.conversation_id !== sourceScope.conversationId)
+        return;
+      if (sourceScope.ownerId && payload.user_id !== sourceScope.ownerId) return;
+      // Standalone history surfaces without AuthContext retain the first local
+      // event owner for this mount; the application resolves its owner above.
+      if (!sourceScope.waitForOwner) sourceScope.ownerId ??= payload.user_id;
+      const id = JSON.stringify([payload.user_id, payload.msg_id]);
+      if (!sourceScope.pending.has(id)) sourceScope.pending.set(id, payload);
+      update((current) => applyPendingModelSources(current, sourceScope));
+    });
+  }, [key, sourceScope, update]);
 
   useEffect(() => {
     if (!key) {
@@ -1027,7 +1185,7 @@ export const useMessageLstCache = (key: string) => {
     // server-assigned id message.userCreated used to add the row — never by
     // text/time.
     return ipcBridge.conversation.statusChanged.on((payload) => {
-      if (payload.conversation_id !== key) {
+      if (!sourceScope.active || payload.conversation_id !== key) {
         return;
       }
 
@@ -1035,7 +1193,7 @@ export const useMessageLstCache = (key: string) => {
         list.map((message) => (message.msg_id === payload.msg_id ? { ...message, status: payload.status } : message))
       );
     });
-  }, [key, update]);
+  }, [key, sourceScope, update]);
 
   useEffect(() => {
     if (!key) {
@@ -1052,7 +1210,7 @@ export const useMessageLstCache = (key: string) => {
     // loadMessages's merge (preferPersistedOrLiveMessage) lets DB truth win
     // without disturbing anything else in the list.
     return ipcBridge.conversation.turnCompleted.on((payload) => {
-      if (payload.session_id !== key) {
+      if (!sourceScope.active || payload.session_id !== key) {
         return;
       }
 
@@ -1066,7 +1224,7 @@ export const useMessageLstCache = (key: string) => {
         });
       }
     });
-  }, [key, loadMessages]);
+  }, [key, loadMessages, sourceScope]);
 };
 
 export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) => {

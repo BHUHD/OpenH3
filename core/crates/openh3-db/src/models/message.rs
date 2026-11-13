@@ -31,4 +31,6 @@ pub struct MessageRow {
     /// used to resolve `thread/fork`'s `lastTurnId` when forking mid-history.
     /// NULL for claude/ACP rows and for rows predating the column.
     pub backend_turn_id: Option<String>,
+    /// Trusted binding facts, written only through the dedicated repository port.
+    pub model_source: Option<String>,
 }

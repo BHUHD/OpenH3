@@ -231,7 +231,7 @@ async fn discover_by_names_for_user_ignores_other_users_skills() {
     repo.upsert_global(UpsertSkillParams {
         name: "global-skill",
         description: Some("Global skill"),
-        path: "global-skill",
+        path: &builtin_dir.to_string_lossy(),
         source: "builtin",
         enabled: true,
     })
@@ -252,6 +252,10 @@ async fn discover_by_names_for_user_ignores_other_users_skills() {
     assert!(names.contains("current-skill"));
     assert!(names.contains("global-skill"));
     assert!(!names.contains("foreign-skill"));
+    assert_eq!(
+        mgr.get_skill("global-skill").await.unwrap().body.as_deref(),
+        Some("Global body")
+    );
 
     unsafe {
         std::env::remove_var(BUILTIN_SKILLS_ENV_VAR);

@@ -565,3 +565,151 @@ describe('transformMessage', () => {
     });
   });
 });
+
+describe('historical model source contract', () => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'actor-a',
+    provider_id: 'provider-a',
+    model: 'same-model-id',
+    protocol: 'responses',
+  } as const;
+  it('renders the persisted raw-stream contract as an exact independent row with unavailable source', () => {
+    const payload: IResponseMessage = {
+      type: 'text',
+      conversation_id: CONVERSATION_ID,
+      msg_id: 'assistant-original',
+      persisted_message_id: 'raw-row',
+      data: { content: 'raw answer', model_source: source },
+      position: 'left',
+      status: 'finish',
+      replace: true,
+      hidden: false,
+      created_at: 1234,
+      // Even a caller-populated field on a raw notification cannot become a badge.
+      model_source: source,
+    };
+    const row = transformMessage(payload);
+    expect(row?.id).toBe('raw-row');
+    expect(row?.msg_id).toBe('assistant-original');
+    expect(row?.model_source).toBeNull();
+    expect(row?.content).toEqual({ content: 'raw answer', replace: true });
+    expect(row?.created_at).toBe(1234);
+  });
+  it('preserves server source through live text and tool updates', () => {
+    const first = transformMessage({
+      type: 'content',
+      data: 'one',
+      msg_id: 'source-text',
+      conversation_id: CONVERSATION_ID,
+      model_source: source,
+    });
+    const second = transformMessage({
+      type: 'content',
+      data: 'two',
+      msg_id: 'source-text',
+      conversation_id: CONVERSATION_ID,
+      model_source: { ...source, subject: 'later-account' },
+    });
+    const merged = composeMessage(second, composeMessage(first, []));
+    expect(merged[0].model_source).toEqual(source);
+    expect(merged[0].content).toEqual(expect.objectContaining({ content: 'onetwo' }));
+    const tool = transformMessage({
+      type: 'tool_call',
+      data: { call_id: 'tool', name: 'Read', status: 'running', args: {} },
+      msg_id: 'tool',
+      conversation_id: CONVERSATION_ID,
+      model_source: source,
+    });
+    expect(tool?.model_source).toEqual(source);
+  });
+  it('never promotes untrusted payload source or current selection to historical source', () => {
+    const message = transformMessage({
+      type: 'content',
+      data: { content: 'legacy', model_source: source },
+      msg_id: 'legacy',
+      conversation_id: CONVERSATION_ID,
+    });
+    expect(message?.model_source).toBeUndefined();
+    const unavailable = transformMessage({
+      type: 'content',
+      data: 'unsent',
+      msg_id: 'unsent',
+      conversation_id: CONVERSATION_ID,
+      model_source: null,
+    });
+    expect(unavailable?.model_source).toBeNull();
+  });
+});
+
+it('keeps sourced tool identities separate across turns and merges a late A update into A', () => {
+  const sourceA = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'a',
+    provider_id: 'p-a',
+    model: 'model',
+    protocol: 'responses',
+  } as const;
+  const sourceB = { ...sourceA, subject: 'b', provider_id: 'p-b' };
+  const frame = (scope: string, model_source: typeof sourceA | typeof sourceB, status: string) =>
+    transformMessage({
+      type: 'tool_call',
+      data: { call_id: 'same-raw-id', name: 'Read', status, args: {} },
+      msg_id: `tool:${scope}:call:same-raw-id`,
+      conversation_id: CONVERSATION_ID,
+      model_source,
+    });
+  const first = composeMessage(frame('a', sourceA, 'running'), []);
+  const both = composeMessage(frame('b', sourceB, 'running'), first);
+  const settled = composeMessage(frame('a', sourceA, 'completed'), both);
+  expect(settled).toHaveLength(2);
+  expect(settled[0].model_source).toEqual(sourceA);
+  expect(settled[0].content).toEqual(expect.objectContaining({ status: 'completed', call_id: 'same-raw-id' }));
+  expect(settled[1].model_source).toEqual(sourceB);
+  expect(settled[1].content).toEqual(expect.objectContaining({ status: 'running' }));
+});
+
+it.each(['tool_group', 'acp_tool_call'] as const)('keeps sourced %s live updates in their original turn', (type) => {
+  const source = {
+    kind: 'cloud_account',
+    issuer: 'https://fixture.invalid',
+    subject: 'a',
+    provider_id: 'p',
+    model: 'model',
+    protocol: 'responses',
+  } as const;
+  const frame = (scope: string, finished: boolean) =>
+    transformMessage({
+      type,
+      msg_id: `tool:${scope}:${type}:raw`,
+      conversation_id: CONVERSATION_ID,
+      model_source: { ...source, subject: scope },
+      data:
+        type === 'tool_group'
+          ? [{ call_id: 'raw', name: 'fixture', status: finished ? 'Success' : 'Executing' }]
+          : {
+              session_id: 'fixture',
+              update: {
+                sessionUpdate: 'tool_call',
+                tool_call_id: 'raw',
+                status: finished ? 'completed' : 'in_progress',
+              },
+            },
+    });
+  const both = composeMessage(frame('b', false), composeMessage(frame('a', false), []));
+  const settled = composeMessage(frame('a', true), both);
+  expect(settled).toHaveLength(2);
+  expect(
+    settled.map((message) => message.model_source?.kind === 'cloud_account' && message.model_source.subject)
+  ).toEqual(['a', 'b']);
+  if (settled[0].type === 'tool_group' && settled[1].type === 'tool_group') {
+    expect(settled[0].content).toEqual([{ call_id: 'raw', name: 'fixture', status: 'Success' }]);
+    expect(settled[1].content[0].status).toBe('Executing');
+  } else if (settled[0].type === 'acp_tool_call' && settled[1].type === 'acp_tool_call') {
+    expect(settled[0].content.update.tool_call_id).toBe('raw');
+    expect(settled[0].content.update.status).toBe('completed');
+    expect(settled[1].content.update.status).toBe('in_progress');
+  } else throw new Error('tool type changed');
+});

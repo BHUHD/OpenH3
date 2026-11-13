@@ -331,6 +331,10 @@
       "TEAM_ASSISTANT_FIELD_UNSUPPORTED": {
         "title": "The request used a legacy team identity field",
         "body": "This team action must use assistant_id instead of legacy backend or agent fields."
+      },
+      "USER_LLM_PROVIDER_TOOL_CAPABILITY": {
+        "title": "Modelin araç desteği değişti",
+        "body": "Bu metin modeli araç geçmişini sürdüremez veya doğrulanmış araç desteği değişmiştir. Araç destekleyen bir model seçin ya da yeni bir sohbet başlatın."
       }
     }
   },

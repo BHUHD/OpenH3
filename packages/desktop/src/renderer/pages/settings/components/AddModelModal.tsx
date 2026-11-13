@@ -7,7 +7,7 @@ import {
 } from '@/common/utils/modelCapabilities';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
 import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
-import { Select } from '@arco-design/web-react';
+import { Alert, Select } from '@arco-design/web-react';
 import { PreviewOpen } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +27,11 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
     const [openAiApiMode, setOpenAiApiMode] = useState<ModelOpenAiApiModeChoice>('auto');
     const isNewApi = isNewApiPlatform(data?.platform ?? '');
     const isEditing = Boolean(editingModel);
-    const { data: modelList, isLoading } = useModeModeList(data?.platform, data?.base_url, data?.api_key);
+    const { data: modelList, isLoading } = useModeModeList(
+      data?.platform,
+      data?.managed_by === 'cloud_account' ? undefined : data?.base_url,
+      data?.managed_by === 'cloud_account' ? undefined : data?.api_key
+    );
     const existingModels = data?.models || [];
     const showOpenAiApiMode = supportsOpenAiApiMode(data?.platform ?? '', modelProtocol);
     const optionsList = useMemo(() => {
@@ -50,6 +54,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
     }, [data, editingModel, modalProps.visible]);
 
     const handleConfirm = useCallback(() => {
+      if (data?.managed_by === 'cloud_account') return;
       if (!data || (!editingModel && !models.length)) return;
       const targetModels = editingModel ? [editingModel] : models;
       const updatedData: IProvider = {
@@ -87,6 +92,8 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
       showOpenAiApiMode,
     ]);
 
+    if (data?.managed_by === 'cloud_account')
+      return modalProps.visible ? <Alert content={t('settings.cloudAccount.managed')} /> : null;
     return (
       <OpenH3Modal
         variant='standard'

@@ -16,7 +16,7 @@ import { captureBackendStartupFailure, initSentry, scheduleStartupLogReport, set
 initSentry();
 
 import './process/utils/configureConsoleLog';
-import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell } from 'electron';
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,6 +34,9 @@ import { ProcessConfig } from './process/utils/initStorage';
 import type { BackendStartupFailureInfo } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
 import { BackendLifecycleManager } from '@openh3/web-host';
+import { pathToFileURL } from 'node:url';
+import { createCloudAccountClient, trustedCloudSender } from '@process/bridge/applicationBridgeCore/cloudAccount';
+import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 import { createContentRuntime } from './process/services/contentCatalog/builtin';
 let contentRuntime: Awaited<ReturnType<typeof createContentRuntime>> | undefined;
 import { resolveBinaryPath } from '@process/backend';
@@ -240,6 +243,23 @@ const backendManager = new BackendLifecycleManager(
   },
   resolveBinaryPath
 );
+const cloudCapability = randomBytes(32).toString('hex');
+backendManager.configureCloudAccount(cloudCapability);
+const cloudClient = createCloudAccountClient(
+  () => (backendManager.status === 'running' ? backendManager.port : 0),
+  cloudCapability,
+  fetch,
+  (url) => shell.openExternal(url)
+);
+const cloudRendererUrls = [
+  pathToFileURL(path.join(__dirname, '../renderer/index.html')).href,
+  ...(!app.isPackaged && process.env.ELECTRON_RENDERER_URL ? [process.env.ELECTRON_RENDERER_URL] : []),
+];
+ipcMain.handle('cloud-account:operation', (event, request: CloudAccountRequest) => {
+  if (!trustedCloudSender(event, mainWindow?.webContents, cloudRendererUrls))
+    return { success: false, code: 'LOCAL_AUTH_REQUIRED', error: 'Cloud account request failed' };
+  return cloudClient(request);
+});
 let disposeCronResumeListener: (() => void) | null = null;
 
 // Flag tracking whether the backend subprocess started successfully. Read by

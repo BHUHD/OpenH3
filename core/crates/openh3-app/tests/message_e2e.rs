@@ -47,6 +47,7 @@ async fn insert_message(
         hidden: false,
         created_at,
         backend_turn_id: None,
+        model_source: None,
     };
     openh3_db::IConversationRepository::insert_message(&repo, &user_id, &msg)
         .await
@@ -104,6 +105,7 @@ async fn insert_acp_tool_message(
         hidden: false,
         created_at,
         backend_turn_id: None,
+        model_source: None,
     };
     openh3_db::IConversationRepository::insert_message(&repo, &user_id, &msg)
         .await
@@ -431,6 +433,7 @@ async fn t8_7_messages_exclude_legacy_cron_rows() {
             hidden: false,
             created_at: 2000,
             backend_turn_id: None,
+            model_source: None,
         };
         let user_id = repo.owner_user_id(&conv_id).await.unwrap().unwrap();
         openh3_db::IConversationRepository::insert_message(&repo, &user_id, &msg)

@@ -54,7 +54,9 @@ const NON_CORE_USER_ID_TABLES: &[(&str, &str)] = &[
 ];
 
 /// Identity / infrastructure tables outside the ownership model.
-const INFRA_TABLES: &[&str] = &["users", "_sqlx_migrations"];
+// Cloud credentials are cryptographically bound to a local identity and must
+// never be silently adopted by the first external identity.
+const INFRA_TABLES: &[&str] = &["users", "_sqlx_migrations", "cloud_accounts"];
 
 async fn table_names(pool: &sqlx::SqlitePool) -> Vec<String> {
     sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name")

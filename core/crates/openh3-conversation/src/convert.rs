@@ -171,6 +171,10 @@ pub fn row_to_message_response(row: MessageRow) -> Result<MessageResponse, Conve
         hidden: row.hidden,
         created_at: row.created_at,
         backend_turn_id: row.backend_turn_id,
+        model_source: row
+            .model_source
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok()),
     })
 }
 

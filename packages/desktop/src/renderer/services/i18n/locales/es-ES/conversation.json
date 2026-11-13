@@ -348,6 +348,10 @@
       "TEAM_ASSISTANT_FIELD_UNSUPPORTED": {
         "title": "The request used a legacy team identity field",
         "body": "This team action must use assistant_id instead of legacy backend or agent fields."
+      },
+      "USER_LLM_PROVIDER_TOOL_CAPABILITY": {
+        "title": "Cambió la capacidad de herramientas",
+        "body": "Este modelo de texto no puede continuar el historial de herramientas, o cambió su compatibilidad verificada. Elige un modelo con herramientas o inicia una conversación nueva."
       }
     }
   },

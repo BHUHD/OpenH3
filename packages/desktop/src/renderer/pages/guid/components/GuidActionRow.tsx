@@ -250,7 +250,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
         getAvailableModels(provider).map((modelName) => ({
           key: `${provider.id}::${modelName}`,
           label: modelName,
-          description: provider.name,
+          description: `${t(`settings.cloudAccount.${provider.managed_by === 'cloud_account' ? 'official' : 'byok'}`)} · ${provider.name}`,
           active: current_model?.id === provider.id && current_model?.use_model === modelName,
         }))
       );

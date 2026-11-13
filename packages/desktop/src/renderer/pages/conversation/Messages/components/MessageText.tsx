@@ -1,3 +1,4 @@
+import { ModelSource } from '@/renderer/components/settings/SettingsModal/CloudAccount/History';
 /**
  * @license
  * Copyright 2025 AionUi (aionui.com)
@@ -236,6 +237,7 @@ const MessageText: React.FC<{
   return (
     <>
       <div className={classNames('min-w-0 flex flex-col group', isUserMessage ? 'items-end' : 'items-start')}>
+        <ModelSource message={message} />
         {cronMeta && <MessageCronBadge meta={cronMeta} />}
         {isTeammateMessage && displaySenderName && (
           <div className='flex items-center gap-6px mb-4px'>

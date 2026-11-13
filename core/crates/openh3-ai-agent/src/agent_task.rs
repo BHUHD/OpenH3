@@ -290,6 +290,14 @@ impl AgentInstance {
         self.as_task().supports_midturn_delivery()
     }
 
+    /// Concrete native bindings only; unsupported engines remain unavailable.
+    pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
+        match self {
+            Self::Aionrs(manager) => manager.historical_source(owner),
+            _ => None,
+        }
+    }
+
     /// Send a user message to the agent.
     pub async fn send_message(&self, data: SendMessageData) -> Result<(), AgentSendError> {
         self.as_task().send_message(data).await

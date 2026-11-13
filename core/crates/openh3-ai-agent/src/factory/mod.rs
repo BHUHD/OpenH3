@@ -25,6 +25,8 @@ use crate::types::BuildTaskOptions;
 
 /// Dependencies needed by the agent factory to construct agents.
 pub struct AgentFactoryDeps {
+    /// Trusted account-domain adapter assembled by AppServices. None fails closed for managed rows.
+    pub managed_credentials: Option<Arc<dyn crate::services::managed::ManagedCredentialResolver>>,
     pub skill_manager: Arc<AcpSkillManager>,
     pub provider_repo: Arc<dyn IProviderRepository>,
     pub encryption_key: [u8; 32],

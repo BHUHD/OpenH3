@@ -348,6 +348,10 @@
       "TEAM_ASSISTANT_FIELD_UNSUPPORTED": {
         "title": "请求仍在使用旧的团队身份字段",
         "body": "这个团队操作必须使用 assistant_id，不能再使用旧的 backend 或 agent 字段。"
+      },
+      "USER_LLM_PROVIDER_TOOL_CAPABILITY": {
+        "title": "模型工具能力已变化",
+        "body": "当前纯文本模型无法继续包含工具的历史，或已验证的工具支持已变化。请选择支持工具的模型或新建对话。"
       }
     }
   },

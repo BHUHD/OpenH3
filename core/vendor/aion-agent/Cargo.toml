@@ -1,0 +1,61 @@
+[package]
+name = "aion-agent"
+description = "Agent engine, session management, output sinks, and orchestration for aionrs"
+version = "0.2.11"
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/iOfficeAI/aionrs"
+
+[features]
+# Live upstream suites are never part of default OpenH3 workspace verification.
+live-provider-tests = []
+
+[dependencies]
+aion-types = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-protocol = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-config = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-providers = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-tools = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-mcp = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-skills = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-memory = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+aion-compact = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+
+tracing = "0.1"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+anyhow = "1"
+thiserror = "2"
+glob = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v7"] }
+dirs = "6"
+crossterm = "0.29"
+is-terminal = "0.4"
+workspace-hack = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11" }
+
+[dev-dependencies]
+aion-mcp = { git = "https://github.com/iOfficeAI/aionrs.git", tag = "v0.2.11", features = ["test-utils"] }
+wiremock = "0.6"
+tokio-test = "0.4"
+tempfile = "3"
+mockall = "0.15"
+rstest = "0.26"
+serial_test = "3"
+base64 = "0.22"
+
+# ── Integration test binaries ──────────────────────────────────────────────
+[[test]]
+name = "e2e"
+path = "tests/e2e/mod.rs"
+required-features = ["live-provider-tests"]
+# Live tests require explicit opt-in: --features live-provider-tests --test e2e
+
+[[test]]
+name = "acceptance"
+path = "tests/acceptance/mod.rs"
+required-features = ["live-provider-tests"]
+# Live tests require explicit opt-in: --features live-provider-tests --test acceptance

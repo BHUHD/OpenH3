@@ -10,12 +10,15 @@
 // Electron's sandbox-mode preload doesn't try to resolve it from node_modules.
 import '@sentry/electron/preload';
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import type { CloudAccountRequest, CloudAccountResponse } from '../common/types/platform/cloudAccount';
 import { ADAPTER_BRIDGE_EVENT_KEY } from '../common/adapter/constant';
 
 /**
  * @description 注入到renderer进程中, 用于与main进程通信
  * */
 contextBridge.exposeInMainWorld('electronAPI', {
+  cloudAccount: (request: CloudAccountRequest): Promise<CloudAccountResponse> =>
+    ipcRenderer.invoke('cloud-account:operation', request),
   emit: (name: string, data: unknown) => {
     return ipcRenderer
       .invoke(

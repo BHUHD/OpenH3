@@ -445,6 +445,7 @@ describe('BackendLifecycleManager.start (success path)', () => {
     const resolveBackend = vi.fn(() => '/abs/path/aioncore');
     const mgr = new BackendLifecycleManager(APP_META_PACKAGED, resolveBackend);
 
+    mgr.configureCloudAccount('synthetic-owned-capability');
     try {
       const startPromise = mgr.start('/db/path', '/log/dir', {
         cacheDir: '/c',
@@ -485,6 +486,9 @@ describe('BackendLifecycleManager.start (success path)', () => {
       ]);
       const opts = spawnCall[2] as { cwd?: string; env: NodeJS.ProcessEnv };
       expect(opts.cwd).toBe('/w');
+      expect(opts.env.OPENH3_CLOUD_ACCOUNT_CAPABILITY).toBe('synthetic-owned-capability');
+      expect(JSON.stringify(spawnCall[1])).not.toContain('synthetic-owned-capability');
+      expect(JSON.stringify(infoSpy.mock.calls)).not.toContain('synthetic-owned-capability');
       expect(opts.env.AIONUI_CACHE_DIR).toBe('/c');
       expect(opts.env.AIONUI_WORK_DIR).toBe('/w');
       expect(opts.env.AIONUI_LOG_DIR).toBe('/l');

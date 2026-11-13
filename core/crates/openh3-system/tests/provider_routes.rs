@@ -146,6 +146,283 @@ async fn create_one(db: &openh3_db::Database) -> (serde_json::Value, String) {
     (json, id)
 }
 
+/// Account-owned rows are seeded internally; generic requests cannot claim ownership.
+async fn seed_managed_provider(db: &openh3_db::Database) -> (String, String) {
+    let (_, id) = create_one(db).await;
+    sqlx::query("UPDATE providers SET managed_by = 'cloud_account' WHERE id = ?")
+        .bind(&id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let encrypted: String = sqlx::query_scalar("SELECT api_key_encrypted FROM providers WHERE id = ?")
+        .bind(&id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    (id, encrypted)
+}
+
+#[tokio::test]
+async fn managed_provider_list_never_exposes_credentials() {
+    use std::io::Write;
+    use std::sync::Mutex;
+    use tracing::instrument::WithSubscriber;
+
+    #[derive(Clone)]
+    struct LogBuffer(Arc<Mutex<Vec<u8>>>);
+
+    impl Write for LogBuffer {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let (app, db) = setup().await;
+    let (id, encrypted) = seed_managed_provider(&db).await;
+
+    let resp = app.clone().oneshot(get_request("/api/providers")).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["data"][0]["api_key"], "");
+    assert_eq!(body["data"][0]["managed_by"], "cloud_account");
+    assert_eq!(body["data"][0]["id"], id);
+    assert!(!body.to_string().contains("sk-ant-api03-test1234"));
+    assert!(!body.to_string().contains(&encrypted));
+
+    sqlx::query("UPDATE providers SET api_key_encrypted = 'invalid-managed-ciphertext' WHERE id = ?")
+        .bind(&id)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let mut byok = sample_create_body();
+    byok["api_key"] = json!("ordinary-byok-key");
+    let resp = app
+        .clone()
+        .oneshot(json_request("POST", "/api/providers", byok))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let byok_id = body_json(resp).await["data"]["id"].as_str().unwrap().to_owned();
+
+    let log_buffer = LogBuffer(Arc::new(Mutex::new(Vec::new())));
+    let writer = log_buffer.clone();
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .with_ansi(false)
+        .with_writer(move || writer.clone())
+        .finish();
+    let resp = async {
+        tracing::warn!("managed provider log capture active");
+        app.oneshot(get_request("/api/providers")).await.unwrap()
+    }
+    .with_subscriber(subscriber)
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    let providers = body["data"].as_array().unwrap();
+    assert_eq!(
+        providers.iter().find(|provider| provider["id"] == id).unwrap()["api_key"],
+        ""
+    );
+    assert_eq!(
+        providers.iter().find(|provider| provider["id"] == byok_id).unwrap()["api_key"],
+        "ordinary-byok-key"
+    );
+    assert!(!body.to_string().contains("invalid-managed-ciphertext"));
+    let logs = String::from_utf8(log_buffer.0.lock().unwrap().clone()).unwrap();
+    assert!(logs.contains("managed provider log capture active"));
+    assert!(
+        !logs.contains("failed to decrypt"),
+        "managed keys must skip decryption: {logs}"
+    );
+}
+
+#[tokio::test]
+async fn managed_provider_updates_reject_mutations_and_management_removal() {
+    let (app, db) = setup().await;
+    let (id, encrypted) = seed_managed_provider(&db).await;
+    for payload in [
+        json!({"api_key": "attacker-key", "base_url": "https://attacker.example"}),
+        json!({"managed_by": null, "enabled": false}),
+        json!({"managed_by": "other", "name": "Replacement"}),
+        json!({}),
+    ] {
+        let resp = app
+            .clone()
+            .oneshot(json_request("PUT", &format!("/api/providers/{id}"), payload))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::CONFLICT);
+        let body = body_json(resp).await;
+        assert_eq!(body["code"], "CONFLICT");
+        assert_eq!(
+            body["error"],
+            "Provider is managed by your account; use account settings to change it"
+        );
+        assert!(!body.to_string().contains("sk-ant-api03-test1234"));
+        assert!(!body.to_string().contains(&encrypted));
+    }
+    let stored: (Option<String>, String, String, String, bool) =
+        sqlx::query_as("SELECT managed_by, api_key_encrypted, base_url, name, enabled FROM providers WHERE id = ?")
+            .bind(&id)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(
+        stored,
+        (
+            Some("cloud_account".into()),
+            encrypted,
+            "https://api.anthropic.com".into(),
+            "Anthropic".into(),
+            true
+        )
+    );
+}
+
+#[tokio::test]
+async fn managed_provider_delete_is_rejected_without_exposing_credentials() {
+    let (app, db) = setup().await;
+    let (id, encrypted) = seed_managed_provider(&db).await;
+    let resp = app
+        .oneshot(delete_request(&format!("/api/providers/{id}")))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    let body = body_json(resp).await;
+    assert_eq!(body["code"], "CONFLICT");
+    assert_eq!(
+        body["error"],
+        "Provider is managed by your account; use account settings to change it"
+    );
+    assert!(!body.to_string().contains("sk-ant-api03-test1234"));
+    assert!(!body.to_string().contains(&encrypted));
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM providers WHERE id = ?")
+        .bind(&id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+}
+
+#[tokio::test]
+async fn managed_provider_is_hidden_from_other_users() {
+    let (app, db) = setup().await;
+    let (id, encrypted) = seed_managed_provider(&db).await;
+    let resp = app
+        .clone()
+        .oneshot(get_request_for_user(OTHER_USER_ID, "/api/providers"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(body_json(resp).await["data"], json!([]));
+    for request in [
+        json_request_for_user(
+            OTHER_USER_ID,
+            "PUT",
+            &format!("/api/providers/{id}"),
+            json!({"api_key": "attacker-key"}),
+        ),
+        delete_request_for_user(OTHER_USER_ID, &format!("/api/providers/{id}")),
+    ] {
+        let resp = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+        let body = body_json(resp).await;
+        assert_eq!(body["code"], "NOT_FOUND");
+        assert!(!body.to_string().contains("sk-ant-api03-test1234"));
+        assert!(!body.to_string().contains(&encrypted));
+        assert!(!body.to_string().contains("managed"));
+    }
+    let stored: String = sqlx::query_scalar("SELECT api_key_encrypted FROM providers WHERE id = ?")
+        .bind(&id)
+        .fetch_one(db.pool())
+        .await
+        .unwrap();
+    assert_eq!(stored, encrypted);
+}
+
+#[tokio::test]
+async fn forged_management_fields_cannot_claim_byok_provider() {
+    let (app, db) = setup().await;
+    let mut payload = sample_create_body();
+    payload["managed_by"] = json!("cloud_account");
+    let resp = app
+        .clone()
+        .oneshot(json_request("POST", "/api/providers", payload))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = body_json(resp).await;
+    assert!(body["data"].get("managed_by").is_none());
+    assert_eq!(body["data"]["api_key"], "sk-ant-api03-test1234");
+    let id = body["data"]["id"].as_str().unwrap();
+
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "PUT",
+            &format!("/api/providers/{id}"),
+            json!({
+                "managed_by": "cloud_account", "api_key": "new-byok-key", "base_url": "https://api.example.com"
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert!(body["data"].get("managed_by").is_none());
+    assert_eq!(body["data"]["api_key"], "new-byok-key");
+    assert_eq!(body["data"]["base_url"], "https://api.example.com");
+    let stored: (Option<String>, String) =
+        sqlx::query_as("SELECT managed_by, api_key_encrypted FROM providers WHERE id = ?")
+            .bind(id)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(stored.0, None);
+    assert_ne!(stored.1, "new-byok-key");
+    assert_eq!(
+        openh3_common::decrypt_string(&stored.1, &TEST_ENCRYPTION_KEY).unwrap(),
+        "new-byok-key"
+    );
+    let resp = app
+        .oneshot(delete_request(&format!("/api/providers/{id}")))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn managed_provider_service_protects_every_server_owned_marker() {
+    let (_app, db) = setup().await;
+    let (id, _) = seed_managed_provider(&db).await;
+    let service = build_state(&db).provider_service;
+    for marker in ["", "another_account_integration"] {
+        sqlx::query("UPDATE providers SET managed_by = ? WHERE id = ?")
+            .bind(marker)
+            .bind(&id)
+            .execute(db.pool())
+            .await
+            .unwrap();
+        assert_eq!(service.list(TEST_USER_ID).await.unwrap()[0].api_key, "");
+        for result in [
+            service.update(TEST_USER_ID, &id, Default::default()).await.map(|_| ()),
+            service.delete(TEST_USER_ID, &id).await,
+        ] {
+            assert!(matches!(
+                result,
+                Err(openh3_system::SystemError::Conflict(message))
+                    if message == "Provider is managed by your account; use account settings to change it"
+            ));
+        }
+    }
+}
+
 // ===========================================================================
 // GET /api/providers — list
 // ===========================================================================

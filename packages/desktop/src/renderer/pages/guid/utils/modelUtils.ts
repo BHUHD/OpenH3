@@ -19,8 +19,14 @@ const available_modelsCache = new Map<string, string[]>();
  * @returns Array of available primary model names
  */
 export const getAvailableModels = (provider: IProvider): string[] => {
+  if (provider.managed_by === 'cloud_account' && provider.enabled === false) return [];
   // 包含 model_enabled 状态到缓存 key 中
-  const model_enabledKey = provider.model_enabled ? JSON.stringify(provider.model_enabled) : 'all-enabled';
+  const model_enabledKey = JSON.stringify([
+    provider.model_enabled,
+    provider.model_settings,
+    provider.managed_by,
+    provider.enabled,
+  ]);
   const cacheKey = `${provider.id}-${(provider.models || []).join(',')}-${model_enabledKey}`;
 
   if (available_modelsCache.has(cacheKey)) {
@@ -33,6 +39,10 @@ export const getAvailableModels = (provider: IProvider): string[] => {
     const isModelEnabled = provider.model_enabled?.[modelName] !== false;
     if (!isModelEnabled) continue;
 
+    if (provider.managed_by === 'cloud_account') {
+      result.push(modelName);
+      continue;
+    }
     const functionCalling = hasSpecificModelCapability(provider, modelName, 'function_calling');
     const excluded = hasSpecificModelCapability(provider, modelName, 'excludeFromPrimary');
 

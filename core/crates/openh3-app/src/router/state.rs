@@ -1184,6 +1184,29 @@ pub fn build_ws_state(services: &AppServices, router: Arc<dyn MessageRouter>) ->
     }
 }
 
+/// Assemble cloud authentication independently of generic local/helper authentication.
+pub fn build_cloud_account_state(
+    services: &AppServices,
+) -> openh3_system::provider::cloud_account::state::CloudAccountRouterState {
+    openh3_system::provider::cloud_account::state::CloudAccountRouterState {
+        service: services.cloud_account.clone(),
+        auth: openh3_auth::AuthState {
+            jwt_service: services.jwt_service.clone(),
+            user_repo: services.user_repo.clone(),
+            identity_mode: match services.identity_mode {
+                crate::config::IdentityMode::Local => openh3_auth::AuthIdentityMode::Local,
+                crate::config::IdentityMode::WebUi => openh3_auth::AuthIdentityMode::UserSession,
+                crate::config::IdentityMode::AionPro => openh3_auth::AuthIdentityMode::AionPro,
+            },
+            runtime_token_verifier: None,
+        },
+        cookies: services.cookie_config.clone(),
+        capability: services.cloud_account_config.capability.clone(),
+        trusted_origins: Arc::new(services.cloud_account_config.trusted_origins.clone()),
+        limiter: services.cloud_account_limiter.clone(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

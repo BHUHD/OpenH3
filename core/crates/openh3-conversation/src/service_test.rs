@@ -2988,6 +2988,7 @@ async fn list_artifacts_includes_legacy_cron_trigger_messages() {
             hidden: false,
             created_at: 1234,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -4857,6 +4858,7 @@ async fn restart_runtime_preserves_persisted_messages() {
             hidden: false,
             created_at: 1234,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6038,6 +6040,7 @@ async fn latest_conversation_error_message_prefers_error_detail() {
             hidden: false,
             created_at: 10,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6360,6 +6363,7 @@ async fn startup_recovery_closes_stale_runtime_messages_without_failure_tip() {
             hidden: false,
             created_at: 1,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6377,6 +6381,7 @@ async fn startup_recovery_closes_stale_runtime_messages_without_failure_tip() {
             hidden: false,
             created_at: 2,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -6488,6 +6493,7 @@ async fn restart_task_context_scenario(completed: bool, plan_only: bool, fail_fi
                 hidden: false,
                 created_at,
                 backend_turn_id: Some("backend-old-turn".into()),
+                model_source: None,
             },
         )
         .await
@@ -9472,6 +9478,7 @@ async fn insert_raw_message_persists_row_and_broadcasts_stream() {
         hidden: false,
         created_at: 1234,
         backend_turn_id: None,
+        model_source: None,
     };
 
     svc.insert_raw_message("user_1", &row).await.unwrap();
@@ -9491,6 +9498,122 @@ async fn insert_raw_message_persists_row_and_broadcasts_stream() {
     assert_eq!(data["position"], "left");
     assert_eq!(data["data"]["content"], "from teammate");
     assert_eq!(data["data"]["teammate_message"], true);
+}
+
+#[tokio::test]
+async fn insert_raw_message_sqlite_preserves_distinct_identity_and_unavailable_source_on_wire() {
+    let db = init_database_memory().await.unwrap();
+    seed_test_user(db.pool(), "user_1").await;
+    seed_test_user(db.pool(), "foreign").await;
+    let repo = Arc::new(openh3_db::SqliteConversationRepository::new(db.pool().clone()));
+    let broadcaster = Arc::new(MockBroadcaster::new());
+    let svc = ConversationService::new(
+        std::env::temp_dir(),
+        broadcaster.clone(),
+        Arc::new(FixedSkillResolver { names: vec![] }),
+        Arc::new(MockTaskManager::new()),
+        repo.clone(),
+        Arc::new(StubAgentMetadataRepo),
+        Arc::new(StubAcpSessionRepo::default()),
+    );
+    let conv = svc.create("user_1", make_create_req()).await.unwrap();
+    let source = openh3_common::HistoricalModelSource::Byok {
+        provider_id: "original-provider".into(),
+        provider: "openai".into(),
+        model: "actual-model".into(),
+        protocol: "responses".into(),
+    };
+    let original = MessageRow {
+        id: "assistant-original".into(),
+        conversation_id: conv.id.clone(),
+        msg_id: Some("assistant-original".into()),
+        r#type: "text".into(),
+        content: json!({"content":"actual A answer"}).to_string(),
+        position: Some("left".into()),
+        status: Some("finish".into()),
+        hidden: false,
+        created_at: 1,
+        backend_turn_id: None,
+        model_source: None,
+    };
+    repo.insert_message("user_1", &original).await.unwrap();
+    repo.stamp_message_source("user_1", &conv.id, &original.id, &source)
+        .await
+        .unwrap();
+    for (id, kind, content) in [
+        (
+            "raw-text",
+            "text",
+            json!({"content":"Distinct raw answer", "model_source":source}),
+        ),
+        (
+            "raw-array",
+            "tool_group",
+            json!([{"call_id":"raw", "model_source":source}]),
+        ),
+        ("raw-custom", "custom-row-kind", json!({"custom":true})),
+    ] {
+        broadcaster.take_events();
+        let row = MessageRow {
+            id: id.into(),
+            r#type: kind.into(),
+            content: content.to_string(),
+            created_at: 2,
+            model_source: Some(serde_json::to_string(&source).unwrap()),
+            ..original.clone()
+        };
+        svc.insert_raw_message("user_1", &row).await.unwrap();
+        let stored = repo.get_message("user_1", &conv.id, id).await.unwrap().unwrap();
+        assert_eq!(stored.msg_id.as_deref(), Some("assistant-original"));
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&stored.content).unwrap(),
+            content
+        );
+        assert!(
+            stored.model_source.is_none(),
+            "generic insert must ignore the forged source"
+        );
+        let events = broadcaster.take_events();
+        assert_eq!(events.len(), 1);
+        let wire = serde_json::to_value(&events[0]).unwrap();
+        assert_eq!(wire["name"], "message.stream");
+        assert_eq!(wire["data"]["persisted_message_id"], id);
+        assert_eq!(wire["data"]["msg_id"], "assistant-original");
+        assert_eq!(wire["data"]["type"], kind);
+        assert_eq!(wire["data"]["data"], content);
+        assert_eq!(wire["data"].get("model_source"), Some(&serde_json::Value::Null));
+        assert_eq!(wire["data"]["created_at"], 2);
+        let contract: openh3_api_types::PersistedMessageStreamPayload =
+            serde_json::from_value(wire["data"].clone()).unwrap();
+        assert_eq!(contract.persisted_message_id, id);
+        assert_eq!(contract.r#type, kind);
+        assert!(contract.model_source.is_none());
+        if kind == "text" {
+            let public = serde_json::to_value(svc.get_message("user_1", &conv.id, id).await.unwrap()).unwrap();
+            assert_eq!(public["id"], id);
+            assert_eq!(public["content"], content);
+            assert!(public["model_source"].is_null());
+        }
+        let foreign_error = svc
+            .insert_raw_message(
+                "foreign",
+                &MessageRow {
+                    id: format!("foreign-{id}"),
+                    ..row
+                },
+            )
+            .await
+            .unwrap_err();
+        assert!(matches!(
+            foreign_error,
+            ConversationError::NotFoundReason { reason } if reason == format!("Conversation '{}' not found", conv.id)
+        ));
+        assert!(broadcaster.take_events().is_empty());
+    }
+    let original_public =
+        serde_json::to_value(svc.get_message("user_1", &conv.id, &original.id).await.unwrap()).unwrap();
+    assert_eq!(original_public["model_source"], serde_json::to_value(source).unwrap());
+    assert_eq!(original_public["content"]["content"], "actual A answer");
 }
 
 // ── aionrs rebuild permission seed (Sentry 135525584) ──────────────

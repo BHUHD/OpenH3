@@ -27,6 +27,9 @@ fn main() -> ExitCode {
 }
 
 fn run_main() -> Result<ExitCode, MainError> {
+    // SAFETY: consume the child-only capability while still single-threaded,
+    // before runtime initialization, login-shell probing, or any subprocess.
+    let cloud_account = unsafe { openh3_app::CloudAccountTransportConfig::from_env() };
     let cli = Cli::parse();
 
     // mcp-* subcommands route into short-lived stdio helpers that live entirely
@@ -53,7 +56,7 @@ fn run_main() -> Result<ExitCode, MainError> {
         .enable_all()
         .build()
         .map_err(|error| runtime_init_error_for_command(&cli.command, error))?;
-    runtime.block_on(async_main(merged_path, cli))
+    runtime.block_on(async_main(merged_path, cli, cloud_account))
 }
 
 fn runtime_init_error_for_command(command: &Option<Command>, error: std::io::Error) -> MainError {
@@ -75,7 +78,11 @@ fn runtime_init_error_for_command(command: &Option<Command>, error: std::io::Err
     ))
 }
 
-async fn async_main(merged_path: String, cli: Cli) -> Result<ExitCode, MainError> {
+async fn async_main(
+    merged_path: String,
+    cli: Cli,
+    cloud_account: openh3_app::CloudAccountTransportConfig,
+) -> Result<ExitCode, MainError> {
     // MCP stdio helpers must not touch the database, logging setup, or `AppServices`.
     match cli.command {
         Some(Command::Capabilities) => Ok(commands::run_capabilities()),
@@ -92,7 +99,7 @@ async fn async_main(merged_path: String, cli: Cli) -> Result<ExitCode, MainError
         Some(Command::Secret(ref args)) => Ok(commands::run_secret(&cli, args).await?),
         Some(Command::PrepareManagedResources(args)) => Ok(commands::run_prepare_managed_resources(args).await?),
         None => {
-            let mut env = bootstrap::init_environment(&cli, &merged_path)?;
+            let mut env = bootstrap::init_environment(&cli, &merged_path, cloud_account)?;
 
             // Acquire the data-dir process-level guard before binding a port or
             // touching the DB, so a second OpenH3 Core yields structurally rather

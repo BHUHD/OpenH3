@@ -1,3 +1,4 @@
+import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 /**
  * @license
  * Copyright 2025 AionUi (aionui.com)
@@ -7,7 +8,7 @@
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import { useGoogleAuthModels } from '@/renderer/hooks/agent/useGoogleAuthModels';
 import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
-import { hasAvailableModels } from '../utils/modelUtils';
+import { getAvailableModels, hasAvailableModels } from '../utils/modelUtils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
@@ -37,7 +38,10 @@ export type GuidModelSelectionResult = {
   isGoogleAuth: boolean;
   formatGeminiModelLabel: (provider: { platform?: string } | undefined, modelName?: string) => string;
   current_model: TProviderWithModel | undefined;
-  setCurrentModel: (model_info: TProviderWithModel, options?: { persistPreference?: boolean }) => Promise<void>;
+  setCurrentModel: (
+    model_info: TProviderWithModel,
+    options?: { persistPreference?: boolean; automatic?: boolean }
+  ) => Promise<void>;
   resetCurrentModel: (options?: { persistPreference?: boolean }) => Promise<void>;
 };
 
@@ -48,13 +52,22 @@ export type GuidModelSelectionResult = {
  * @param agentKey - current provider-based agent (currently only 'aionrs')
  */
 export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): GuidModelSelectionResult => {
+  const cloud = useOptionalCloudAccount();
+  const explicitRequired = useRef(false);
+  const selectedProtocol = useRef<string | undefined>(undefined);
+  const selectedScope = useRef<string | undefined>(undefined);
   const { isGoogleAuth } = useGoogleAuthModels();
   const { data: modelConfig } = useProvidersQuery();
 
   const modelList = useMemo(() => {
-    const allProviders: IProvider[] = (modelConfig || []).filter((platform) => !!platform.models.length);
+    const allProviders: IProvider[] = (modelConfig || []).filter(
+      (platform) =>
+        !!platform.models.length &&
+        (platform.managed_by !== 'cloud_account' ||
+          (platform.enabled !== false && cloud?.session?.state === 'connected'))
+    );
     return allProviders.filter(hasAvailableModels);
-  }, [modelConfig]);
+  }, [modelConfig, cloud?.session?.state]);
 
   const formatGeminiModelLabel = useCallback((_provider: { platform?: string } | undefined, modelName?: string) => {
     if (!modelName) return '';
@@ -65,11 +78,21 @@ export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): Gu
   const selectedModelKeyRef = useRef<string | null>(null);
 
   const setCurrentModel = useCallback(
-    async (model_info: TProviderWithModel, _options?: { persistPreference?: boolean }) => {
+    async (model_info: TProviderWithModel, options?: { persistPreference?: boolean; automatic?: boolean }) => {
+      if (options?.automatic && (explicitRequired.current || model_info.managed_by === 'cloud_account')) return;
+      if (
+        model_info.managed_by === 'cloud_account' &&
+        (cloud?.session?.state !== 'connected' ||
+          !modelList.some((p) => p.id === model_info.id && getAvailableModels(p).includes(model_info.use_model)))
+      )
+        return;
+      explicitRequired.current = false;
+      selectedProtocol.current = model_info.model_settings?.[model_info.use_model]?.openai_api_mode;
+      selectedScope.current = cloud?.scope;
       selectedModelKeyRef.current = buildModelKey(model_info.id, model_info.use_model);
       _setCurrentModel(model_info);
     },
-    []
+    [cloud?.scope, cloud?.session?.state, modelList]
   );
 
   const resetCurrentModel = useCallback(
@@ -80,8 +103,9 @@ export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): Gu
 
       selectedModelKeyRef.current = null;
 
-      const defaultModel = modelList[0];
-      const resolvedUseModel = defaultModel?.models[0] ?? '';
+      if (explicitRequired.current) return;
+      const defaultModel = modelList.find((provider) => provider.managed_by !== 'cloud_account');
+      const resolvedUseModel = defaultModel ? (getAvailableModels(defaultModel)[0] ?? '') : '';
 
       if (!defaultModel || !resolvedUseModel) return;
 
@@ -99,9 +123,22 @@ export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): Gu
   // Set default model when modelList or agent changes
   useEffect(() => {
     const setDefaultModel = async () => {
-      if (!modelList || modelList.length === 0) {
+      if (
+        current_model?.managed_by === 'cloud_account' &&
+        (cloud?.scope !== selectedScope.current ||
+          !modelList.some(
+            (p) =>
+              p.id === current_model.id &&
+              getAvailableModels(p).includes(current_model.use_model) &&
+              p.model_settings?.[current_model.use_model]?.openai_api_mode === selectedProtocol.current
+          ))
+      ) {
+        explicitRequired.current = true;
+        selectedModelKeyRef.current = null;
+        _setCurrentModel(undefined);
         return;
       }
+      if (explicitRequired.current || !modelList || modelList.length === 0) return;
       const currentKey = selectedModelKeyRef.current || buildModelKey(current_model?.id, current_model?.use_model);
       if (isModelKeyAvailable(currentKey, modelList)) {
         if (!selectedModelKeyRef.current && currentKey) {
@@ -115,12 +152,22 @@ export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): Gu
     setDefaultModel().catch((error) => {
       console.error('Failed to set default model:', error);
     });
-  }, [agentKey, current_model?.id, current_model?.use_model, modelList, resetCurrentModel]);
+  }, [agentKey, cloud?.scope, current_model, modelList, resetCurrentModel]);
   return {
     modelList,
     isGoogleAuth,
     formatGeminiModelLabel,
-    current_model,
+    current_model:
+      current_model?.managed_by === 'cloud_account' &&
+      (selectedScope.current !== cloud?.scope ||
+        !modelList.some(
+          (p) =>
+            p.id === current_model.id &&
+            getAvailableModels(p).includes(current_model.use_model) &&
+            p.model_settings?.[current_model.use_model]?.openai_api_mode === selectedProtocol.current
+        ))
+        ? undefined
+        : current_model,
     setCurrentModel,
     resetCurrentModel,
   };

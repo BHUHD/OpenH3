@@ -250,9 +250,17 @@ impl IUserRepository for SqliteUserRepository {
             // skips rows that would collide with the new owner's existing rows on
             // per-user PK/UNIQUE tables (e.g. `system_settings.user_id`).
             for (table,) in &tables {
+                // Native paid-account identity is never adopted. Keep its
+                // provider with the owner-bound encrypted grant, including
+                // the original owner's ability to revoke that device.
+                let account_filter = if table == "providers" {
+                    " AND (managed_by IS NULL OR managed_by != 'cloud_account')"
+                } else {
+                    ""
+                };
                 let result = sqlx::query(&format!(
                     "UPDATE OR IGNORE \"{table}\" SET \"{owner_column}\" = ? \
-                     WHERE \"{owner_column}\" = 'system_default_user'"
+                     WHERE \"{owner_column}\" = 'system_default_user'{account_filter}"
                 ))
                 .bind(owner_id)
                 .execute(&mut *tx)

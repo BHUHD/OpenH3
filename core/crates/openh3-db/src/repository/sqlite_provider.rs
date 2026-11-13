@@ -86,6 +86,7 @@ impl IProviderRepository for SqliteProviderRepository {
             name: params.name.to_string(),
             base_url: params.base_url.to_string(),
             api_key_encrypted: params.api_key_encrypted.to_string(),
+            managed_by: None,
             models: params.models.to_string(),
             enabled: params.enabled,
             capabilities: params.capabilities.to_string(),
@@ -166,6 +167,7 @@ fn merge_update(existing: Provider, params: UpdateProviderParams<'_>) -> Provide
     Provider {
         id: existing.id,
         user_id: existing.user_id,
+        managed_by: existing.managed_by,
         platform: params.platform.unwrap_or(&existing.platform).to_string(),
         name: params.name.unwrap_or(&existing.name).to_string(),
         base_url: params.base_url.unwrap_or(&existing.base_url).to_string(),

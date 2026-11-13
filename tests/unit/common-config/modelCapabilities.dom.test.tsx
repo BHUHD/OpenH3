@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   ],
   modelListAsArray: false,
   modelListUnavailable: false,
+  modelListArgs: [] as unknown[][],
   mutate: vi.fn(),
   onSubmit: vi.fn(),
   providerMutate: vi.fn(),
@@ -102,16 +103,19 @@ vi.mock('@/common/utils', () => ({
 }));
 
 vi.mock('@renderer/hooks/agent/useModeModeList', () => ({
-  default: () => ({
-    data: mocks.modelListUnavailable
-      ? undefined
-      : mocks.modelListAsArray
-        ? mocks.availableModels
-        : { models: mocks.availableModels },
-    error: null,
-    isLoading: false,
-    mutate: mocks.mutate,
-  }),
+  default: (...args: unknown[]) => {
+    mocks.modelListArgs.push(args);
+    return {
+      data: mocks.modelListUnavailable
+        ? undefined
+        : mocks.modelListAsArray
+          ? mocks.availableModels
+          : { models: mocks.availableModels },
+      error: null,
+      isLoading: false,
+      mutate: mocks.mutate,
+    };
+  },
 }));
 
 vi.mock('@/renderer/hooks/agent/useModelProviderList', () => ({
@@ -439,7 +443,7 @@ describe('model capability selectors', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.confirm' }));
 
-    expect(mocks.onSubmit).not.toHaveBeenCalled();
+    expect(mocks.onSubmit).toHaveBeenCalledTimes(0);
   });
 
   it('adds a standard provider model without protocol detection', async () => {
@@ -692,4 +696,53 @@ describe('configured model list', () => {
       );
     });
   });
+});
+
+it('keeps managed providers out of generic row actions and bulk health mutation while retaining BYOK', async () => {
+  mocks.providers.splice(
+    0,
+    mocks.providers.length,
+    provider({ id: 'official', name: 'Official managed', managed_by: 'cloud_account' }),
+    provider({ id: 'byok', name: 'BYOK editable' })
+  );
+  render(<ModelModalContent />);
+  expect(screen.getByText('settings.cloudAccount.managed')).toBeInTheDocument();
+  expect(screen.getAllByRole('button', { name: 'edit-provider' })).toHaveLength(1);
+  fireEvent.click(screen.getByRole('button', { name: 'settings.clearStatus' }));
+  await waitFor(() => expect(mocks.updateProvider).toHaveBeenCalledWith({ id: 'byok', model_health: {} }));
+  expect(mocks.updateProvider.mock.calls.some(([r]) => r.id === 'official')).toBe(false);
+});
+it('blocks direct managed model editor conversion and submit', () => {
+  mocks.onSubmit.mockClear();
+  render(
+    <AddModelModal
+      modalProps={{ visible: true }}
+      modalCtrl={{ close: mocks.close }}
+      data={provider({ managed_by: 'cloud_account' })}
+      onSubmit={mocks.onSubmit}
+    />
+  );
+  expect(screen.queryByTestId('api-mode-select')).not.toBeInTheDocument();
+  expect(screen.getByText('settings.cloudAccount.managed')).toBeInTheDocument();
+  expect(mocks.onSubmit).toHaveBeenCalledTimes(0);
+});
+it('blocks the actual managed provider editor before generic fields, submit, and credential fetch', async () => {
+  const { default: ActualEditModeModal } = await vi.importActual<
+    typeof import('@/renderer/pages/settings/components/EditModeModal')
+  >('@/renderer/pages/settings/components/EditModeModal');
+  const change = vi.fn();
+  mocks.modelListArgs.length = 0;
+  render(
+    <ActualEditModeModal
+      modalProps={{ visible: true }}
+      modalCtrl={{ close: mocks.close }}
+      data={provider({ managed_by: 'cloud_account' })}
+      onChange={change}
+    />
+  );
+  expect(screen.getByText('settings.cloudAccount.managed')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(mocks.modelListArgs.every((args) => !args[1] && !args[2])).toBe(true);
+  expect(change).not.toHaveBeenCalled();
 });

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { CloudAccountEntry } from '@/renderer/components/settings/SettingsModal/CloudAccount/Entry';
+
 import type { AionrsModelSelection } from './useAionrsModelSelection';
 import type { AcpConfigSetStatus, AcpDerivedOption } from '@/renderer/hooks/agent/useAcpConfigOptions';
 import {
@@ -92,7 +94,7 @@ const AionrsModelSelector: React.FC<{
     if (!models.length) continue;
     modelGroups.push({
       key: provider.id,
-      title: provider.name,
+      title: `${t(provider.managed_by === 'cloud_account' ? 'settings.cloudAccount.official' : 'settings.cloudAccount.byok')} · ${provider.name}`,
       models: models.map((modelName) => {
         const id = compositeId(provider.id, modelName);
         modelLookup.set(id, { provider, modelName });
@@ -118,6 +120,9 @@ const AionrsModelSelector: React.FC<{
       {...(isMobileHeaderCompact ? { getPopupContainer: () => document.body } : {})}
       droplist={
         <Menu>
+          <Menu.Item key='cloud-account'>
+            <CloudAccountEntry disconnectedOnly />
+          </Menu.Item>
           {thoughtLevel ? (
             <>
               <Menu.SubMenu

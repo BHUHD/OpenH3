@@ -26,7 +26,11 @@ pub struct ServerEnvironment {
 ///
 /// Cheap, synchronous, no IO beyond creating the log directory.
 /// All subcommands that need logging and config should call this first.
-pub fn init_environment(cli: &Cli, merged_path: &str) -> Result<ServerEnvironment, BootstrapError> {
+pub fn init_environment(
+    cli: &Cli,
+    merged_path: &str,
+    cloud_account: openh3_app::CloudAccountTransportConfig,
+) -> Result<ServerEnvironment, BootstrapError> {
     // A custom --log-dir that cannot be created must not permanently brick
     // bootstrap (AIONUI-231): init_tracing falls back to the default dir.
     let default_log_dir = cli.data_dir.join("logs");
@@ -79,6 +83,7 @@ pub fn init_environment(cli: &Cli, merged_path: &str) -> Result<ServerEnvironmen
     validate_identity_environment(identity_mode, bootstrap_secret.as_deref())?;
 
     let config = AppConfig {
+        cloud_account,
         host: cli.host.clone(),
         port: cli.port,
         data_dir: cli.data_dir.clone(),

@@ -48,6 +48,7 @@ pub enum AgentErrorCode {
     UserLlmProviderUnsupportedModel,
     UserLlmProviderEndpointNotFound,
     UserLlmProviderInvalidRequest,
+    UserLlmProviderToolCapability,
     UserLlmProviderInvalidToolSchema,
     UserLlmProviderContextTooLarge,
     UserLlmProviderRateLimited,

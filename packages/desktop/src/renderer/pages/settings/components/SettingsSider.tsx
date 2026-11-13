@@ -26,6 +26,7 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
 export const BUILTIN_TAB_IDS = [
+  'cloud-account',
   'agent',
   'model',
   'skills',
@@ -85,6 +86,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const { menus, groupHeaderAt } = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
+      'cloud-account': {
+        id: 'cloud-account',
+        label: t('settings.cloudAccount.title'),
+        icon: <LinkCloud />,
+        path: 'cloud-account',
+      },
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
       agent: {
         id: 'agent',

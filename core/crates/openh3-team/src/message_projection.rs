@@ -315,6 +315,7 @@ where
             hidden: request.visibility.allow_hidden_conversation_message,
             created_at,
             backend_turn_id: None,
+            model_source: None,
         })
     }
 }

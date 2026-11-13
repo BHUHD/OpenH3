@@ -188,8 +188,8 @@ describe('AionrsModelSelector runtime options', () => {
       />
     );
 
-    // The provider group title (OpenAI) is rendered inside the model submenu.
-    expect(screen.getByRole('group', { name: 'OpenAI' })).toBeInTheDocument();
+    // The group identifies BYOK and its configured provider inside the submenu.
+    expect(screen.getByRole('group', { name: 'settings.cloudAccount.byok · OpenAI' })).toBeInTheDocument();
   });
 
   it('marks the current model with the leading check indicator', () => {
@@ -202,7 +202,7 @@ describe('AionrsModelSelector runtime options', () => {
       />
     );
 
-    const providerGroup = screen.getByRole('group', { name: 'OpenAI' });
+    const providerGroup = screen.getByRole('group', { name: 'settings.cloudAccount.byok · OpenAI' });
     const currentModelItem = within(providerGroup).getByText('gpt-5.2').closest('[role="menuitem"]');
     const otherModelItem = within(providerGroup).getByText('gpt-5.2-mini').closest('[role="menuitem"]');
 
@@ -232,7 +232,7 @@ describe('AionrsModelSelector runtime options', () => {
     expect(screen.getByTestId('aionrs-model-selector')).toHaveTextContent('gpt-5.2');
     expect(screen.queryAllByTestId('submenu-title')).toHaveLength(0);
     // Still grouped by provider even without a submenu wrapper.
-    expect(screen.getByRole('group', { name: 'OpenAI' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'settings.cloudAccount.byok · OpenAI' })).toBeInTheDocument();
   });
 
   it('sets thought level through the optional runtime callback', async () => {

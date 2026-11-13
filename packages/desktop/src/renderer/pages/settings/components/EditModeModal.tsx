@@ -1,6 +1,6 @@
 import type { IProvider } from '@/common/config/storage';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
-import { Form, Input, Message, Select, Tag } from '@arco-design/web-react';
+import { Alert, Form, Input, Message, Select, Tag } from '@arco-design/web-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
@@ -46,8 +46,8 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
     // When is_full_url, pass empty base_url to prevent auto-fetch with the full endpoint URL
     const modelListState = useModeModeList(
       data?.platform || 'gemini',
-      isFullUrl ? '' : effectiveBaseUrl,
-      isFullUrl ? '' : effectiveApiKey,
+      isFullUrl || data?.managed_by === 'cloud_account' ? '' : effectiveBaseUrl,
+      isFullUrl || data?.managed_by === 'cloud_account' ? '' : effectiveApiKey,
       true,
       undefined
     );
@@ -62,7 +62,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
     const handleBaseUrlBlur = async () => {
       // is_full_url providers don't fetch a model list (the endpoint is a full
       // chat URL, not a base), so there is nothing to refresh — mirror onFocus.
-      if (isFullUrl || isBedrock) return;
+      if (isFullUrl || isBedrock || data?.managed_by === 'cloud_account') return;
 
       const nextBaseUrl = form.getFieldValue('base_url') as string | undefined;
       const apiKey = (form.getFieldValue('api_key') as string | undefined) ?? '';
@@ -129,6 +129,8 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
       }
     }, [data, form]);
 
+    if (data?.managed_by === 'cloud_account')
+      return modalProps.visible ? <Alert content={t('settings.cloudAccount.managed')} /> : null;
     return (
       <OpenH3Modal
         variant='standard'
@@ -137,6 +139,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
         header={{ title: t('settings.editModel'), showClose: true }}
         style={{ minHeight: '400px' }}
         onOk={async () => {
+          if (data?.managed_by === 'cloud_account') return;
           try {
             const values = await form.validate();
             const updatedProvider: IProvider = {

@@ -956,6 +956,7 @@ mod tests {
                     hidden: false,
                     created_at: now_ms(),
                     backend_turn_id: None,
+                    model_source: None,
                 },
             )
             .await
@@ -975,6 +976,7 @@ mod tests {
                     hidden: false,
                     created_at: now_ms(),
                     backend_turn_id: None,
+                    model_source: None,
                 },
             )
             .await

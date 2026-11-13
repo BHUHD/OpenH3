@@ -57,6 +57,7 @@ fn make_message(conv_id: &str, content: &str) -> MessageRow {
         hidden: false,
         created_at: now,
         backend_turn_id: None,
+        model_source: None,
     }
 }
 
@@ -698,6 +699,7 @@ async fn anchor_rejects_legacy_artifact_rows() {
             hidden: false,
             created_at: 1000,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -1074,6 +1076,7 @@ async fn get_messages_excludes_legacy_cron_and_skill_suggest_rows() {
                 hidden: false,
                 created_at: 2000,
                 backend_turn_id: None,
+                model_source: None,
             },
         )
         .await
@@ -1114,6 +1117,7 @@ async fn list_legacy_cron_trigger_messages_returns_only_trigger_rows() {
             hidden: false,
             created_at: 1000,
             backend_turn_id: None,
+            model_source: None,
         },
     )
     .await
@@ -1304,6 +1308,7 @@ fn make_message_at(conv_id: &str, content: &str, created_at: i64, backend_turn_i
         hidden: false,
         created_at,
         backend_turn_id: backend_turn_id.map(str::to_string),
+        model_source: None,
     }
 }
 

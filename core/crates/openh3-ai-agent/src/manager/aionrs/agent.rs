@@ -37,6 +37,7 @@ use crate::dev_prompt_dump::{AgentFinalInputDump, dump_agent_final_input};
 use crate::error::AgentError;
 use crate::protocol::events::AgentStreamEvent;
 use crate::protocol::send_error::AgentSendError;
+use crate::services::managed::ManagedProvider;
 use crate::services::provider_stream::RecoveringProvider;
 use crate::types::{AionrsResolvedConfig, SendMessageData};
 
@@ -108,6 +109,10 @@ fn build_aionrs_final_input_dump_value(
 }
 
 pub struct AionrsAgentManager {
+    managed_provider: Option<Arc<ManagedProvider>>,
+    byok_source: Option<(String, openh3_common::HistoricalModelSource)>,
+    resolved_model: String,
+    resolved_protocol: String,
     runtime: AgentRuntime,
     engine: Mutex<AgentEngine>,
     capability_snapshot: CapabilitySnapshot,
@@ -146,6 +151,28 @@ impl Drop for AionrsAgentManager {
 }
 
 impl AionrsAgentManager {
+    pub(crate) fn with_byok_source(mut self, owner: String, provider_id: String, provider: String) -> Self {
+        self.byok_source = Some((
+            owner,
+            openh3_common::HistoricalModelSource::Byok {
+                provider_id,
+                provider,
+                model: self.resolved_model.clone(),
+                protocol: self.resolved_protocol.clone(),
+            },
+        ));
+        self
+    }
+    pub fn historical_source(&self, owner: &str) -> Option<openh3_common::HistoricalModelSource> {
+        if let Some(provider) = &self.managed_provider {
+            return provider.historical_source(owner);
+        }
+        self.byok_source
+            .as_ref()
+            .filter(|(bound_owner, _)| bound_owner == owner)
+            .map(|(_, source)| source.clone())
+    }
+
     pub async fn new(
         conversation_id: String,
         workspace: String,
@@ -161,6 +188,26 @@ impl AionrsAgentManager {
         config_extra: AionrsResolvedConfig,
         resume_session: Option<Session>,
         _skill_dirs: Vec<PathBuf>,
+    ) -> Result<Self, AgentError> {
+        Self::new_with_managed_provider(
+            conversation_id,
+            workspace,
+            config_extra,
+            resume_session,
+            _skill_dirs,
+            None,
+        )
+        .await
+    }
+
+    /// Inject an account-bound provider without storing its credentials in configuration.
+    pub async fn new_with_managed_provider(
+        conversation_id: String,
+        workspace: String,
+        config_extra: AionrsResolvedConfig,
+        resume_session: Option<Session>,
+        _skill_dirs: Vec<PathBuf>,
+        managed_provider: Option<Arc<ManagedProvider>>,
     ) -> Result<Self, AgentError> {
         let runtime = AgentRuntime::new(conversation_id.clone(), workspace.clone(), 128);
         let sink: Arc<dyn OutputSink> = Arc::new(BackendOutputSink::new(runtime.event_sender()));
@@ -238,11 +285,28 @@ impl AionrsAgentManager {
         let is_resume = resume_session.is_some();
         let provider_label = config.provider_label.clone();
 
-        let provider = Arc::new(RecoveringProvider::from_config(&config));
+        // Capture the same final config passed to the native provider, including
+        // project/global compatibility and explicit factory overrides.
+        let resolved_model = config.model.clone();
+        let resolved_protocol = match config.provider {
+            ProviderType::OpenAI => crate::services::managed::protocol_name(config.compat.openai_api_mode()),
+            ProviderType::Anthropic => "anthropic",
+            ProviderType::Bedrock => "bedrock",
+            ProviderType::Vertex => "vertex",
+        }
+        .to_owned();
+        let provider: Arc<dyn aion_providers::LlmProvider> = match &managed_provider {
+            Some(provider) => provider.clone(),
+            None => Arc::new(RecoveringProvider::from_config(&config)),
+        };
         let mut bootstrap = AgentBootstrap::new(config, &workspace, sink)
             .provider(provider)
+            .structured_children(managed_provider.is_some())
             .runtime_env(runtime_env)
             .extra_skill_dirs(_skill_dirs);
+        if let Some(provider) = &managed_provider {
+            bootstrap = bootstrap.tool_policy(provider.tool_policy());
+        }
         if let Some(session) = resume_session {
             info!(
                 conversation_id = %conversation_id,
@@ -336,6 +400,10 @@ impl AionrsAgentManager {
         runtime.transition_to(ConversationStatus::Pending);
 
         Ok(Self {
+            managed_provider,
+            byok_source: None,
+            resolved_model,
+            resolved_protocol,
             runtime,
             engine: Mutex::new(engine),
             capability_snapshot,
@@ -494,6 +562,20 @@ impl IAgentTask for AionrsAgentManager {
         engine.set_next_turn_id(Some(turn_anchor));
 
         let result = tokio::select! {
+            biased;
+            _ = async {
+                match &self.managed_provider {
+                    Some(provider) => provider.cancelled().await,
+                    None => std::future::pending::<()>().await,
+                }
+            } => {
+                if let Ok(mut confirmations) = self.confirmations.write() {
+                    confirmations.clear();
+                }
+                info!(conversation_id = %self.runtime.conversation_id(), "Aionrs managed invocation cancelled by account lifecycle");
+                engine.abort_current_turn("Managed account invocation cancelled");
+                None
+            }
             res = engine.run_with_blocks(content_blocks, &data.msg_id) => Some(res),
             _ = self.cancel_notify.notified() => {
                 info!(

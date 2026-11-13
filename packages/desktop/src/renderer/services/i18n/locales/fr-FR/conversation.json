@@ -348,6 +348,10 @@
       "TEAM_ASSISTANT_FIELD_UNSUPPORTED": {
         "title": "La demande utilisait un ancien champ d'identité d'équipe",
         "body": "Cette action d'équipe doit utiliser assistant_id au lieu des anciens champs backend ou agent."
+      },
+      "USER_LLM_PROVIDER_TOOL_CAPABILITY": {
+        "title": "La prise en charge des outils a changé",
+        "body": "Ce modèle textuel ne peut pas poursuivre cet historique d’outils, ou sa prise en charge vérifiée a changé. Choisissez un modèle compatible ou commencez une nouvelle conversation."
       }
     }
   },

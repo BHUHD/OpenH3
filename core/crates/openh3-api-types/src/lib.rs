@@ -12,6 +12,7 @@ mod assistant;
 mod auth;
 mod channel;
 mod chat_file;
+mod cloud_account;
 mod confirmation;
 mod connection_test;
 mod conversation;
@@ -90,6 +91,21 @@ pub use channel::{
     SyncChannelSettingsRequest, TestPluginExtraConfig, TestPluginRequest, TestPluginResponse, UserAuthorizedPayload,
 };
 pub use chat_file::ChatFileRef;
+pub use cloud_account::{
+    CloudAccountAntiBot, CloudAccountAvailability, CloudAccountCapabilitiesResponse, CloudAccountConditionalSurcharge,
+    CloudAccountCreateTopupRequest, CloudAccountDevice, CloudAccountDeviceStatus, CloudAccountDevicesResponse,
+    CloudAccountEmailCodePurpose, CloudAccountEmailCodeRequest, CloudAccountLoginRequest, CloudAccountLogoutResponse,
+    CloudAccountModel, CloudAccountModelsResponse, CloudAccountMoney, CloudAccountPageQuery,
+    CloudAccountPasswordResetCompleteRequest, CloudAccountPasswordResetCompleteResponse,
+    CloudAccountPasswordResetRequest, CloudAccountPasswordResetResponse, CloudAccountPriceQuote, CloudAccountProfile,
+    CloudAccountQuota, CloudAccountQuotaView, CloudAccountRegisterRequest, CloudAccountRegisterResponse,
+    CloudAccountRemoteRevocation, CloudAccountRevokeDeviceRequest, CloudAccountRevokeDeviceResponse,
+    CloudAccountSessionResponse, CloudAccountSubscription, CloudAccountSubscriptions, CloudAccountTopupOptionsResponse,
+    CloudAccountTopupOrder, CloudAccountTopupOrdersQuery, CloudAccountTopupOrdersResponse, CloudAccountTopupQuote,
+    CloudAccountTopupQuoteRequest, CloudAccountTopupStatus, CloudAccountUsage, CloudAccountUsageQuery,
+    CloudAccountUsageResponse, CloudAccountVerification, CloudAccountVerificationMethod,
+    CloudAccountVerificationPurpose, CloudAccountVerifyRequest, CloudAccountVerifyResponse, CloudAccountWalletResponse,
+};
 pub use confirmation::{ApprovalCheckQuery, ApprovalCheckResponse, ConfirmRequest, ConfirmationListResponse};
 pub use connection_test::TestBedrockConnectionRequest;
 pub use conversation::{
@@ -101,8 +117,9 @@ pub use conversation::{
     ConversationResponse, ConversationRuntimeStateKind, ConversationRuntimeSummary, CreateConversationRequest,
     EnsureConversationRuntimeResponse, ForkCapabilityView, ForkConversationRequest, ListConversationsQuery,
     ListMessagesQuery, McpRuntimeSnapshot, MessageListResponse, MessageResponse, MessageSearchItem,
-    MessageSearchResponse, MessageStatusChangedPayload, PromptCapabilityView, SearchMessagesQuery, SendMessageRequest,
-    SendMessageResponse, SessionRef, UpdateConversationArtifactRequest, UpdateConversationRequest,
+    MessageSearchResponse, MessageSourceBoundPayload, MessageStatusChangedPayload, PersistedMessageStreamPayload,
+    PromptCapabilityView, SearchMessagesQuery, SendMessageRequest, SendMessageResponse, SessionRef,
+    UpdateConversationArtifactRequest, UpdateConversationRequest,
 };
 pub use conversation_tools::{
     CONVERSATION_TOOLS_SCHEMA_VERSION, ConversationCliEnvelope, ConversationCliMeta, ConversationCreateAssistant,

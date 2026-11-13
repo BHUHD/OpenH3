@@ -406,9 +406,16 @@ pub fn create_router_with_all_state(services: &AppServices, states: ModuleStates
         },
     );
 
+    // Local desktop main needs a CSRF cookie before mutations, even offline.
+    // Health performs no cloud I/O; nonlocal health already has global CSRF.
+    let health = if services.identity_mode.is_local() {
+        get(health_check).layer(from_fn_with_state(services.cookie_config.clone(), csrf_middleware))
+    } else {
+        get(health_check)
+    };
     let router = Router::new()
         .merge(antigravity_hook)
-        .route("/health", get(health_check))
+        .route("/health", health)
         .merge(auth_routes(auth_state))
         .merge(system_authenticated)
         .merge(content_catalog_authenticated)
@@ -453,7 +460,7 @@ pub fn create_router_with_all_state(services: &AppServices, states: ModuleStates
     .merge(public_assets)
     .merge(super::health::update_control_routes(update_activity.clone()))
     .layer(middleware::from_fn_with_state(
-        update_activity,
+        update_activity.clone(),
         super::health::update_admission,
     ))
     .layer(middleware::from_fn(security_headers_middleware));
@@ -465,12 +472,21 @@ pub fn create_router_with_all_state(services: &AppServices, states: ModuleStates
     let router = router.layer(middleware::from_fn(normalize_boundary_error_response));
 
     let router = with_access_log(router);
+    let cloud = with_access_log(
+        openh3_system::provider::cloud_account::routes::cloud_account_routes(super::state::build_cloud_account_state(
+            services,
+        ))
+        .layer(middleware::from_fn_with_state(
+            update_activity,
+            super::health::update_admission,
+        )),
+    );
     tracing::info!(
         elapsed_ms = boot.elapsed().as_millis(),
         "startup: route tree build with states completed"
     );
 
-    if services.identity_mode.is_local() {
+    let router = if services.identity_mode.is_local() {
         let cors = CorsLayer::new()
             .allow_origin(Any)
             .allow_methods([
@@ -507,6 +523,20 @@ pub fn create_router_with_all_state(services: &AppServices, states: ModuleStates
                 HeaderName::from_static("x-csrf-token"),
             ]);
         router.layer(cors)
+    };
+    router.layer(middleware::from_fn_with_state(cloud, cloud_dispatch))
+}
+
+async fn cloud_dispatch(
+    axum::extract::State(cloud): axum::extract::State<Router>,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use tower::ServiceExt;
+    if openh3_system::provider::cloud_account::routes::is_cloud_path(request.uri().path()) {
+        cloud.oneshot(request).await.unwrap()
+    } else {
+        next.run(request).await
     }
 }
 
@@ -673,6 +703,179 @@ mod tests {
         let (_router, _runtime) = create_router_with_runtime(&services)
             .await
             .expect("router runtime should build");
+    }
+
+    #[tokio::test]
+    async fn assembled_cloud_boundary_precedes_generic_auth_cors_and_errors() {
+        use axum::{
+            body::{Body, to_bytes},
+            http::Request,
+        };
+        use tower::ServiceExt;
+        let gateway = wiremock::MockServer::start().await;
+        let db = openh3_db::init_database_memory().await.unwrap();
+        let config = AppConfig {
+            local: true,
+            cloud_account: crate::CloudAccountTransportConfig {
+                capability: Some("synthetic-capability".into()),
+                trusted_origins: vec!["https://web.example".into()],
+                service: openh3_system::provider::cloud_account::CloudAccountConfig {
+                    enabled: true,
+                    endpoint: Some(gateway.uri()),
+                    allow_insecure_loopback: true,
+                },
+            },
+            ..Default::default()
+        };
+        let services = AppServices::from_config(db, &config).await.unwrap();
+        let (states, _) = crate::build_module_states(&services).await.unwrap();
+        let app = crate::create_router_with_states(&services, states);
+        let health = app
+            .clone()
+            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(health.status(), StatusCode::OK);
+        let csrf_cookie = health.headers()["set-cookie"]
+            .to_str()
+            .unwrap()
+            .split(';')
+            .next()
+            .unwrap()
+            .to_owned();
+        assert!(csrf_cookie.starts_with("aionui-csrf-token="));
+        let logout = Request::builder()
+            .method("POST")
+            .uri("/api/cloud-account/logout")
+            .header("x-openh3-cloud-capability", "synthetic-capability")
+            .header("content-type", "application/json")
+            .header("cookie", &csrf_cookie)
+            .header("x-csrf-token", csrf_cookie.strip_prefix("aionui-csrf-token=").unwrap())
+            .body(Body::from("{}"))
+            .unwrap();
+        assert_eq!(app.clone().oneshot(logout).await.unwrap().status(), StatusCode::OK);
+        assert!(gateway.received_requests().await.unwrap().is_empty());
+        for (method, path, capability, origin, expected, code) in [
+            (
+                "GET",
+                "/api/cloud-account/session",
+                false,
+                false,
+                StatusCode::UNAUTHORIZED,
+                "LOCAL_AUTH_REQUIRED",
+            ),
+            ("GET", "/api/cloud-account/session", true, false, StatusCode::OK, ""),
+            (
+                "POST",
+                "/api/cloud-account/login",
+                true,
+                false,
+                StatusCode::FORBIDDEN,
+                "CSRF_INVALID",
+            ),
+            (
+                "GET",
+                "/api/cloud-account",
+                true,
+                false,
+                StatusCode::NOT_FOUND,
+                "CLOUD_NOT_FOUND",
+            ),
+            (
+                "GET",
+                "/api/cloud-account/",
+                true,
+                false,
+                StatusCode::NOT_FOUND,
+                "CLOUD_NOT_FOUND",
+            ),
+            (
+                "GET",
+                "/api/cloud-accountSENTINEL",
+                true,
+                false,
+                StatusCode::NOT_FOUND,
+                "CLOUD_NOT_FOUND",
+            ),
+            (
+                "GET",
+                "/api/cloud-account/session/",
+                true,
+                false,
+                StatusCode::NOT_FOUND,
+                "CLOUD_NOT_FOUND",
+            ),
+            (
+                "GET",
+                "/api/cloud-account/session?SENTINEL=SENTINEL",
+                true,
+                false,
+                StatusCode::BAD_REQUEST,
+                "CLOUD_INPUT_INVALID",
+            ),
+            (
+                "GET",
+                "/api/cloud-account/session",
+                true,
+                true,
+                StatusCode::UNAUTHORIZED,
+                "LOCAL_AUTH_REQUIRED",
+            ),
+            (
+                "OPTIONS",
+                "/api/cloud-account/session",
+                false,
+                true,
+                StatusCode::UNAUTHORIZED,
+                "LOCAL_AUTH_REQUIRED",
+            ),
+        ] {
+            let mut request = Request::builder().method(method).uri(path);
+            if capability {
+                request = request.header("x-openh3-cloud-capability", "synthetic-capability");
+            }
+            if origin {
+                request = request
+                    .header("origin", "https://evil.example")
+                    .header("access-control-request-method", "GET");
+            }
+            let response = app.clone().oneshot(request.body(Body::empty()).unwrap()).await.unwrap();
+            assert_eq!(response.status(), expected, "{path}");
+            assert_eq!(response.headers()["cache-control"], "no-store");
+            assert!(!response.headers().contains_key("access-control-allow-origin"));
+            let bytes = to_bytes(response.into_body(), 65536).await.unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            if expected != StatusCode::OK {
+                assert_eq!(body["code"], code);
+            }
+            assert!(!String::from_utf8_lossy(&bytes).contains("SENTINEL"));
+        }
+        let token = services.jwt_service.sign("system_default_user", "admin").unwrap();
+        let request = Request::builder()
+            .uri("/api/cloud-account/session")
+            .header("x-openh3-webui-request", "1")
+            .header("referer", "https://web.example/settings")
+            .header("authorization", format!("Bearer {token}"))
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(app.clone().oneshot(request).await.unwrap().status(), StatusCode::OK);
+        let lease = crate::services::UpdateActivityService::new(&services);
+        assert!(lease.acquire("cloud-test-lease", openh3_common::now_ms() + 10_000));
+        let blocked = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/cloud-account/session")
+                    .header("x-openh3-cloud-capability", "synthetic-capability")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(blocked.status(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(blocked.headers()["cache-control"], "no-store");
+        let body: serde_json::Value =
+            serde_json::from_slice(&to_bytes(blocked.into_body(), 65536).await.unwrap()).unwrap();
+        assert_eq!(body["code"], "APP_UPDATE_PENDING");
     }
 
     #[tokio::test]

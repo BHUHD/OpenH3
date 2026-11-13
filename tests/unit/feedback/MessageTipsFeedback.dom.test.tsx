@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -50,6 +50,11 @@ vi.mock('react-i18next', () => ({
 }));
 
 const openFeedbackMock = vi.fn(() => Promise.resolve());
+const recovery = vi.hoisted(() => ({ refreshWallet: vi.fn(), navigate: vi.fn() }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => recovery.navigate }));
+vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/Provider', () => ({
+  useOptionalCloudAccount: () => ({ session: { state: 'connected' }, refreshWallet: recovery.refreshWallet }),
+}));
 vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
   useFeedback: () => ({ openFeedback: openFeedbackMock }),
 }));
@@ -113,12 +118,105 @@ const buildTips = (
   }) as IMessageTips;
 
 describe('MessageTips — FeedbackButton wiring', () => {
+  it('shows an actionable tool capability reason without inferring any official charge', () => {
+    const message = buildTips('error', 'safe capability refusal', {
+      message: 'safe capability refusal',
+      code: 'USER_LLM_PROVIDER_TOOL_CAPABILITY',
+      ownership: 'user_llm_provider',
+      retryable: false,
+      resolution: { kind: 'change_model', target: 'provider_settings' },
+    });
+    message.model_source = {
+      kind: 'cloud_account',
+      issuer: 'fixture',
+      subject: '42',
+      provider_id: 'official',
+      model: 'text',
+      protocol: 'Responses',
+    };
+    render(<MessageTips message={message} />);
+    expect(
+      screen.getByText(
+        'This text-only model cannot continue tool history, or its verified tool support changed. Choose a tools-capable model or start a new conversation.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText('settings.cloudAccount.failureUnknown')).toBeInTheDocument();
+    expect(screen.queryByText('Model provider billing is required')).not.toBeInTheDocument();
+  });
   beforeEach(() => {
     openFeedbackMock.mockClear();
   });
 
   afterEach(() => {
     cleanup();
+  });
+  it.each(['plain', 'json', 'structured'] as const)(
+    'keeps manual official recovery outside the %s error body without treating billing text as financial proof',
+    (shape) => {
+      recovery.refreshWallet.mockClear();
+      recovery.navigate.mockClear();
+      const message = buildTips(
+        'error',
+        shape === 'json' ? '{"error":"insufficient funds"}' : 'insufficient funds',
+        shape === 'structured'
+          ? {
+              message: 'insufficient funds',
+              code: 'USER_LLM_PROVIDER_BILLING_REQUIRED',
+              ownership: 'user_llm_provider',
+              resolution: { kind: 'check_provider_billing', target: 'provider_settings' },
+            }
+          : undefined
+      );
+      message.model_source = {
+        kind: 'cloud_account',
+        issuer: 'fixture',
+        subject: '42',
+        provider_id: 'official',
+        model: 'original',
+        protocol: 'Responses',
+      };
+      const view = render(<MessageTips message={message} />);
+      expect(screen.getByText('settings.cloudAccount.failureUnknown')).toBeInTheDocument();
+      expect(screen.getByText('settings.cloudAccount.manualByok')).toBeInTheDocument();
+      expect(screen.queryByText('Model provider billing is required')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          'The selected provider needs active billing, credits, or quota before it can complete this request.'
+        )
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/Check the model provider balance, credits, or quota/)).not.toBeInTheDocument();
+      expect(screen.getByText('The agent could not reply')).toBeInTheDocument();
+      expect(screen.getByText('common.technical_details').closest('.arco-collapse-item')).not.toHaveClass(
+        'arco-collapse-item-active'
+      );
+      fireEvent.click(screen.getByText('common.technical_details'));
+      expect(screen.getAllByText(/insufficient funds/).length).toBeGreaterThan(0);
+      fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.refreshWallet' }));
+      fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.entry' }));
+      expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
+      expect(recovery.navigate).toHaveBeenCalledWith('/settings/cloud-account');
+      view.rerender(<MessageTips message={{ ...message, model_source: null }} />);
+      expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
+      expect(recovery.refreshWallet).toHaveBeenCalledTimes(1);
+    }
+  );
+  it('preserves ordinary BYOK billing diagnosis and resolution', () => {
+    const message = buildTips('error', 'supplier said insufficient balance', {
+      message: 'supplier said insufficient balance',
+      code: 'USER_LLM_PROVIDER_BILLING_REQUIRED',
+      ownership: 'user_llm_provider',
+      resolution: { kind: 'check_provider_billing', target: 'provider_settings' },
+    });
+    message.model_source = { kind: 'byok', provider_id: 'own', provider: 'Own', model: 'own', protocol: 'Responses' };
+    render(<MessageTips message={message} />);
+    expect(screen.getByText('Model provider billing is required')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The selected provider needs active billing, credits, or quota before it can complete this request.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Check the model provider balance, credits, or quota/)).toBeInTheDocument();
+    expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
   });
 
   it('does not render FeedbackButton on success tips', () => {
