@@ -2,7 +2,7 @@
 
 /* Sticky section labels in the sider (team / cron / projects / timeline). */
 .sider-section-label {
-  background-color: var(--bg-2);
+  background-color: var(--sidebar-bg);
 }
 
 /* Sidebar row action buttons (more / plus) — use opaque tokens so text
@@ -16,10 +16,10 @@
   background-color: var(--bg-1);
 }
 [data-theme='dark'] .sider-action-btn {
-  background-color: var(--bg-5);
+  background-color: var(--bg-2);
 }
 [data-theme='dark'] .sider-action-btn:hover {
-  background-color: var(--bg-6);
+  background-color: var(--bg-3);
 }
 
 /* Section title text — light mode uses text-t-tertiary (#86909c).

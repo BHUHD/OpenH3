@@ -33,6 +33,7 @@ const semanticColors = {
 // text-1 to text-4 are supported via custom rules, pointing to Arco's --color-text-*
 const backgroundColors = {
   base: 'var(--bg-base)', // bg-base, border-base - 主背景
+  sidebar: 'var(--sidebar-bg)', // bg-sidebar - sidebar / titlebar surface
   1: 'var(--bg-1)', // bg-1, border-1 - 次级背景
   2: 'var(--bg-2)', // bg-2, border-2 - 三级背景
   3: 'var(--bg-3)', // bg-3, border-3 - 边框/分隔

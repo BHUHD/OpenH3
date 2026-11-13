@@ -27,7 +27,7 @@
 .guidInputCardWrap {
   width: 100%;
   box-sizing: border-box;
-  background: var(--bg-2);
+  background: var(--bg-1);
 }
 
 .guidInputInner {
@@ -38,8 +38,8 @@
 }
 
 :global([data-theme='dark']) .guidInputInner {
-  background: #262626;
-  border-color: #3a3a3a;
+  background: var(--bg-2);
+  border-color: var(--border-base);
 }
 
 .actionRow {
@@ -801,7 +801,7 @@
 }
 
 :global([data-theme='dark']) .assistantCard {
-  background: #262626;
+  background: var(--bg-2);
 }
 
 :global([data-theme='dark']) .assistantCard:hover {

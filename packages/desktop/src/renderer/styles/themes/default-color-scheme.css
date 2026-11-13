@@ -41,6 +41,8 @@
   --border-base: #dfe4eb;
   --border-light: #edf0f4;
 
+  --sidebar-bg: var(--bg-2);
+
   --brand: var(--primary);
   --brand-light: #eef3fc;
   --brand-hover: #2957ad;
@@ -98,6 +100,8 @@
   --info: var(--primary);
   --border-base: #343d4b;
   --border-light: #292f3b;
+
+  --sidebar-bg: var(--bg-base);
 
   --brand: var(--primary);
   --brand-light: #25344d;

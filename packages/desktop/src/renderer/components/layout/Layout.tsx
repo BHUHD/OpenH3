@@ -409,7 +409,7 @@ const Layout: React.FC<{
               collapsedWidth={isMobile ? 0 : 0}
               collapsed={collapsed}
               width={siderWidth}
-              className={classNames('!bg-2 layout-sider', {
+              className={classNames('!bg-sidebar layout-sider', {
                 collapsed: collapsed,
               })}
               style={siderStyle}
