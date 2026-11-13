@@ -754,6 +754,47 @@ describe('generic ComfyUI workflow engine', () => {
     expect(vi.mocked(fetchImpl).mock.calls.filter(([url]) => String(url).endsWith('/system_stats'))).toHaveLength(4);
   });
 
+  it('confirms a small CUDA allocator workspace only after two idle samples with almost all device memory free', async () => {
+    const mib = 1024 * 1024;
+    const fetchImpl = fetchFixture({
+      '/system_stats': {
+        ...stats,
+        devices: [
+          { vram_total: 16384 * mib, vram_free: 15000 * mib, torch_vram_total: 64 * mib, torch_vram_free: 32 * mib },
+        ],
+      },
+    });
+    await engine(fetchImpl).clearMemory(profile, 'component-switch', new AbortController().signal);
+    expect(vi.mocked(fetchImpl).mock.calls.filter(([url]) => String(url).endsWith('/system_stats'))).toHaveLength(3);
+  });
+
+  it.each([
+    { reserved: 128, allocatorFree: 96, deviceFree: 15000 },
+    { reserved: 64, allocatorFree: 0, deviceFree: 15000 },
+    { reserved: 64, allocatorFree: 32, deviceFree: 8000 },
+  ])(
+    'rejects residual memory without sufficient eviction evidence: %j',
+    async ({ reserved, allocatorFree, deviceFree }) => {
+      const mib = 1024 * 1024;
+      const fetchImpl = fetchFixture({
+        '/system_stats': {
+          ...stats,
+          devices: [
+            {
+              vram_total: 16384 * mib,
+              vram_free: deviceFree * mib,
+              torch_vram_total: reserved * mib,
+              torch_vram_free: allocatorFree * mib,
+            },
+          ],
+        },
+      });
+      await expect(
+        engine(fetchImpl).clearMemory(profile, 'component-switch', new AbortController().signal)
+      ).rejects.toThrow('COMFY_MEMORY_CLEAR_UNCONFIRMED');
+    }
+  );
+
   it('records a bounded memory diagnostic when another task appears after eviction was requested', async () => {
     let requested = false;
     const fetchImpl = vi.fn(async (url: string | URL | Request) => {

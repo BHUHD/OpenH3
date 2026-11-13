@@ -67,6 +67,7 @@ describe('gutter threshold', () => {
     // cap keeps them aligned and centred instead of stretching across the window.
     const rule = containerQuery?.[2] ?? '';
     expect(rule).toMatch(/max-width:\s*var\(--chat-column-max-width\)/);
+    expect(css).toMatch(/\.chat-surface-fluid\s*{[^}]*box-sizing:\s*border-box/);
     expect(rule).toMatch(/margin-inline-start:\s*auto/);
     expect(rule).toMatch(/margin-inline-end:\s*auto/);
     const base = readFileSync(

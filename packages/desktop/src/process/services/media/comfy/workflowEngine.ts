@@ -1697,7 +1697,37 @@ export class ComfyWorkflowEngine {
         const observed = memory(after);
         observations.push(observed);
         const devices = Array.isArray(after.devices) ? after.devices.map(record) : [];
-        const emptyAllocator = devices.length > 0 && devices.every((device) => device.torch_vram_total === 0);
+        const emptyAllocator =
+          devices.length > 0 &&
+          devices.every((device) => {
+            if (device.torch_vram_total === 0) return true;
+            const reserved = device.torch_vram_total;
+            const allocatorFree = device.torch_vram_free;
+            const total = device.vram_total;
+            const free = device.vram_free;
+            // CUDA async allocators can retain a small workspace after /free.
+            // Treat that as settled only with bounded allocations and >=90%
+            // device headroom; idle queue, identity and repeated samples still apply.
+            const mib = 1024 * 1024;
+            return (
+              typeof reserved === 'number' &&
+              Number.isFinite(reserved) &&
+              reserved > 0 &&
+              reserved <= 64 * mib &&
+              typeof allocatorFree === 'number' &&
+              Number.isFinite(allocatorFree) &&
+              allocatorFree >= 0 &&
+              allocatorFree <= reserved &&
+              reserved - allocatorFree <= 32 * mib &&
+              typeof total === 'number' &&
+              Number.isFinite(total) &&
+              total > 0 &&
+              typeof free === 'number' &&
+              Number.isFinite(free) &&
+              free >= total * 0.9 &&
+              free <= total
+            );
+          });
         emptySamples = emptyAllocator ? emptySamples + 1 : 0;
         if (
           observed.length === baseline.length &&

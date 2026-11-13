@@ -8,6 +8,7 @@
 .chat-surface-fluid {
   width: 100%;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 @container (min-width: 720px) {
