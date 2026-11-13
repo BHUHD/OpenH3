@@ -18,6 +18,12 @@ export function useLoginModal() {
   const [open, setOpen] = useState(false);
   const cloud = useOptionalCloudAccount();
   const connected = cloud?.session?.state === 'connected';
+  // catalogPending is set to true immediately after a successful login and cleared
+  // once the catalog fetch completes. Gate the auto-close on it being false so we
+  // don't unmount CloudAccount (which triggers cloud.cancel()) while the catalog
+  // ticket is still in flight — that would increment the fence epoch and skip the
+  // final provider mutation.
+  const catalogPending = Boolean(cloud?.catalogPending);
   const available = Boolean(cloud?.available);
 
   // First-launch auto-popup: open once if not connected and not previously skipped.
@@ -31,10 +37,13 @@ export function useLoginModal() {
     setOpen(true);
   }, [available, connected]);
 
-  // Auto-close on successful login: when session transitions to connected.
+  // Auto-close on successful login: wait until catalogPending is false so the
+  // Provider's post-login catalog fetch completes before we unmount CloudAccount.
+  // Unmounting early triggers cloud.cancel() → fence epoch increment, which
+  // invalidates the catalog ticket and skips the final provider mutation.
   useEffect(() => {
-    if (connected) setOpen(false);
-  }, [connected]);
+    if (connected && !catalogPending) setOpen(false);
+  }, [connected, catalogPending]);
 
   const handleClose = () => {
     setOpen(false);
