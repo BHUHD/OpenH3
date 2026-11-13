@@ -41,6 +41,10 @@
   --border-base: #dfe4eb;
   --border-light: #edf0f4;
 
+  --sidebar-bg: var(--bg-2);
+  --input-focus-border: var(--aou-3);
+  --input-focus-shadow: 0px 0px 0px 3px var(--aou-1);
+
   --brand: var(--primary);
   --brand-light: #eef3fc;
   --brand-hover: #2957ad;
@@ -98,6 +102,10 @@
   --info: var(--primary);
   --border-base: #343d4b;
   --border-light: #292f3b;
+
+  --sidebar-bg: var(--bg-base);
+  --input-focus-border: var(--aou-4);
+  --input-focus-shadow: 0px 0px 0px 3px var(--aou-2);
 
   --brand: var(--primary);
   --brand-light: #25344d;

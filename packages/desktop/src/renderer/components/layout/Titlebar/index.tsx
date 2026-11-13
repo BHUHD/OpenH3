@@ -306,7 +306,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
     <div
       ref={containerRef}
       style={mobileCenterStyle}
-      className={classNames('flex items-center gap-8px app-titlebar bg-2 border-b border-[var(--border-base)]', {
+      className={classNames('flex items-center gap-8px app-titlebar bg-sidebar border-b border-[var(--border-base)]', {
         'app-titlebar--mobile': layout?.isMobile,
         'app-titlebar--mobile-conversation': layout?.isMobile && workspaceAvailable,
         'app-titlebar--desktop': isDesktopRuntime,

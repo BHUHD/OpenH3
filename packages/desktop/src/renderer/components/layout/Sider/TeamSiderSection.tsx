@@ -142,7 +142,7 @@ const TeamSiderSection: React.FC<TeamSiderSectionProps> = ({
                     data-testid={`collapsed-team-item-${team.id}`}
                     className={classNames(
                       'relative w-full h-40px flex items-center justify-center cursor-pointer transition-colors rd-8px',
-                      isActive ? '!bg-active' : 'hover:bg-fill-3 active:bg-fill-4'
+                      isActive ? '!bg-active' : 'hover:bg-hover active:bg-active'
                     )}
                     onClick={() => handleTeamClick(team.id)}
                   >

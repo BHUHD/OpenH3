@@ -2,7 +2,7 @@
 
 /* Sticky section labels in the sider (team / cron / projects / timeline). */
 .sider-section-label {
-  background-color: var(--bg-2);
+  background-color: var(--sidebar-bg);
 }
 
 /* Sidebar row action buttons (more / plus) — use opaque tokens so text
@@ -16,10 +16,10 @@
   background-color: var(--bg-1);
 }
 [data-theme='dark'] .sider-action-btn {
-  background-color: var(--bg-5);
+  background-color: var(--bg-2);
 }
 [data-theme='dark'] .sider-action-btn:hover {
-  background-color: var(--bg-6);
+  background-color: var(--bg-3);
 }
 
 /* Section title text — light mode uses text-t-tertiary (#86909c).
@@ -302,12 +302,11 @@
   padding: 0;
 }
 .arco-btn.sider-nav-entry:hover {
-  background: var(--fill-3);
+  background: var(--bg-hover);
 }
 .arco-btn.sider-nav-entry[aria-current='page'],
 .chat-history__item[aria-current='page'] {
   background: var(--brand-light) !important;
-  box-shadow: inset 3px 0 0 var(--brand);
   color: var(--brand);
 }
 .arco-btn.sider-nav-entry[aria-current='page'] {
@@ -315,7 +314,7 @@
 }
 .arco-btn.sider-nav-entry:active,
 .arco-btn.sider-section-add:active {
-  background: var(--fill-4);
+  background: var(--bg-active);
 }
 .arco-btn.sider-nav-entry:focus-visible,
 .arco-btn.sider-section-add:focus-visible {

@@ -94,8 +94,8 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
               collapsed ? 'w-full justify-center' : 'flex-1 min-w-0 justify-start gap-8px ps-10px pe-8px',
               isMobile && 'sider-footer-btn-mobile',
               {
-                'bg-fill-3': isSettings,
-                'hover:bg-fill-3 active:bg-fill-4': !isSettings,
+                'bg-active': isSettings,
+                'hover:bg-hover active:bg-active': !isSettings,
               }
             )}
           >
@@ -143,7 +143,7 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
             <div
               onClick={onLogoutClick}
               className={classNames(
-                'h-32px flex items-center rd-0.5rem cursor-pointer transition-colors hover:bg-[rgba(var(--primary-6),0.14)] active:bg-fill-2',
+                'h-32px flex items-center rd-0.5rem cursor-pointer transition-colors hover:bg-[rgba(var(--primary-6),0.14)] active:bg-hover',
                 collapsed ? 'w-full justify-center' : 'flex-1 min-w-0 justify-start gap-10px px-14px',
                 isMobile && 'sider-footer-btn-mobile'
               )}
@@ -170,7 +170,7 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
               onClick={onThemeToggle}
               data-testid='theme-toggle'
               className={classNames(
-                'h-32px w-40px shrink-0 flex items-center justify-center cursor-pointer rd-0.5rem transition-colors text-t-secondary hover:bg-fill-2 hover:text-t-primary active:bg-fill-3',
+                'h-32px w-40px shrink-0 flex items-center justify-center cursor-pointer rd-0.5rem transition-colors text-t-secondary hover:bg-hover hover:text-t-primary active:bg-active',
                 isMobile && 'sider-footer-btn-mobile'
               )}
               aria-label={themeTooltip}
