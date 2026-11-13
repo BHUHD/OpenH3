@@ -90,7 +90,7 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
           />
         </div>
         <span className='text-12px tabular-nums'>{t('conversation.planBar.progress', { completed, total })}</span>
-        {isActive && <span className='text-12px text-t-secondary truncate max-w-240px'>{statusText}</span>}
+        <span className='text-12px text-t-secondary truncate max-w-240px'>{statusText}</span>
       </div>
 
       {/* Expanded task list */}
