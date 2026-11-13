@@ -272,6 +272,9 @@ let backendMigrationsPromise: Promise<boolean> | null = null;
 let ensureAdminUserPromise: Promise<void> | null = null;
 let mediaServiceProcess: MediaServiceProcess | null = null;
 ipcMain.handle('media-service:get-ui-token', () => mediaServiceProcess?.uiToken ?? null);
+ipcMain.on('get-media-service-port', (event) => {
+  event.returnValue = mediaServiceProcess?.port ?? 33002;
+});
 
 ipcMain.on('get-backend-port', (event) => {
   event.returnValue = backendManager.port;

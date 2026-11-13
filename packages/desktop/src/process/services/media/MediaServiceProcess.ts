@@ -43,14 +43,17 @@ export type MediaServiceProcessOptions = {
 
 export class MediaServiceProcess {
   private child?: ChildProcess;
-  private readonly port: number;
+  readonly port: number;
   /** Secret accepted only for consent actions initiated by the Electron UI. */
   readonly uiToken = crypto.randomBytes(32).toString('hex');
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(private readonly options: MediaServiceProcessOptions) {
-    this.port = options.port ?? 33002;
+    const configured = options.port ?? process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002;
+    this.port = Number(configured);
+    if (!Number.isInteger(this.port) || this.port < 1 || this.port > 65535)
+      throw new Error('MEDIA_SERVICE_PORT_INVALID');
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
@@ -108,7 +111,16 @@ export class MediaServiceProcess {
       await this.sleep(250);
       try {
         const response = await this.fetchImpl(`http://127.0.0.1:${this.port}/health`);
-        if (response.ok) return;
+        if (response.ok && this.child) {
+          // The token handshake prevents another instance's healthy listener
+          // from being mistaken for the child we just launched.
+          if (this.options.backendPort) {
+            // Readiness probes must authenticate sequentially before retrying.
+            // eslint-disable-next-line no-await-in-loop
+            await this.setBackendPort(this.options.backendPort);
+          }
+          if (this.child) return;
+        }
       } catch {
         /* wait for the child service to bind */
       }
