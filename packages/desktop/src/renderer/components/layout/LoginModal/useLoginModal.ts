@@ -24,18 +24,22 @@ export function useLoginModal() {
   // ticket is still in flight — that would increment the fence epoch and skip the
   // final provider mutation.
   const catalogPending = Boolean(cloud?.catalogPending);
-  const available = Boolean(cloud?.available);
+  const canAutoPrompt =
+    Boolean(cloud?.available) &&
+    cloud?.capabilities?.availability === 'available' &&
+    (cloud?.session?.state === 'disconnected' || cloud?.session?.state === 'reauth_required');
 
-  // First-launch auto-popup: open once if not connected and not previously skipped.
+  // Wait for a known session and usable service, then prompt once per profile.
   useEffect(() => {
-    if (!available || connected) return;
+    if (!canAutoPrompt) return;
     try {
       if (localStorage.getItem(SKIP_KEY)) return;
+      localStorage.setItem(SKIP_KEY, '1');
     } catch {
       return;
     }
     setOpen(true);
-  }, [available, connected]);
+  }, [canAutoPrompt]);
 
   // Auto-close on successful login: wait until catalogPending is false so the
   // Provider's post-login catalog fetch completes before we unmount CloudAccount.

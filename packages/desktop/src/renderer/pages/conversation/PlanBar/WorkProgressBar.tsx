@@ -32,7 +32,6 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   const anyWaiting = leaves.some((e) => e.status === 'waiting');
   const anyFailed = leaves.some((e) => e.status === 'failed');
   const anyInterrupted = leaves.some((e) => e.status === 'interrupted' || e.status === 'cancelled');
-  const isActive = snapshot.isProcessing || anyRunning || anyPending || anyWaiting;
 
   if (!total) return null;
 
