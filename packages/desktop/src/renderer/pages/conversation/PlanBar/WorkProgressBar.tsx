@@ -28,18 +28,28 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   const completed = leaves.filter((e) => e.status === 'completed').length;
   const total = leaves.length;
   const anyRunning = leaves.some((e) => e.status === 'running');
-  const isActive = snapshot.isProcessing || anyRunning || leaves.some((e) => e.status === 'pending');
+  const anyPending = leaves.some((e) => e.status === 'pending');
+  const anyWaiting = leaves.some((e) => e.status === 'waiting');
+  const anyFailed = leaves.some((e) => e.status === 'failed');
+  const anyInterrupted = leaves.some((e) => e.status === 'interrupted' || e.status === 'cancelled');
+  const isActive = snapshot.isProcessing || anyRunning || anyPending || anyWaiting;
 
   if (!total) return null;
 
-  // Key off anyRunning rather than snapshot.isProcessing so a background
-  // generation task with status=running while the agent is idle still reads
-  // as "running" rather than "completed".
+  // Derive status text from leaf states to cover all WorkStatus values.
+  // This ensures background tasks, pending queues and waiting confirmations
+  // all display the correct label instead of always falling through to "completed".
   const statusText = anyRunning
     ? (tasks.find((t) => t.status === 'running')?.title ?? t('conversation.workProgress.statuses.running'))
-    : leaves.some((e) => e.status === 'failed')
-      ? t('conversation.workProgress.statuses.failed')
-      : t('conversation.workProgress.statuses.completed');
+    : anyWaiting || snapshot.pendingConfirmations > 0
+      ? t('conversation.workProgress.statuses.waiting')
+      : anyPending
+        ? t('conversation.workProgress.statuses.pending')
+        : anyFailed
+          ? t('conversation.workProgress.statuses.failed')
+          : anyInterrupted
+            ? t('conversation.workProgress.statuses.interrupted')
+            : t('conversation.workProgress.statuses.completed');
 
   const toggle = () => setExpanded((v) => !v);
 

@@ -13,8 +13,9 @@ import {
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { useTranslation } from 'react-i18next';
 import { Button, Tooltip } from '@arco-design/web-react';
-import { ArrowCircleLeft, Download, SettingTwo } from '@icon-park/react';
+import { ArrowCircleLeft, CloseOne, Download, SettingTwo } from '@icon-park/react';
 import classNames from 'classnames';
+import { iconColors } from '@renderer/styles/colors';
 import type { SiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
 import styles from './Sider.module.css';
 import AccountMenu from './AccountMenu';
@@ -40,7 +41,7 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
   siderTooltipProps,
   onSettingsClick,
   onThemeToggle,
-  showLogout: _showLogout,
+  showLogout = false,
   onLogoutClick,
   onOpenLogin,
 }) => {
@@ -143,6 +144,32 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
                 </span>
               }
             />
+          </Tooltip>
+        )}
+        {/* WebUI auth logout — separate from cloud session logout (handled in AccountMenu) */}
+        {showLogout && onLogoutClick && (
+          <Tooltip {...siderTooltipProps} content={t('settings.googleLogout')} position='right'>
+            <div
+              onClick={onLogoutClick}
+              className={classNames(
+                'h-32px flex items-center rd-0.5rem cursor-pointer transition-colors hover:bg-[rgba(var(--primary-6),0.14)] active:bg-hover',
+                collapsed ? 'w-full justify-center' : 'flex-1 min-w-0 justify-start gap-10px px-14px',
+                isMobile && 'sider-footer-btn-mobile'
+              )}
+            >
+              <span className='size-20px flex items-center justify-center shrink-0'>
+                <CloseOne
+                  theme='outline'
+                  size='16'
+                  fill={iconColors.primary}
+                  className='block leading-none'
+                  style={{ lineHeight: 0 }}
+                />
+              </span>
+              <span className='collapsed-hidden text-t-primary text-14px font-[500] leading-24px truncate'>
+                {t('settings.googleLogout')}
+              </span>
+            </div>
           </Tooltip>
         )}
       </div>
