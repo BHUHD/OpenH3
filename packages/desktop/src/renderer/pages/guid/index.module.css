@@ -950,10 +950,10 @@
   width: 100%;
   height: auto;
   padding: 12px 14px;
-  border: 1px solid var(--color-border-2);
+  border: 1px solid var(--border-base);
   border-radius: 10px;
-  background: var(--color-bg-2);
-  color: var(--color-text-2);
+  background: var(--bg-1);
+  color: var(--text-secondary);
   font-size: 12px;
   line-height: 19px;
   text-align: start;
@@ -963,8 +963,8 @@
 }
 .promptSuggestion:global(.arco-btn):hover {
   border-color: var(--brand);
-  color: var(--color-text-1);
-  background: var(--color-fill-1);
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 .promptSuggestion:global(.arco-btn):focus-visible {
   outline: 2px solid var(--brand);
