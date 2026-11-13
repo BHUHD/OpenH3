@@ -3,6 +3,10 @@
 :root {
   --app-min-width: 360px;
   --titlebar-height: 36px;
+  /* Reading width of the conversation column (messages, composer, inline progress).
+     Equals the home composer's content width (.guidLayout: 800px minus 2 x 16px
+     padding), so moving from home into a conversation keeps the same width. */
+  --chat-column-max-width: 768px;
 }
 
 .app-shell {

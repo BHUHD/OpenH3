@@ -13,7 +13,9 @@
 @container (min-width: 720px) {
   .chat-surface-fluid {
     width: calc(100% - clamp(80px, 10cqw, 240px));
-    max-width: none;
+    /* Readable line length: on wide windows the column stops growing at the shared
+       reading width and stays centred (see --chat-column-max-width in base.css). */
+    max-width: var(--chat-column-max-width);
     margin-inline-start: auto;
     margin-inline-end: auto;
   }

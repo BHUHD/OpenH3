@@ -61,4 +61,18 @@ describe('gutter threshold', () => {
     expect(rule).toMatch(/width:\s*calc\(100%\s*-\s*clamp\(/);
     expect(rule).toMatch(/clamp\(\s*\d+px\s*,[^,]+,\s*\d+px\s*\)/);
   });
+
+  it('caps the column at the shared reading width on wide windows', () => {
+    // Messages, the composer and the inline progress bar all use this class, so one
+    // cap keeps them aligned and centred instead of stretching across the window.
+    const rule = containerQuery?.[2] ?? '';
+    expect(rule).toMatch(/max-width:\s*var\(--chat-column-max-width\)/);
+    expect(rule).toMatch(/margin-inline-start:\s*auto/);
+    expect(rule).toMatch(/margin-inline-end:\s*auto/);
+    const base = readFileSync(
+      join(__dirname, '../../../../packages/desktop/src/renderer/styles/themes/base.css'),
+      'utf8'
+    );
+    expect(base).toMatch(/--chat-column-max-width:\s*768px/);
+  });
 });
