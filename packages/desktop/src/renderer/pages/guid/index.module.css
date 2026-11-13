@@ -27,7 +27,7 @@
 .guidInputCardWrap {
   width: 100%;
   box-sizing: border-box;
-  background: var(--bg-1);
+  background: transparent;
 }
 
 .guidInputInner {
