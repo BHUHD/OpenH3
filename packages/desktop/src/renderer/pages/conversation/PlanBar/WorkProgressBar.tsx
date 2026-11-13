@@ -27,11 +27,15 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   const leaves = tasks.flatMap((task) => (task.children?.length ? task.children : [task]));
   const completed = leaves.filter((e) => e.status === 'completed').length;
   const total = leaves.length;
-  const isActive = snapshot.isProcessing || leaves.some((e) => e.status === 'running' || e.status === 'pending');
+  const anyRunning = leaves.some((e) => e.status === 'running');
+  const isActive = snapshot.isProcessing || anyRunning || leaves.some((e) => e.status === 'pending');
 
   if (!total) return null;
 
-  const statusText = snapshot.isProcessing
+  // Key off anyRunning rather than snapshot.isProcessing so a background
+  // generation task with status=running while the agent is idle still reads
+  // as "running" rather than "completed".
+  const statusText = anyRunning
     ? (tasks.find((t) => t.status === 'running')?.title ?? t('conversation.workProgress.statuses.running'))
     : leaves.some((e) => e.status === 'failed')
       ? t('conversation.workProgress.statuses.failed')

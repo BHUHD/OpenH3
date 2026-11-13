@@ -74,7 +74,9 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
         if (key === 'theme') onThemeToggle();
         if (key === 'feedback')
           void openFeedback({ autoScreenshot: true, module: resolveFeedbackModule(location.pathname) });
-        if (key === 'logout') onLogout?.();
+        // Cloud logout: call directly on the cloud context rather than delegating
+        // to the footer's onLogout prop, which routes to WebUI auth logout instead.
+        if (key === 'logout') void cloud?.run({ operation: 'logout' });
       }}
     >
       <Menu.Item key='account'>
@@ -95,7 +97,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
           {t('conversation.welcome.quickActionFeedback', { defaultValue: 'Feedback' })}
         </span>
       </Menu.Item>
-      <Menu.Divider />
+      <div className='h-1px bg-[var(--color-border-2)] my-4px mx-4px' aria-hidden='true' />
       <Menu.Item key='logout'>
         <span className='flex items-center gap-8px text-danger'>
           <Logout size={14} />
