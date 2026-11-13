@@ -19,6 +19,7 @@ import type { IConversationMcpStatus } from '@/common/config/storage';
 import { mergeLoadedSkillNames } from '@/common/chat/slash/mergeSlashCommands';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
+import WorkProgressBar from '@/renderer/pages/conversation/PlanBar/WorkProgressBar';
 import MobileActionSheet, {
   type MobileActionSheetEntry,
   type MobileActionSheetOption,
@@ -853,6 +854,7 @@ const AionrsSendBox: React.FC<{
 
   return (
     <div className={`${sendBoxWidthClass} flex flex-col mt-auto mb-16px`}>
+      <WorkProgressBar conversationId={conversation_id} />
       <CommandQueuePanel
         items={queuedCommands}
         mode={queueMode}

@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "Cloud-Konto",
-    "entry": "Cloud anmelden / registrieren",
+    "entry": "Anmelden",
     "username": "Benutzername",
     "email": "E-Mail",
     "password": "Passwort",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "Keine passenden eigenen Bestellungen.",
     "refreshOrders": "Eigene Bestellungen aktualisieren",
     "firstOrders": "Erste Bestellungen",
-    "moreOrders": "Weitere Bestellungen"
+    "moreOrders": "Weitere Bestellungen",
+    "skipLogin": "Überspringen",
+    "loginModalTitle": "Anmelden / Registrieren",
+    "accountMenu": "Konto"
   }
 }

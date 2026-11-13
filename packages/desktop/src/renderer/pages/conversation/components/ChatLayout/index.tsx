@@ -118,16 +118,11 @@ const ChatLayout: React.FC<{
   });
 
   useEffect(() => {
+    // No longer auto-expand the right panel when tasks start —
+    // WorkProgressBar above the send box handles inline progress display.
     if (!rightPanelEnabled || !workIdentity) return;
-    setProgressActive(true);
-    let preference: string | null = null;
-    try {
-      preference = localStorage.getItem(`workspace-preference-${workspacePreferenceKey ?? conversation_id}`);
-    } catch {
-      // Storage may be unavailable in a restricted browser context.
-    }
-    if (!isMobile && preference !== 'collapsed') setRightSiderCollapsed(false);
-  }, [conversation_id, workIdentity, rightPanelEnabled, workspacePreferenceKey, isMobile, setRightSiderCollapsed]);
+    setProgressActive(false);
+  }, [conversation_id, workIdentity, rightPanelEnabled]);
 
   // --- Hook B: container width ---
   const { containerRef, containerWidth } = useContainerWidth();

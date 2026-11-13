@@ -1488,7 +1488,7 @@
   },
   "cloudAccount": {
     "title": "云账户",
-    "entry": "云账户登录 / 注册",
+    "entry": "登录",
     "username": "用户名",
     "email": "邮箱",
     "password": "密码",
@@ -1717,6 +1717,9 @@
     "emptyOrders": "没有符合条件的本人订单。",
     "refreshOrders": "刷新本人订单",
     "firstOrders": "首批订单",
-    "moreOrders": "更多订单"
+    "moreOrders": "更多订单",
+    "skipLogin": "跳过，先使用",
+    "loginModalTitle": "登录 / 注册",
+    "accountMenu": "账户"
   }
 }

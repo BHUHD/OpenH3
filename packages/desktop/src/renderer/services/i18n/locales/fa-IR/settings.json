@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "حساب ابری",
-    "entry": "ورود / ثبت‌نام ابری",
+    "entry": "ورود",
     "username": "نام کاربری",
     "email": "ایمیل",
     "password": "گذرواژه",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "سفارشی مطابق فیلتر یافت نشد.",
     "refreshOrders": "تازه‌سازی سفارش‌های من",
     "firstOrders": "سفارش‌های نخست",
-    "moreOrders": "سفارش‌های بیشتر"
+    "moreOrders": "سفارش‌های بیشتر",
+    "skipLogin": "رد کردن",
+    "loginModalTitle": "ورود / ثبت‌نام",
+    "accountMenu": "حساب"
   }
 }

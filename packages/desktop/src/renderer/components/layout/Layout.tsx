@@ -48,6 +48,7 @@ import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShor
 import { isElectronDesktop } from '@renderer/utils/platform';
 import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
 import UpdateMigrationDialog from '@/renderer/components/settings/UpdateMigrationDialog';
+import { LoginModal, useLoginModal } from '@/renderer/components/layout/LoginModal';
 import '@renderer/styles/layout.css';
 
 const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size = 18, strokeWidth = 4 }) => (
@@ -135,6 +136,7 @@ const Layout: React.FC<{
     typeof window === 'undefined' ? 390 : window.innerWidth
   );
   const { onClick } = useDebug();
+  const loginModal = useLoginModal();
   useDeepLink();
   useNotificationClick();
   useBrowserNotification();
@@ -483,6 +485,7 @@ const Layout: React.FC<{
                         if (isMobile) setCollapsed(true);
                       },
                       collapsed,
+                      onOpenLogin: loginModal.openManual,
                     } as any)
                   : sider}
               </ArcoLayout.Content>
@@ -522,6 +525,11 @@ const Layout: React.FC<{
                 <Suspense fallback={null}>
                   <UpdateModal />
                 </Suspense>
+                <LoginModal
+                  visible={loginModal.open}
+                  onClose={loginModal.handleClose}
+                  showSkip={!loginModal.connected}
+                />
                 {IS_DISCONTINUED_BUILD && <UpdateMigrationDialog />}
               </ArcoLayout.Content>
               {/* Hoisted preview region (project conversations only). Structurally

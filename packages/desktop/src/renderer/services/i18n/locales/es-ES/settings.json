@@ -1487,7 +1487,7 @@
   },
   "cloudAccount": {
     "title": "Cuenta en la nube",
-    "entry": "Acceso / registro en la nube",
+    "entry": "Iniciar sesión",
     "username": "Nombre de usuario",
     "email": "Correo electrónico",
     "password": "Contraseña",
@@ -1716,6 +1716,9 @@
     "emptyOrders": "No hay pedidos propios coincidentes.",
     "refreshOrders": "Actualizar mis pedidos",
     "firstOrders": "Primeros pedidos",
-    "moreOrders": "Más pedidos"
+    "moreOrders": "Más pedidos",
+    "skipLogin": "Omitir por ahora",
+    "loginModalTitle": "Iniciar sesión / Registrarse",
+    "accountMenu": "Cuenta"
   }
 }

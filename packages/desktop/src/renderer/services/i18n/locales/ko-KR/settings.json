@@ -1489,7 +1489,7 @@
   },
   "cloudAccount": {
     "title": "클라우드 계정",
-    "entry": "클라우드 로그인 / 가입",
+    "entry": "로그인",
     "username": "사용자 이름",
     "email": "이메일",
     "password": "비밀번호",
@@ -1718,6 +1718,9 @@
     "emptyOrders": "일치하는 내 주문이 없습니다.",
     "refreshOrders": "내 주문 새로 고침",
     "firstOrders": "첫 주문",
-    "moreOrders": "더 많은 주문"
+    "moreOrders": "더 많은 주문",
+    "skipLogin": "건너뛰기",
+    "loginModalTitle": "로그인 / 등록",
+    "accountMenu": "계정"
   }
 }
