@@ -88,9 +88,10 @@ function host(children: React.ReactNode) {
     </SWRConfig>
   );
 }
-it('opens the actual routed native account page from the sidebar footer, preserving the WebUI logout action', async () => {
+it('opens the login modal from the sidebar footer and preserves the WebUI logout action', async () => {
   window.location.hash = '#/settings';
   const logout = vi.fn();
+  const openLogin = vi.fn();
   render(
     host(
       <Router
@@ -105,6 +106,7 @@ it('opens the actual routed native account page from the sidebar footer, preserv
               onThemeToggle={() => {}}
               showLogout
               onLogoutClick={logout}
+              onOpenLogin={openLogin}
             />
             <Outlet />
           </>
@@ -112,11 +114,12 @@ it('opens the actual routed native account page from the sidebar footer, preserv
       />
     )
   );
+  // WebUI auth logout still works independently of cloud session
   fireEvent.click(await screen.findByText('settings.googleLogout'));
   expect(logout).toHaveBeenCalledTimes(1);
+  // Cloud account entry opens the login modal (not navigating to settings route)
   fireEvent.click(await screen.findByRole('button', { name: 'settings.cloudAccount.entry' }));
-  expect(await screen.findByLabelText('settings.cloudAccount.username')).toBeInTheDocument();
-  expect(window.location.hash).toBe('#/settings/cloud-account');
+  expect(openLogin).toHaveBeenCalledTimes(1);
 });
 it('uses the same native feature in the modal and clears typed secrets on modal close/reopen', async () => {
   const view = render(

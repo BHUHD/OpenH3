@@ -136,7 +136,7 @@ describe('ChatLayout mobile preview host fallback', () => {
     expect(screen.queryByTestId('mobile-workspace-overlay')).not.toBeInTheDocument();
   });
 
-  it('exposes progress for a non-project conversation even without a workspace', () => {
+  it('exposes progress for a non-project conversation via the inline bar above the send box, not the right column', () => {
     publishWorkProgress('no-workspace', {
       tasks: [{ id: 'bash', title: 'Build preview', kind: 'background', status: 'running' }],
       isProcessing: false,
@@ -147,8 +147,10 @@ describe('ChatLayout mobile preview host fallback', () => {
         <div>chat body</div>
       </ChatLayout>
     );
-    expect(container.querySelectorAll('.chat-layout-right-sider')).toHaveLength(1);
-    expect(screen.getByTestId('conversation-work-progress')).toHaveTextContent('Build preview');
+    // Right sider must not auto-open when tasks start (WorkProgressBar handles it inline)
+    expect(container.querySelectorAll('.chat-layout-right-sider')).toHaveLength(0);
+    // The inline bar is rendered by the send box layer (AcpSendBox), not ChatLayout itself
+    expect(screen.queryByTestId('conversation-work-progress')).not.toBeInTheDocument();
     expect(screen.queryByTestId('conversation-plan-bar')).not.toBeInTheDocument();
   });
 });
