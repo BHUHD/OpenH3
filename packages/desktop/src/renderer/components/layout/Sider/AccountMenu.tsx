@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
-import { Feedback, LinkCloud, Logout, Moon, SunOne } from '@icon-park/react';
+import { Comment, LinkCloud, Logout, Moon, SunOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
@@ -91,7 +91,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
       </Menu.Item>
       <Menu.Item key='feedback'>
         <span className='flex items-center gap-8px'>
-          <Feedback size={14} />
+          <Comment size={14} />
           {t('conversation.welcome.quickActionFeedback', { defaultValue: 'Feedback' })}
         </span>
       </Menu.Item>
