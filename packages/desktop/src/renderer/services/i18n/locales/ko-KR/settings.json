@@ -1721,6 +1721,7 @@
     "moreOrders": "더 많은 주문",
     "skipLogin": "건너뛰기",
     "loginModalTitle": "로그인 / 등록",
-    "accountMenu": "계정"
+    "accountMenu": "계정",
+    "signingIn": "로그인됨. 모델을 불러오는 중…"
   }
 }

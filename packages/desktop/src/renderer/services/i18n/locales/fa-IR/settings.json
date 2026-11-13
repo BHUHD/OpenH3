@@ -1719,6 +1719,7 @@
     "moreOrders": "سفارش‌های بیشتر",
     "skipLogin": "رد کردن",
     "loginModalTitle": "ورود / ثبت‌نام",
-    "accountMenu": "حساب"
+    "accountMenu": "حساب",
+    "signingIn": "وارد شدید. در حال بارگذاری مدل‌ها…"
   }
 }

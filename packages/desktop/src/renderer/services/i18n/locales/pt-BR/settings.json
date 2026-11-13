@@ -1722,6 +1722,7 @@
     "moreOrders": "Mais pedidos",
     "skipLogin": "Pular por ora",
     "loginModalTitle": "Entrar / Registrar",
-    "accountMenu": "Conta"
+    "accountMenu": "Conta",
+    "signingIn": "Conectado. Carregando modelos…"
   }
 }

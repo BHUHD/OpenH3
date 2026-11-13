@@ -5,7 +5,6 @@
  */
 
 import React from 'react';
-import { Button } from '@arco-design/web-react';
 import { Down, Right } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useWorkProgress } from '@/renderer/pages/conversation/PlanBar/workProgress';
@@ -39,7 +38,7 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   // This ensures background tasks, pending queues and waiting confirmations
   // all display the correct label instead of always falling through to "completed".
   const statusText = anyRunning
-    ? (tasks.find((t) => t.status === 'running')?.title ?? t('conversation.workProgress.statuses.running'))
+    ? (tasks.find((task) => task.status === 'running')?.title ?? t('conversation.workProgress.statuses.running'))
     : anyWaiting || snapshot.pendingConfirmations > 0
       ? t('conversation.workProgress.statuses.waiting')
       : anyPending

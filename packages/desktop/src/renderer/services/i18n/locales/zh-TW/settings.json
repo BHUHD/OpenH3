@@ -1721,6 +1721,7 @@
     "moreOrders": "更多訂單",
     "skipLogin": "略過，先使用",
     "loginModalTitle": "登入 / 註冊",
-    "accountMenu": "帳戶"
+    "accountMenu": "帳戶",
+    "signingIn": "已登入，正在載入模型…"
   }
 }

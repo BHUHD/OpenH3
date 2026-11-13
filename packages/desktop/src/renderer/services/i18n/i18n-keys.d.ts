@@ -2621,6 +2621,7 @@ export type I18nKey =
   | 'settings.cloudAccount.revoked'
   | 'settings.cloudAccount.savePassword'
   | 'settings.cloudAccount.sendCode'
+  | 'settings.cloudAccount.signingIn'
   | 'settings.cloudAccount.skipLogin'
   | 'settings.cloudAccount.sourceDisclaimer'
   | 'settings.cloudAccount.stale'

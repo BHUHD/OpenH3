@@ -1719,6 +1719,7 @@
     "moreOrders": "More orders",
     "skipLogin": "Skip for now",
     "loginModalTitle": "Sign in / Register",
-    "accountMenu": "Account"
+    "accountMenu": "Account",
+    "signingIn": "Signed in. Loading models…"
   }
 }

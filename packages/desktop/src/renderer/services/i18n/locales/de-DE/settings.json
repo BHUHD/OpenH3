@@ -1719,6 +1719,7 @@
     "moreOrders": "Weitere Bestellungen",
     "skipLogin": "Überspringen",
     "loginModalTitle": "Anmelden / Registrieren",
-    "accountMenu": "Konto"
+    "accountMenu": "Konto",
+    "signingIn": "Angemeldet. Modelle werden geladen…"
   }
 }

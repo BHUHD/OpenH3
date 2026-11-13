@@ -1719,6 +1719,7 @@
     "moreOrders": "Autres commandes",
     "skipLogin": "Ignorer pour l'instant",
     "loginModalTitle": "Connexion / Inscription",
-    "accountMenu": "Compte"
+    "accountMenu": "Compte",
+    "signingIn": "Connecté. Chargement des modèles…"
   }
 }

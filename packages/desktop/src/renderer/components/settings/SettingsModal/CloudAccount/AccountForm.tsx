@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from './Provider';
 
-export const AccountForm: React.FC = () => {
+export const AccountForm: React.FC<{ hideCancel?: boolean }> = ({ hideCancel = false }) => {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
   const formId = useId();
@@ -178,14 +178,16 @@ export const AccountForm: React.FC = () => {
             `settings.cloudAccount.${registration ? 'createAccount' : recovery ? 'verifyEmail' : reset ? 'savePassword' : 'login'}`
           )}
         </Button>
-        <Button
-          onClick={() => {
-            clearSecrets();
-            cloud.cancel();
-          }}
-        >
-          {t('settings.cloudAccount.cancel')}
-        </Button>
+        {!hideCancel && (
+          <Button
+            onClick={() => {
+              clearSecrets();
+              cloud.cancel();
+            }}
+          >
+            {t('settings.cloudAccount.cancel')}
+          </Button>
+        )}
       </div>
     </Form>
   );

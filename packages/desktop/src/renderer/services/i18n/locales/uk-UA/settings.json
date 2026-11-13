@@ -1734,6 +1734,7 @@
     "moreOrders": "Інші замовлення",
     "skipLogin": "Пропустити",
     "loginModalTitle": "Увійти / Зареєструватися",
-    "accountMenu": "Акаунт"
+    "accountMenu": "Акаунт",
+    "signingIn": "Вхід виконано. Завантаження моделей…"
   }
 }

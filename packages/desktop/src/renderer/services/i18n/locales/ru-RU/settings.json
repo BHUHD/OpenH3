@@ -1733,6 +1733,7 @@
     "moreOrders": "Ещё заказы",
     "skipLogin": "Пропустить",
     "loginModalTitle": "Войти / Зарегистрироваться",
-    "accountMenu": "Аккаунт"
+    "accountMenu": "Аккаунт",
+    "signingIn": "Вход выполнен. Загрузка моделей…"
   }
 }

@@ -33,7 +33,6 @@ import { useProjectExplorerColumnWidth } from '@renderer/hooks/ui/useProjectExpl
 import { useResizableSplit } from '@renderer/hooks/ui/useResizableSplit';
 import { useProjectPreviewRegionWidth } from '@renderer/hooks/ui/useProjectPreviewRegionWidth';
 import { useProjectPanelCollapse } from '@renderer/hooks/ui/useProjectPanelCollapse';
-import { useWorkProgress } from '@renderer/pages/conversation/PlanBar/workProgress';
 import { dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
 import { MIN_PREVIEW_PANEL_PX } from '@renderer/pages/conversation/utils/layoutCalc';
 import { PreviewPanel } from '@renderer/pages/conversation/Preview';
@@ -202,23 +201,12 @@ const Layout: React.FC<{
   );
   // P3: host-level collapse (project-scoped on desktop; overlay on mobile). The
   // explorer stays mounted (width 0) on collapse, so it is not remounted.
-  const { collapsed: explorerCollapsed, setCollapsed: setExplorerCollapsed } = useProjectPanelCollapse({
+  // Task progress is shown inline above the input; the project column never auto-expands for tasks.
+  const { collapsed: explorerCollapsed } = useProjectPanelCollapse({
     projectId: currentProject,
     isMobile,
     active: Boolean(currentProject),
   });
-  const workProgress = useWorkProgress(activeConversationId);
-  const workIdentity = workProgress.tasks.map((task) => task.id).join('\n');
-  useEffect(() => {
-    if (!currentProject || isMobile || !workIdentity) return;
-    try {
-      if (localStorage.getItem(`project-panel-collapse:${currentProject}`) !== 'collapsed') {
-        setExplorerCollapsed(false);
-      }
-    } catch {
-      setExplorerCollapsed(false);
-    }
-  }, [currentProject, activeConversationId, workIdentity, isMobile, setExplorerCollapsed]);
   const toggleExplorer = useCallback(() => {
     dispatchWorkspaceToggleEvent();
   }, []);

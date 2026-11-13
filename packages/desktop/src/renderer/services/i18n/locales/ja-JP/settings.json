@@ -1721,6 +1721,7 @@
     "moreOrders": "次の注文",
     "skipLogin": "スキップして使う",
     "loginModalTitle": "ログイン / 登録",
-    "accountMenu": "アカウント"
+    "accountMenu": "アカウント",
+    "signingIn": "ログイン済み。モデルを読み込み中…"
   }
 }

@@ -36,7 +36,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   siderTooltipProps,
   onThemeToggle,
   onOpenLogin,
-  onLogout,
+  onLogout: _onLogout,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   const themeLabel = theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode');
   const mobileClass = isMobile ? 'sider-footer-btn-mobile' : '';
 
-  const rowClass = `w-full !justify-start !ps-10px !pe-8px !h-34px !rd-0.5rem text-t-secondary hover:text-t-primary hover:bg-hover active:bg-active transition-colors ${mobileClass}`;
+  const rowClass = `sider-nav-entry !h-34px ${collapsed ? 'sider-nav-entry--collapsed' : '!ps-13px !pe-8px !gap-11px'} ${mobileClass}`;
 
   if (!connected) {
     return (

@@ -1719,6 +1719,7 @@
     "moreOrders": "Más pedidos",
     "skipLogin": "Omitir por ahora",
     "loginModalTitle": "Iniciar sesión / Registrarse",
-    "accountMenu": "Cuenta"
+    "accountMenu": "Cuenta",
+    "signingIn": "Sesión iniciada. Cargando modelos…"
   }
 }

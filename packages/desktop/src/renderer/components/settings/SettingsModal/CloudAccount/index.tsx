@@ -6,7 +6,7 @@ import { AccountForm } from './AccountForm';
 import { ProofForm } from './ProofForm';
 import { ConnectedPanels } from './Panels';
 
-export const CloudAccount: React.FC = () => {
+export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant = 'page' }) => {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
@@ -27,9 +27,11 @@ export const CloudAccount: React.FC = () => {
           : 'requestFailed';
   return (
     <section className='w-full max-w-720px text-t-primary' aria-label={t('settings.cloudAccount.title')}>
-      <Typography.Title heading={5} className='!mt-0'>
-        {t('settings.cloudAccount.title')}
-      </Typography.Title>
+      {variant === 'page' && (
+        <Typography.Title heading={5} className='!mt-0'>
+          {t('settings.cloudAccount.title')}
+        </Typography.Title>
+      )}
       {cloud.registered && <Alert type='success' content={t('settings.cloudAccount.registered')} className='mb-16px' />}
       {cloud.notice && (
         <Alert
@@ -51,16 +53,24 @@ export const CloudAccount: React.FC = () => {
       ) : session?.state === 'connected' ? (
         <>
           <Typography.Paragraph>{session.account.display_name || session.account.username}</Typography.Paragraph>
-          {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
-          <ConnectedPanels />
-          <Button
-            onClick={() => {
-              void cloud.run({ operation: 'logout' });
-            }}
-            loading={cloud.busy}
-          >
-            {t('settings.cloudAccount.logout')}
-          </Button>
+          {variant === 'modal' ? (
+            <div role='status' className='text-t-secondary'>
+              {t('settings.cloudAccount.signingIn')}
+            </div>
+          ) : (
+            <>
+              {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
+              <ConnectedPanels />
+              <Button
+                onClick={() => {
+                  void cloud.run({ operation: 'logout' });
+                }}
+                loading={cloud.busy}
+              >
+                {t('settings.cloudAccount.logout')}
+              </Button>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -98,7 +108,7 @@ export const CloudAccount: React.FC = () => {
                   onCancel={cloud.cancel}
                 />
               ) : (
-                <AccountForm key={cloud.revision} />
+                <AccountForm key={cloud.revision} hideCancel={variant === 'modal'} />
               )}
             </>
           ) : (
@@ -106,9 +116,11 @@ export const CloudAccount: React.FC = () => {
           )}
         </>
       )}
-      <Button className='mt-16px' size='small' type='text' onClick={cloud.reload}>
-        {t('settings.cloudAccount.refresh')}
-      </Button>
+      {variant === 'page' && (
+        <Button className='mt-16px' size='small' type='text' onClick={cloud.reload}>
+          {t('settings.cloudAccount.refresh')}
+        </Button>
+      )}
     </section>
   );
 };

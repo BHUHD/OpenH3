@@ -1720,6 +1720,7 @@
     "moreOrders": "更多订单",
     "skipLogin": "跳过，先使用",
     "loginModalTitle": "登录 / 注册",
-    "accountMenu": "账户"
+    "accountMenu": "账户",
+    "signingIn": "已登录，正在加载模型…"
   }
 }

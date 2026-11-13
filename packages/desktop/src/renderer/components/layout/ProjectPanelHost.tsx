@@ -31,19 +31,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ExplorerContainer } from '@/renderer/pages/conversation/explorer/ExplorerContainer';
 import { useCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { useCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
-import { useWorkProgress } from '@/renderer/pages/conversation/PlanBar/workProgress';
 import ConversationWorkProgress from '@/renderer/pages/conversation/PlanBar/ConversationWorkProgress';
 import WorkProgressTabs from '@/renderer/pages/conversation/PlanBar/WorkProgressTabs';
 
 /** Shares the existing project column; the Explorer remains mounted while progress is visible. */
 export function ProjectPanelContent({ projectId }: { projectId: string }) {
   const conversationId = useCurrentConversation();
-  const work = useWorkProgress(conversationId);
-  const workIdentity = work.tasks.map((task) => task.id).join('\n');
   const [progressActive, setProgressActive] = useState(false);
+  // Progress is shown inline above the input; this column only shows it when the user opens that tab.
   useEffect(() => {
-    setProgressActive(Boolean(workIdentity));
-  }, [conversationId, workIdentity]);
+    setProgressActive(false);
+  }, [conversationId]);
   return (
     <div className='h-full flex flex-col min-h-0' data-project-panel-content>
       {conversationId && (

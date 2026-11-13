@@ -1719,6 +1719,7 @@
     "moreOrders": "Diğer siparişler",
     "skipLogin": "Şimdilik atla",
     "loginModalTitle": "Giriş / Kayıt",
-    "accountMenu": "Hesap"
+    "accountMenu": "Hesap",
+    "signingIn": "Giriş yapıldı. Modeller yükleniyor…"
   }
 }

@@ -710,7 +710,7 @@ describe('work progress right-panel integration', () => {
     expect(mocks.prefill).not.toHaveBeenCalled();
   });
 
-  it('uses the existing project host, preserves the Explorer mount, and switches back to Workspace', () => {
+  it('uses the existing project host, preserves the Explorer mount, and shows progress only when the tab is opened', () => {
     setCurrentProject('p1');
     setCurrentConversation('c1');
     publishWorkProgress(
@@ -727,15 +727,18 @@ describe('work progress right-panel integration', () => {
     );
     render(<ProjectPanelHost widthPx={320} collapsed={false} />);
     expect(document.querySelectorAll('[data-project-panel-host]')).toHaveLength(1);
-    expect(screen.getByTestId('conversation-work-progress')).toBeVisible();
+    // Progress lives inline above the input; the project column only shows it on request.
     const explorer = screen.getByTestId('explorer');
+    expect(explorer).toBeVisible();
+    expect(screen.queryByTestId('conversation-work-progress')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('conversation.workProgress.title'));
+    expect(screen.getByTestId('conversation-work-progress')).toBeVisible();
+    expect(screen.getByTestId('explorer')).toBe(explorer);
     expect(explorer).not.toBeVisible();
     fireEvent.click(screen.getByText('conversation.workspace.title'));
     expect(screen.getByTestId('explorer')).toBe(explorer);
     expect(explorer).toBeVisible();
     expect(screen.queryByTestId('conversation-work-progress')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('conversation.workProgress.title'));
-    expect(screen.getByTestId('conversation-work-progress')).toBeVisible();
   });
 
   it('renders the localized task summary instead of the ComfyUI function name', () => {
@@ -827,6 +830,8 @@ describe('work progress right-panel integration', () => {
     setCurrentConversation('c1');
     publishWorkProgress('c1', projectWorkProgress([], runtime, [operation()]));
     render(<ProjectPanelHost widthPx={320} collapsed={false} />);
+    expect(screen.queryByText('Qwen-Edit')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('conversation.workProgress.title'));
     expect(screen.getByText('Qwen-Edit')).toBeInTheDocument();
     act(() => setCurrentConversation('c2'));
     expect(screen.queryByText('Qwen-Edit')).not.toBeInTheDocument();
