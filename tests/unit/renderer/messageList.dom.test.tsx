@@ -50,7 +50,15 @@ vi.mock('react-router-dom', () => ({
 }));
 
 vi.mock('@arco-design/web-react', () => ({
-  Button: ({ children }: PropsWithChildren) => <button>{children}</button>,
+  Button: ({
+    children,
+    onClick,
+    'aria-expanded': ariaExpanded,
+  }: PropsWithChildren<{ onClick?: () => void; 'aria-expanded'?: boolean }>) => (
+    <button onClick={onClick} aria-expanded={ariaExpanded}>
+      {children}
+    </button>
+  ),
   Progress: () => <div />,
   Spin: () => <span />,
   Image: {
@@ -59,7 +67,11 @@ vi.mock('@arco-design/web-react', () => ({
 }));
 
 vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
-  useConversationContextSafe: () => ({ conversation_id: 'conversation-1', type: 'aionrs' }),
+  useConversationContextSafe: () => ({
+    conversation_id: 'conversation-1',
+    type: 'aionrs',
+    creationRequest: mockCreationRequest,
+  }),
 }));
 
 vi.mock('@/renderer/pages/team/hooks/TeamPermissionContext', () => ({
@@ -67,6 +79,7 @@ vi.mock('@/renderer/pages/team/hooks/TeamPermissionContext', () => ({
 }));
 
 let mockIsProcessing = false;
+let mockCreationRequest: unknown;
 vi.mock('@/renderer/pages/conversation/runtime/useConversationRuntimeView', () => ({
   useConversationRuntimeView: () => ({ isProcessing: mockIsProcessing }),
 }));
@@ -175,6 +188,11 @@ vi.mock('@/renderer/pages/conversation/Messages/components/SelectionReplyButton'
 
 vi.mock('@icon-park/react', () => ({
   Down: () => <span>down</span>,
+  Download: () => <span>download</span>,
+  Copy: () => <span>copy</span>,
+  Refresh: () => <span>refresh</span>,
+  Picture: () => <span>picture</span>,
+  Right: () => <span>right</span>,
 }));
 
 function createTextMessage(): IMessageText {
@@ -274,6 +292,7 @@ describe('MessageList', () => {
     h3Events.mockClear();
     h3Close.mockClear();
     mockIsProcessing = false;
+    mockCreationRequest = undefined;
     parseDiffMock.mockReset();
     parseDiffMock.mockReturnValue({
       file_name: 'file.ts',
@@ -601,6 +620,42 @@ describe('MessageList', () => {
 
     expect(screen.getByTestId('acp-tool-call')).toHaveAttribute('data-message-id', completedMessage.id);
     expect(screen.queryByTestId('tool-summary')).not.toBeInTheDocument();
+  });
+
+  describe('in a creation conversation', () => {
+    beforeEach(() => {
+      // An install intent would render the installation transcript instead; 'generate' keeps the plain list.
+      mockCreationRequest = { source: 'local', intent: 'generate' };
+    });
+
+    it('collapses finished tool steps behind one summary line', () => {
+      const message = createAcpToolCall({
+        id: 'acp-read-1',
+        content: [{ type: 'content', content: { type: 'text', text: 'file contents' } }],
+      });
+
+      render(<MessageList />, {
+        wrapper: ({ children }) => <Wrapper messages={[message]}>{children}</Wrapper>,
+      });
+
+      expect(screen.queryByTestId('tool-summary')).not.toBeInTheDocument();
+      const toggle = screen.getByRole('button', { name: /noiseCollapse\.toolSteps/ });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(toggle);
+
+      expect(screen.getByTestId('tool-summary')).toHaveTextContent('acp-read-1');
+    });
+
+    it('keeps tool steps open while a tool is still running', () => {
+      const message = createAcpToolCall({ id: 'acp-run-1', status: 'in_progress' });
+
+      render(<MessageList />, {
+        wrapper: ({ children }) => <Wrapper messages={[message]}>{children}</Wrapper>,
+      });
+
+      expect(screen.getByTestId('tool-summary')).toHaveTextContent('acp-run-1');
+    });
   });
 
   it('preserves surrounding tool summaries when an ACP edit contains multiple diffs', () => {

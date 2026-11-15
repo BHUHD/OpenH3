@@ -8,6 +8,11 @@ import { creationOperationIds, h3ToolJobIds, toolResultRecords } from '@/common/
 import type { H3Job } from '@/common/chat/document/h3Job';
 import type { CreationOperation } from '@/common/chat/document/creation/operation';
 import type { CloudVideoJob } from '@/common/chat/document/creation/cloudVideo';
+import {
+  comfyJobRatio,
+  ratioFromAspect,
+  ratioFromSize,
+} from '@/renderer/pages/conversation/runtime/GenerationCard/generationRatio';
 import { useSyncExternalStore } from 'react';
 
 export type WorkStatus = 'pending' | 'running' | 'completed' | 'failed' | 'interrupted' | 'waiting' | 'cancelled';
@@ -32,6 +37,10 @@ export type WorkTask = {
   preparing?: boolean;
   diagnosis?: 'deviceInsufficient' | 'detectionIncomplete';
   generationWarning?: 'disconnected' | 'remoteUncertain';
+  /** 0-100, present only while the backend reports real progress for an active generation. */
+  progress?: number;
+  /** Requested output width / height, present when the job recorded a size. */
+  ratio?: number;
 };
 export type WorkSnapshot = { tasks: WorkTask[]; isProcessing: boolean; pendingConfirmations: number };
 export type WorkRuntime = {
@@ -40,6 +49,9 @@ export type WorkRuntime = {
   hydrated: boolean;
   activeTurnId?: string | null;
 };
+/** Spreads a numeric field only when it has a value, so tasks without it stay unchanged. */
+const withValue = <K extends string>(key: K, value: number | undefined): Partial<Record<K, number>> =>
+  value === undefined ? {} : ({ [key]: value } as Record<K, number>);
 const EMPTY: WorkSnapshot = { tasks: [], isProcessing: false, pendingConfirmations: 0 };
 const snapshots = new Map<string, WorkSnapshot>();
 const listeners = new Set<() => void>();
@@ -373,6 +385,11 @@ export function projectWorkProgress(
       title: job?.profileId ?? '',
       kind: 'generation',
       status: unavailableIds.includes(id) || job?.submissionUncertain ? 'interrupted' : status(job?.status),
+      ...withValue(
+        'progress',
+        job && ['queued', 'running'].includes(job.status) && !job.observationOnly ? job.progress : undefined
+      ),
+      ...withValue('ratio', comfyJobRatio(job)),
       detail: [job?.error, job?.diagnosis?.action].filter(Boolean).join('\n') || undefined,
     });
   }
@@ -436,6 +453,13 @@ export function projectWorkProgress(
       summaryKey: 'generateVideo',
       kind: 'generation',
       status: unavailable || job?.submissionUncertain ? 'interrupted' : status(job?.status),
+      ...withValue(
+        'progress',
+        job && ['queued', 'running'].includes(job.status) && job.progressKnown === true && job.progress > 0
+          ? Math.min(99, job.progress)
+          : undefined
+      ),
+      ...withValue('ratio', ratioFromSize(job?.width, job?.height) ?? ratioFromAspect(job?.aspectRatio)),
       generationWarning: job?.submissionUncertain
         ? 'remoteUncertain'
         : unavailable || job?.error === 'CLOUD_VIDEO_CONNECTION_RETRYING'

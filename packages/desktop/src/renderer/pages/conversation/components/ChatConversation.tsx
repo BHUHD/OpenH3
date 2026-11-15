@@ -37,6 +37,7 @@ import { isLegacyReadOnlyConversationType } from '../utils/conversationRuntime';
 import { resolveConversationBackend } from '../utils/conversationAssistantIdentity';
 import LegacyReadOnlyConversation from '../platforms/legacy/LegacyReadOnlyConversation';
 import SingleChatEmptyState from './SingleChatEmptyState';
+import CreationKindBar from './ChatLayout/CreationKindBar';
 import { useActiveLease } from '../hooks/useActiveLease';
 import ComfySessionProfile from '../runtime/Creation/ComfySessionProfile';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
@@ -234,6 +235,17 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
       ?.is_temporary_workspace,
     backend: 'aionrs' as const,
     presetAssistant: presetAssistantInfo ? { ...presetAssistantInfo, id: aionrsAssistantId } : undefined,
+    tabsSlot: (
+      <CreationKindBar
+        request={
+          (
+            conversation.extra as {
+              creation_request?: import('@/common/chat/document/creation/creation').CreationRequest;
+            }
+          ).creation_request
+        }
+      />
+    ),
   };
 
   const emptySlot = (
@@ -455,6 +467,17 @@ const ChatConversation: React.FC<{
         (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
       }
       conversation_id={conversation?.id}
+      tabsSlot={
+        <CreationKindBar
+          request={
+            (
+              conversation?.extra as {
+                creation_request?: import('@/common/chat/document/creation/creation').CreationRequest;
+              }
+            )?.creation_request
+          }
+        />
+      }
     >
       {conversation && !resolvedHideSendBox && <ComfySessionProfile conversation={conversation} />}
       {conversationNode}

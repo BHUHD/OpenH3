@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ComfyOperationResult from '@/renderer/pages/conversation/runtime/Creation/ComfyOperationResult';
 import { useWorkProgress, type WorkStatus, type WorkTask } from './workProgress';
+import GenerationQueue from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationQueue';
 import styles from './WorkProgress.module.css';
 
 const leafTasks = (tasks: WorkTask[]): WorkTask[] =>
@@ -91,6 +92,7 @@ export default function ConversationWorkProgress({ conversationId }: { conversat
             <ComfyOperationResult id={task.operationId} conversationId={conversationId} />
           )}
         </div>
+        <GenerationQueue tasks={[task]} />
       </div>
       {!!task.children?.length && <ol className={styles.subtasks}>{task.children.map(row)}</ol>}
     </li>

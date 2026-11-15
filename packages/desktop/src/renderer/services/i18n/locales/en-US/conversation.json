@@ -820,6 +820,16 @@
     "cancelHint": "Cancel ends this generation; sampling cannot resume. Stopping chat does not cancel the video task.",
     "artifactUnavailable": "The local video file is unavailable. The app checks known output folders for recovery. Confirm the original file is still present, then retry playback."
   },
+  "generationActions": {
+    "copyPrompt": "Copy prompt",
+    "regenerate": "Generate again",
+    "useAsReference": "Use as reference",
+    "referencePrompt": "Use the attached image as a reference for the next generation."
+  },
+  "noiseCollapse": {
+    "toolSteps": "Tool steps ({{count}})",
+    "fileChanges": "File changes ({{count}})"
+  },
   "workProgress": {
     "title": "Work progress",
     "panel": "Right panel",

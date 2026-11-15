@@ -820,6 +820,16 @@
     "cancelHint": "Cancel ends this generation; sampling cannot resume. Stopping chat does not cancel the video task.",
     "artifactUnavailable": "ローカル動画ファイルを読み込めません。既知の出力フォルダーから復元を試みます。元のファイルが残っていることを確認し、再生を再試行してください。"
   },
+  "generationActions": {
+    "copyPrompt": "Copy prompt",
+    "regenerate": "Generate again",
+    "useAsReference": "Use as reference",
+    "referencePrompt": "Use the attached image as a reference for the next generation."
+  },
+  "noiseCollapse": {
+    "toolSteps": "Tool steps ({{count}})",
+    "fileChanges": "File changes ({{count}})"
+  },
   "workProgress": {
     "title": "作業の進捗",
     "panel": "右パネル",

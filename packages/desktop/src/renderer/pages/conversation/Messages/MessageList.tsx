@@ -50,6 +50,8 @@ import ComfyGenerationResult, { comfyGenerationTurnResults } from '../runtime/Cr
 import CloudVideoResult, { cloudVideoTurnResults } from '../runtime/Creation/CloudVideoResult';
 import MessageToolGroup from './components/MessageToolGroup';
 import MessageToolGroupSummary from './components/MessageToolGroupSummary';
+import CollapsibleNoise from '../runtime/GenerationCard/CollapsibleNoise';
+import { hasRunningToolMessages } from '@/common/chat/normalizeToolCall';
 import MessageCronTrigger from './components/MessageCronTrigger';
 import MessageSkillSuggest from './components/MessageSkillSuggest';
 import MessageText from './components/MessageText';
@@ -730,8 +732,25 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
           className={`${rowWidthClass} min-w-0 message-item px-8px m-t-10px ${item.type}`}
           style={highlighted ? highlightStyle : undefined}
         >
-          {item.type === 'file_summary' && <MessageFileChanges diffsChanges={item.diffs} />}
-          {item.type === 'tool_summary' && <MessageToolGroupSummary messages={item.messages}></MessageToolGroupSummary>}
+          {item.type === 'file_summary' &&
+            (creationRequest ? (
+              <CollapsibleNoise label={t('conversation.noiseCollapse.fileChanges', { count: item.diffs.length })}>
+                <MessageFileChanges diffsChanges={item.diffs} />
+              </CollapsibleNoise>
+            ) : (
+              <MessageFileChanges diffsChanges={item.diffs} />
+            ))}
+          {item.type === 'tool_summary' &&
+            (creationRequest ? (
+              <CollapsibleNoise
+                label={t('conversation.noiseCollapse.toolSteps', { count: item.messages.length })}
+                forceOpen={hasRunningToolMessages(item.messages)}
+              >
+                <MessageToolGroupSummary messages={item.messages}></MessageToolGroupSummary>
+              </CollapsibleNoise>
+            ) : (
+              <MessageToolGroupSummary messages={item.messages}></MessageToolGroupSummary>
+            ))}
         </div>
       );
     }

@@ -316,7 +316,7 @@ const MessageText: React.FC<{
           })}
           style={{
             ...(isUserMessage || cronMeta
-              ? { borderRadius: '8px 0 8px 8px', color: 'var(--text-primary)' }
+              ? { borderRadius: '12px 3px 12px 12px', color: 'var(--text-primary)' }
               : isTeammateMessage
                 ? {
                     borderRadius: '0 8px 8px 8px',

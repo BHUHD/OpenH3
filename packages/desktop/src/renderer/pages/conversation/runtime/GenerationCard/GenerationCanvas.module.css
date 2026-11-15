@@ -1,0 +1,64 @@
+/* Placeholder canvas shown while a generation is queued or running. Decorative only:
+   status, progress and cancel semantics stay in the owning card. */
+.canvas {
+  --generation-ratio: 1.7778;
+  position: relative;
+  box-sizing: border-box;
+  width: calc(var(--generation-ratio) * min(420px, 52dvh));
+  max-width: 100%;
+  aspect-ratio: var(--generation-ratio);
+  overflow: hidden;
+  border: 1px solid var(--model-center-feature-border, var(--border-base));
+  border-radius: 12px;
+  background: var(--model-center-tint, var(--bg-2));
+}
+
+.sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    color-mix(in srgb, var(--model-center-accent, var(--primary)) 24%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: generation-sweep 1.8s ease-in-out infinite;
+}
+
+.track {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  height: 3px;
+  background: color-mix(in srgb, var(--model-center-accent, var(--primary)) 18%, transparent);
+}
+
+.fill {
+  height: 100%;
+  background: var(--model-center-accent, var(--primary));
+  transform-origin: left center;
+  transition: transform 200ms ease-out;
+}
+
+[dir='rtl'] .fill {
+  transform-origin: right center;
+}
+
+@keyframes generation-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sweep {
+    animation: none;
+    transform: none;
+    opacity: 0.5;
+  }
+
+  .fill {
+    transition: none;
+  }
+}

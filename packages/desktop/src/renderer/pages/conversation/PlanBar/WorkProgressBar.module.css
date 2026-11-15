@@ -1,0 +1,29 @@
+/* The bar measures its own width instead of the viewport's: split preview/project layouts
+   make the chat column narrow on wide screens. */
+.bar {
+  box-sizing: border-box;
+  width: 100%;
+  container-type: inline-size;
+}
+
+.track {
+  flex: 1 1 0;
+  min-width: 48px;
+  max-width: 200px;
+  height: 4px;
+}
+
+/* Below this content width four generation chips leave the status label under ~60px.
+   The track is visually hidden, not removed, so the progressbar role and value stay in the
+   accessibility tree; the percentage text next to it keeps showing real progress. */
+@container (max-width: 359px) {
+  .track {
+    position: absolute;
+    flex: none;
+    width: 1px;
+    height: 1px;
+    min-width: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

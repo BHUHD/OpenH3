@@ -72,14 +72,14 @@ const SingleChatEmptyState: React.FC<Props> = ({ conversation_id, assistant_name
     if (presetInfo) {
       if (presetInfo.isFallback) {
         return (
-          <span className='w-48px h-48px rounded-8px flex items-center justify-center bg-fill-2'>
-            <Robot theme='outline' size={24} />
+          <span className='w-56px h-56px rounded-12px flex items-center justify-center bg-fill-2'>
+            <Robot theme='outline' size={28} />
           </span>
         );
       }
       if (presetInfo.isEmoji) {
         return (
-          <span className='w-48px h-48px rounded-8px flex items-center justify-center text-32px leading-none bg-fill-2'>
+          <span className='w-56px h-56px rounded-12px flex items-center justify-center text-32px leading-none bg-fill-2'>
             {presetInfo.logo}
           </span>
         );
@@ -88,7 +88,7 @@ const SingleChatEmptyState: React.FC<Props> = ({ conversation_id, assistant_name
         <img
           src={presetInfo.logo}
           alt={presetInfo.name}
-          className='w-48px h-48px object-contain rounded-8px opacity-90'
+          className='w-56px h-56px object-contain rounded-12px opacity-90'
         />
       );
     }
@@ -97,19 +97,19 @@ const SingleChatEmptyState: React.FC<Props> = ({ conversation_id, assistant_name
         <img
           src={agentAvatar.value}
           alt={assistantName}
-          className='w-48px h-48px object-contain rounded-8px opacity-80'
+          className='w-56px h-56px object-contain rounded-12px opacity-80'
         />
       );
     }
     if (agentAvatar.kind === 'emoji') {
       return (
-        <span className='w-48px h-48px rounded-8px flex items-center justify-center text-32px leading-none bg-fill-2'>
+        <span className='w-56px h-56px rounded-12px flex items-center justify-center text-32px leading-none bg-fill-2'>
           {agentAvatar.value}
         </span>
       );
     }
     return (
-      <div className='w-48px h-48px rounded-full bg-fill-3 flex items-center justify-center text-20px font-medium text-t-secondary'>
+      <div className='w-56px h-56px rounded-full bg-fill-3 flex items-center justify-center text-20px font-medium text-t-secondary'>
         <Robot theme='outline' size={24} />
       </div>
     );

@@ -5,6 +5,9 @@ import type { H3Job } from '@/common/chat/document/h3Job';
 import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import { h3ToolJobIds } from '@/common/chat/document/creation/toolResults';
 import { updateH3Job, useH3Jobs } from '@/renderer/pages/conversation/runtime/Creation/useH3Jobs';
+import GenerationCanvas from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationCanvas';
+import GenerationActions from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationActions';
+import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 
 export { h3ToolJobIds } from '@/common/chat/document/creation/toolResults';
 
@@ -49,7 +52,17 @@ export function stripH3PlayerMarkup(text: string, jobIds: string[]): string {
 }
 
 /** Actual media metadata stays attached to the corresponding artifact. */
-function H3VideoArtifact({ src, filename, job }: { src: string; filename: string; job: H3Job }) {
+function H3VideoArtifact({
+  src,
+  filename,
+  job,
+  conversationId,
+}: {
+  src: string;
+  filename: string;
+  job: H3Job;
+  conversationId?: string;
+}) {
   const { t } = useTranslation();
   const [metadata, setMetadata] = useState<{ duration: number; width: number; height: number }>();
   const [unavailable, setUnavailable] = useState(false);
@@ -107,6 +120,7 @@ function H3VideoArtifact({ src, filename, job }: { src: string; filename: string
             : unknown}
         </span>
       </div>
+      <GenerationActions conversationId={conversationId} src={src} fileName={filename} prompt={job.spec?.prompt} />
     </div>
   );
 }
@@ -173,6 +187,7 @@ export function H3LiveProgress({ job, unavailable }: { job: H3Job; unavailable: 
 export function H3ToolResult({ id }: { id: string }) {
   const { t } = useTranslation();
   const { job, unavailable } = useH3Jobs([id])[0];
+  const conversationId = useConversationContextSafe()?.conversation_id;
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(false);
   const active = job?.status === 'queued' || job?.status === 'running';
@@ -208,6 +223,7 @@ export function H3ToolResult({ id }: { id: string }) {
           </Button>
         )}
       </div>
+      {active && <GenerationCanvas />}
       {active && <H3LiveProgress job={job} unavailable={unavailable} />}
       {job?.remoteUncertain && <p role='alert'>{t('conversation.h3Activity.remoteUncertain')}</p>}
       {active && job.monitor?.state === 'reconnecting' && <p>{t('conversation.h3Activity.reconnecting')}</p>}
@@ -228,6 +244,7 @@ export function H3ToolResult({ id }: { id: string }) {
               job={job}
               src={h3JobApi.resourceUrl(expected)}
               filename={artifact.filename}
+              conversationId={conversationId}
             />
           );
         })}

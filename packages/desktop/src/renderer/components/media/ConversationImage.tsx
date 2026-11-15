@@ -54,8 +54,11 @@ export default function ConversationImage({ src, alt, className }: { src: string
         />
       </Button>
       {visible && (
-        <Image.Preview
-          src={src}
+        // A one-item group of our own on purpose. A bare Image.Preview inherits the
+        // enclosing MessageList Image.PreviewGroup and reads that group's URL map,
+        // which never contains this raw <img>, so the overlay opened with an empty src.
+        <Image.PreviewGroup
+          srcList={[src]}
           visible
           imgAttributes={{ alt }}
           onVisibleChange={setVisible}

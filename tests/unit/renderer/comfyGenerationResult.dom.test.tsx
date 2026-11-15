@@ -250,7 +250,7 @@ describe('ComfyUI generation result', () => {
     });
     fireEvent.loadedMetadata(video);
     const card = screen.getByTestId('comfy-generation-result');
-    expect(card.style.width).toBe('calc(var(--comfy-media-width) + 26px)');
+    expect(card.style.width).toBe('calc(var(--comfy-media-width) + 24px)');
     expect(card.style.getPropertyValue('--comfy-media-width')).toContain(`${expectedWidth}px`);
     expect(card.style.getPropertyValue('--comfy-media-width')).toContain(`${(52 * width) / height}dvh`);
     expect(card).toHaveStyle({ maxWidth: '100%', boxSizing: 'border-box' });

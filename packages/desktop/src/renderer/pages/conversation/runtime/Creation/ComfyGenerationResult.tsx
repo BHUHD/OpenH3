@@ -1,12 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { Button, Collapse, Progress } from '@arco-design/web-react';
+import { Button, Collapse } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
 import type { ComfyGenerationJob } from '@/common/chat/document/creation/comfy';
 import { toolResultRecords } from '@/common/chat/document/creation/toolResults';
 import ConversationImage from '@/renderer/components/media/ConversationImage';
 import { useRegisterRenderedMedia } from '@/renderer/components/Markdown/RenderedMediaContext';
+import GenerationCanvas from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationCanvas';
+import { comfyJobRatio } from '@/renderer/pages/conversation/runtime/GenerationCard/generationRatio';
+import GenerationActions from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationActions';
+import { fileNameFromPath } from '@/renderer/pages/conversation/runtime/GenerationCard/downloadArtifact';
+
+const isLocalAbsolute = (filePath: string): boolean => filePath.startsWith('/') || /^[A-Za-z]:/.test(filePath);
 
 const isActive = (job: ComfyGenerationJob) => ['queued', 'running'].includes(job.status);
 type MediaMetadata = { width?: number; height?: number; duration?: number };
@@ -72,6 +78,8 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
   // Terminal attempts remain in tool history/work progress; cards show active work and deliverables.
   if (job?.status === 'failed' && !job.submissionUncertain) return null;
   const active = job && isActive(job);
+  const recordedPrompt = job?.snapshot?.parameters?.prompt ?? job?.originalInput?.prompt;
+  const prompt = typeof recordedPrompt === 'string' && recordedPrompt.trim() ? recordedPrompt : undefined;
   const diagnosticLogPath = (job as (ComfyGenerationJob & { diagnosticLogPath?: string }) | undefined)
     ?.diagnosticLogPath;
   const diagnostics = (
@@ -100,15 +108,17 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
   });
   const elapsed = job?.status === 'succeeded' ? (Date.parse(job.updatedAt) - Date.parse(job.createdAt)) / 1000 : NaN;
   const unknown = t('conversation.h3Activity.notRecorded');
+  const percent =
+    job && Number.isFinite(job.progress) ? Math.round(Math.min(100, Math.max(0, job.progress))) : undefined;
   return (
     <div
-      className='mt-12px p-12px rd-12px border border-3 space-y-8px'
+      className='mt-12px p-12px rd-12px bg-2 text-t-primary space-y-8px'
       data-testid='comfy-generation-result'
       style={
         {
           '--comfy-media-width': mediaWidths.length ? `max(${mediaWidths.join(', ')})` : undefined,
           boxSizing: 'border-box',
-          width: mediaWidths.length ? 'calc(var(--comfy-media-width) + 26px)' : 'fit-content',
+          width: mediaWidths.length ? 'calc(var(--comfy-media-width) + 24px)' : 'fit-content',
           maxWidth: '100%',
           overflowWrap: 'anywhere',
         } as React.CSSProperties
@@ -124,12 +134,28 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
               : t('conversation.h3Activity.loading')}
         </span>
         {active && !job.observationOnly && (
-          <Button size='small' loading={busy} onClick={() => void cancel()}>
-            {t('guid.comfy.generation.cancel')}
-          </Button>
+          <div className='flex items-center gap-8px shrink-0'>
+            {percent !== undefined && (
+              <span
+                role='progressbar'
+                aria-label={t('guid.comfy.generation.title')}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={percent}
+                className='text-12px text-t-secondary tabular-nums'
+              >
+                {percent}%
+              </span>
+            )}
+            <Button size='small' loading={busy} onClick={() => void cancel()}>
+              {t('guid.comfy.generation.cancel')}
+            </Button>
+          </div>
         )}
       </div>
-      {active && !job.observationOnly && <Progress percent={job.progress} />}
+      {active && (
+        <GenerationCanvas ratio={comfyJobRatio(job)} percent={job.observationOnly ? undefined : job.progress} />
+      )}
       {diagnostics}
       {job?.submissionUncertain && <p role='alert'>{t('guid.comfy.generation.submissionUncertain')}</p>}
       {job?.adjustments?.map((adjustment, index) => (
@@ -162,6 +188,13 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
               }}
             >
               <ConversationImage src={src} alt={t('guid.comfy.generation.artifact', { index: index + 1 })} />
+              <GenerationActions
+                conversationId={conversationId}
+                src={src}
+                fileName={fileNameFromPath(artifact.path)}
+                prompt={prompt}
+                referencePath={isLocalAbsolute(artifact.path) ? artifact.path : undefined}
+              />
             </div>
           );
         if (artifact.mimeType.startsWith('video/'))
@@ -193,23 +226,32 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
                   borderRadius: 8,
                 }}
               />
-              <div
-                className='mt-8px flex flex-wrap gap-x-12px gap-y-4px text-12px text-t-secondary leading-5'
-                data-testid='comfy-video-metadata'
-              >
-                <span>
-                  {t('conversation.h3Activity.qualityLabel')}{' '}
-                  {media?.width && media.height ? `${media.width} × ${media.height}` : unknown}
-                </span>
-                <span>
-                  {t('conversation.h3Activity.durationLabel')}{' '}
-                  {media?.duration ? `${Number(media.duration.toFixed(2))} s` : unknown}
-                </span>
-                <span>
-                  {Number.isFinite(elapsed) && elapsed >= 0
-                    ? t('guid.comfy.generation.elapsed', { seconds: Math.round(elapsed) })
-                    : `${t('conversation.h3Activity.elapsedLabel')} ${unknown}`}
-                </span>
+              <div className='mt-8px flex flex-wrap items-center justify-between gap-x-12px gap-y-4px'>
+                <GenerationActions
+                  inline
+                  conversationId={conversationId}
+                  src={src}
+                  fileName={fileNameFromPath(artifact.path)}
+                  prompt={prompt}
+                />
+                <div
+                  className='flex flex-wrap gap-x-12px gap-y-4px text-12px text-t-secondary leading-5 tabular-nums'
+                  data-testid='comfy-video-metadata'
+                >
+                  <span>
+                    {t('conversation.h3Activity.qualityLabel')}{' '}
+                    {media?.width && media.height ? `${media.width} × ${media.height}` : unknown}
+                  </span>
+                  <span>
+                    {t('conversation.h3Activity.durationLabel')}{' '}
+                    {media?.duration ? `${Number(media.duration.toFixed(2))} s` : unknown}
+                  </span>
+                  <span>
+                    {Number.isFinite(elapsed) && elapsed >= 0
+                      ? t('guid.comfy.generation.elapsed', { seconds: Math.round(elapsed) })
+                      : `${t('conversation.h3Activity.elapsedLabel')} ${unknown}`}
+                  </span>
+                </div>
               </div>
             </div>
           );

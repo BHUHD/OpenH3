@@ -820,6 +820,16 @@
     "cancelHint": "Cancel ends this generation; sampling cannot resume. Stopping chat does not cancel the video task.",
     "artifactUnavailable": "暫時無法讀取本機影片檔案。應用程式會從已知輸出目錄復原；請確認檔案仍在原位置，然後重試播放。"
   },
+  "generationActions": {
+    "copyPrompt": "複製提示詞",
+    "regenerate": "再來一版",
+    "useAsReference": "作為參考圖",
+    "referencePrompt": "以附帶的圖片作為參考圖進行下一次生成。"
+  },
+  "noiseCollapse": {
+    "toolSteps": "工具步驟（{{count}}）",
+    "fileChanges": "檔案變更（{{count}}）"
+  },
   "workProgress": {
     "title": "工作進度",
     "panel": "右側面板",

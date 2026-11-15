@@ -4,6 +4,9 @@ import { Alert, Progress, Spin } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
 import { toolResultRecords } from '@/common/chat/document/creation/toolResults';
+import GenerationCanvas from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationCanvas';
+import { ratioFromSize } from '@/renderer/pages/conversation/runtime/GenerationCard/generationRatio';
+import GenerationActions from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationActions';
 import { creationTurnResults } from './turnResults';
 
 export function cloudVideoJobIds(messages: Array<{ type: string; content: unknown }>): string[] {
@@ -57,7 +60,7 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
         : (job?.progress ?? 0);
   return (
     <div
-      className='mt-12px p-12px rd-12px border border-3 space-y-8px max-w-full'
+      className='mt-12px p-12px rd-12px border border-3 text-t-primary space-y-8px max-w-full'
       style={{
         boxSizing: 'border-box',
         width: job?.status === 'succeeded' ? (mediaWidth ? mediaWidth + 26 : 'fit-content') : undefined,
@@ -71,6 +74,7 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
       </div>
       {active && (
         <>
+          <GenerationCanvas ratio={ratioFromSize(width, height)} percent={known ? percent : undefined} />
           <div className='flex items-center gap-8px'>
             <Spin size={16} />
             <span>{t('guid.creation.cloudVideoSetup.background')}</span>
@@ -117,6 +121,13 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
           }}
           src={cloudVideoApi.artifactUrl(id, conversationId)}
           aria-label={t('guid.creation.cloudVideo')}
+        />
+      )}
+      {job?.status === 'succeeded' && (
+        <GenerationActions
+          conversationId={conversationId}
+          src={cloudVideoApi.artifactUrl(id, conversationId)}
+          fileName={`${id}.mp4`}
         />
       )}
     </div>

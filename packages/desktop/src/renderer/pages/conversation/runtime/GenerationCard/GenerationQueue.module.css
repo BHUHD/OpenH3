@@ -1,0 +1,75 @@
+.queue {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.determinate {
+  transform: rotate(-90deg);
+}
+
+.spin {
+  animation: queue-spin 1.2s linear infinite;
+}
+
+.ringTrack {
+  fill: none;
+  stroke: var(--bg-3);
+  stroke-width: 2;
+}
+
+.ringFill {
+  fill: none;
+  stroke: var(--model-center-accent, var(--primary));
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 200ms ease-out;
+}
+
+.thumb {
+  box-sizing: border-box;
+  border: 1px solid var(--model-center-feature-border, var(--border-base));
+  border-radius: 3px;
+  background: var(--model-center-tint, var(--bg-2));
+}
+
+.more {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes queue-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+
+  .ringFill {
+    transition: none;
+  }
+}
