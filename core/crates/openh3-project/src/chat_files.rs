@@ -81,6 +81,29 @@ impl ProjectService {
         upload_root: &Path,
         op: FileOp,
     ) -> Result<String, ProjectError> {
+        self.resolve_chat_ref(user_id, file, upload_root, op, false).await
+    }
+
+    /// Resolve a metadata target, including local directories. Content and upload
+    /// resolution keep their regular-file requirement.
+    pub async fn resolve_chat_file_metadata_ref(
+        &self,
+        user_id: &str,
+        file: &ChatFileRef,
+        upload_root: &Path,
+    ) -> Result<String, ProjectError> {
+        self.resolve_chat_ref(user_id, file, upload_root, FileOp::Read, true)
+            .await
+    }
+
+    async fn resolve_chat_ref(
+        &self,
+        user_id: &str,
+        file: &ChatFileRef,
+        upload_root: &Path,
+        op: FileOp,
+        allow_directory: bool,
+    ) -> Result<String, ProjectError> {
         match file {
             ChatFileRef::Project { pe_id, relative_path } => {
                 let resolved = self
@@ -118,10 +141,10 @@ impl ProjectService {
                 // which already exposes the whole filesystem. No managed-root
                 // restriction (that is the upload channel's D2 invariant only);
                 // just canonicalize (collapsing `..`/symlinks) and require an
-                // existing regular file.
+                // existing regular file, or a directory for metadata only.
                 let canonical = std::fs::canonicalize(path)
                     .map_err(|_| ProjectError::LocalPathNotReadable { path: path.clone() })?;
-                if !canonical.is_file() {
+                if !(canonical.is_file() || allow_directory && canonical.is_dir()) {
                     return Err(ProjectError::LocalPathNotReadable { path: path.clone() });
                 }
                 Ok(canonical.to_string_lossy().into_owned())

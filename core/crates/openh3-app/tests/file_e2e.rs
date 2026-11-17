@@ -1176,6 +1176,39 @@ async fn content_metadata_local_ref() {
     assert_eq!(j["data"]["name"], "meta.txt");
 }
 
+#[tokio::test]
+async fn content_metadata_local_directory_without_reading_it_as_a_file() {
+    let (mut app, services) = build_app().await;
+    let (token, csrf) = setup_and_login(&mut app, &services, "admin", "StrongP@ss1").await;
+    let dir = tempfile::tempdir().unwrap();
+    let folder = dir.path().join("frames");
+    std::fs::create_dir(&folder).unwrap();
+
+    let req = json_with_token(
+        "POST",
+        "/api/fs/content/metadata",
+        json!({ "file": local_ref(&folder) }),
+        &token,
+        &csrf,
+    );
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let metadata = body_json(resp).await;
+    assert_eq!(metadata["data"]["is_directory"], true);
+    assert_eq!(metadata["data"]["name"], "frames");
+
+    let req = json_with_token(
+        "POST",
+        "/api/fs/content",
+        json!({ "file": local_ref(&folder), "encoding": "utf8" }),
+        &token,
+        &csrf,
+    );
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    assert_eq!(body_json(resp).await["code"], "FILE_NOT_FOUND");
+}
+
 /// Build a `PUT /api/fs/content` request with an `If-Match` header.
 fn put_content_if_match(path: &std::path::Path, data: &str, if_match: i64, token: &str, csrf: &str) -> Request<Body> {
     let body = json!({ "file": local_ref(path), "data": data });

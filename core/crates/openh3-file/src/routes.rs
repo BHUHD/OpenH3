@@ -523,12 +523,7 @@ async fn content_metadata(
     let Json(req) = body.map_err(ApiError::from)?;
     let abs = state
         .project
-        .resolve_chat_file_ref(
-            &user.id,
-            &req.file,
-            &content_upload_root(),
-            openh3_project::FileOp::Read,
-        )
+        .resolve_chat_file_metadata_ref(&user.id, &req.file, &content_upload_root())
         .await
         .map_err(chat_file_resolve_error)?;
     let meta = state.file_service.resolved_metadata(Path::new(&abs)).await?;
@@ -1176,7 +1171,8 @@ mod tests {
             .map(|(before, _)| before)
             .expect("routes.rs has a #[cfg(test)] module");
 
-        let resolve_calls = handlers.matches(".resolve_chat_file_ref(").count();
+        let resolve_calls = handlers.matches(".resolve_chat_file_ref(").count()
+            + handlers.matches(".resolve_chat_file_metadata_ref(").count();
         let sealed = handlers.matches(".map_err(chat_file_resolve_error)?").count();
 
         assert_eq!(
