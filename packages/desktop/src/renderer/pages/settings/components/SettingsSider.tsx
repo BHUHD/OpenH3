@@ -23,6 +23,10 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
+import {
+  CloudAccountAvatar,
+  useCloudAccountIdentity,
+} from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
 export const BUILTIN_TAB_IDS = [
@@ -79,6 +83,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const { t } = useTranslation();
   const { pathname } = useLocation();
   const isDesktop = isElectronDesktop();
+  const identity = useCloudAccountIdentity();
 
   const extensionTabs = useExtensionSettingsTabs();
   const { resolveExtTabName } = useExtI18n();
@@ -88,8 +93,8 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
     const builtinMap: Record<string, SiderItem> = {
       'cloud-account': {
         id: 'cloud-account',
-        label: t('settings.cloudAccount.title'),
-        icon: <LinkCloud />,
+        label: identity.label,
+        icon: <CloudAccountAvatar size={20} />,
         path: 'cloud-account',
       },
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
@@ -204,7 +209,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
     }
 
     return { menus: result, groupHeaderAt: headerAt };
-  }, [t, isDesktop, extensionTabs, resolveExtTabName]);
+  }, [t, isDesktop, extensionTabs, resolveExtTabName, identity.label]);
 
   const siderTooltipProps = getSiderTooltipProps(tooltipEnabled);
   return (

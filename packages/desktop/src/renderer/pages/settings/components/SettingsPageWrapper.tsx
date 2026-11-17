@@ -27,6 +27,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { BUILTIN_TAB_IDS, LEGACY_ANCHOR_REMAP } from './SettingsSider';
 import './settings.css';
+import {
+  CloudAccountAvatar,
+  useCloudAccountIdentity,
+} from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 
 interface SettingsPageWrapperProps {
   children: React.ReactNode;
@@ -38,12 +42,16 @@ type NavItem = { label: string; icon: React.ReactElement; path: string; id: stri
 
 type TranslateFn = (key: string, options?: { defaultValue?: string }) => string;
 
-export function getBuiltinSettingsNavItems(isDesktop: boolean, t: TranslateFn): NavItem[] {
+export function getBuiltinSettingsNavItems(
+  isDesktop: boolean,
+  t: TranslateFn,
+  accountLabel = t('settings.cloudAccount.entry')
+): NavItem[] {
   const builtinMap: Record<string, NavItem> = {
     'cloud-account': {
       id: 'cloud-account',
-      label: t('settings.cloudAccount.title'),
-      icon: <LinkCloud />,
+      label: accountLabel,
+      icon: <CloudAccountAvatar size={20} />,
       path: 'cloud-account',
     },
     model: { id: 'model', label: t('settings.model'), icon: <LinkCloud theme='outline' size='16' />, path: 'model' },
@@ -104,13 +112,14 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const isDesktop = isElectronDesktop();
+  const identity = useCloudAccountIdentity();
 
   const extensionTabs = useExtensionSettingsTabs();
 
   const { resolveExtTabName } = useExtI18n();
 
   const menuItems = React.useMemo(() => {
-    const builtins = getBuiltinSettingsNavItems(isDesktop, t);
+    const builtins = getBuiltinSettingsNavItems(isDesktop, t, identity.label);
 
     // Insert extension tabs before system (unanchored default) or at anchor position
     const result = [...builtins];
@@ -167,7 +176,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
     }
 
     return result;
-  }, [isDesktop, t, extensionTabs, resolveExtTabName]);
+  }, [isDesktop, t, extensionTabs, resolveExtTabName, identity.label]);
 
   // Keep only horizontal padding on the scroll container — vertical padding is
   // moved to the content layer below. A sticky header inside a scroll container

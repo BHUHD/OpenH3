@@ -129,7 +129,7 @@ it('uses the same native feature in the modal and clears typed secrets on modal 
       </MemoryRouter>
     )
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'settings.cloudAccount.title' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'settings.cloudAccount.entry' }));
   const input = await screen.findByLabelText('settings.cloudAccount.password');
   fireEvent.change(input, { target: { value: 'modal-secret' } });
   view.rerender(
@@ -163,7 +163,7 @@ it('keeps cloud account discoverable and extension anchors ordered in desktop an
       )
     );
     expect(
-      screen.getByText('Before cloud').compareDocumentPosition(screen.getByText('settings.cloudAccount.title')) &
+      screen.getByText('Before cloud').compareDocumentPosition(screen.getByText('settings.cloudAccount.entry')) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(getBuiltinSettingsNavItems(desktop, (key) => key).find((item) => item.id === 'cloud-account')?.path).toBe(

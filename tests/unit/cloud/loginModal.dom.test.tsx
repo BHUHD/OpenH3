@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SWRConfig } from 'swr';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
@@ -14,6 +14,7 @@ vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/transport', (
   requestCloudAccount: f.request,
 }));
 vi.mock('@/common', () => ({ ipcBridge: {} }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@/renderer/hooks/context/AuthContext', () => ({
   useAuth: () => ({ status: 'authenticated', user: { id: 'local-user' } }),
 }));
@@ -23,6 +24,7 @@ import {
   useCloudAccount,
 } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import { useLoginModal } from '@/renderer/components/layout/LoginModal/useLoginModal';
+import LoginModal from '@/renderer/components/layout/LoginModal/LoginModal';
 
 const capabilities = {
   availability: 'available',
@@ -44,6 +46,10 @@ function wrapper({ children }: { children?: React.ReactNode }) {
 }
 
 beforeEach(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn(() => ({ matches: false, addListener: vi.fn(), removeListener: vi.fn() })),
+  });
   f.request.mockReset();
   f.request.mockImplementation(async (r: CloudAccountRequest) => ({
     success: true,
@@ -55,6 +61,31 @@ beforeEach(() => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(f.lsSetItem);
 });
 afterEach(cleanup);
+
+it('switches modal forms with clear selection, fresh secrets and focus on the first field', async () => {
+  const close = vi.fn();
+  render(<LoginModal visible onClose={close} />, { wrapper });
+  const username = await screen.findByLabelText('settings.cloudAccount.username');
+  await waitFor(() => expect(username).toHaveFocus());
+  fireEvent.change(screen.getByLabelText('settings.cloudAccount.password'), { target: { value: 'unsent-password' } });
+  const choices = within(screen.getByRole('group', { name: 'settings.cloudAccount.title' }));
+  expect(choices.getByRole('button', { name: 'settings.cloudAccount.login' })).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(choices.getByRole('button', { name: 'settings.cloudAccount.register' }));
+  expect(await screen.findByLabelText('settings.cloudAccount.confirmPassword')).toHaveValue('');
+  expect(screen.queryByDisplayValue('unsent-password')).not.toBeInTheDocument();
+  expect(choices.getByRole('button', { name: 'settings.cloudAccount.register' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  fireEvent.click(choices.getByRole('button', { name: 'settings.cloudAccount.login' }));
+  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.recovery' }));
+  await waitFor(() => expect(screen.getByLabelText('settings.cloudAccount.email')).toHaveFocus());
+  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.backToLogin' }));
+  expect(await screen.findByLabelText('settings.cloudAccount.username')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.skipLogin' }));
+  expect(close).toHaveBeenCalledOnce();
+  expect(f.request).not.toHaveBeenCalledWith(expect.objectContaining({ operation: 'login' }));
+});
 
 it('auto-opens once when available and not connected and no skip flag', async () => {
   const { result } = renderHook(() => useLoginModal(), { wrapper });

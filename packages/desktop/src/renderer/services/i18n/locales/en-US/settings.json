@@ -1502,7 +1502,7 @@
     "savePassword": "Save new password",
     "cancel": "Cancel",
     "refresh": "Refresh status",
-    "logout": "Disconnect",
+    "logout": "Sign out",
     "registered": "Account created. Sign in separately to connect.",
     "codeSent": "Code sent. Enter it before it expires.",
     "noVerifiedEmail": "Email verification is disabled. No email will be bound; email recovery may be unavailable.",
@@ -1717,8 +1717,8 @@
     "refreshOrders": "Refresh owned orders",
     "firstOrders": "First orders",
     "moreOrders": "More orders",
-    "skipLogin": "Skip for now",
-    "loginModalTitle": "Sign in / Register",
+    "skipLogin": "Skip sign-in",
+    "loginModalTitle": "Sign in to OpenH3",
     "accountMenu": "Account",
     "signingIn": "Signed in. Loading models…",
     "overviewTab": "Overview",
@@ -1740,6 +1740,11 @@
     "connectedNotice": "Signed in · Official models use this account",
     "tokenPriceUnit": "USD per million tokens",
     "requestPriceUnit": "USD per request",
-    "dynamicPriceUnit": "USD according to server billing rules"
+    "dynamicPriceUnit": "USD according to server billing rules",
+    "loginModalDescription": "Access official models and manage your balance and usage.",
+    "backToLogin": "Back to sign in",
+    "registrationEmailNote": "Email is not linked at registration. Keep your password safe.",
+    "mine": "My account",
+    "balanceShortcut": "Balance"
   }
 }

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Spin, Typography } from '@arco-design/web-react';
+import { ArrowLeft } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useCloudAccount } from './Provider';
 import { AccountForm } from './AccountForm';
 import { ProofForm } from './ProofForm';
 import { ConnectedPanels } from './Panels';
+import { CloudAccountAvatar } from './Identity';
 
 export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant = 'page' }) => {
   const cloud = useCloudAccount();
@@ -27,9 +29,9 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           : 'requestFailed';
   return (
     <section className='w-full max-w-720px text-t-primary' aria-label={t('settings.cloudAccount.title')}>
-      {variant === 'page' && (
+      {variant === 'page' && session?.state !== 'connected' && (
         <Typography.Title heading={5} className='!mt-0'>
-          {t('settings.cloudAccount.title')}
+          {t('settings.cloudAccount.entry')}
         </Typography.Title>
       )}
       {cloud.registered && session?.state !== 'connected' && (
@@ -55,9 +57,12 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
       ) : session?.state === 'connected' ? (
         <>
           <div className='flex flex-wrap items-center justify-between gap-12px'>
-            <div>
-              <div className='text-18px font-600'>{session.account.display_name || session.account.username}</div>
-              <div className='text-12px text-t-secondary mt-4px'>{t('settings.cloudAccount.connectedNotice')}</div>
+            <div className='flex items-center gap-12px'>
+              <CloudAccountAvatar size={44} />
+              <div>
+                <div className='text-18px font-600'>{session.account.display_name || session.account.username}</div>
+                <div className='text-12px text-t-secondary mt-4px'>{t('settings.cloudAccount.connectedNotice')}</div>
+              </div>
             </div>
             {variant === 'page' && (
               <Button
@@ -91,21 +96,51 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           )}
           {cloud.capabilities ? (
             <>
-              <div className='flex flex-wrap gap-8px mb-16px'>
-                {cloud.view !== 'login' && (
-                  <Button size='small' type='text' onClick={() => cloud.switchView('login')}>
-                    {t('settings.cloudAccount.login')}
+              {variant === 'modal' ? (
+                cloud.view === 'login' || cloud.view === 'register' ? (
+                  <div data-account-navigation='switch' role='group' aria-label={t('settings.cloudAccount.title')}>
+                    {(['login', 'register'] as const).map((view) => (
+                      <Button
+                        key={view}
+                        type='text'
+                        aria-pressed={cloud.view === view}
+                        onClick={() => {
+                          if (cloud.view !== view) cloud.switchView(view);
+                        }}
+                      >
+                        {t(`settings.cloudAccount.${view}`)}
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <div data-account-navigation='back'>
+                    <Button
+                      type='text'
+                      size='small'
+                      icon={<ArrowLeft size={14} />}
+                      onClick={() => cloud.switchView('login')}
+                    >
+                      {t('settings.cloudAccount.backToLogin')}
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className='flex flex-wrap gap-8px mb-16px'>
+                  {cloud.view !== 'login' && (
+                    <Button size='small' type='text' onClick={() => cloud.switchView('login')}>
+                      {t('settings.cloudAccount.login')}
+                    </Button>
+                  )}
+                  {!cloud.registered && cloud.view !== 'register' && (
+                    <Button size='small' type='text' onClick={() => cloud.switchView('register')}>
+                      {t('settings.cloudAccount.register')}
+                    </Button>
+                  )}
+                  <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
+                    {t('settings.cloudAccount.recovery')}
                   </Button>
-                )}
-                {!cloud.registered && cloud.view !== 'register' && (
-                  <Button size='small' type='text' onClick={() => cloud.switchView('register')}>
-                    {t('settings.cloudAccount.register')}
-                  </Button>
-                )}
-                <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
-                  {t('settings.cloudAccount.recovery')}
-                </Button>
-              </div>
+                </div>
+              )}
               {cloud.view === 'proof' && cloud.challenge ? (
                 <ProofForm
                   key={`${cloud.revision}:${cloud.challenge.challenge_id}`}
@@ -117,7 +152,14 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
                   onCancel={cloud.cancel}
                 />
               ) : (
-                <AccountForm key={cloud.revision} hideCancel={variant === 'modal'} />
+                <AccountForm key={cloud.revision} hideCancel={variant === 'modal'} compact={variant === 'modal'} />
+              )}
+              {variant === 'modal' && cloud.view === 'login' && (
+                <div data-account-recovery>
+                  <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
+                    {t('settings.cloudAccount.recovery')}
+                  </Button>
+                </div>
               )}
             </>
           ) : (

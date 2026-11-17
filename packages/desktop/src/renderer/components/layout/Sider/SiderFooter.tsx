@@ -13,7 +13,7 @@ import {
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { useTranslation } from 'react-i18next';
 import { Button, Tooltip } from '@arco-design/web-react';
-import { ArrowCircleLeft, CloseOne, Download, SettingTwo } from '@icon-park/react';
+import { ArrowCircleLeft, CloseOne, Download } from '@icon-park/react';
 import classNames from 'classnames';
 import { iconColors } from '@renderer/styles/colors';
 import type { SiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
@@ -37,10 +37,10 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
   isMobile,
   isSettings,
   collapsed = false,
-  theme,
+  theme: _theme,
   siderTooltipProps,
   onSettingsClick,
-  onThemeToggle,
+  onThemeToggle: _onThemeToggle,
   showLogout = false,
   onLogoutClick,
   onOpenLogin,
@@ -63,16 +63,8 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
             ? t('update.sidebarRetry')
             : t('update.sidebarAvailable');
 
-  const settingsIcon = isSettings ? (
+  const settingsIcon = (
     <ArrowCircleLeft
-      theme='outline'
-      size='16'
-      fill='currentColor'
-      className='block leading-none'
-      style={{ lineHeight: 0 }}
-    />
-  ) : (
-    <SettingTwo
       theme='outline'
       size='16'
       fill='currentColor'
@@ -91,30 +83,36 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
           <AccountMenu
             collapsed={collapsed}
             isMobile={isMobile}
-            theme={theme}
             siderTooltipProps={siderTooltipProps}
-            onThemeToggle={onThemeToggle}
             onOpenLogin={onOpenLogin}
-            onLogout={onLogoutClick}
+            onOpenSettings={onSettingsClick}
           />
         </div>
-        <Tooltip {...siderTooltipProps} content={isSettings ? t('common.back') : t('common.settings')} position='right'>
-          <Button
-            type='text'
-            aria-label={isSettings ? t('common.back') : t('common.settings')}
-            aria-pressed={isSettings}
-            onClick={onSettingsClick}
-            className={classNames(
-              '!h-34px !w-34px !p-0 shrink-0 !rd-0.5rem !flex items-center justify-center transition-colors',
-              isMobile && 'sider-footer-btn-mobile',
-              {
-                '!bg-active !text-primary': isSettings,
-                '!text-t-secondary hover:!text-t-primary hover:!bg-hover active:!bg-active': !isSettings,
-              }
-            )}
-            icon={settingsIcon}
+        {isSettings ? (
+          <Tooltip {...siderTooltipProps} content={t('common.back')} position='right'>
+            <Button
+              type='text'
+              aria-label={t('common.back')}
+              aria-pressed
+              onClick={onSettingsClick}
+              className={classNames(
+                '!h-34px !w-34px !p-0 shrink-0 !rd-0.5rem !flex items-center justify-center transition-colors',
+                isMobile && 'sider-footer-btn-mobile',
+                '!bg-active !text-primary'
+              )}
+              icon={settingsIcon}
+            />
+          </Tooltip>
+        ) : (
+          <AccountMenu
+            collapsed={collapsed}
+            isMobile={isMobile}
+            siderTooltipProps={siderTooltipProps}
+            onOpenLogin={onOpenLogin}
+            onOpenSettings={onSettingsClick}
+            trigger='settings'
           />
-        </Tooltip>
+        )}
         {showUpdate && (
           <Tooltip
             className={siderTooltipProps.className}

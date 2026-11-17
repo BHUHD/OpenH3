@@ -1505,7 +1505,7 @@
     "savePassword": "Salvar nova senha",
     "cancel": "Cancelar",
     "refresh": "Atualizar estado",
-    "logout": "Desconectar",
+    "logout": "Sair",
     "registered": "Conta criada. Entre separadamente para conectar.",
     "codeSent": "Código enviado. Digite-o antes de expirar.",
     "noVerifiedEmail": "A verificação de e-mail está desativada. Nenhum e-mail será vinculado; a recuperação por e-mail pode não estar disponível.",
@@ -1720,8 +1720,8 @@
     "refreshOrders": "Atualizar meus pedidos",
     "firstOrders": "Primeiros pedidos",
     "moreOrders": "Mais pedidos",
-    "skipLogin": "Pular por ora",
-    "loginModalTitle": "Entrar / Registrar",
+    "skipLogin": "Pular login",
+    "loginModalTitle": "Entrar no OpenH3",
     "accountMenu": "Conta",
     "signingIn": "Conectado. Carregando modelos…",
     "overviewTab": "Visão geral",
@@ -1743,6 +1743,11 @@
     "connectedNotice": "Conectado · Os modelos oficiais usam esta conta",
     "tokenPriceUnit": "USD por milhão de tokens",
     "requestPriceUnit": "USD por solicitação",
-    "dynamicPriceUnit": "USD conforme as regras de cobrança do serviço"
+    "dynamicPriceUnit": "USD conforme as regras de cobrança do serviço",
+    "loginModalDescription": "Acesse modelos oficiais e gerencie seu saldo e consumo.",
+    "backToLogin": "Voltar para o login",
+    "registrationEmailNote": "Nenhum e-mail é vinculado no cadastro. Guarde sua senha com segurança.",
+    "mine": "Minha conta",
+    "balanceShortcut": "Saldo"
   }
 }

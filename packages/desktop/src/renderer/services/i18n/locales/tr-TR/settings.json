@@ -1502,7 +1502,7 @@
     "savePassword": "Yeni parolayı kaydet",
     "cancel": "İptal",
     "refresh": "Durumu yenile",
-    "logout": "Bağlantıyı kes",
+    "logout": "Çıkış yap",
     "registered": "Hesap oluşturuldu. Bağlanmak için ayrıca giriş yapın.",
     "codeSent": "Kod gönderildi. Süresi dolmadan girin.",
     "noVerifiedEmail": "E-posta doğrulaması kapalı. E-posta bağlanmayacak; e-postayla kurtarma kullanılamayabilir.",
@@ -1717,8 +1717,8 @@
     "refreshOrders": "Kendi siparişlerimi yenile",
     "firstOrders": "İlk siparişler",
     "moreOrders": "Diğer siparişler",
-    "skipLogin": "Şimdilik atla",
-    "loginModalTitle": "Giriş / Kayıt",
+    "skipLogin": "Girişi atla",
+    "loginModalTitle": "OpenH3 oturumu açın",
     "accountMenu": "Hesap",
     "signingIn": "Giriş yapıldı. Modeller yükleniyor…",
     "overviewTab": "Genel bakış",
@@ -1740,6 +1740,11 @@
     "connectedNotice": "Oturum açık · Resmî modeller bu hesabı kullanır",
     "tokenPriceUnit": "Milyon token başına USD",
     "requestPriceUnit": "İstek başına USD",
-    "dynamicPriceUnit": "Hizmetin faturalandırma kurallarına göre USD"
+    "dynamicPriceUnit": "Hizmetin faturalandırma kurallarına göre USD",
+    "loginModalDescription": "Resmî modelleri kullanın, bakiyenizi ve kullanımınızı yönetin.",
+    "backToLogin": "Oturum açmaya dön",
+    "registrationEmailNote": "Kayıtta e-posta bağlanmaz. Parolanızı güvenli bir yerde saklayın.",
+    "mine": "Hesabım",
+    "balanceShortcut": "Bakiye"
   }
 }

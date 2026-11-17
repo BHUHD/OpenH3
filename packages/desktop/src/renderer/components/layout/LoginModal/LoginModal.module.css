@@ -1,0 +1,362 @@
+.modal {
+  /* Arco's centered wrapper otherwise forces inline-block on every dialog. */
+  display: inline-flex !important;
+  flex-direction: column;
+  height: 654px;
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  background: var(--bg-base);
+  text-align: start;
+  box-shadow:
+    0 24px 80px color-mix(in srgb, var(--color-mask-bg) 45%, transparent),
+    0 4px 16px color-mix(in srgb, var(--color-mask-bg) 12%, transparent);
+}
+
+.modal > :global([data-focus-lock-disabled]) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.modal :global(.arco-modal-header) {
+  height: 196px;
+  min-height: 196px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 36px 32px 24px;
+  border: 0;
+}
+
+.modal :global(.arco-modal-content) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 32px 28px;
+}
+
+:global(body[arco-theme='dark']) .modal :global(.arco-modal-content) {
+  border: 0 !important;
+}
+
+.modal :global(.arco-modal-footer) {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-1);
+  text-align: center;
+}
+
+.modal :global(.arco-modal-close-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 16px;
+  right: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  line-height: 0;
+  transition: background-color 160ms ease;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 20px;
+  border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border-light));
+  border-radius: 20px;
+  background: linear-gradient(145deg, var(--bg-base), var(--bg-2));
+  color: var(--primary);
+  box-shadow: 0 3px 8px color-mix(in srgb, var(--color-mask-bg) 10%, transparent);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+}
+
+.description {
+  max-width: 300px;
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.65;
+  text-wrap: balance;
+}
+
+.body [data-account-navigation='switch'] {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.body > section {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.body [data-account-navigation='switch'] :global(.arco-btn) {
+  flex: 1;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.body [data-account-navigation='switch'] [aria-pressed='true'] {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.body [data-account-navigation='back'] {
+  margin-bottom: 20px;
+}
+
+.body :global(.arco-form-item) {
+  margin-bottom: 12px;
+}
+
+.body :global(form[data-account-form='modal']) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.body :global(form[data-account-form='modal'] > div:last-child) {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.body :global(.arco-form-label-item) {
+  padding-bottom: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.body :global(.arco-input),
+.body :global(.arco-input-inner-wrapper),
+.body :global(.arco-select-view) {
+  min-height: 46px;
+  border: 1px solid var(--border-base);
+  border-radius: 10px;
+  background: var(--bg-1);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
+}
+
+.body :global(.arco-input-inner-wrapper .arco-input) {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.body :global(.arco-input:focus),
+.body :global(.arco-input-inner-wrapper:focus-within) {
+  border-color: var(--primary);
+  background: var(--bg-base);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 13%, transparent);
+}
+
+.body :global(.arco-input-inner-wrapper .arco-input:focus) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.body :global(.arco-alert) {
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.body :global(.arco-checkbox) {
+  align-items: flex-start;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.body :global(.arco-checkbox-mask) {
+  margin-top: 2px;
+  border-radius: 4px;
+}
+
+.body :global(.arco-btn[type='submit']) {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.body [data-account-recovery] {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.body :global(.arco-btn),
+.skip {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 100ms ease;
+}
+
+.body :global(.arco-btn:active:not(:disabled)),
+.skip:active {
+  transform: scale(0.98);
+}
+
+.modal :global(.arco-btn:focus-visible),
+.modal :global(.arco-modal-close-icon:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.skip:global(.arco-btn) {
+  min-height: 32px;
+  padding: 0 20px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.registration :global(.arco-modal-header) {
+  height: 196px;
+  min-height: 196px;
+  padding: 24px 32px;
+}
+
+.registration .avatar {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 0;
+  border-radius: 15px;
+}
+
+.registration .heading {
+  flex-direction: row;
+  justify-content: center;
+  gap: 12px;
+}
+
+.registration .title {
+  font-size: 23px;
+}
+
+.registration [data-account-navigation='switch'] {
+  margin-bottom: 24px;
+}
+
+.registration :global(.arco-form-label-item) {
+  margin-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.registration :global(.arco-modal-content) {
+  padding-bottom: 20px;
+}
+
+.body [data-account-registration-note] {
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 480px), (max-height: 680px) {
+  .modal {
+    max-height: calc(100dvh - 24px);
+    border-radius: 20px;
+  }
+
+  .modal :global(.arco-modal-header) {
+    padding: 24px 24px 20px;
+  }
+
+  .modal :global(.arco-modal-content) {
+    padding: 0 24px 24px;
+  }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+  }
+
+  .title {
+    font-size: 23px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapper .modal {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .body :global(.arco-btn),
+  .body :global(.arco-btn:active:not(:disabled)),
+  .body :global(.arco-input),
+  .body :global(.arco-input-inner-wrapper),
+  .body :global(.arco-select-view),
+  .skip,
+  .skip:active {
+    transition: none;
+    transform: none;
+  }
+}

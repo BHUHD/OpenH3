@@ -1504,7 +1504,7 @@
     "savePassword": "새 비밀번호 저장",
     "cancel": "취소",
     "refresh": "상태 새로 고침",
-    "logout": "연결 해제",
+    "logout": "로그아웃",
     "registered": "계정을 만들었습니다. 연결하려면 별도로 로그인하세요.",
     "codeSent": "코드를 보냈습니다. 만료 전에 입력하세요.",
     "noVerifiedEmail": "이메일 인증이 꺼져 있습니다. 이메일이 연결되지 않으며 이메일 복구를 사용할 수 없을 수 있습니다.",
@@ -1719,8 +1719,8 @@
     "refreshOrders": "내 주문 새로 고침",
     "firstOrders": "첫 주문",
     "moreOrders": "더 많은 주문",
-    "skipLogin": "건너뛰기",
-    "loginModalTitle": "로그인 / 등록",
+    "skipLogin": "로그인 건너뛰기",
+    "loginModalTitle": "OpenH3 로그인",
     "accountMenu": "계정",
     "signingIn": "로그인됨. 모델을 불러오는 중…",
     "overviewTab": "개요",
@@ -1742,6 +1742,11 @@
     "connectedNotice": "로그인됨 · 공식 모델은 이 계정을 사용합니다",
     "tokenPriceUnit": "백만 토큰당 USD",
     "requestPriceUnit": "요청당 USD",
-    "dynamicPriceUnit": "서버 청구 규칙에 따른 USD"
+    "dynamicPriceUnit": "서버 청구 규칙에 따른 USD",
+    "loginModalDescription": "공식 모델을 이용하고 잔액과 사용 내역을 관리하세요.",
+    "backToLogin": "로그인으로 돌아가기",
+    "registrationEmailNote": "가입 시 이메일이 연결되지 않습니다. 비밀번호를 안전하게 보관하세요.",
+    "mine": "내 계정",
+    "balanceShortcut": "잔액"
   }
 }

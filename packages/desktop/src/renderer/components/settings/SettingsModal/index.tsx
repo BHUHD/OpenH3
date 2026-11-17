@@ -5,6 +5,7 @@
  */
 
 import CloudAccount from './CloudAccount';
+import { CloudAccountAvatar, useCloudAccountIdentity } from './CloudAccount/Identity';
 
 import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
 import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
@@ -136,6 +137,7 @@ export const SubModal: React.FC<SubModalProps> = ({ visible, onCancel, title, ch
  */
 const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaultTab = 'model' }) => {
   const { t } = useTranslation();
+  const identity = useCloudAccountIdentity();
   const [activeTab, setActiveTab] = useState<SettingTab>(defaultTab);
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -197,8 +199,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
     const builtinItems: MenuItem[] = [
       {
         key: 'cloud-account',
-        label: t('settings.cloudAccount.title'),
-        icon: <LinkCloud theme='outline' size='20' fill={iconColors.secondary} />,
+        label: identity.label,
+        icon: <CloudAccountAvatar size={24} />,
       },
       {
         key: 'model',
@@ -284,7 +286,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
     }
 
     return builtinItems;
-  }, [t, isDesktop, extensionTabs, resolveExtTabName]);
+  }, [t, isDesktop, extensionTabs, resolveExtTabName, identity.label]);
 
   // Track which extension tabs have been visited (lazy mount + keep-alive)
   const [mountedExtTabs, setMountedExtTabs] = useState<Set<string>>(new Set());

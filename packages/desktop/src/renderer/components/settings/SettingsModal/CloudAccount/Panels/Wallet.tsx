@@ -96,6 +96,7 @@ export const Panel: React.FC<React.PropsWithChildren<{ title: string }>> = ({ ti
   const { t } = useTranslation();
   return (
     <section
+      data-cloud-panel={title}
       aria-label={t(`settings.cloudAccount.${title}`)}
       className='border border-solid border-[var(--color-border-2)] rd-8px p-12px flex flex-col gap-8px min-w-0'
     >

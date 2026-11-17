@@ -6,131 +6,114 @@
 
 import React from 'react';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
-import { Comment, LinkCloud, Logout, Moon, SunOne } from '@icon-park/react';
+import { User, Logout, SettingTwo, Wallet } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
-import { useFeedback } from '@/renderer/hooks/context/FeedbackContext';
-import { resolveFeedbackModule } from '@/renderer/services/feedback/resolveFeedbackModule';
+import {
+  CloudAccountAvatar,
+  useCloudAccountIdentity,
+} from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 import type { SiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
 
 type AccountMenuProps = {
   collapsed: boolean;
   isMobile: boolean;
-  theme: string;
   siderTooltipProps: SiderTooltipProps;
-  onThemeToggle: () => void;
   onOpenLogin: () => void;
-  onLogout?: () => void;
+  onOpenSettings?: () => void;
+  trigger?: 'account' | 'settings';
 };
 
-/** Sidebar footer account control.
- * - Not connected: shows a 「登录」 button that opens the LoginModal.
- * - Connected: shows username in a dropdown with account, theme, feedback, logout items.
- * - Collapsed: icon-only, tooltip shows username.
- */
+/** Account identity and gear share the same account shortcuts and session. */
 const AccountMenu: React.FC<AccountMenuProps> = ({
   collapsed,
   isMobile,
-  theme,
   siderTooltipProps,
-  onThemeToggle,
   onOpenLogin,
-  onLogout: _onLogout,
+  onOpenSettings,
+  trigger = 'account',
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const cloud = useOptionalCloudAccount();
-  const { openFeedback } = useFeedback();
-  const connected = cloud?.session?.state === 'connected';
-  const account = connected && cloud?.session?.state === 'connected' ? cloud.session.account : undefined;
-  const displayName = account?.display_name ?? account?.username;
-  const themeLabel = theme === 'dark' ? t('settings.lightMode') : t('settings.darkMode');
-  const mobileClass = isMobile ? 'sider-footer-btn-mobile' : '';
-
-  const rowClass = `sider-nav-entry !h-34px ${collapsed ? 'sider-nav-entry--collapsed' : '!ps-13px !pe-8px !gap-11px'} ${mobileClass}`;
-
-  if (!connected) {
-    return (
-      <Tooltip {...siderTooltipProps} content={t('settings.cloudAccount.entry')} position='right'>
-        <Button
-          type='text'
-          icon={<LinkCloud size={16} />}
-          aria-label={t('settings.cloudAccount.entry')}
-          className={rowClass}
-          onClick={onOpenLogin}
-        >
-          {!collapsed && <span className='truncate text-14px font-[500]'>{t('settings.cloudAccount.entry')}</span>}
-        </Button>
-      </Tooltip>
-    );
-  }
-
+  const { account, label } = useCloudAccountIdentity();
+  const settingsTrigger = trigger === 'settings';
+  const triggerLabel = settingsTrigger ? t('common.settings') : label;
+  const rowClass = `sider-nav-entry !h-34px ${collapsed ? 'sider-nav-entry--collapsed' : '!ps-11px !pe-8px !gap-9px'} ${isMobile ? 'sider-footer-btn-mobile' : ''}`;
+  const button = (
+    <Button
+      type='text'
+      aria-label={triggerLabel}
+      aria-haspopup={account || settingsTrigger ? 'menu' : undefined}
+      className={
+        settingsTrigger
+          ? `!h-34px !w-34px !p-0 shrink-0 !rd-0.5rem !flex items-center justify-center text-t-secondary hover:text-t-primary hover:bg-hover active:bg-active ${isMobile ? 'sider-footer-btn-mobile' : ''}`
+          : rowClass
+      }
+      icon={settingsTrigger ? <SettingTwo size={16} /> : account ? <CloudAccountAvatar /> : <User size={16} />}
+      onClick={!account && !settingsTrigger ? onOpenLogin : undefined}
+    >
+      {!collapsed && !settingsTrigger && <span className='truncate text-14px font-[500]'>{label}</span>}
+    </Button>
+  );
   const menu = (
     <Menu
+      style={{ minWidth: 184, padding: 6, borderRadius: 12 }}
       onClickMenuItem={(key) => {
-        if (key === 'account') void navigate('/settings/cloud-account');
-        if (key === 'theme') onThemeToggle();
-        if (key === 'feedback')
-          void openFeedback({ autoScreenshot: true, module: resolveFeedbackModule(location.pathname) });
-        // Cloud logout: call directly on the cloud context rather than delegating
-        // to the footer's onLogout prop, which routes to WebUI auth logout instead.
+        if (key === 'account') {
+          if (account) void navigate('/settings/cloud-account');
+          else onOpenLogin();
+        }
+        if (key === 'balance') void navigate('/settings/cloud-account?view=balance');
         if (key === 'logout') void cloud?.run({ operation: 'logout' });
+        if (key === 'settings') {
+          if (onOpenSettings) onOpenSettings();
+          else void navigate('/settings/agent');
+        }
       }}
     >
       <Menu.Item key='account'>
-        <span className='flex items-center gap-8px'>
-          <LinkCloud size={14} />
-          {t('settings.cloudAccount.accountMenu')}
+        <span className='flex items-center gap-10px'>
+          <User size={16} />
+          {t(account ? 'settings.cloudAccount.mine' : 'settings.cloudAccount.entry')}
         </span>
       </Menu.Item>
-      <Menu.Item key='theme'>
-        <span className='flex items-center gap-8px'>
-          {theme === 'dark' ? <SunOne size={14} /> : <Moon size={14} />}
-          {themeLabel}
-        </span>
-      </Menu.Item>
-      <Menu.Item key='feedback'>
-        <span className='flex items-center gap-8px'>
-          <Comment size={14} />
-          {t('conversation.welcome.quickActionFeedback', { defaultValue: 'Feedback' })}
-        </span>
-      </Menu.Item>
+      {account && (
+        <Menu.Item key='balance'>
+          <span className='flex items-center gap-10px'>
+            <Wallet size={16} />
+            {t('settings.cloudAccount.balanceShortcut')}
+          </span>
+        </Menu.Item>
+      )}
+      {account && (
+        <Menu.Item key='logout' disabled={cloud?.busy}>
+          <span className='flex items-center gap-10px text-t-secondary'>
+            <Logout size={16} />
+            {t('settings.cloudAccount.logout')}
+          </span>
+        </Menu.Item>
+      )}
       <div className='h-1px bg-[var(--color-border-2)] my-4px mx-4px' aria-hidden='true' />
-      <Menu.Item key='logout'>
-        <span className='flex items-center gap-8px text-danger'>
-          <Logout size={14} />
-          {t('settings.cloudAccount.logout')}
+      <Menu.Item key='settings'>
+        <span className='flex items-center gap-10px'>
+          <SettingTwo size={16} />
+          {t('common.settings')}
         </span>
       </Menu.Item>
     </Menu>
   );
-
-  const label = displayName ?? t('settings.cloudAccount.accountMenu');
-
-  if (collapsed) {
-    return (
-      <Tooltip {...siderTooltipProps} content={label} position='right'>
-        <Dropdown droplist={menu} position='tr' trigger='click'>
-          <Button
-            type='text'
-            shape='circle'
-            aria-label={label}
-            className='!w-34px !h-34px !p-0 !rd-0.5rem text-t-secondary hover:text-t-primary hover:bg-hover active:bg-active transition-colors'
-            icon={<LinkCloud size={16} />}
-          />
-        </Dropdown>
-      </Tooltip>
-    );
-  }
-
   return (
-    <Dropdown droplist={menu} position='tr' trigger='click'>
-      <Button type='text' icon={<LinkCloud size={16} />} aria-label={label} className={rowClass}>
-        <span className='truncate text-14px font-[500]'>{label}</span>
-      </Button>
-    </Dropdown>
+    <Tooltip {...siderTooltipProps} content={triggerLabel} position='right'>
+      {account || settingsTrigger ? (
+        <Dropdown droplist={menu} position='tr' trigger='click' unmountOnExit>
+          {button}
+        </Dropdown>
+      ) : (
+        button
+      )}
+    </Tooltip>
   );
 };
 

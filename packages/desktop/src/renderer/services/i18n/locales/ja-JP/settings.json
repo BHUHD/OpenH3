@@ -1504,7 +1504,7 @@
     "savePassword": "新しいパスワードを保存",
     "cancel": "キャンセル",
     "refresh": "状態を更新",
-    "logout": "接続を解除",
+    "logout": "ログアウト",
     "registered": "アカウントを作成しました。接続するには別途ログインしてください。",
     "codeSent": "コードを送信しました。有効期限内に入力してください。",
     "noVerifiedEmail": "メール認証は無効です。メールは登録されず、メールによる復旧が利用できない場合があります。",
@@ -1719,8 +1719,8 @@
     "refreshOrders": "自分の注文を更新",
     "firstOrders": "最初の注文",
     "moreOrders": "次の注文",
-    "skipLogin": "スキップして使う",
-    "loginModalTitle": "ログイン / 登録",
+    "skipLogin": "ログインをスキップ",
+    "loginModalTitle": "OpenH3 にログイン",
     "accountMenu": "アカウント",
     "signingIn": "ログイン済み。モデルを読み込み中…",
     "overviewTab": "概要",
@@ -1742,6 +1742,11 @@
     "connectedNotice": "ログイン済み · 公式モデルはこのアカウントを使用します",
     "tokenPriceUnit": "USD / 100万トークン",
     "requestPriceUnit": "USD / リクエスト",
-    "dynamicPriceUnit": "サーバーの課金ルールに基づくUSD"
+    "dynamicPriceUnit": "サーバーの課金ルールに基づくUSD",
+    "loginModalDescription": "公式モデルを利用し、残高と利用履歴を管理できます。",
+    "backToLogin": "ログインに戻る",
+    "registrationEmailNote": "登録時にメールは紐付けられません。パスワードを大切に保管してください。",
+    "mine": "マイアカウント",
+    "balanceShortcut": "残高"
   }
 }

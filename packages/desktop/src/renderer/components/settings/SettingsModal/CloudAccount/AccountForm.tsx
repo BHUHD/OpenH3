@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from './Provider';
 
-export const AccountForm: React.FC<{ hideCancel?: boolean }> = ({ hideCancel = false }) => {
+export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> = ({
+  hideCancel = false,
+  compact = false,
+}) => {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
   const formId = useId();
@@ -121,7 +124,7 @@ export const AccountForm: React.FC<{ hideCancel?: boolean }> = ({ hideCancel = f
     </Form.Item>
   );
   return (
-    <Form layout='vertical' onSubmit={submit}>
+    <Form layout='vertical' onSubmit={submit} data-account-form={compact ? 'modal' : undefined}>
       {!enabled && <Alert type='warning' content={t('settings.cloudAccount.unsupported')} className='mb-16px' />}
       {expired && <Alert type='warning' content={t('settings.cloudAccount.expired')} className='mb-16px' />}
       {invalid && <Alert type='error' content={t('settings.cloudAccount.invalid')} className='mb-16px' />}
@@ -150,7 +153,7 @@ export const AccountForm: React.FC<{ hideCancel?: boolean }> = ({ hideCancel = f
           {field('emailCode', code, setCode)}
         </>
       )}
-      {registration && !verifiedEmail && (
+      {registration && !verifiedEmail && !compact && (
         <Alert type='info' content={t('settings.cloudAccount.noVerifiedEmail')} className='mb-16px' />
       )}
       {!recovery && field('password', password, setPassword, true)}
@@ -167,6 +170,9 @@ export const AccountForm: React.FC<{ hideCancel?: boolean }> = ({ hideCancel = f
       )}
       {registration && (
         <>
+          {!verifiedEmail && compact && (
+            <div data-account-registration-note>{t('settings.cloudAccount.registrationEmailNote')}</div>
+          )}
           <Checkbox className='mb-16px' checked={acknowledged} onChange={setAcknowledged}>
             {t('settings.cloudAccount.acknowledgement')}
           </Checkbox>

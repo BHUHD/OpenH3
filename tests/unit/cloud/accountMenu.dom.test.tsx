@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SWRConfig } from 'swr';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 
-const f = vi.hoisted(() => ({ request: vi.fn(), onOpenLogin: vi.fn(), onLogout: vi.fn() }));
+const f = vi.hoisted(() => ({ request: vi.fn(), onOpenLogin: vi.fn(), onLogout: vi.fn(), navigate: vi.fn() }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/transport', () => ({
   requestCloudAccount: f.request,
@@ -20,7 +20,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => f.navigate,
   useLocation: () => ({ pathname: '/' }),
 }));
 vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
@@ -60,6 +60,7 @@ beforeEach(() => {
   }));
   f.onOpenLogin.mockReset();
   f.onLogout.mockReset();
+  f.navigate.mockReset();
 });
 afterEach(cleanup);
 
@@ -98,7 +99,44 @@ it('connected: renders display name and no login button', async () => {
   });
   render(host(<AccountMenu {...baseProps} />));
   await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+  expect(screen.getByRole('button', { name: 'Alice' }).querySelector('[data-account-avatar]')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'settings.cloudAccount.entry' })).not.toBeInTheDocument();
+});
+
+it('opens My account and Balance from the gear shortcuts, and preserves the settings action', async () => {
+  f.request.mockImplementation(async (r: CloudAccountRequest) => ({
+    success: true,
+    data:
+      r.operation === 'capabilities'
+        ? capabilities
+        : {
+            state: 'connected',
+            generation: '1',
+            account: { id: '1', username: 'alice', display_name: 'Alice', email: null },
+          },
+  }));
+  const settings = vi.fn();
+  render(host(<AccountMenu {...baseProps} trigger='settings' onOpenSettings={settings} />));
+  const gear = await screen.findByRole('button', { name: 'common.settings' });
+  await waitFor(() => expect(f.request).toHaveBeenCalledWith({ operation: 'session' }));
+  fireEvent.click(gear);
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'settings.cloudAccount.mine' }));
+  expect(f.navigate).toHaveBeenLastCalledWith('/settings/cloud-account');
+  fireEvent.click(gear);
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'settings.cloudAccount.balanceShortcut' }));
+  expect(f.navigate).toHaveBeenLastCalledWith('/settings/cloud-account?view=balance');
+  fireEvent.click(gear);
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'common.settings' }));
+  expect(settings).toHaveBeenCalledTimes(1);
+});
+
+it('disconnected gear offers login and settings, without balance or logout', async () => {
+  render(host(<AccountMenu {...baseProps} trigger='settings' />));
+  fireEvent.click(await screen.findByRole('button', { name: 'common.settings' }));
+  expect(screen.queryByRole('menuitem', { name: 'settings.cloudAccount.logout' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('menuitem', { name: 'settings.cloudAccount.balanceShortcut' })).not.toBeInTheDocument();
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'settings.cloudAccount.entry' }));
+  expect(f.onOpenLogin).toHaveBeenCalledTimes(1);
 });
 
 it('collapsed + not-connected: renders icon button without visible label text', async () => {

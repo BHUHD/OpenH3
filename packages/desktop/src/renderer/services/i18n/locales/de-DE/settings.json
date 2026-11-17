@@ -1502,7 +1502,7 @@
     "savePassword": "Neues Passwort speichern",
     "cancel": "Abbrechen",
     "refresh": "Status aktualisieren",
-    "logout": "Verbindung trennen",
+    "logout": "Abmelden",
     "registered": "Konto erstellt. Melden Sie sich zum Verbinden gesondert an.",
     "codeSent": "Code gesendet. Geben Sie ihn vor Ablauf ein.",
     "noVerifiedEmail": "E-Mail-Bestätigung ist deaktiviert. Die Adresse wird nicht verknüpft; eine Wiederherstellung per E-Mail ist möglicherweise nicht verfügbar.",
@@ -1717,8 +1717,8 @@
     "refreshOrders": "Eigene Bestellungen aktualisieren",
     "firstOrders": "Erste Bestellungen",
     "moreOrders": "Weitere Bestellungen",
-    "skipLogin": "Überspringen",
-    "loginModalTitle": "Anmelden / Registrieren",
+    "skipLogin": "Anmeldung überspringen",
+    "loginModalTitle": "Bei OpenH3 anmelden",
     "accountMenu": "Konto",
     "signingIn": "Angemeldet. Modelle werden geladen…",
     "overviewTab": "Übersicht",
@@ -1740,6 +1740,11 @@
     "connectedNotice": "Angemeldet · Offizielle Modelle verwenden dieses Konto",
     "tokenPriceUnit": "USD pro Million Token",
     "requestPriceUnit": "USD pro Anfrage",
-    "dynamicPriceUnit": "USD gemäß den Abrechnungsregeln des Dienstes"
+    "dynamicPriceUnit": "USD gemäß den Abrechnungsregeln des Dienstes",
+    "loginModalDescription": "Offizielle Modelle nutzen und Guthaben sowie Verbrauch verwalten.",
+    "backToLogin": "Zurück zur Anmeldung",
+    "registrationEmailNote": "Bei der Registrierung wird keine E-Mail verknüpft. Bewahren Sie Ihr Passwort sicher auf.",
+    "mine": "Mein Konto",
+    "balanceShortcut": "Guthaben"
   }
 }

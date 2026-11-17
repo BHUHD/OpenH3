@@ -1504,7 +1504,7 @@
     "savePassword": "儲存新密碼",
     "cancel": "取消",
     "refresh": "重新整理狀態",
-    "logout": "中斷連線",
+    "logout": "登出",
     "registered": "帳戶已建立，請另行登入以連線。",
     "codeSent": "驗證碼已傳送，請在到期前輸入。",
     "noVerifiedEmail": "郵件驗證已停用。郵件不會綁定，可能無法透過郵件找回密碼。",
@@ -1719,8 +1719,8 @@
     "refreshOrders": "重新整理本人訂單",
     "firstOrders": "首批訂單",
     "moreOrders": "更多訂單",
-    "skipLogin": "略過，先使用",
-    "loginModalTitle": "登入 / 註冊",
+    "skipLogin": "略過登入",
+    "loginModalTitle": "登入 OpenH3",
     "accountMenu": "帳戶",
     "signingIn": "已登入，正在載入模型…",
     "overviewTab": "總覽",
@@ -1742,6 +1742,11 @@
     "connectedNotice": "已登入 · 官方模型使用此帳戶計費",
     "tokenPriceUnit": "美元 / 百萬 Token",
     "requestPriceUnit": "美元 / 次請求",
-    "dynamicPriceUnit": "依伺服器計費規則計算（美元）"
+    "dynamicPriceUnit": "依伺服器計費規則計算（美元）",
+    "loginModalDescription": "使用官方模型，輕鬆管理餘額與消費紀錄。",
+    "backToLogin": "返回登入",
+    "registrationEmailNote": "目前註冊不綁定電子郵件，請妥善保管密碼。",
+    "mine": "我的",
+    "balanceShortcut": "餘額"
   }
 }

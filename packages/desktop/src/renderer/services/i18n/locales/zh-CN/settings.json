@@ -1503,7 +1503,7 @@
     "savePassword": "保存新密码",
     "cancel": "取消",
     "refresh": "刷新状态",
-    "logout": "断开连接",
+    "logout": "退出",
     "registered": "账户已创建。请单独登录以连接。",
     "codeSent": "验证码已发送，请在过期前输入。",
     "noVerifiedEmail": "邮箱验证已关闭。邮箱不会绑定，可能无法通过邮箱找回密码。",
@@ -1718,8 +1718,8 @@
     "refreshOrders": "刷新本人订单",
     "firstOrders": "首批订单",
     "moreOrders": "更多订单",
-    "skipLogin": "跳过，先使用",
-    "loginModalTitle": "登录 / 注册",
+    "skipLogin": "跳过登录",
+    "loginModalTitle": "登录 OpenH3",
     "accountMenu": "账户",
     "signingIn": "已登录，正在加载模型…",
     "overviewTab": "总览",
@@ -1741,6 +1741,11 @@
     "connectedNotice": "已登录 · 官方模型使用此账户计费",
     "tokenPriceUnit": "美元 / 百万 Token",
     "requestPriceUnit": "美元 / 次请求",
-    "dynamicPriceUnit": "按服务端计费规则计算（美元）"
+    "dynamicPriceUnit": "按服务端计费规则计算（美元）",
+    "loginModalDescription": "使用官方模型，轻松管理余额与消费记录。",
+    "backToLogin": "返回登录",
+    "registrationEmailNote": "当前注册不绑定邮箱，请妥善保存密码。",
+    "mine": "我的",
+    "balanceShortcut": "余额"
   }
 }
