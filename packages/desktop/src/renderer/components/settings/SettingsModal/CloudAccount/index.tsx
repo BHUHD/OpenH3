@@ -32,7 +32,9 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           {t('settings.cloudAccount.title')}
         </Typography.Title>
       )}
-      {cloud.registered && <Alert type='success' content={t('settings.cloudAccount.registered')} className='mb-16px' />}
+      {cloud.registered && session?.state !== 'connected' && (
+        <Alert type='success' content={t('settings.cloudAccount.registered')} className='mb-16px' />
+      )}
       {cloud.notice && (
         <Alert
           type={cloud.notice === 'catalogFailed' || cloud.notice === 'logoutUnconfirmed' ? 'warning' : 'info'}
@@ -52,15 +54,12 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
         <Alert content={t(`settings.cloudAccount.${session.state}`)} />
       ) : session?.state === 'connected' ? (
         <>
-          <Typography.Paragraph>{session.account.display_name || session.account.username}</Typography.Paragraph>
-          {variant === 'modal' ? (
-            <div role='status' className='text-t-secondary'>
-              {t('settings.cloudAccount.signingIn')}
+          <div className='flex flex-wrap items-center justify-between gap-12px'>
+            <div>
+              <div className='text-18px font-600'>{session.account.display_name || session.account.username}</div>
+              <div className='text-12px text-t-secondary mt-4px'>{t('settings.cloudAccount.connectedNotice')}</div>
             </div>
-          ) : (
-            <>
-              {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
-              <ConnectedPanels />
+            {variant === 'page' && (
               <Button
                 onClick={() => {
                   void cloud.run({ operation: 'logout' });
@@ -69,6 +68,16 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
               >
                 {t('settings.cloudAccount.logout')}
               </Button>
+            )}
+          </div>
+          {variant === 'modal' ? (
+            <div role='status' className='text-t-secondary'>
+              {t('settings.cloudAccount.signingIn')}
+            </div>
+          ) : (
+            <>
+              {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
+              <ConnectedPanels />
             </>
           )}
         </>

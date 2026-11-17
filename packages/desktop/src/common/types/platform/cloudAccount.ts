@@ -102,7 +102,11 @@ export type CloudAccountResponse =
       order?: Omit<CloudTopupOrder, 'checkout_url'>;
     };
 
-export type CloudQuota = { amount: string; unit: string };
+export type CloudQuota = {
+  amount: string;
+  unit: string;
+  display_amount?: { amount: string; currency: 'USD' };
+};
 export type CloudQuotaView = { status: string; amount?: CloudQuota; reason?: string };
 export type CloudWallet = {
   read_started_at: number;

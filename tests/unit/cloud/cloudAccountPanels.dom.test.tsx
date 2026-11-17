@@ -24,11 +24,22 @@ vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/transport', (
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 import { CloudAccountProvider } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import CloudAccount from '@/renderer/components/settings/SettingsModal/CloudAccount';
+import { formatAccountTime } from '@/renderer/components/settings/SettingsModal/CloudAccount/Panels/format';
 const wallet: CloudWallet = {
   read_started_at: 1700000000,
   as_of: 1700000001,
-  wallet_balance: { status: 'available', amount: { amount: '-99999999999999999999', unit: 'new_api_quota' } },
-  device_limit: { status: 'limited', amount: { amount: '999', unit: 'new_api_quota' } },
+  wallet_balance: {
+    status: 'available',
+    amount: {
+      amount: '-99999999999999999999',
+      unit: 'new_api_quota',
+      display_amount: { amount: '-199999999999999.999998', currency: 'USD' },
+    },
+  },
+  device_limit: {
+    status: 'limited',
+    amount: { amount: '999', unit: 'new_api_quota', display_amount: { amount: '0.001998', currency: 'USD' } },
+  },
   billing_preference: 'subscription_first',
   subscriptions: {
     status: 'available',
@@ -36,8 +47,8 @@ const wallet: CloudWallet = {
       {
         id: 'sub-1',
         allowance_state: 'committed_snapshot',
-        remaining: { amount: '42', unit: 'new_api_quota' },
-        used: { amount: '2', unit: 'new_api_quota' },
+        remaining: { amount: '42', unit: 'new_api_quota', display_amount: { amount: '0.000084', currency: 'USD' } },
+        used: { amount: '2', unit: 'new_api_quota', display_amount: { amount: '0.000004', currency: 'USD' } },
         unlimited: false,
         expires_at: 1700000100,
         next_reset_at: 1700000050,
@@ -180,7 +191,11 @@ function response(r: CloudAccountRequest): CloudAccountResponse {
             created_at: 1700000001,
             kind: 'refund',
             direction: 'credit',
-            quota: { amount: '123400', unit: 'new_api_quota' },
+            quota: {
+              amount: '123400',
+              unit: 'new_api_quota',
+              display_amount: { amount: '0.2468', currency: 'USD' },
+            },
             model: 'actual-model',
             prompt_tokens: '999',
             completion_tokens: '1',
@@ -193,7 +208,11 @@ function response(r: CloudAccountRequest): CloudAccountResponse {
     };
   return { success: true, data: { status: 'revoked' } };
 }
-function mount() {
+let defaultTab = 'overviewTab';
+function selectTab(key: string) {
+  fireEvent.click(screen.getByRole('tab', { name: `settings.cloudAccount.${key}` }));
+}
+async function mount() {
   const cache = new Map();
   const tree = () => (
     <SWRConfig value={{ provider: () => cache, shouldRetryOnError: false, onError: () => {} }}>
@@ -202,52 +221,132 @@ function mount() {
       </CloudAccountProvider>
     </SWRConfig>
   );
-  return { ...render(tree()), tree };
+  const view = render(tree());
+  if (defaultTab !== 'overviewTab') {
+    await screen.findByRole('tab', { name: `settings.cloudAccount.${defaultTab}` });
+    selectTab(defaultTab);
+  }
+  return { ...view, tree };
 }
 async function click(key: string) {
+  if (['refreshUsage', 'applyFilters', 'nextPage', 'previousPage'].includes(key)) selectTab('activityTab');
+  if (['refreshCatalog', 'refreshWallet'].includes(key)) selectTab('overviewTab');
+  if (
+    [
+      'confirmPurchase',
+      'retryPurchase',
+      'reconfirmPurchase',
+      'reopenCheckout',
+      'openCheckout',
+      'refreshOrder',
+      'changePurchase',
+      'startNewPurchase',
+      'refreshOptions',
+      'refreshOrders',
+      'firstOrders',
+      'moreOrders',
+      'applyOrderFilters',
+    ].includes(key)
+  )
+    selectTab('purchaseTab');
   const options = { name: `settings.cloudAccount.${key}`, exact: true };
   const target = screen.queryByRole('button', options) ?? (await screen.findByRole('button', options));
   await act(async () => {
     fireEvent.click(target);
   });
+  if (key === 'cancel' && screen.queryByRole('tab', { name: `settings.cloudAccount.${defaultTab}` }))
+    selectTab(defaultTab);
+}
+async function revoke(label: string) {
+  selectTab('devicesTab');
+  const options = { name: `settings.cloudAccount.revoke ${label}` };
+  fireEvent.click(screen.queryByRole('button', options) ?? (await screen.findByRole('button', options)));
 }
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: vi.fn(() => ({ matches: false, addListener: vi.fn(), removeListener: vi.fn() })),
   });
+  defaultTab = 'overviewTab';
   f.owner = 'a';
   f.request.mockReset().mockImplementation(async (r) => response(r));
 });
 afterEach(() => cleanup());
-it('shows exact signed wallet and separate subscription and device limits with original timestamps', async () => {
-  mount();
-  expect(await screen.findByText('-99999999999999999999 new_api_quota')).toBeInTheDocument();
-  expect(screen.getByText('999 new_api_quota')).toBeInTheDocument();
-  expect(screen.getByText('42 new_api_quota')).toBeInTheDocument();
-  expect(screen.getAllByText('1700000001').length).toBeGreaterThan(0);
+it('shows exact server money and keeps account units and timestamps in collapsed details', async () => {
+  f.request.mockImplementation(async (r) =>
+    r.operation === 'wallet' ? { success: true, data: { ...wallet, as_of: 9000000000000 } } : response(r)
+  );
+  await mount();
+  expect(await screen.findByText('-199999999999999.999998 USD')).toBeVisible();
+  expect(screen.getByText('0.001998 USD')).toBeVisible();
+  expect(screen.getByText('0.000084 USD')).toBeVisible();
+  const rawBalance = screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit');
+  const balance = screen.getByRole('region', { name: 'settings.cloudAccount.wallet', exact: true });
+  const details = within(balance).getByRole('button', { name: 'settings.cloudAccount.accountDetails' });
+  expect(details).toHaveAttribute('aria-expanded', 'false');
+  expect(details.parentElement).toContainElement(rawBalance);
+  expect(details.parentElement).toContainElement(screen.getByText('999 settings.cloudAccount.quotaUnit'));
+  const allowance = screen.getByText('42 settings.cloudAccount.quotaUnit');
+  expect(allowance.closest('.arco-collapse-item')?.querySelector('[aria-expanded]')).toHaveAttribute(
+    'aria-expanded',
+    'false'
+  );
+  const timestamp = within(balance).getByText(formatAccountTime(1700000000)!);
+  expect(details.parentElement).toContainElement(timestamp);
+  expect(details.parentElement).toContainElement(within(balance).getByText('settings.cloudAccount.unavailable'));
+  expect(screen.queryByText('9000000000000')).not.toBeInTheDocument();
+  fireEvent.click(details);
+  expect(details).toHaveAttribute('aria-expanded', 'true');
+});
+it('shows unavailable money without deriving it from raw account units', async () => {
+  f.request.mockImplementation(async (r) =>
+    r.operation === 'wallet'
+      ? {
+          success: true,
+          data: {
+            ...wallet,
+            wallet_balance: { status: 'available', amount: { amount: '500000', unit: 'new_api_quota' } },
+          },
+        }
+      : response(r)
+  );
+  await mount();
+  const balance = await screen.findByRole('region', { name: 'settings.cloudAccount.wallet', exact: true });
+  expect(await within(balance).findByText('500000 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
+  expect(within(balance).getByRole('button', { name: 'settings.cloudAccount.accountDetails' })).toHaveAttribute(
+    'aria-expanded',
+    'false'
+  );
+  expect(within(balance).getByText('settings.cloudAccount.unavailable')).toBeVisible();
+  expect(within(balance).queryByText('1 USD')).not.toBeInTheDocument();
 });
 it('retains failed same-session wallet as visibly stale and clears on owner replacement before late result', async () => {
-  const view = mount();
-  await screen.findByText('-99999999999999999999 new_api_quota');
+  const view = await mount();
+  await screen.findByText('-99999999999999999999 settings.cloudAccount.quotaUnit');
   f.request.mockImplementation(async (r) =>
     r.operation === 'wallet' ? { success: false, code: 'CLOUD_TRANSPORT', error: 'RAW SECRET' } : response(r)
   );
   await click('refreshWallet');
   expect(await screen.findByText('settings.cloudAccount.stale')).toBeInTheDocument();
-  expect(screen.getByText('-99999999999999999999 new_api_quota')).toBeInTheDocument();
+  expect(screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
   f.owner = 'b';
   f.request.mockImplementation((r) =>
     r.operation === 'wallet' ? new Promise(() => {}) : Promise.resolve(response(r))
   );
   view.rerender(view.tree());
-  expect(screen.queryByText('-99999999999999999999 new_api_quota')).not.toBeInTheDocument();
+  expect(screen.queryByText('-99999999999999999999 settings.cloudAccount.quotaUnit')).not.toBeInTheDocument();
   expect(screen.queryByText('RAW SECRET')).not.toBeInTheDocument();
 });
 it('uses validated filters, resets page, and displays refund/request association without task totals', async () => {
-  mount();
+  await mount();
   await screen.findByText('req-actual');
-  expect(screen.getByText('123400 new_api_quota')).toBeInTheDocument();
+  selectTab('activityTab');
+  expect(screen.getByText('0.2468 USD')).toBeVisible();
+  const rawAmount = screen.getByText('123400 settings.cloudAccount.quotaUnit');
+  expect(rawAmount.closest('.arco-collapse-item')?.querySelector('[aria-expanded]')).toHaveAttribute(
+    'aria-expanded',
+    'false'
+  );
   expect(screen.getByText('settings.cloudAccount.credit')).toBeInTheDocument();
   expect(screen.getByText('settings.cloudAccount.not_reconciled')).toBeInTheDocument();
   await click('nextPage');
@@ -281,9 +380,9 @@ it('requires deliberate revoke and purpose-bound proof; cancellation clears proo
         }
       : response(r)
   );
-  mount();
+  await mount();
   await screen.findByText('Laptop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+  await revoke('Laptop');
   expect(f.request.mock.calls.some(([r]) => r.operation === 'revokeDevice')).toBe(false);
   await click('confirmRevoke');
   const secret = await screen.findByLabelText('settings.cloudAccount.password');
@@ -293,7 +392,7 @@ it('requires deliberate revoke and purpose-bound proof; cancellation clears proo
   expect(screen.queryByRole('button', { name: 'settings.cloudAccount.confirmRevoke' })).not.toBeInTheDocument();
 });
 it('explains ambiguous protocol catalog without offering a callable selection', async () => {
-  mount();
+  await mount();
   expect((await screen.findAllByText('settings.cloudAccount.ambiguous_model_protocol')).length).toBe(2);
   expect(screen.getByText('Responses')).toBeInTheDocument();
   expect(screen.getByText('ChatCompletions')).toBeInTheDocument();
@@ -316,7 +415,7 @@ it('rejects stale usage filter/page results and validates UTF8 and ordered times
   f.request.mockImplementation((r) =>
     r.operation === 'usage' && r.input.page === 2 ? late.promise : Promise.resolve(response(r))
   );
-  mount();
+  await mount();
   await screen.findByText('req-actual');
   await click('nextPage');
   await waitFor(() =>
@@ -367,7 +466,7 @@ it('rejects a delayed old grant wallet after same-account generation replacement
         ? late.promise
         : Promise.resolve(response(r))
   );
-  mount();
+  await mount();
   await screen.findByText('Alice');
   current = { ...session, generation: '2', account: { ...session.account, display_name: 'Relogged Alice' } };
   await click('refresh');
@@ -378,7 +477,7 @@ it('rejects a delayed old grant wallet after same-account generation replacement
       data: { ...wallet, wallet_balance: { status: 'available', amount: { amount: '111111', unit: 'new_api_quota' } } },
     })
   );
-  expect(screen.queryByText('111111 new_api_quota')).not.toBeInTheDocument();
+  expect(screen.queryByText('111111 settings.cloudAccount.quotaUnit')).not.toBeInTheDocument();
 });
 it('keeps unconfirmed current revoke connected, then confirmed removal clears official identity without retry', async () => {
   let confirmed = false;
@@ -389,9 +488,9 @@ it('keeps unconfirmed current revoke connected, then confirmed removal clears of
         : { success: false, code: 'CLOUD_TRANSPORT', error: 'SECRET' }
       : response(r)
   );
-  mount();
+  await mount();
   await screen.findByText('This desktop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke This desktop' }));
+  await revoke('This desktop');
   await click('confirmRevoke');
   await screen.findByText('settings.cloudAccount.requestFailed');
   expect(screen.getByText('Alice')).toBeInTheDocument();
@@ -420,9 +519,9 @@ it('cannot authorize a different-purpose challenge', async () => {
         ? { success: true, data: { result: 'device_revoked' } }
         : response(r)
   );
-  mount();
+  await mount();
   await screen.findByText('Laptop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+  await revoke('Laptop');
   await click('confirmRevoke');
   expect(await screen.findByText('settings.cloudAccount.unsupported')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'settings.cloudAccount.verify' })).toBeDisabled();
@@ -430,9 +529,9 @@ it('cannot authorize a different-purpose challenge', async () => {
 it('clears target and proof on owner switch; delayed revoke A cannot clear connected B', async () => {
   const late = deferred();
   f.request.mockImplementation((r) => (r.operation === 'revokeDevice' ? late.promise : Promise.resolve(response(r))));
-  const view = mount();
+  const view = await mount();
   await screen.findByText('This desktop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke This desktop' }));
+  await revoke('This desktop');
   await click('confirmRevoke');
   f.owner = 'b';
   view.rerender(view.tree());
@@ -470,7 +569,7 @@ it('shows unavailable wallet/usage and empty log pages as unknown accounting, wi
           }
         : response(r)
   );
-  mount();
+  await mount();
   expect(await screen.findByText('settings.cloudAccount.batch_updates_enabled')).toBeInTheDocument();
   expect(screen.getByText('settings.cloudAccount.unlimited')).toBeInTheDocument();
   expect(screen.getByText('settings.cloudAccount.emptyUsage')).toBeInTheDocument();
@@ -515,9 +614,9 @@ it('finishes other-device proof once and renders the refreshed authoritative dev
       };
     return response(r);
   });
-  mount();
+  await mount();
   await screen.findByText('Laptop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+  await revoke('Laptop');
   await click('confirmRevoke');
   fireEvent.change(await screen.findByLabelText('settings.cloudAccount.password'), {
     target: { value: 'proof-secret' },
@@ -542,12 +641,12 @@ it('settles a login catalog interrupted by opening and cancelling a device dialo
     if (r.operation === 'models' && ++catalogs === 1) return original.promise;
     return Promise.resolve(response(r));
   });
-  mount();
+  await mount();
   fireEvent.change(await screen.findByLabelText('settings.cloudAccount.username'), { target: { value: 'alice' } });
   fireEvent.change(screen.getByLabelText('settings.cloudAccount.password'), { target: { value: 'password' } });
   await click('login');
   await screen.findByText('Laptop');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+  await revoke('Laptop');
   await click('cancel');
   await act(async () => original.resolve({ success: false, code: 'CLOUD_TRANSPORT', error: 'OLD SECRET' }));
   await screen.findByText('Responses');
@@ -563,10 +662,10 @@ it('permits a new catalog refresh when a same-session device action supersedes a
   f.request.mockImplementation((r) =>
     r.operation === 'models' && ++catalogs === 2 ? original.promise : Promise.resolve(response(r))
   );
-  mount();
+  await mount();
   await screen.findByText('Responses');
   await click('refreshCatalog');
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+  await revoke('Laptop');
   await click('cancel');
   await act(async () => original.resolve({ success: false, code: 'CLOUD_TRANSPORT', error: 'OLD SECRET' }));
   await click('refreshCatalog');
@@ -602,8 +701,14 @@ function purchaseOrder(change: Partial<CloudTopupOrder> = {}): CloudTopupOrder {
     ...change,
   };
 }
-const purchaseRegion = () => within(screen.getByRole('region', { name: 'settings.cloudAccount.purchase' }));
-const ownedRegion = () => within(screen.getByRole('region', { name: 'settings.cloudAccount.ownedOrders' }));
+const purchaseRegion = () => {
+  selectTab('purchaseTab');
+  return within(screen.getByRole('region', { name: 'settings.cloudAccount.purchase' }));
+};
+const ownedRegion = () => {
+  selectTab('purchaseTab');
+  return within(screen.getByRole('region', { name: 'settings.cloudAccount.ownedOrders' }));
+};
 function purchaseResponse(r: CloudAccountRequest): CloudAccountResponse {
   if (r.operation === 'topupOptions')
     return {
@@ -616,7 +721,7 @@ function purchaseResponse(r: CloudAccountRequest): CloudAccountResponse {
   return response(r);
 }
 async function buy() {
-  const options = { name: '10 USD / alipay' };
+  const options = { name: '71.23 CNY · settings.cloudAccount.alipay' };
   const target = screen.queryByRole('radio', options) ?? (await screen.findByRole('radio', options));
   await act(async () => {
     fireEvent.click(target);
@@ -637,6 +742,7 @@ async function advance(ms: number) {
 describe('native purchase and owned orders', () => {
   let desktop: Window['electronAPI'];
   beforeEach(() => {
+    defaultTab = 'purchaseTab';
     desktop = window.electronAPI;
     f.request.mockImplementation(async (r) => purchaseResponse(r));
     vi.spyOn(window, 'open').mockImplementation(() => null);
@@ -648,33 +754,38 @@ describe('native purchase and owned orders', () => {
     vi.restoreAllMocks();
     Object.defineProperty(window, 'electronAPI', { configurable: true, value: desktop, writable: true });
   });
-  it('displays actual unavailable options and unsupported providers without a buy path', async () => {
+  it('shows unavailable top-up without unsupported providers or a buy path', async () => {
     f.request.mockImplementation(async (r) =>
       r.operation === 'topupOptions'
         ? { success: true, data: { status: 'unavailable', options: [], unsupported_providers: ['stripe', 'creem'] } }
         : response(r)
     );
-    mount();
+    await mount();
     expect(await screen.findByText('settings.cloudAccount.purchaseUnavailable')).toBeInTheDocument();
-    expect(screen.getByText(/stripe, creem/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'settings.cloudAccount.confirmPurchase' })).toBeDisabled();
+    expect(screen.queryByText(/stripe|creem/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'settings.cloudAccount.confirmPurchase' })).not.toBeInTheDocument();
     expect(creates()).toHaveLength(0);
   });
   it('renders exact amount, payment total, quota/unit, versions and fee scope from options', async () => {
-    mount();
-    await screen.findByRole('radio', { name: '10 USD / alipay' });
+    await mount();
+    await screen.findByRole('radio', { name: '71.23 CNY · settings.cloudAccount.alipay' });
     const panel = purchaseRegion();
     for (const value of [
       '10 USD',
       '71.23 CNY',
-      '5000001 new_api_quota',
-      'alipay',
+      '5000001 settings.cloudAccount.quotaUnit',
+      'settings.cloudAccount.alipay',
       'epay_v1',
-      'gateway_payable_total',
+      'settings.cloudAccount.gatewayTotal',
       'a'.repeat(64),
       'b'.repeat(64),
     ])
       expect(panel.getByText(value, { exact: true })).toBeInTheDocument();
+    expect(panel.getByText('71.23 CNY', { exact: true })).toBeVisible();
+    const details = panel.getByRole('button', { name: 'settings.cloudAccount.purchaseDetails' });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(details.parentElement).toContainElement(panel.getByText('5000001 settings.cloudAccount.quotaUnit'));
+    expect(details.parentElement).toContainElement(panel.getByText('a'.repeat(64)));
     expect(creates()).toHaveLength(0);
     await buy();
     expect(await panel.findByText('original-order')).toBeInTheDocument();
@@ -690,7 +801,7 @@ describe('native purchase and owned orders', () => {
           ? { success: false, code, error: 'RAW_PAYMENT_SECRET' }
           : purchaseResponse(r)
       );
-      mount();
+      await mount();
       await buy();
       await screen.findByText('settings.cloudAccount.purchaseAmbiguous');
       expect(creates()).toHaveLength(1);
@@ -721,7 +832,7 @@ describe('native purchase and owned orders', () => {
           ? { success: true, data: revised }
           : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     expect(await screen.findByText('80.45 CNY')).toBeInTheDocument();
     expect(creates()).toHaveLength(1);
@@ -741,7 +852,7 @@ describe('native purchase and owned orders', () => {
         ? { success: false, code: 'CLOUD_CHECKOUT_OPEN_FAILED', error: 'SIGNED_SECRET', order: purchaseOrder() }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     expect(await purchaseRegion().findByText('original-order')).toBeInTheDocument();
     expect(screen.getByText('settings.cloudAccount.checkoutFailed')).toBeInTheDocument();
@@ -757,7 +868,7 @@ describe('native purchase and owned orders', () => {
         ? { success: true, data: purchaseOrder({ checkout_url: 'https://pay.example/?sign=SIGNED_SECRET' }) }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     await screen.findByRole('button', { name: 'settings.cloudAccount.openCheckout' });
     expect(window.open).not.toHaveBeenCalled();
@@ -786,7 +897,7 @@ describe('native purchase and owned orders', () => {
           }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -813,7 +924,7 @@ describe('native purchase and owned orders', () => {
     expect(purchaseRegion().getByText('settings.cloudAccount.order_paid')).toBeInTheDocument();
     expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(walletBefore + 1);
     expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usageBefore + 1);
-    expect(screen.getByText('-99999999999999999999 new_api_quota')).toBeInTheDocument();
+    expect(screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
     expect(
       f.request.mock.calls.every(([r]) =>
         [
@@ -848,7 +959,7 @@ describe('native purchase and owned orders', () => {
             }
           : purchaseResponse(r)
       );
-      mount();
+      await mount();
       await screen.findByRole('radio');
       vi.useFakeTimers();
       await buy();
@@ -872,7 +983,7 @@ describe('native purchase and owned orders', () => {
           ? { success: true, data: { items: [purchaseOrder({ status: 'paid' })], has_more: false, next_before_id: 17 } }
           : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -890,9 +1001,9 @@ describe('native purchase and owned orders', () => {
     f.request.mockImplementation((r) =>
       r.operation === 'topupCreateAndOpen' ? late.promise : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
-    fireEvent.click(await screen.findByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+    await revoke('Laptop');
     await click('cancel');
     await act(async () =>
       late.resolve({ success: true, data: purchaseOrder({ checkout_url: 'https://pay.example/?sign=SIGNED_SECRET' }) })
@@ -909,10 +1020,10 @@ describe('native purchase and owned orders', () => {
         ? { success: true, data: purchaseOrder({ checkout_url: 'https://pay.example/?sign=SIGNED_SECRET' }) }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     await screen.findByRole('button', { name: 'settings.cloudAccount.openCheckout' });
-    fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+    await revoke('Laptop');
     await click('cancel');
     expect(screen.queryByRole('button', { name: 'settings.cloudAccount.openCheckout' })).not.toBeInTheDocument();
     expect(purchaseRegion().getByText('original-order')).toBeInTheDocument();
@@ -926,7 +1037,7 @@ describe('native purchase and owned orders', () => {
     f.request.mockImplementation((r) =>
       r.operation === 'topupOrders' && r.input.order_id ? late.promise : Promise.resolve(purchaseResponse(r))
     );
-    const view = mount();
+    const view = await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -958,7 +1069,7 @@ describe('native purchase and owned orders', () => {
           ? Promise.resolve({ success: true, data: current })
           : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
     current = { ...session, generation: '2', account: { ...session.account, display_name: 'Relogged Alice' } };
     await click('refresh');
@@ -986,7 +1097,7 @@ describe('native purchase and owned orders', () => {
             })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await screen.findByText('first-order');
     await click('moreOrders');
     expect(f.request).toHaveBeenCalledWith({ operation: 'topupOrders', input: { page_size: 20, before_id: 93 } });
@@ -1021,7 +1132,7 @@ describe('native purchase and owned orders', () => {
           : { success: true, data: { items: [], has_more: false, next_before_id: 0 } }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await screen.findByText('settings.cloudAccount.emptyOrders');
     fireEvent.click(ownedRegion().getByRole('combobox'));
     fireEvent.click(await screen.findByText('settings.cloudAccount.order_paid', { selector: '.arco-select-option' }));
@@ -1039,8 +1150,8 @@ describe('native purchase and owned orders', () => {
   });
   it('permits keyboard selection and confirmation without launching checkout', async () => {
     const user = userEvent.setup();
-    mount();
-    const radio = await screen.findByRole('radio', { name: '10 USD / alipay' });
+    await mount();
+    const radio = await screen.findByRole('radio', { name: '71.23 CNY · settings.cloudAccount.alipay' });
     radio.focus();
     await user.keyboard(' ');
     const confirm = screen.getByRole('button', { name: 'settings.cloudAccount.confirmPurchase' });
@@ -1055,7 +1166,7 @@ describe('native purchase and owned orders', () => {
     vi.spyOn(crypto, 'randomUUID').mockImplementation(() => {
       throw new Error('unavailable');
     });
-    mount();
+    await mount();
     await buy();
     expect(creates()).toHaveLength(0);
     expect(screen.getByText('settings.cloudAccount.purchaseUnavailable')).toBeInTheDocument();
@@ -1070,7 +1181,7 @@ describe('native purchase and owned orders', () => {
       }
       return purchaseResponse(r);
     });
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -1101,7 +1212,7 @@ describe('native purchase and owned orders', () => {
             })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
     await screen.findByText('original-order');
     await click('refreshOrder');
@@ -1122,7 +1233,7 @@ describe('native purchase and owned orders', () => {
           : Promise.resolve({ success: true, data: { items: [purchaseOrder()], has_more: false, next_before_id: 17 } })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -1158,7 +1269,7 @@ describe('native purchase and owned orders', () => {
           : Promise.resolve({ success: true, data: { items: [purchaseOrder()], has_more: false, next_before_id: 17 } })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -1185,7 +1296,7 @@ describe('native purchase and owned orders', () => {
         ? { success: true, data: purchaseOrder({ status: reopened ? 'paid' : 'pending' }) }
         : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
     reopened = true;
@@ -1201,7 +1312,7 @@ describe('native purchase and owned orders', () => {
     f.request.mockImplementation((r) =>
       r.operation === 'topupOrders' && r.input.order_id ? late.promise : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
@@ -1216,7 +1327,7 @@ describe('native purchase and owned orders', () => {
   });
   it('offers no browser second-click handoff if no validated checkout URL was returned', async () => {
     Object.defineProperty(window, 'electronAPI', { configurable: true, value: undefined, writable: true });
-    mount();
+    await mount();
     await buy();
     expect(await screen.findByText('settings.cloudAccount.checkoutFailed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'settings.cloudAccount.openCheckout' })).not.toBeInTheDocument();
@@ -1229,7 +1340,7 @@ describe('native purchase and owned orders', () => {
     f.request.mockImplementation((r) =>
       r.operation === 'topupCreateAndOpen' ? late.promise : Promise.resolve(purchaseResponse(r))
     );
-    const view = mount();
+    const view = await mount();
     await buy();
     f.owner = 'b';
     view.rerender(view.tree());
@@ -1263,7 +1374,7 @@ describe('native purchase and owned orders', () => {
             })
           : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
     await click('reopenCheckout');
     await click('refreshOrder');
@@ -1273,13 +1384,13 @@ describe('native purchase and owned orders', () => {
     expect(screen.getByRole('button', { name: 'settings.cloudAccount.reopenCheckout' })).toBeDisabled();
   });
   it('does not restart the 60 second polling window after same-generation dialog scope changes', async () => {
-    mount();
+    await mount();
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
     await advance(60000);
     const reads = orderReads().length;
-    fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.revoke Laptop' }));
+    await revoke('Laptop');
     await click('cancel');
     await advance(30000);
     expect(orderReads()).toHaveLength(reads);
@@ -1300,7 +1411,7 @@ describe('native purchase and owned orders', () => {
             })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
     await purchaseRegion().findByText('original-order');
     await click('changePurchase');
@@ -1329,7 +1440,7 @@ describe('native purchase and owned orders', () => {
             })
         : Promise.resolve(purchaseResponse(r))
     );
-    mount();
+    await mount();
     await buy();
     await click('changePurchase');
     await click('reopenCheckout');
@@ -1359,7 +1470,7 @@ describe('native purchase and owned orders', () => {
             }
           : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await buy();
     await screen.findByText('settings.cloudAccount.purchaseAmbiguous');
     const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
@@ -1377,7 +1488,7 @@ describe('native purchase and owned orders', () => {
     await click('refreshOrders');
     expect(f.request.mock.calls.filter(([r]) => r.operation === 'wallet')).toHaveLength(wallets + 1);
     expect(f.request.mock.calls.filter(([r]) => r.operation === 'usage')).toHaveLength(usages + 1);
-    expect(screen.getByText('-99999999999999999999 new_api_quota')).toBeInTheDocument();
+    expect(screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
     expect(purchaseRegion().queryByText('original-order')).not.toBeInTheDocument();
   });
   it('deduplicates paid detail and history billing notifications within the same live scope', async () => {
@@ -1396,7 +1507,7 @@ describe('native purchase and owned orders', () => {
             }
           : purchaseResponse(r)
     );
-    mount();
+    await mount();
     await screen.findByRole('radio');
     const wallets = f.request.mock.calls.filter(([r]) => r.operation === 'wallet').length;
     const usages = f.request.mock.calls.filter(([r]) => r.operation === 'usage').length;
@@ -1416,7 +1527,7 @@ describe('native purchase and owned orders', () => {
         ? late.promise
         : Promise.resolve(purchaseResponse(r))
     );
-    const view = mount();
+    const view = await mount();
     await screen.findByText('settings.cloudAccount.emptyOrders');
     await click('refreshOrders');
     f.owner = 'b';

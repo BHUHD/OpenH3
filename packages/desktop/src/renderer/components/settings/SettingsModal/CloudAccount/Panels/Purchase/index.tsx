@@ -11,7 +11,7 @@ import { browserCloudCheckout, cloudCheckout } from '@/common/adapter/httpBridge
 import { useCloudAccount } from '../../Provider';
 import { useCloudRead } from '../useCloudRead';
 import { Panel, ReadState } from '../Wallet';
-import { OrderDetails, Terms, withoutCheckout, type OwnedOrder } from './Terms';
+import { OrderDetails, Terms, usePaymentLabel, withoutCheckout, type OwnedOrder } from './Terms';
 import { useOrder } from './useOrder';
 import { Orders } from './Orders';
 
@@ -25,6 +25,7 @@ export function PurchasePanel() {
 function Purchase() {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
+  const paymentLabel = usePaymentLabel();
   const options = useCloudRead({ operation: 'topupOptions' }, isOptions);
   const [selection, setSelection] = useState('');
   const [intent, setIntent] = useState<Intent>();
@@ -61,7 +62,7 @@ function Purchase() {
       setHandoffReady(false);
     }
   }, [tracked.handoffAvailable]);
-  const available = !options.failed && options.data?.status === 'available';
+  const available = !options.failed && options.data?.status === 'available' && options.data.options.length > 0;
   const choices = available ? (options.data?.options ?? []) : [];
   const selected = choices.find((q) => `${q.amount}:${q.payment_method}:${q.quote_version}` === selection);
   const create = async (original: Intent) => {
@@ -137,12 +138,7 @@ function Purchase() {
         <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.purchaseNotice')}</div>
         <ReadState loading={options.loading} failed={options.failed} hasData={!!options.data} />
         {!available && !options.loading && <div role='status'>{t('settings.cloudAccount.purchaseUnavailable')}</div>}
-        {!!options.data?.unsupported_providers.length && (
-          <div>
-            {t('settings.cloudAccount.unsupportedProviders')}: {options.data.unsupported_providers.join(', ')}
-          </div>
-        )}
-        {!intent && (
+        {!intent && available && (
           <>
             <Radio.Group
               direction='vertical'
@@ -155,7 +151,7 @@ function Purchase() {
                 return (
                   <div key={key} className='bg-fill-1 rd-4px p-8px min-w-0'>
                     <Radio value={key}>
-                      {String(quote.amount)} {quote.amount_unit} / {quote.payment_method}
+                      {quote.payable_money} {quote.currency} · {paymentLabel(quote.payment_method)}
                     </Radio>
                     <Terms quote={quote} />
                   </div>
@@ -163,6 +159,7 @@ function Purchase() {
               })}
             </Radio.Group>
             <Button
+              type='primary'
               disabled={!selected || busy}
               onClick={() => {
                 if (selected && !intentRef.current) begin(selected);

@@ -23,7 +23,11 @@ fn decimal(s: &str) -> bool {
         && s.len() <= 128
 }
 fn quota(q: &CloudAccountQuota) -> bool {
-    q.unit == "new_api_quota" && integer(&q.amount)
+    q.unit == "new_api_quota"
+        && integer(&q.amount)
+        && q.display_amount
+            .as_ref()
+            .is_none_or(|m| m.currency == "USD" && decimal(m.amount.strip_prefix('-').unwrap_or(&m.amount)))
 }
 fn preference(s: &str) -> bool {
     matches!(

@@ -271,14 +271,30 @@ async fn queued_catalog_credentials(expire: bool) {
 #[tokio::test]
 async fn signed_wallet_and_refund_usage_remain_authoritative_and_filters_precede_io() {
     let (server, _, svc, owner) = connected().await;
-    let wallet = json!({"read_started_at":100,"as_of":101,"wallet_balance":{"status":"available","amount":{"amount":"-12","unit":"new_api_quota"}},"device_limit":{"status":"unlimited"},"billing_preference":"subscription_first","subscriptions":{"status":"available","items":[{"allowance_state":"reset_pending","id":"s1","remaining":{"amount":"-1","unit":"new_api_quota"},"unlimited":false,"used":{"amount":"20","unit":"new_api_quota"},"expires_at":200,"next_reset_at":99,"allow_wallet_overflow":true}]}});
+    let wallet = json!({"read_started_at":100,"as_of":101,"wallet_balance":{"status":"available","amount":{"amount":"-12","unit":"new_api_quota","display_amount":{"amount":"-0.000024","currency":"USD"}}},"device_limit":{"status":"unlimited"},"billing_preference":"subscription_first","subscriptions":{"status":"available","items":[{"allowance_state":"reset_pending","id":"s1","remaining":{"amount":"-1","unit":"new_api_quota","display_amount":{"amount":"-0.000002","currency":"USD"}},"unlimited":false,"used":{"amount":"20","unit":"new_api_quota","display_amount":{"amount":"0.00004","currency":"USD"}},"expires_at":200,"next_reset_at":99,"allow_wallet_overflow":true}]}});
     Mock::given(method("GET"))
         .and(path("/api/openh3/wallet"))
         .respond_with(ok(wallet.clone()))
+        .up_to_n_times(1)
         .expect(1)
         .mount(&server)
         .await;
     assert_eq!(serde_json::to_value(svc.wallet(&owner).await.unwrap()).unwrap(), wallet);
+    for display in [
+        json!({"amount":"0.5","currency":"CNY"}),
+        json!({"amount":"NaN","currency":"USD"}),
+        json!({"amount":"1e3","currency":"USD"}),
+        json!({"amount":"--1","currency":"USD"}),
+    ] {
+        let mut invalid = wallet.clone();
+        invalid["wallet_balance"]["amount"]["display_amount"] = display;
+        Mock::given(path("/api/openh3/wallet"))
+            .respond_with(ok(invalid))
+            .up_to_n_times(1)
+            .mount(&server)
+            .await;
+        assert_eq!(svc.wallet(&owner).await.unwrap_err(), CloudAccountError::Protocol);
+    }
     let usage = json!({"read_started_at":100,"as_of":101,"status":"available","completeness":"not_reconciled","items":[{"id":"99","created_at":90,"kind":"refund","direction":"credit","quota":null,"model":"chat","prompt_tokens":"9007199254740993","completion_tokens":"2","request_id":"request","token_id":"3","device_id":"device-1","funding":{"billing_source":"wallet","wallet_quota_deducted":"-12"}}],"page":1,"page_size":20,"has_more":false});
     Mock::given(method("POST"))
         .and(path("/api/openh3/usage"))
@@ -350,7 +366,7 @@ async fn unavailable_and_paged_usage_are_never_lifetime_reconciliation() {
         );
     }
     for page in [1, 2, 1] {
-        let value = json!({"read_started_at":50,"as_of":50,"status":"available","completeness":"not_reconciled","items":if page==1 {vec![json!({"id":"77","created_at":45,"kind":"consume","direction":"debit","quota":{"amount":"-2","unit":"new_api_quota"},"model":"verified","prompt_tokens":"1","completion_tokens":"2","request_id":""})]}else{vec![]},"page":page,"page_size":1,"has_more":page==1});
+        let value = json!({"read_started_at":50,"as_of":50,"status":"available","completeness":"not_reconciled","items":if page==1 {vec![json!({"id":"77","created_at":45,"kind":"consume","direction":"debit","quota":{"amount":"-2","unit":"new_api_quota","display_amount":{"amount":"-0.000004","currency":"USD"}},"model":"verified","prompt_tokens":"1","completion_tokens":"2","request_id":""})]}else{vec![]},"page":page,"page_size":1,"has_more":page==1});
         Mock::given(path("/api/openh3/usage")).and(wiremock::matchers::body_partial_json(json!({"page":page,"page_size":1,"start_time":40,"end_time":50,"model":"verified","device_id":"device-1"}))).respond_with(ok(value.clone())).up_to_n_times(1).mount(&server).await;
         let query = serde_json::from_value(
             json!({"page":page,"page_size":1,"start_time":40,"end_time":50,"model":"verified","device_id":"device-1"}),

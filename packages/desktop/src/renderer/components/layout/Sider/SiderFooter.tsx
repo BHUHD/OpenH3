@@ -83,35 +83,37 @@ const SiderFooter: React.FC<SiderFooterProps> = ({
 
   return (
     <div className='shrink-0 sider-footer mt-auto pt-8px pb-8px border-t border-solid border-[var(--color-border-2)] border-s-0 border-e-0 border-b-0'>
-      {/* Account entry: login button (not connected) or username dropdown (connected) */}
-      <AccountMenu
-        collapsed={collapsed}
-        isMobile={isMobile}
-        theme={theme}
-        siderTooltipProps={siderTooltipProps}
-        onThemeToggle={onThemeToggle}
-        onOpenLogin={onOpenLogin}
-        onLogout={onLogoutClick}
-      />
-      <div className={classNames('flex', collapsed ? 'flex-col gap-2px' : 'items-center gap-2px')}>
+      <div
+        data-sidebar-account-row
+        className={classNames('flex gap-2px', collapsed ? 'flex-col items-center' : 'items-center')}
+      >
+        <div className={collapsed ? 'w-full flex justify-center' : 'flex-1 min-w-0'}>
+          <AccountMenu
+            collapsed={collapsed}
+            isMobile={isMobile}
+            theme={theme}
+            siderTooltipProps={siderTooltipProps}
+            onThemeToggle={onThemeToggle}
+            onOpenLogin={onOpenLogin}
+            onLogout={onLogoutClick}
+          />
+        </div>
         <Tooltip {...siderTooltipProps} content={isSettings ? t('common.back') : t('common.settings')} position='right'>
-          <div
+          <Button
+            type='text'
+            aria-label={isSettings ? t('common.back') : t('common.settings')}
+            aria-pressed={isSettings}
             onClick={onSettingsClick}
             className={classNames(
-              'group h-34px flex items-center rd-0.5rem cursor-pointer transition-colors',
-              collapsed ? 'w-full justify-center' : 'flex-1 min-w-0 justify-start gap-8px ps-10px pe-8px',
+              '!h-34px !w-34px !p-0 shrink-0 !rd-0.5rem !flex items-center justify-center transition-colors',
               isMobile && 'sider-footer-btn-mobile',
               {
-                'bg-active': isSettings,
-                'hover:bg-hover active:bg-active': !isSettings,
+                '!bg-active !text-primary': isSettings,
+                '!text-t-secondary hover:!text-t-primary hover:!bg-hover active:!bg-active': !isSettings,
               }
             )}
-          >
-            <span className='size-22px flex items-center justify-center shrink-0 text-t-secondary'>{settingsIcon}</span>
-            <span className='collapsed-hidden text-t-primary text-14px font-[500] leading-24px truncate'>
-              {isSettings ? t('common.back') : t('common.settings')}
-            </span>
-          </div>
+            icon={settingsIcon}
+          />
         </Tooltip>
         {showUpdate && (
           <Tooltip

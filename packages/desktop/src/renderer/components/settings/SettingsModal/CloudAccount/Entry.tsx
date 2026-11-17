@@ -4,6 +4,7 @@ import { LinkCloud } from '@icon-park/react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useOptionalCloudAccount } from './Provider';
+import { formatAccountAmount } from './Panels/format';
 
 export const CloudAccountEntry: React.FC<{ collapsed?: boolean; disconnectedOnly?: boolean }> = ({
   collapsed,
@@ -16,8 +17,8 @@ export const CloudAccountEntry: React.FC<{ collapsed?: boolean; disconnectedOnly
   const identity = account?.display_name || account?.username || t('settings.cloudAccount.entry');
   const amount = cloud.wallet?.wallet_balance;
   const balance =
-    amount?.status === 'available' && amount.amount
-      ? `${amount.amount.amount} ${amount.amount.unit}`
+    amount?.status === 'available'
+      ? (formatAccountAmount(amount.amount) ?? t('settings.cloudAccount.unavailable'))
       : t('settings.cloudAccount.unavailable');
   const label = account
     ? `${identity} · ${balance}${cloud.walletFailed && cloud.wallet ? ` · ${t('settings.cloudAccount.stale')}` : ''}`

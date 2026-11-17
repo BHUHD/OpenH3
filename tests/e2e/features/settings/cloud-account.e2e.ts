@@ -29,6 +29,7 @@ test('native account, payment and inference use the real isolated gateway', asyn
   await expect.poll(() => page.evaluate(() => typeof window.__backendPort)).toBe('number');
   await page.evaluate(async () => {
     localStorage.setItem('i18nextLng', 'en-US');
+    localStorage.setItem('login-modal-skipped', '1');
     const port = window.__backendPort;
     const response = await fetch(`http://127.0.0.1:${port}/api/settings/client`, {
       method: 'PUT',
@@ -38,8 +39,9 @@ test('native account, payment and inference use the real isolated gateway', asyn
     if (!response.ok) throw new Error('Failed to configure fixture language');
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Cloud sign in / register', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Cloud sign in \/ register|云账户登录/ }).click();
+  await page.evaluate(() => {
+    window.location.hash = '#/settings/cloud-account';
+  });
   fs.writeFileSync(path.join(evidence, 'desktop-initial-state.txt'), await page.locator('body').innerText());
   await page.screenshot({ path: path.join(evidence, 'desktop-initial.png'), fullPage: true });
   const account = page.getByRole('region', { name: 'Cloud account', exact: true });
@@ -53,7 +55,6 @@ test('native account, payment and inference use the real isolated gateway', asyn
   await account.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(account.getByText('Account created. Sign in separately to connect.')).toBeVisible();
   await page.screenshot({ path: path.join(evidence, 'desktop-registered.png'), fullPage: true });
-  await account.getByRole('button', { name: 'Sign in', exact: true }).first().click();
   await account.getByLabel('Username', { exact: true }).fill(username);
   await account.getByLabel('Password', { exact: true }).fill('synthetic-wrong');
   await account.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -66,10 +67,11 @@ test('native account, payment and inference use the real isolated gateway', asyn
   await expect(account.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
   await expect(account.getByText('fixture-chat', { exact: true })).toBeVisible();
   await expect(account.getByText('fixture-responses', { exact: true })).toBeVisible();
+  await account.getByRole('tab', { name: 'Top up', exact: true }).click();
   await account.locator('label.arco-radio').first().click();
   await page.screenshot({ path: path.join(evidence, 'desktop-wallet-catalog-quote.png'), fullPage: true });
   const before = await (await fetch(endpoint + '/_fixture/observations')).json();
-  await account.getByRole('button', { name: /Create.*checkout|Confirm.*purchase|Confirm.*pay|Create.*open/i }).click();
+  await account.getByRole('button', { name: 'Confirm purchase', exact: true }).click();
   await expect
     .poll(async () =>
       electronApp.evaluate(() => (globalThis as typeof globalThis & { task8Checkout: string[] }).task8Checkout.length)
@@ -177,13 +179,22 @@ test('native account, payment and inference use the real isolated gateway', asyn
     )
   );
   await page.screenshot({ path: path.join(evidence, 'desktop-conversation.png'), fullPage: true });
-  await page.getByRole('button', { name: /Cloud sign in \/ register/ }).click();
+  await page.evaluate(() => {
+    window.location.hash = '#/settings/cloud-account';
+  });
   await page.setViewportSize({ width: 480, height: 800 });
   await expect(account).toBeVisible();
-  await account.getByRole('button', { name: 'Refresh · Wallet', exact: true }).click();
-  await expect(account.getByRole('region', { name: 'Wallet', exact: true })).toContainText('5099000 new_api_quota');
-  await expect(account.getByRole('region', { name: 'Usage', exact: true })).toContainText(consumes[0].request_id);
-  await expect(account.getByRole('region', { name: 'Usage', exact: true })).toContainText('1000 new_api_quota');
+  await account.getByRole('tab', { name: 'Overview', exact: true }).click();
+  await account.getByRole('button', { name: 'Refresh balance', exact: true }).click();
+  await expect(
+    account.getByRole('region', { name: 'Account balance', exact: true }).getByText('10.198 USD')
+  ).toBeVisible();
+  await account.getByRole('tab', { name: 'Activity', exact: true }).click();
+  const activity = account.getByRole('region', { name: 'Account activity', exact: true });
+  await expect(activity.getByText('0.002 USD', { exact: true })).toBeVisible();
+  await expect(activity.getByText('1000 account units', { exact: true })).not.toBeVisible();
+  await activity.getByText('Details', { exact: true }).click();
+  await expect(activity.getByText(consumes[0].request_id, { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await account.getByRole('button', { name: 'Disconnect', exact: true }).focus();
   await expect(account.getByRole('button', { name: 'Disconnect', exact: true })).toBeFocused();
@@ -216,12 +227,14 @@ test('native account, payment and inference use the real isolated gateway', asyn
     await browserPage.goto(web.localUrl + '/#/settings/cloud-account');
     const browserAccount = browserPage.getByRole('region', { name: 'Cloud account', exact: true });
     await expect(browserAccount.getByText(username, { exact: true })).toBeVisible();
-    await expect(browserAccount.getByRole('region', { name: 'Wallet', exact: true })).toContainText(
-      '5099000 new_api_quota'
-    );
-    await expect(browserAccount.getByRole('region', { name: 'Usage', exact: true })).toContainText(
-      consumes[0].request_id
-    );
+    await expect(
+      browserAccount.getByRole('region', { name: 'Account balance', exact: true }).getByText('10.198 USD')
+    ).toBeVisible();
+    await browserAccount.getByRole('tab', { name: 'Activity', exact: true }).click();
+    const browserActivity = browserAccount.getByRole('region', { name: 'Account activity', exact: true });
+    await expect(browserActivity.getByText('0.002 USD', { exact: true })).toBeVisible();
+    await browserActivity.getByText('Details', { exact: true }).click();
+    await expect(browserActivity.getByText(consumes[0].request_id, { exact: true })).toBeVisible();
     expect(await browserPage.evaluate(() => typeof window.electronAPI)).toBe('undefined');
     expect(await browserPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await browserAccount.getByRole('button', { name: 'Disconnect', exact: true }).focus();

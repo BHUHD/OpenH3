@@ -4,31 +4,35 @@ import { useTranslation } from 'react-i18next';
 import type { CloudAccountData } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from '../Provider';
 import { ProofForm } from '../ProofForm';
-import { Field, Panel, ReadState, useSafeLabel } from './Wallet';
+import { Details, Field, Panel, ReadState, useSafeLabel } from './Wallet';
 import { useCloudRead } from './useCloudRead';
+import { formatAccountTime } from './format';
 type Devices = Extract<NonNullable<CloudAccountData>, { items: { current: boolean }[] }>;
 const isDevices = (data: CloudAccountData): data is Devices =>
   !!data && 'items' in data && Array.isArray(data.items) && data.items.every((item) => 'current' in item);
 export function DevicesPanel() {
   const cloud = useCloudAccount();
   const devices = useCloudRead({ operation: 'devices' }, isDevices);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const label = useSafeLabel();
   const target = cloud.deviceTarget;
   return (
     <Panel title='devices'>
+      <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.devicesNotice')}</div>
       <ReadState loading={devices.loading} failed={devices.failed} hasData={!!devices.data} />
       {devices.data?.items.map((device) => (
         <div key={device.id} className='bg-fill-1 rd-4px p-8px flex flex-col gap-4px'>
-          <span>{device.label}</span>
-          <Field name='deviceId'>{device.id}</Field>
+          <span className='font-500'>{device.label}</span>
           <Field name='deviceKind'>
             {t(`settings.cloudAccount.${device.current ? 'currentDevice' : 'otherDevice'}`)}
           </Field>
           <Field name='status'>{label(device.status)}</Field>
-          <Field name='createdAt'>{String(device.created_at)}</Field>
-          <Field name='lastActiveAt'>{String(device.last_active_at)}</Field>
-          <Field name='expiresAt'>{String(device.expires_at)}</Field>
+          <Details>
+            <Field name='deviceId'>{device.id}</Field>
+            <Field name='lastActiveAt'>{formatAccountTime(device.last_active_at, i18n?.language)}</Field>
+            <Field name='expiresAt'>{formatAccountTime(device.expires_at, i18n?.language)}</Field>
+            <Field name='createdAt'>{formatAccountTime(device.created_at, i18n?.language)}</Field>
+          </Details>
           <Button
             size='small'
             status='danger'

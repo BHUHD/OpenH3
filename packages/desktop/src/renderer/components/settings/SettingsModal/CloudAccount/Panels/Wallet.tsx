@@ -1,11 +1,27 @@
 import React from 'react';
-import { Button, Typography } from '@arco-design/web-react';
+import { Button, Collapse, Typography } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import type { CloudQuota, CloudQuotaView } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from '../Provider';
+import { formatAccountAmount, formatAccountTime } from './format';
 
-export const quota = (value?: CloudQuota | null): string | undefined =>
-  value ? `${value.amount} ${value.unit}` : undefined;
+export const useQuota = () => {
+  const { t } = useTranslation();
+  return (value?: CloudQuota | null): string | undefined =>
+    value
+      ? `${value.amount} ${value.unit === 'new_api_quota' ? t('settings.cloudAccount.quotaUnit') : value.unit}`
+      : undefined;
+};
+export const Details: React.FC<React.PropsWithChildren<{ title?: string }>> = ({ title = 'details', children }) => {
+  const { t } = useTranslation();
+  return (
+    <Collapse bordered={false} lazyload={false} className='min-w-0'>
+      <Collapse.Item name='details' header={t(`settings.cloudAccount.${title}`)}>
+        <div className='flex flex-col gap-4px min-w-0'>{children}</div>
+      </Collapse.Item>
+    </Collapse>
+  );
+};
 const known = new Set([
   'batch_updates_enabled',
   'consume_logging_disabled',
@@ -94,43 +110,69 @@ const QuotaView: React.FC<{ name: string; value?: CloudQuotaView }> = ({ name, v
   const label = useSafeLabel();
   return (
     <Field name={name}>
-      {value?.status === 'available' || value?.status === 'limited' ? quota(value.amount) : label(value?.status)}
+      {value?.status === 'available' || value?.status === 'limited'
+        ? (formatAccountAmount(value.amount) ?? label('unavailable'))
+        : label(value?.status)}
     </Field>
   );
 };
 export function WalletPanel() {
   const cloud = useCloudAccount();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const label = useSafeLabel();
+  const quota = useQuota();
   const wallet = cloud.wallet;
   return (
     <Panel title='wallet'>
       <ReadState loading={cloud.walletLoading} failed={cloud.walletFailed} hasData={!!wallet} />
-      <QuotaView name='walletBalance' value={wallet?.wallet_balance} />
-      <QuotaView name='deviceLimit' value={wallet?.device_limit} />
+      <div className='bg-fill-1 rd-8px p-16px flex flex-col gap-8px'>
+        <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.walletBalance')}</div>
+        <div className='text-24px font-600 tabular-nums min-w-0 [overflow-wrap:anywhere]'>
+          {wallet?.wallet_balance.status === 'available' || wallet?.wallet_balance.status === 'limited'
+            ? (formatAccountAmount(wallet.wallet_balance.amount) ?? label('unavailable'))
+            : label(wallet?.wallet_balance.status)}
+        </div>
+        <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.quotaExplanation')}</div>
+      </div>
       {wallet?.wallet_balance.reason && <Field name='reason'>{label(wallet.wallet_balance.reason)}</Field>}
       {wallet?.device_limit.reason && <Field name='reason'>{label(wallet.device_limit.reason)}</Field>}
       {wallet && (
         <>
-          <Field name='readStartedAt'>{String(wallet.read_started_at)}</Field>
-          <Field name='asOf'>{String(wallet.as_of)}</Field>
           <Field name='billingPreference'>{label(wallet.billing_preference)}</Field>
-          <Field name='subscriptions'>{label(wallet.subscriptions.status)}</Field>
+          <QuotaView name='deviceLimit' value={wallet.device_limit} />
+          <Typography.Title heading={6} className='!m-0'>
+            {t('settings.cloudAccount.subscriptions')}
+          </Typography.Title>
+          <Field name='status'>{label(wallet.subscriptions.status)}</Field>
+          {wallet.subscriptions.status === 'available' && wallet.subscriptions.items.length === 0 && (
+            <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.noSubscriptions')}</div>
+          )}
           {wallet.subscriptions.items.map((item) => (
             <div key={item.id} className='bg-fill-1 rd-4px p-8px flex flex-col gap-4px'>
-              <Field name='subscriptionId'>{item.id}</Field>
               <Field name='allowance'>
-                {item.unlimited ? label('unlimited') : (quota(item.remaining) ?? label(item.allowance_state))}
+                {item.unlimited ? label('unlimited') : (formatAccountAmount(item.remaining) ?? label('unavailable'))}
               </Field>
-              <Field name='allowanceState'>{label(item.allowance_state)}</Field>
-              <Field name='used'>{quota(item.used)}</Field>
-              <Field name='expiresAt'>{String(item.expires_at)}</Field>
-              <Field name='nextResetAt'>{String(item.next_reset_at)}</Field>
+              <Field name='used'>{formatAccountAmount(item.used)}</Field>
               <Field name='walletOverflow'>
                 {t(`settings.cloudAccount.${item.allow_wallet_overflow ? 'yes' : 'no'}`)}
               </Field>
+              <Details>
+                {!item.unlimited && <Field name='allowance'>{quota(item.remaining)}</Field>}
+                <Field name='used'>{quota(item.used)}</Field>
+                <Field name='subscriptionId'>{item.id}</Field>
+                <Field name='allowanceState'>{label(item.allowance_state)}</Field>
+                <Field name='expiresAt'>{formatAccountTime(item.expires_at, i18n?.language)}</Field>
+                <Field name='nextResetAt'>{formatAccountTime(item.next_reset_at, i18n?.language)}</Field>
+              </Details>
             </div>
           ))}
+          <Details title='accountDetails'>
+            <Field name='walletBalance'>{quota(wallet.wallet_balance.amount)}</Field>
+            {wallet.device_limit.amount && <Field name='deviceLimit'>{quota(wallet.device_limit.amount)}</Field>}
+            <Field name='asOf'>{formatAccountTime(wallet.as_of, i18n?.language)}</Field>
+            <Field name='readStartedAt'>{formatAccountTime(wallet.read_started_at, i18n?.language)}</Field>
+            <Field name='unit'>new_api_quota</Field>
+          </Details>
         </>
       )}
       <Button size='small' onClick={cloud.refreshWallet}>

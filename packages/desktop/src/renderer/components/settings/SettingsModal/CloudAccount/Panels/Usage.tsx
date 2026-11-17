@@ -1,16 +1,18 @@
 import React, { useId, useState } from 'react';
-import { Button, Input, InputNumber } from '@arco-design/web-react';
+import { Button, DatePicker, Input, InputNumber } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import type { CloudAccountData, CloudAccountRequest, CloudUsage } from '@/common/types/platform/cloudAccount';
-import { Field, Panel, ReadState, quota, useSafeLabel } from './Wallet';
+import { Details, Field, Panel, ReadState, useQuota, useSafeLabel } from './Wallet';
 import { useCloudRead } from './useCloudRead';
+import { formatAccountAmount, formatAccountTime } from './format';
 const isUsage = (data: CloudAccountData): data is CloudUsage => !!data && 'completeness' in data;
 type Filters = Extract<CloudAccountRequest, { operation: 'usage' }>['input'];
 const bytes = (value: string) => new TextEncoder().encode(value).length;
 export function UsagePanel() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const id = useId();
   const label = useSafeLabel();
+  const quota = useQuota();
   const [filters, setFilters] = useState<Filters>({ page: 1, page_size: 20 });
   const [model, setModel] = useState('');
   const [device, setDevice] = useState('');
@@ -42,11 +44,23 @@ export function UsagePanel() {
         </label>
         <label htmlFor={`${id}-start`}>
           {t('settings.cloudAccount.startTime')}
-          <InputNumber id={`${id}-start`} value={start} onChange={setStart} min={0} />
+          <DatePicker
+            inputProps={{ id: `${id}-start` }}
+            className='w-full min-w-0'
+            showTime
+            value={start ? start * 1000 : undefined}
+            onChange={(_, date) => setStart(date ? date.unix() : 0)}
+          />
         </label>
         <label htmlFor={`${id}-end`}>
           {t('settings.cloudAccount.endTime')}
-          <InputNumber id={`${id}-end`} value={end} onChange={setEnd} min={0} />
+          <DatePicker
+            inputProps={{ id: `${id}-end` }}
+            className='w-full min-w-0'
+            showTime
+            value={end ? end * 1000 : undefined}
+            onChange={(_, date) => setEnd(date ? date.unix() : 0)}
+          />
         </label>
         <label htmlFor={`${id}-size`}>
           {t('settings.cloudAccount.pageSize')}
@@ -73,27 +87,30 @@ export function UsagePanel() {
         <>
           <Field name='status'>{label(usage.data.status)}</Field>
           {usage.data.reason && <Field name='reason'>{label(usage.data.reason)}</Field>}
-          <Field name='completeness'>{label(usage.data.completeness)}</Field>
-          <Field name='readStartedAt'>{String(usage.data.read_started_at)}</Field>
-          <Field name='asOf'>{String(usage.data.as_of)}</Field>
+          <div className='text-12px text-t-secondary'>{label(usage.data.completeness)}</div>
           {usage.data.items?.map((item) => (
             <div key={item.id} className='bg-fill-1 rd-4px p-8px flex flex-col gap-4px'>
               <Field name='kind'>{label(item.kind)}</Field>
               <Field name='direction'>{label(item.direction)}</Field>
-              <Field name='quota'>{quota(item.quota)}</Field>
+              <div className='font-500 tabular-nums'>
+                {formatAccountAmount(item.quota) ?? t('settings.cloudAccount.unavailable')}
+              </div>
               <Field name='model'>{item.model}</Field>
-              <Field name='createdAt'>{String(item.created_at)}</Field>
-              <Field name='requestId'>{item.request_id || undefined}</Field>
-              <Field name='deviceId'>{item.device_id}</Field>
-              <Field name='informationalTokens'>
-                {item.prompt_tokens} / {item.completion_tokens}
-              </Field>
-              {item.funding &&
-                Object.entries(item.funding).map(([name, value]) => (
-                  <Field key={name} name={name}>
-                    {['billing_source', 'billing_preference'].includes(name) ? label(value) : value}
-                  </Field>
-                ))}
+              <Details>
+                <Field name='quota'>{quota(item.quota)}</Field>
+                <Field name='createdAt'>{formatAccountTime(item.created_at, i18n?.language)}</Field>
+                <Field name='requestId'>{item.request_id || undefined}</Field>
+                <Field name='deviceId'>{item.device_id}</Field>
+                <Field name='informationalTokens'>
+                  {item.prompt_tokens} / {item.completion_tokens}
+                </Field>
+                {item.funding &&
+                  Object.entries(item.funding).map(([name, value]) => (
+                    <Field key={name} name={name}>
+                      {['billing_source', 'billing_preference'].includes(name) ? label(value) : value}
+                    </Field>
+                  ))}
+              </Details>
             </div>
           ))}
           {(!usage.data.items || usage.data.items.length === 0) && <div>{t('settings.cloudAccount.emptyUsage')}</div>}
@@ -115,6 +132,12 @@ export function UsagePanel() {
         </>
       )}
       <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.noTaskAccounting')}</div>
+      {usage.data && (
+        <Details title='accountDetails'>
+          <Field name='asOf'>{formatAccountTime(usage.data.as_of, i18n?.language)}</Field>
+          <Field name='readStartedAt'>{formatAccountTime(usage.data.read_started_at, i18n?.language)}</Field>
+        </Details>
+      )}
       <Button size='small' onClick={usage.refresh}>
         {t('settings.cloudAccount.refreshUsage')}
       </Button>

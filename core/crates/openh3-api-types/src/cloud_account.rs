@@ -223,6 +223,9 @@ pub struct CloudAccountMoney {
 pub struct CloudAccountQuota {
     pub amount: String,
     pub unit: String,
+    /// Gateway-calculated USD equivalent, independent of checkout currency.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_amount: Option<CloudAccountMoney>,
 }
 
 // Gateway billing observations are exact server values, never a local ledger.
