@@ -101,6 +101,8 @@ it('observes one existing prompt, persists pending work and archives the output 
   await observer.tick();
   const finished = observer.job(job.id, { conversationId: 'chat' });
   expect(finished.status).toBe('succeeded');
+  expect(observer.activity('chat')).toEqual([finished]);
+  expect(observer.activity('other')).toEqual([]);
   expect(fs.readFileSync(finished.artifacts[0].path)).toEqual(f.pixels);
   expect(finished.artifacts[0].path.startsWith(f.options.outputRoot)).toBe(true);
   expect(f.calls.every((call) => call.startsWith('GET '))).toBe(true);
@@ -108,7 +110,9 @@ it('observes one existing prompt, persists pending work and archives the output 
   expect(() => observer.job(job.id, { conversationId: 'other' })).toThrow('COMFY_SCOPE_MISMATCH');
   expect(() => observer.observe({ ...input, conversationId: 'other' })).toThrow('COMFY_SCOPE_MISMATCH');
   observer.close();
-  expect(f.create().job(job.id, { conversationId: 'chat' }).artifacts).toEqual(finished.artifacts);
+  const restored = f.create();
+  expect(restored.job(job.id, { conversationId: 'chat' }).artifacts).toEqual(finished.artifacts);
+  expect(restored.activity('chat')).toEqual([finished]);
 });
 
 it('rejects non-loopback endpoints, redirects and unsafe history output paths', async () => {

@@ -392,6 +392,10 @@ describe('ComfyUI media-service routes', () => {
     expect(attached.status).toBe(202);
     const { comfyJobId } = (await attached.json()) as { comfyJobId: string };
     expect(observer.has(comfyJobId)).toBe(true);
+    expect(await (await fetch(`${base}/api/comfy/activity?conversationId=chat`)).json()).toMatchObject({
+      jobs: [expect.objectContaining({ id: comfyJobId, status: 'queued', observationOnly: true })],
+    });
+    expect(await (await fetch(`${base}/api/comfy/activity?conversationId=other`)).json()).toMatchObject({ jobs: [] });
     expect((await fetch(`${base}/api/comfy/jobs/${comfyJobId}?conversationId=chat`)).status).toBe(200);
     expect(await (await fetch(`${base}/api/comfy/jobs/${comfyJobId}?conversationId=other`)).json()).toMatchObject({
       error: 'COMFY_SCOPE_MISMATCH',

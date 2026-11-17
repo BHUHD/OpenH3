@@ -141,6 +141,12 @@ export class ComfyPromptObserver {
   has(id: string): boolean {
     return this.entries.has(id);
   }
+  /** Include external prompts in the same conversation activity as integrated jobs. */
+  activity(conversationId: string): ComfyGenerationJob[] {
+    return [...this.entries.values()]
+      .filter((entry) => entry.conversationId === conversationId)
+      .map((entry) => this.job(entry.job.id, { conversationId }));
+  }
   job(id: string, scope: ComfyResourceScope): ComfyGenerationJob {
     const saved = this.entries.get(id);
     if (!saved) throw new Error('COMFY_JOB_NOT_FOUND');

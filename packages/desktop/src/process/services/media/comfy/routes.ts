@@ -186,7 +186,7 @@ export async function handleComfyRoute(
             preparations: activity.preparations.filter((item) => service.isRequestRelated(item.requestId, requestId)),
             jobs: [],
           }
-        : activity
+        : { ...activity, jobs: [...activity.jobs, ...(ports.observer?.activity(conversationId) ?? [])] }
     );
     return true;
   }

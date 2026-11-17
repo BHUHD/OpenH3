@@ -51,6 +51,10 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
   const snapshot = useWorkProgress(conversationId);
+  const taskLabel = (task: WorkTask) =>
+    task.summaryKey
+      ? t(`conversation.workProgress.summaries.${task.summaryKey}`)
+      : task.title || t(`conversation.workProgress.kinds.${task.kind}`);
 
   const tasks = snapshot.tasks.flatMap((task) => (task.kind === 'plan' && task.children ? task.children : [task]));
   const leaves = tasks.flatMap((task) => (task.children?.length ? task.children : [task]));
@@ -71,17 +75,19 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
   // This ensures background tasks, pending queues and waiting confirmations
   // all display the correct label instead of always falling through to "completed".
   const statusText = anyRunning
-    ? (tasks.find((task) => task.status === 'running')?.title ?? t('conversation.workProgress.statuses.running'))
+    ? taskLabel(running[0])
     : waiting
       ? t('conversation.workProgress.statuses.waiting')
-      : anyPending
-        ? t('conversation.workProgress.statuses.pending')
-        : anyFailed
-          ? t('conversation.workProgress.statuses.failed')
-          : anyInterrupted
-            ? t('conversation.workProgress.statuses.interrupted')
-            : t('conversation.workProgress.statuses.completed');
-  const failedOnly = !anyRunning && !waiting && !anyPending && anyFailed;
+      : snapshot.isProcessing
+        ? t('conversation.workProgress.statuses.running')
+        : anyPending
+          ? t('conversation.workProgress.statuses.pending')
+          : anyFailed
+            ? t('conversation.workProgress.statuses.failed')
+            : anyInterrupted
+              ? t('conversation.workProgress.statuses.interrupted')
+              : t('conversation.workProgress.statuses.completed');
+  const failedOnly = !snapshot.isProcessing && !anyRunning && !waiting && !anyPending && anyFailed;
 
   // Running generations that report real progress move the bar between whole-task completions.
   const partial = running.reduce((sum, task) => sum + (realProgress(task) ?? 0) / 100, 0);
@@ -159,7 +165,7 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
                   />
                 )}
                 <span className={isRunning ? 'text-t-primary truncate min-w-0' : 'truncate min-w-0'}>
-                  {task.title ?? t(`conversation.workProgress.kinds.${task.kind}`)}
+                  {taskLabel(task)}
                 </span>
                 {task.children?.length ? (
                   <span className='text-12px text-t-disabled tabular-nums ml-auto shrink-0'>

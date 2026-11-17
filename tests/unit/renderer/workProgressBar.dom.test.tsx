@@ -56,6 +56,22 @@ it('running task: shows task title as status', () => {
   expect(screen.getByText('Build preview')).toBeInTheDocument();
 });
 
+it('uses the localized summary and kind when task titles are empty', () => {
+  f.useWorkProgress.mockReturnValue(
+    snap({
+      tasks: [
+        { id: 'check', title: '', summaryKey: 'checkEnvironment', kind: 'task', status: 'running' },
+        { id: 'tool', title: '', kind: 'task', status: 'completed' },
+      ],
+    })
+  );
+  render(<WorkProgressBar conversationId='c1' />);
+  expect(screen.getByText('conversation.workProgress.summaries.checkEnvironment')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button'));
+  expect(screen.getAllByText('conversation.workProgress.summaries.checkEnvironment')).toHaveLength(2);
+  expect(screen.getByText('conversation.workProgress.kinds.task')).toBeInTheDocument();
+});
+
 it('background task running with isProcessing=false still shows running label', () => {
   f.useWorkProgress.mockReturnValue(
     snap({
@@ -87,6 +103,18 @@ it('all completed: shows completed label', () => {
   f.useWorkProgress.mockReturnValue(snap({ tasks: [{ id: 't1', title: 'Done', kind: 'task', status: 'completed' }] }));
   render(<WorkProgressBar conversationId='c1' />);
   expect(screen.getByText('conversation.workProgress.statuses.completed')).toBeInTheDocument();
+});
+
+it('keeps the conversation running between completed tool calls while the Agent is processing', () => {
+  f.useWorkProgress.mockReturnValue(
+    snap({
+      tasks: [{ id: 'tool', title: 'Check environment', kind: 'task', status: 'completed' }],
+      isProcessing: true,
+    })
+  );
+  render(<WorkProgressBar conversationId='c1' />);
+  expect(screen.getByText('conversation.workProgress.statuses.running')).toBeInTheDocument();
+  expect(screen.queryByText('conversation.workProgress.statuses.completed')).not.toBeInTheDocument();
 });
 
 it('click expands task list; click again collapses', () => {
