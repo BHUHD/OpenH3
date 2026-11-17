@@ -15,6 +15,121 @@ use crate::protocol::events::FinishEventData;
 
 static NEXT_TEST_SESSION_DIR: AtomicU64 = AtomicU64::new(0);
 
+#[tokio::test]
+async fn capability_query_matches_tools_available_to_current_model() {
+    use aion_types::message::ImageInputCapability;
+    use axum::{Json, Router, routing::post};
+    use base64::Engine;
+    use serde_json::json;
+    for capability in [ImageInputCapability::Supported, ImageInputCapability::Unknown] {
+        let image_dir = tempfile::tempdir().unwrap();
+        let image_path = image_dir.path().join("probe.png");
+        let encoded = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aD1kAAAAASUVORK5CYII=";
+        fs::write(
+            &image_path,
+            base64::engine::general_purpose::STANDARD.decode(encoded).unwrap(),
+        )
+        .unwrap();
+        let image_args = json!({"file_path": image_path.to_string_lossy()}).to_string();
+        let requests = Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+        let app = Router::new().route("/v1/chat/completions", post({
+            let requests = requests.clone();
+            move |Json(body): Json<Value>| {
+                let mut requests = requests.lock().unwrap();
+                requests.push(body);
+                let step = requests.len();
+                let image_args = image_args.clone();
+                async move {
+                    let first = step == 1;
+                    let load_image = step == 2 && capability == ImageInputCapability::Supported;
+                    let delta = if first {
+                        json!({"tool_calls":[{"index":0,"id":"capability-check","type":"function","function":{"name":"openh3_session_capabilities","arguments":"{\"query\":\"ViewImage\"}"}}]})
+                    } else if load_image {
+                        json!({"tool_calls":[{"index":0,"id":"view-image","type":"function","function":{"name":"ViewImage","arguments":image_args}}]})
+                    } else { json!({"content":"OK"}) };
+                    let finish = if first || load_image { "tool_calls" } else { "stop" };
+                    ([("content-type", "text/event-stream")], format!("data: {}\n\ndata: {}\n\ndata: [DONE]\n\n",
+                        json!({"choices":[{"delta":delta,"finish_reason":null}]}),
+                        json!({"choices":[{"delta":{},"finish_reason":finish}]})))
+                }
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let mut config = make_test_config();
+        config.provider = "openai".into();
+        config.model = "custom-model".into();
+        config.base_url = Some(format!("http://{address}/v1"));
+        config.compat_overrides.openai_api_mode = Some(aion_config::compat::OpenAiApiMode::ChatCompletions);
+        config.compat_overrides.image_input = Some(capability);
+        config.session_mode = Some("yolo".into());
+        let manager = AionrsAgentManager::new(
+            format!("capabilities-{}", generate_short_id()),
+            "/project".into(),
+            config,
+            None,
+        )
+        .await
+        .unwrap();
+        timeout(
+            Duration::from_secs(15),
+            manager
+                .engine
+                .lock()
+                .await
+                .run("Check available image tools", "capabilities-test"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        server.abort();
+        let requests = requests.lock().unwrap();
+        assert_eq!(
+            requests.len(),
+            if capability == ImageInputCapability::Supported {
+                3
+            } else {
+                2
+            }
+        );
+        let exposed = requests[0]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["function"]["name"] == "ViewImage");
+        assert_eq!(exposed, capability == ImageInputCapability::Supported);
+        let result = requests[1]["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|message| message["role"] == "tool")
+            .unwrap();
+        let result: Value = serde_json::from_str(result["content"].as_str().unwrap()).unwrap();
+        assert_eq!(
+            result["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|tool| tool["name"] == "ViewImage"),
+            exposed,
+            "capability discovery must describe the actual request, not the unfiltered registry"
+        );
+        if exposed {
+            let messages = requests[2]["messages"].as_array().unwrap();
+            assert!(
+                messages
+                    .iter()
+                    .filter_map(|message| message["content"].as_array())
+                    .flatten()
+                    .any(|block| block["type"] == "image_url"
+                        && block["image_url"]["url"] == format!("data:image/png;base64,{encoded}")),
+                "ViewImage must deliver the actual image bytes to the provider, beyond listing the tool"
+            );
+        }
+    }
+}
+
 // Exercise the real provider parser and engine across two user messages.
 #[tokio::test]
 async fn continuation_recovers_empty_gateway_stream_without_replaying_history() {

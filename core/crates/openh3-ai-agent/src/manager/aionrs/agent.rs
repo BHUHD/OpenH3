@@ -41,7 +41,7 @@ use crate::services::managed::ManagedProvider;
 use crate::services::provider_stream::RecoveringProvider;
 use crate::types::{AionrsResolvedConfig, SendMessageData};
 
-use super::capabilities::{CapabilitySnapshot, SessionCapabilities};
+use super::capabilities::{CapabilityProvider, SessionCapabilities};
 use super::content::build_content_blocks;
 use super::error::{aionrs_engine_error_to_send_error, aionrs_runtime_error_summary};
 
@@ -115,7 +115,6 @@ pub struct AionrsAgentManager {
     resolved_protocol: String,
     runtime: AgentRuntime,
     engine: Mutex<AgentEngine>,
-    capability_snapshot: CapabilitySnapshot,
     /// Static slash command metadata captured at bootstrap so UI lookups do
     /// not wait behind an active `engine.run()` turn.
     slash_commands: Vec<SlashCommandItem>,
@@ -299,6 +298,11 @@ impl AionrsAgentManager {
             Some(provider) => provider.clone(),
             None => Arc::new(RecoveringProvider::from_config(&config)),
         };
+        let capability_snapshot = Arc::new(RwLock::new(Vec::new()));
+        let provider = Arc::new(CapabilityProvider {
+            inner: provider,
+            snapshot: capability_snapshot.clone(),
+        });
         let mut bootstrap = AgentBootstrap::new(config, &workspace, sink)
             .provider(provider)
             .structured_children(managed_provider.is_some())
@@ -330,13 +334,9 @@ impl AionrsAgentManager {
             .collect();
 
         let mut engine = result.engine;
-        let capability_snapshot = Arc::new(RwLock::new(Vec::new()));
         engine
             .registry_mut()
             .register(Box::new(SessionCapabilities(capability_snapshot.clone())));
-        if let Ok(mut snapshot) = capability_snapshot.write() {
-            *snapshot = engine.registry_mut().to_tool_defs();
-        }
         engine.set_initial_reasoning_effort(config_extra.thought_level);
         if !is_resume && let Err(e) = engine.init_session(&provider_label, &workspace, Some(&conversation_id)) {
             // A concurrent/repeated builder may have initialized this
@@ -406,7 +406,6 @@ impl AionrsAgentManager {
             resolved_protocol,
             runtime,
             engine: Mutex::new(engine),
-            capability_snapshot,
             slash_commands,
             mcp_managers: result.mcp_managers,
             mcp_statuses,
@@ -556,9 +555,6 @@ impl IAgentTask for AionrsAgentManager {
             .send(AgentStreamEvent::BackendTurnBound(turn_anchor.clone()));
 
         let mut engine = self.engine.lock().await;
-        if let Ok(mut snapshot) = self.capability_snapshot.write() {
-            *snapshot = engine.registry_mut().to_tool_defs();
-        }
         engine.set_next_turn_id(Some(turn_anchor));
 
         let result = tokio::select! {
