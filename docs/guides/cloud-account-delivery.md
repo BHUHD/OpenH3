@@ -4,16 +4,18 @@
 
 ## 当前可交付配置
 
-未确定可信 HTTPS 入口时保持以下配置，不填写 LAN HTTP 地址：
+已确认公网 HTTPS 入口，正式构建与测试构建使用以下发行配置：
 
 ```json
 {
-  "OPENH3_CLOUD_ACCOUNT_ENABLED": "0",
-  "OPENH3_CLOUD_ACCOUNT_ENDPOINT": ""
+  "OPENH3_EMBED_DEFAULT_API_KEY": "0",
+  "OPENH3_DEFAULT_API_KEY": "",
+  "OPENH3_CLOUD_ACCOUNT_ENABLED": "1",
+  "OPENH3_CLOUD_ACCOUNT_ENDPOINT": "https://api.bhhaihuan.com/hhaiapi/"
 }
 ```
 
-网关部署并确认 HTTPS 后，把开关改为字符串 `"1"`，endpoint 填经审核的 **HTTPS 基址**；可包含反向代理路径前缀（例如 `https://api.bhhaihuan.com/hhaiapi/`），不含 `/api/openh3`、`/v1`、用户名、密码、查询或 fragment。Core 自行请求 `/api/openh3/*`。域名、证书和网关必须就绪后再启用；只设置客户端变量不能修复网关 `capabilities` 的 404。
+endpoint 填经审核的 **HTTPS 基址**；可包含反向代理路径前缀，不含 `/api/openh3`、`/v1`、用户名、密码、查询或 fragment。Core 保留基址前缀并请求 `api/openh3/*`。本机发行文件与两个正式仓库的 `OPENH3_DISTRIBUTION_DEFAULTS_JSON` Secret 已设置为上述配置。邮件找回与商户支付按服务端实际能力分别显示；未配置这些通道不应关闭账号登录。
 
 正式版和测试版使用同一现有交付入口：
 
