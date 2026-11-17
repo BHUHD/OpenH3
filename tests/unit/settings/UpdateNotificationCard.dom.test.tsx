@@ -44,6 +44,9 @@ vi.mock('@/renderer/components/Markdown', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+// Account routing and session state are covered separately from updater behavior.
+vi.mock('@/renderer/components/layout/Sider/AccountMenu', () => ({ default: () => null }));
+
 vi.mock('@/renderer/hooks/context/FeedbackContext', () => ({
   useFeedback: () => ({ openFeedback: mocks.openFeedbackMock }),
 }));
