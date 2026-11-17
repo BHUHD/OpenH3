@@ -225,5 +225,17 @@
   "archive": {
     "entries": "파일 및 폴더 {{count}}개",
     "loadFailed": "이 압축 파일을 미리 볼 수 없습니다"
-  }
+  },
+  "copyImage": "이미지 복사",
+  "copyTable": "표 복사",
+  "selectAll": "모두 선택",
+  "fileActionFailed": "파일 작업을 완료할 수 없습니다",
+  "directory": {
+    "up": "상위 폴더",
+    "search": "파일 검색",
+    "loadFailed": "폴더를 열 수 없습니다",
+    "empty": "파일이 없습니다",
+    "entries": "{{count}}개 항목"
+  },
+  "saveAs": "다른 이름으로 저장…"
 }

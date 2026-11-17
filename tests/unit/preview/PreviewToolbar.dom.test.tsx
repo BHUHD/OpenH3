@@ -17,6 +17,11 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@icon-park/react', () => ({
   Close: () => <span aria-hidden='true'>×</span>,
+  More: () => <span />,
+  Refresh: () => <span />,
+  Save: () => <span />,
+  Code: () => <span />,
+  PreviewOpen: () => <span />,
 }));
 
 /**
@@ -59,7 +64,7 @@ describe('PreviewToolbar save button', () => {
 
     const save = screen.getByTestId('preview-save');
     expect(save).toBeInTheDocument();
-    expect(save.className).toContain('cursor-not-allowed');
+    expect(save).toBeDisabled();
 
     fireEvent.click(save);
     expect(onSave).not.toHaveBeenCalled();
@@ -74,7 +79,7 @@ describe('PreviewToolbar save button', () => {
     const refresh = container.querySelector('[data-testid="preview-refresh"]')!;
 
     // Save must be the final child of the right-hand action group...
-    expect(save.parentElement?.lastElementChild).toBe(save);
+    expect(save.closest('.flex')?.lastElementChild?.contains(save)).toBe(true);
     // ...and it must come after the refresh control in DOM order.
     expect(refresh.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

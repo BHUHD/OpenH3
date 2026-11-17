@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} 個のファイルとフォルダー",
     "loadFailed": "このアーカイブを表示できません"
-  }
+  },
+  "copyImage": "画像をコピー",
+  "copyTable": "表をコピー",
+  "selectAll": "すべて選択",
+  "fileActionFailed": "ファイル操作に失敗しました",
+  "directory": {
+    "up": "親フォルダー",
+    "search": "ファイルを検索",
+    "loadFailed": "フォルダーを開けません",
+    "empty": "ファイルがありません",
+    "entries": "{{count}} 件"
+  },
+  "saveAs": "名前を付けて保存…"
 }

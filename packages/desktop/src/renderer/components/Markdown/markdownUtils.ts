@@ -8,6 +8,33 @@ import type React from 'react';
 
 import { diffColors } from '@/renderer/styles/colors';
 
+type MarkdownNode = { type: string; value?: string; url?: string; children?: MarkdownNode[] };
+/** Accept a local video delivery as a file link, without enabling arbitrary HTML. */
+export const remarkLocalVideo = () => (tree: MarkdownNode) => {
+  const visit = (parent: MarkdownNode) => {
+    parent.children = parent.children?.flatMap((node, index, siblings): MarkdownNode[] => {
+      if (node.type === 'html') {
+        const video = /^\s*<video\b([^>]*)>\s*(?:<\/video>\s*)?$/i.exec(node.value ?? '');
+        const source = video && /(?:^|\s)src\s*=\s*(?:"([^"]+)"|'([^']+)')/i.exec(video[1]);
+        const reference = source && resolveLocalFileLinkReference(source[1] ?? source[2]);
+        if (reference && /\.(?:mp4|webm|mov|m4v|ogv)$/i.test(reference.filePath)) {
+          const next = siblings[index + 1];
+          if (next?.type === 'html' && /^\s*<\/video>\s*$/i.test(next.value ?? '')) next.value = '';
+          const link: MarkdownNode = {
+            type: 'link',
+            url: toLocalFileHref(reference.filePath),
+            children: [{ type: 'text', value: reference.filePath.split(/[\\/]/).pop() || reference.filePath }],
+          };
+          return [parent.type === 'paragraph' ? link : { type: 'paragraph', children: [link] }];
+        }
+      }
+      if (node.children) visit(node);
+      return [node];
+    });
+  };
+  visit(tree);
+};
+
 /**
  * Format raw code string, attempting JSON pretty-print.
  * Falls back to stripped trailing newline if parsing fails.
@@ -197,11 +224,11 @@ export const resolveLocalFileLinkReference = (
   if (!href) return null;
 
   let candidate = normalizeLocalFileHrefToPath(href);
-  // Only file-like relative links have a local meaning in the agent's cwd.
+  // Explicit relative folders also have a local meaning in the agent's cwd.
   // Never resolve web URLs, application routes or fragment-only links as files.
   if (!candidate && baseDirectory && !/^(?:[a-z][a-z\d+.-]*:|[\\/#?])/i.test(href)) {
     const path = splitHashLocation(href).filePath;
-    if (/\.[^/\\?#.]+(?::\d+(?::\d+)?)?$/.test(path)) {
+    if (/\.[^/\\?#.]+(?::\d+(?::\d+)?)?$/.test(path) || /^(?:\.\.?)[/\\]|[/\\]$/.test(path)) {
       const base = toLocalFileHref(`${baseDirectory.replace(/[\\/]+$/, '')}/`);
       candidate = normalizeLocalFileHrefToPath(new URL(href.replace(/\\/g, '/'), base).href);
     }
@@ -225,8 +252,12 @@ export const resolveLocalFileLinkReference = (
   };
 };
 
-export const resolveLocalFileLinkPath = (rawHref: string, resolvedHref?: string): string | null => {
-  return resolveLocalFileLinkReference(rawHref, resolvedHref)?.filePath ?? null;
+export const resolveLocalFileLinkPath = (
+  rawHref: string,
+  resolvedHref?: string,
+  baseDirectory?: string
+): string | null => {
+  return resolveLocalFileLinkReference(rawHref, resolvedHref, baseDirectory)?.filePath ?? null;
 };
 
 export const toLocalFileHref = (filePath: string): string => {

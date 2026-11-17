@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} files and folders",
     "loadFailed": "Unable to preview this archive"
-  }
+  },
+  "copyImage": "Copy image",
+  "copyTable": "Copy table",
+  "selectAll": "Select all",
+  "fileActionFailed": "Could not complete this file operation",
+  "directory": {
+    "up": "Up one level",
+    "search": "Search files",
+    "loadFailed": "Unable to open this folder",
+    "empty": "No files found",
+    "entries": "{{count}} items"
+  },
+  "saveAs": "Save as…"
 }

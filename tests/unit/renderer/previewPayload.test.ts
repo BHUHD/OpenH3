@@ -56,6 +56,12 @@ beforeEach(() => {
 });
 
 describe('resolvePreviewPayload', () => {
+  it('preserves directory metadata without reading a folder as text', async () => {
+    h.getContentMetadata.mockResolvedValue({ ...meta(0), isDirectory: true });
+    const result = await resolvePreviewPayload(ref, 'code');
+    expect(result).toMatchObject({ isDirectory: true, content: '', oversized: false });
+    expect(h.readContent).not.toHaveBeenCalled();
+  });
   it('streams a large video without reading binary bytes as text', async () => {
     h.getContentMetadata.mockResolvedValue(meta(2 * 1024 ** 3));
     const result = await resolvePreviewPayload(ref, 'video');

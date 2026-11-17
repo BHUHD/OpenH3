@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Tabs } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { DocumentState } from './DocumentState';
+import DocumentFrame from './DocumentFrame';
 import { renderSpreadsheet } from './documentRendering';
 import { useDocumentPreview, type DocumentPreviewProps } from './useDocumentPreview';
 
@@ -19,11 +20,10 @@ export default function SpreadsheetPreview(props: DocumentPreviewProps) {
           <Tabs.TabPane key={String(index)} title={item.name} />
         ))}
       </Tabs>
-      <iframe
+      <DocumentFrame
         className='w-full flex-1 min-h-0 border-none'
         title={`${t('preview.excel.title')} · ${sheet.name}`}
-        sandbox=''
-        srcDoc={sheet.html}
+        html={sheet.html}
       />
     </div>
   );

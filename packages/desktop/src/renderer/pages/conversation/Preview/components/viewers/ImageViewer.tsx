@@ -9,6 +9,7 @@ import type { ChatFileRef } from '@/common/types/chatFile';
 import { Image } from '@arco-design/web-react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileActions } from '@/renderer/components/files/FileActions';
 
 interface ImagePreviewProps {
   fileRef?: ChatFileRef;
@@ -86,13 +87,27 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({ fileRef, file_path, content
       );
     }
 
-    return (
+    const image = (
       <Image
         src={imageSrc}
         alt={file_name || file_path || 'Image preview'}
         className='w-full h-full flex items-center justify-center [&_.arco-image-img]:w-full [&_.arco-image-img]:h-full [&_.arco-image-img]:object-contain'
         preview={!!imageSrc}
       />
+    );
+    const file = fileRef ?? (file_path ? { kind: 'local' as const, path: file_path } : undefined);
+    return file ? (
+      <FileActions
+        file={file}
+        path={file_path}
+        name={file_name ?? file_path ?? ''}
+        directory={false}
+        className='flex w-full h-full items-center justify-center'
+      >
+        {image}
+      </FileActions>
+    ) : (
+      image
     );
   };
 

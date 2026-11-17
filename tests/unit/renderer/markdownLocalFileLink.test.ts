@@ -34,6 +34,12 @@ describe('resolveLocalFileLinkPath', () => {
     expect(resolveLocalFileLinkPath(String.raw`\\server\share\报告.pdf`)).toBe(String.raw`\\server\share\报告.pdf`);
   });
 
+  it('resolves explicit relative directory links against the conversation workspace', () => {
+    expect(resolveLocalFileLinkPath('./原片逐帧图片', undefined, 'C:/创作')).toBe('C:/创作/原片逐帧图片');
+    expect(resolveLocalFileLinkPath('原片逐帧图片/', undefined, 'C:/创作')).toBe('C:/创作/原片逐帧图片/');
+    expect(resolveLocalFileLinkPath('settings', undefined, 'C:/创作')).toBeNull();
+  });
+
   it('recognizes Windows absolute paths emitted as root-relative markdown links', () => {
     expect(resolveLocalFileLinkPath('/C:/Users/Administrator/AppData/Roaming/AionUi/report.xlsx')).toBe(
       'C:/Users/Administrator/AppData/Roaming/AionUi/report.xlsx'

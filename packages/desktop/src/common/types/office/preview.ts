@@ -16,6 +16,7 @@ export type PreviewContentType =
   | 'image'
   | 'video'
   | 'archive'
+  | 'directory'
   // Plain text with a table shape. Split out of `excel` because officecli — the
   // renderer `excel` routes to — does not accept .csv at all, so every CSV opened
   // failed there while being perfectly readable as text.

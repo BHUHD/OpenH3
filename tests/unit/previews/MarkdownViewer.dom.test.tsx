@@ -47,6 +47,7 @@ vi.mock('@/renderer/hooks/chat/useTypingAnimation', () => ({
 }));
 
 vi.mock('@/renderer/utils/platform', () => ({
+  isElectronDesktop: () => true,
   openExternalUrl: vi.fn(),
 }));
 
@@ -107,6 +108,8 @@ vi.mock('@arco-design/web-react', () => ({
 vi.mock('@icon-park/react', () => ({
   Copy: () => <span data-testid='copy-icon' />,
   Download: () => <span data-testid='download-icon' />,
+  FolderOpen: () => <span data-testid='folder-open-icon' />,
+  PreviewOpen: () => <span data-testid='preview-open-icon' />,
 }));
 
 import MarkdownViewer from '@/renderer/pages/conversation/Preview/components/viewers/MarkdownViewer';

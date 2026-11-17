@@ -20,6 +20,7 @@ export const FILE_EXTENSION_MAP: Record<PreviewContentType, readonly string[]> =
   // which does not help for a format it cannot open.
   word: ['docx'],
   archive: ['zip'],
+  directory: [],
   ppt: ['pptx'],
   excel: ['xlsx'],
   // CSV is plain text, and officecli rejects it outright — so it reads as text

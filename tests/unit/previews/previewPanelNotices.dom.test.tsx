@@ -173,6 +173,11 @@ afterEach(() => {
 
 const TIMEOUT_MS = 30000;
 
+const clickDownload = async (): Promise<void> => {
+  fireEvent.click(await screen.findByRole('button', { name: 'common.more' }));
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'preview.saveAs' }));
+};
+
 describe('preview download behavior', () => {
   const originalCreateObjectUrl = Object.getOwnPropertyDescriptor(URL, 'createObjectURL');
   const originalRevokeObjectUrl = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL');
@@ -209,17 +214,17 @@ describe('preview download behavior', () => {
     'downloads the original bytes for an Explorer-backed Excel tab',
     async () => {
       const bytes = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x01]);
-      mocks.fetch.mockResolvedValue(
-        new Response(bytes, {
-          headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-        })
+      mocks.fetch.mockImplementation(
+        async () =>
+          new Response(bytes, {
+            headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+          })
       );
       const { rerender } = render(<Harness showPanel={false} />);
       openExcelTab();
       act(() => rerender(<Harness showPanel />));
 
-      const downloadButton = await screen.findByTitle('preview.downloadFile');
-      fireEvent.click(downloadButton);
+      await clickDownload();
 
       await waitFor(() => {
         expect(downloadedBlobs).toHaveLength(1);
@@ -232,6 +237,15 @@ describe('preview download behavior', () => {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
       expect(downloadedNames).toEqual(['budget.xlsx']);
+      // Keep the URL alive for the browser until a later download replaces it.
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+      await clickDownload();
+      await waitFor(() => expect(downloadedBlobs).toHaveLength(2));
+      expect(downloadedBlobs[1]).toMatchObject({
+        size: bytes.byteLength,
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      expect(downloadedNames).toEqual(['budget.xlsx', 'budget.xlsx']);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview-download');
     },
     TIMEOUT_MS
@@ -244,8 +258,7 @@ describe('preview download behavior', () => {
       openOversizedTab();
       act(() => rerender(<Harness showPanel />));
 
-      const downloadButton = await screen.findByTitle('preview.downloadFile');
-      fireEvent.click(downloadButton);
+      await clickDownload();
 
       await waitFor(() => expect(screen.getByText('preview.oversized.downloadUnavailable')).toBeInTheDocument());
       expect(mocks.fetch).not.toHaveBeenCalled();
@@ -261,8 +274,7 @@ describe('preview download behavior', () => {
       openUnsupportedTab();
       act(() => rerender(<Harness showPanel />));
 
-      const downloadButton = await screen.findByTitle('preview.downloadFile');
-      fireEvent.click(downloadButton);
+      await clickDownload();
 
       await waitFor(() => expect(screen.getByText('preview.unsupported.downloadUnavailable')).toBeInTheDocument());
       expect(screen.queryByText('preview.oversized.downloadUnavailable')).not.toBeInTheDocument();
@@ -280,7 +292,7 @@ describe('preview download behavior', () => {
       openExcelTab();
       act(() => rerender(<Harness showPanel />));
 
-      fireEvent.click(await screen.findByTitle('preview.downloadFile'));
+      await clickDownload();
 
       await waitFor(() => expect(screen.getByText('Failed to download')).toBeInTheDocument());
       expect(downloadedBlobs).toHaveLength(0);
@@ -302,8 +314,7 @@ describe('preview download behavior', () => {
       openExcelTab();
       act(() => rerender(<Harness showPanel />));
 
-      const downloadButton = await screen.findByTitle('preview.downloadFile');
-      fireEvent.click(downloadButton);
+      await clickDownload();
       await Promise.resolve();
       await Promise.resolve();
 
@@ -332,8 +343,7 @@ describe('preview download behavior', () => {
       });
       act(() => rerender(<Harness showPanel />));
 
-      const downloadButton = await screen.findByTitle('preview.downloadFile');
-      fireEvent.click(downloadButton);
+      await clickDownload();
 
       expect(messageError).toHaveBeenCalledWith('Failed to download');
       expect(mocks.fetch).not.toHaveBeenCalled();
@@ -343,18 +353,19 @@ describe('preview download behavior', () => {
   );
 
   it(
-    'rejects an empty stream instead of saving a zero-byte file',
+    'saves a successful empty stream as a zero-byte file',
     async () => {
       mocks.fetch.mockResolvedValue(new Response());
       const { rerender } = render(<Harness showPanel={false} />);
       openExcelTab();
       act(() => rerender(<Harness showPanel />));
 
-      fireEvent.click(await screen.findByTitle('preview.downloadFile'));
+      await clickDownload();
 
-      await waitFor(() => expect(screen.getByText('Failed to download')).toBeInTheDocument());
-      expect(downloadedBlobs).toHaveLength(0);
-      expect(downloadedNames).toHaveLength(0);
+      await waitFor(() => expect(downloadedBlobs).toHaveLength(1));
+      expect(downloadedBlobs[0]).toMatchObject({ size: 0 });
+      expect(downloadedNames).toEqual(['budget.xlsx']);
+      expect(screen.queryByText('Failed to download')).not.toBeInTheDocument();
     },
     TIMEOUT_MS
   );
@@ -373,7 +384,7 @@ describe('preview download behavior', () => {
       });
       act(() => rerender(<Harness showPanel />));
 
-      fireEvent.click(await screen.findByTitle('preview.downloadFile'));
+      await clickDownload();
 
       await waitFor(() => expect(downloadedBlobs).toHaveLength(1));
       expect(mocks.fetch).not.toHaveBeenCalled();
@@ -485,7 +496,7 @@ describe('the refresh control reflects what it can promise', () => {
       openOversizedTab();
       act(() => rerender(<Harness showPanel />));
 
-      await screen.findByTitle('preview.downloadFile'); // toolbar is up
+      await screen.findByRole('button', { name: 'common.more' }); // toolbar is up
       expect(screen.queryByTestId('preview-refresh')).not.toBeInTheDocument();
     },
     TIMEOUT_MS
@@ -498,7 +509,7 @@ describe('the refresh control reflects what it can promise', () => {
       openUnsupportedTab();
       act(() => rerender(<Harness showPanel />));
 
-      await screen.findByTitle('preview.downloadFile');
+      await screen.findByRole('button', { name: 'common.more' });
       expect(screen.queryByTestId('preview-refresh')).not.toBeInTheDocument();
     },
     TIMEOUT_MS

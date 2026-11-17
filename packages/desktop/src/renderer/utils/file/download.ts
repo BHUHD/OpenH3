@@ -9,15 +9,18 @@ import type { ChatFileRef } from '@/common/types/chatFile';
 import { buildFileStreamUrl } from './fileUrls';
 import { base64ToBlob, BINARY_MIME_MAP } from './base64';
 
+let pendingDownloadUrl: string | undefined;
+
 function triggerBlobDownload(blob: Blob, file_name: string): void {
+  if (pendingDownloadUrl) URL.revokeObjectURL(pendingDownloadUrl);
   const url = URL.createObjectURL(blob);
+  pendingDownloadUrl = url;
   const link = document.createElement('a');
   link.href = url;
   link.download = file_name;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 /**
@@ -46,7 +49,6 @@ export async function downloadFileFromRef(file: ChatFileRef, file_name: string):
   const response = await fetch(buildFileStreamUrl(file));
   if (!response.ok) throw new Error(`File download failed (${response.status})`);
   const blob = await response.blob();
-  if (blob.size === 0) throw new Error('File data is empty');
   triggerBlobDownload(blob, file_name);
 }
 

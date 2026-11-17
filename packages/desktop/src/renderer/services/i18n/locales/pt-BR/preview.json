@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} arquivos e pastas",
     "loadFailed": "Não foi possível visualizar este arquivo compactado"
-  }
+  },
+  "copyImage": "Copiar imagem",
+  "copyTable": "Copiar tabela",
+  "selectAll": "Selecionar tudo",
+  "fileActionFailed": "Não foi possível concluir a operação",
+  "directory": {
+    "up": "Pasta superior",
+    "search": "Pesquisar arquivos",
+    "loadFailed": "Não foi possível abrir a pasta",
+    "empty": "Nenhum arquivo encontrado",
+    "entries": "{{count}} itens"
+  },
+  "saveAs": "Salvar como…"
 }

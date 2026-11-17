@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} 個檔案與資料夾",
     "loadFailed": "無法檢視此壓縮檔"
-  }
+  },
+  "copyImage": "複製圖片",
+  "copyTable": "複製表格",
+  "selectAll": "全選",
+  "fileActionFailed": "檔案操作失敗",
+  "directory": {
+    "up": "上一層",
+    "search": "搜尋檔案",
+    "loadFailed": "無法開啟此資料夾",
+    "empty": "找不到檔案",
+    "entries": "{{count}} 個項目"
+  },
+  "saveAs": "另存新檔…"
 }

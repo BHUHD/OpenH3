@@ -18,6 +18,7 @@ import type { ChatFileRef } from '@/common/types/chatFile';
  * @param hasFilePath - Whether the tab is backed by a file on disk
  */
 export const shouldShowDownload = (contentType: string, hasFilePath: boolean): boolean => {
+  if (contentType === 'directory') return false;
   if ((contentType === 'code' || contentType === 'markdown') && hasFilePath) {
     return false;
   }

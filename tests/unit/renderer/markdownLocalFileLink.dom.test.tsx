@@ -39,6 +39,7 @@ vi.mock('@/renderer/utils/chat/latexDelimiters', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({
   openExternalUrl: vi.fn(),
+  isElectronDesktop: () => false,
 }));
 
 vi.mock('@/renderer/utils/ui/clipboard', () => ({
@@ -60,11 +61,14 @@ vi.mock('@arco-design/web-react', () => ({
     error: vi.fn(),
   },
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  Image: { Preview: ({ src }: { src: string }) => <div role='dialog' data-src={src} /> },
+  Image: { PreviewGroup: ({ srcList }: { srcList: string[] }) => <span role='dialog' data-src={srcList[0]} /> },
 }));
 
 vi.mock('@icon-park/react', () => ({
   Copy: () => <span data-testid='copy-icon' />,
+  PreviewOpen: () => <span />,
+  FolderOpen: () => <span />,
+  Download: () => <span />,
 }));
 
 vi.mock('react-i18next', () => ({
@@ -74,6 +78,25 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('MarkdownView local file links', () => {
+  it('converts local HTML video delivery to the same file player without executing HTML attributes', () => {
+    const path = 'D:/生成结果/clip.mp4';
+    const { container } = render(
+      <MarkdownView
+        onLocalFileLink={vi.fn()}
+      >{`<video controls src="${path}" onerror="alert(1)"></video>`}</MarkdownView>
+    );
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    expect(new URL(video!.getAttribute('src')!).searchParams.get('path')).toBe(path);
+    expect(video).not.toHaveAttribute('onerror');
+    expect(container.textContent).not.toContain('<video');
+  });
+
+  it('leaves video examples inside code blocks as code', () => {
+    const { container } = render(<MarkdownView>{'```html\n<video src="D:/clip.mp4"></video>\n```'}</MarkdownView>);
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('code')).toHaveTextContent('<video');
+  });
   it('opens relative document deliveries using the conversation workspace', () => {
     const onOpen = vi.fn();
     render(
@@ -122,22 +145,27 @@ describe('MarkdownView local file links', () => {
     expect(onOpen).toHaveBeenCalledWith(path, expect.objectContaining({ filePath: path }));
   });
 
-  it('keeps a local video link without a second player when a result card already displays the file', () => {
-    const path = 'D:/生成结果/clip.mp4';
-    const sources = [path];
-    function ExistingCard() {
-      useRegisterRenderedMedia('job-1', sources);
-      return <video aria-label='existing result' />;
+  it.each(['markdown', 'html'])(
+    'keeps a local video %s without a second player when a result card displays the file',
+    (format) => {
+      const path = 'D:/生成结果/clip.mp4';
+      const sources = [path];
+      function ExistingCard() {
+        useRegisterRenderedMedia('job-1', sources);
+        return <video aria-label='existing result' />;
+      }
+      const { container } = render(
+        <RenderedMediaProvider>
+          <ExistingCard />
+          <MarkdownView onLocalFileLink={vi.fn()}>
+            {format === 'html' ? `<video controls src="${path}"></video>` : `[打开视频](${path})`}
+          </MarkdownView>
+        </RenderedMediaProvider>
+      );
+      expect(container.querySelectorAll('video')).toHaveLength(1);
+      expect(screen.getByRole('button', { name: format === 'html' ? 'clip.mp4' : '打开视频' })).toBeInTheDocument();
     }
-    const { container } = render(
-      <RenderedMediaProvider>
-        <ExistingCard />
-        <MarkdownView onLocalFileLink={vi.fn()}>{`[打开视频](${path})`}</MarkdownView>
-      </RenderedMediaProvider>
-    );
-    expect(container.querySelectorAll('video')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: '打开视频' })).toBeInTheDocument();
-  });
+  );
 
   it('bounds remote Markdown images and opens their original source for inspection', () => {
     const src = 'https://example.test/portrait.png';

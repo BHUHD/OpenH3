@@ -44,7 +44,9 @@ import './process/bridge/feedbackBridge';
 import { wasLaunchedAtLogin } from '@process/bridge/applicationBridge';
 import { onLanguageChanged } from './process/bridge/systemSettingsBridge';
 import { setInitialLanguage } from '@process/services/i18n';
-import { setupApplicationMenu } from './process/utils/appMenu';
+import { setupApplicationMenu, setupContentContextMenus } from './process/utils/appMenu';
+
+setupContentContextMenus();
 import { startWebHost } from '@openh3/web-host';
 import { initializeZoomFactor, setupZoomForWindow } from './process/utils/zoom';
 import { hydrateWindowsProcessPath } from './process/startup/windowsPath';

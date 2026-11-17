@@ -25,8 +25,14 @@ import ConversationImage from '@renderer/components/media/ConversationImage';
 import CodeBlock from './CodeBlock';
 import LocalFileLink from './LocalFileLink';
 import ShadowView from './ShadowView';
+import { SelectionActions } from '../files/SelectionActions';
 import { MARKDOWN_REMARK_PLUGINS, MarkdownTable, MarkdownTd } from './markdownComponents';
-import { resolveLocalFileLinkPath, resolveLocalFileLinkReference, safeDecodeURIComponent } from './markdownUtils';
+import {
+  remarkLocalVideo,
+  resolveLocalFileLinkPath,
+  resolveLocalFileLinkReference,
+  safeDecodeURIComponent,
+} from './markdownUtils';
 import type { LocalFileLinkReference } from './markdownUtils';
 import { useRenderedMedia } from './RenderedMediaContext';
 
@@ -150,18 +156,20 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
     return (
       <div className={classNames('relative w-full', className)}>
         <ShadowView>
-          <div ref={onRef} className='markdown-shadow-body'>
-            <ReactMarkdown
-              remarkPlugins={MARKDOWN_REMARK_PLUGINS}
-              rehypePlugins={rehypePlugins}
-              components={components}
-              urlTransform={(url) =>
-                resolveLocalFileLinkReference(url, undefined, workspace) ? url : defaultUrlTransform(url)
-              }
-            >
-              {normalizedChildren}
-            </ReactMarkdown>
-          </div>
+          <SelectionActions>
+            <div ref={onRef} className='markdown-shadow-body'>
+              <ReactMarkdown
+                remarkPlugins={[...MARKDOWN_REMARK_PLUGINS, remarkLocalVideo]}
+                rehypePlugins={rehypePlugins}
+                components={components}
+                urlTransform={(url) =>
+                  resolveLocalFileLinkReference(url, undefined, workspace) ? url : defaultUrlTransform(url)
+                }
+              >
+                {normalizedChildren}
+              </ReactMarkdown>
+            </div>
+          </SelectionActions>
         </ShadowView>
       </div>
     );

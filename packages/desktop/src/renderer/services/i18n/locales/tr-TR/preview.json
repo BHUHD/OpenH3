@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} dosya ve klasör",
     "loadFailed": "Bu arşiv önizlenemiyor"
-  }
+  },
+  "copyImage": "Resmi kopyala",
+  "copyTable": "Tabloyu kopyala",
+  "selectAll": "Tümünü seç",
+  "fileActionFailed": "Dosya işlemi tamamlanamadı",
+  "directory": {
+    "up": "Üst klasör",
+    "search": "Dosya ara",
+    "loadFailed": "Klasör açılamadı",
+    "empty": "Dosya bulunamadı",
+    "entries": "{{count}} öğe"
+  },
+  "saveAs": "Farklı kaydet…"
 }

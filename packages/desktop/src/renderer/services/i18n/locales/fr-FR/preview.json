@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} fichiers et dossiers",
     "loadFailed": "Impossible de prévisualiser cette archive"
-  }
+  },
+  "copyImage": "Copier l’image",
+  "copyTable": "Copier le tableau",
+  "selectAll": "Tout sélectionner",
+  "fileActionFailed": "Échec de l’opération sur le fichier",
+  "directory": {
+    "up": "Dossier parent",
+    "search": "Rechercher des fichiers",
+    "loadFailed": "Impossible d’ouvrir ce dossier",
+    "empty": "Aucun fichier trouvé",
+    "entries": "{{count}} éléments"
+  },
+  "saveAs": "Enregistrer sous…"
 }

@@ -34,7 +34,8 @@ describe('Word file preview', () => {
     vi.stubGlobal('fetch', fetch);
     render(<WordPreview file_path='C:/交付/預算.docx' />);
     const frame = await screen.findByTitle('preview.word.title');
-    expect(frame).toHaveAttribute('sandbox', '');
+    expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+    expect(frame.getAttribute('sandbox')).not.toContain('allow-scripts');
     expect(frame.getAttribute('srcdoc')).toContain('繁體中文經費預算');
     expect(frame.getAttribute('srcdoc')).toContain('<table');
     expect(frame.getAttribute('srcdoc')).toContain('5500');

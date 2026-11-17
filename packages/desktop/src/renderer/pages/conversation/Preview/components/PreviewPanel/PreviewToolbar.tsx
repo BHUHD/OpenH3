@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { iconColors } from '@/renderer/styles/colors';
-import { Close } from '@icon-park/react';
+import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
+import { More, Refresh, Save, Code, PreviewOpen } from '@icon-park/react';
+import styles from '@/renderer/components/files/FilePreview.module.css';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { shouldShowDownload } from './previewToolbarUtils';
@@ -50,6 +52,7 @@ interface PreviewToolbarProps {
    * Filename
    */
   file_name?: string;
+  fileTitle?: React.ReactNode;
 
   /**
    * 是否显示"在系统中打开"按钮
@@ -176,6 +179,7 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
   viewMode,
   isSplitScreenEnabled,
   file_name,
+  fileTitle,
   showOpenInSystemButton,
   hasNoRenderableContent = false,
   hasFilePath,
@@ -189,7 +193,6 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
   onSplitScreenToggle,
   onOpenInSystem,
   onDownload,
-  onClose,
   inspectMode,
   onInspectModeToggle,
   leftExtra,
@@ -197,251 +200,106 @@ const PreviewToolbar: React.FC<PreviewToolbarProps> = ({
 }) => {
   const { t } = useTranslation();
   const isDiff = content_type === 'diff';
-  const preferActionButtonsInFront = Boolean(leftExtra);
-  // 下载的隐藏规则看的是「文件是否在磁盘上」，用 hasFilePath 而不是
-  // showOpenInSystemButton（后者已包含纯 fileRef 的情况）。
-  // The download rule keys off "is the file on disk", so use hasFilePath rather
-  // than showOpenInSystemButton (which now also covers bare-fileRef tabs).
-  const showDownload = shouldShowDownload(content_type, hasFilePath);
-
-  const toolbarBtn =
-    'flex items-center gap-2px px-8px py-3px rd-4px cursor-pointer transition-colors duration-150 text-12px font-medium text-t-secondary hover:text-t-primary hover:bg-bg-3';
-  const toolbarBtnActive = '!text-white bg-brand hover:!text-white hover:bg-brand-hover';
-  const toolbarIconSize = 12;
-
+  const switchable = (isMarkdown || isHTML || isDiff) && !hasNoRenderableContent;
+  const refreshLabel =
+    refreshState === 'updated'
+      ? t('preview.refresh.hasUpdate')
+      : refreshState === 'idle-no-signal'
+        ? t('preview.refresh.noSignalSource')
+        : refreshState === 'disabled'
+          ? t('preview.refresh.unavailable')
+          : t('preview.refresh.tooltip');
   return (
-    <div className='flex items-center justify-between h-32px px-10px bg-bg-2 flex-shrink-0 border-b border-border-1 overflow-x-auto'>
-      <div className='flex items-center justify-between gap-8px w-full' style={{ minWidth: 'max-content' }}>
-        {/* 左侧：Tabs（Markdown/HTML）+ 文件名 / Left: Tabs (Markdown/HTML) + Filename */}
-        <div className='flex items-center h-full gap-8px'>
-          {(isMarkdown || isHTML || isDiff) && !hasNoRenderableContent && (
-            <>
-              <div className='flex items-center h-full gap-0'>
-                <div
-                  className={`flex items-center h-full px-10px cursor-pointer transition-all duration-150 text-12px font-medium ${viewMode === 'source' ? 'text-brand bg-aou-2 border-b-4 border-brand' : 'text-t-secondary hover:text-t-primary hover:bg-bg-3'}`}
-                  onClick={() => {
-                    try {
-                      onViewModeChange('source');
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                >
-                  {isHTML ? t('preview.code') : t('preview.source')}
-                </div>
-                <div
-                  className={`flex items-center h-full px-10px cursor-pointer transition-all duration-150 text-12px font-medium ${viewMode === 'preview' ? 'text-brand bg-aou-2 border-b-4 border-brand' : 'text-t-secondary hover:text-t-primary hover:bg-bg-3'}`}
-                  onClick={() => {
-                    try {
-                      onViewModeChange('preview');
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                >
-                  {t('preview.preview')}
-                </div>
-              </div>
-              {!isDiff && (
-                <div
-                  className={`flex items-center px-8px py-3px rd-4px cursor-pointer transition-colors duration-150 ${isSplitScreenEnabled ? toolbarBtnActive : 'text-t-secondary hover:bg-bg-3'}`}
-                  onClick={() => {
-                    try {
-                      onSplitScreenToggle();
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                  title={isSplitScreenEnabled ? t('preview.closeSplitScreen') : t('preview.openSplitScreen')}
-                >
-                  <svg
-                    width={toolbarIconSize}
-                    height={toolbarIconSize}
-                    viewBox='0 0 24 24'
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                  >
-                    <rect x='3' y='3' width='18' height='18' rx='2' />
-                    <line x1='12' y1='3' x2='12' y2='21' />
-                  </svg>
-                </div>
-              )}
-            </>
-          )}
-
-          {preferActionButtonsInFront && showOpenInSystemButton && (
-            <div className={toolbarBtn} onClick={onOpenInSystem} title={t('preview.openInSystemApp')}>
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                className='text-t-secondary'
-              >
-                <path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' />
-                <polyline points='15 3 21 3 21 9' />
-                <line x1='10' y1='14' x2='21' y2='3' />
-              </svg>
-              <span>{t('preview.openInSystemApp')}</span>
-            </div>
-          )}
-          {preferActionButtonsInFront && showDownload && (
-            <div className={toolbarBtn} onClick={() => void onDownload()} title={t('preview.downloadFile')}>
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                className='text-t-secondary'
-              >
-                <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' />
-                <polyline points='7 10 12 15 17 10' />
-                <line x1='12' y1='15' x2='12' y2='3' />
-              </svg>
-              <span>{t('common.download')}</span>
-            </div>
-          )}
-          {leftExtra}
-        </div>
-
-        <div className='flex items-center gap-4px flex-shrink-0'>
-          {/* 刷新：放在这个稳定容器里，不进下面那两个「前置/后置」重复块 ——
-              那两块由 preferActionButtonsInFront 二选一，只有 PDF 注入 leftExtra，
-              所以按钮会随 tab 类型左右跳。
-              Refresh lives in this stable container rather than in the duplicated
-              front/back action blocks below: those two are selected by
-              preferActionButtonsInFront, and only PDF injects leftExtra, so anything
-              placed in them jumps sides when the tab type changes. */}
-          {refreshState !== undefined && refreshState !== 'hidden' && (
-            <div
+    <div className={styles.toolbar}>
+      <div className={styles.title}>{fileTitle ?? <span title={file_name}>{file_name}</span>}</div>
+      {switchable && (
+        <Button.Group className='flex-shrink-0'>
+          <Tooltip content={isHTML ? t('preview.code') : t('preview.source')}>
+            <Button
+              size='mini'
+              type={viewMode === 'source' ? 'secondary' : 'text'}
+              aria-label={t('preview.source')}
+              aria-pressed={viewMode === 'source'}
+              icon={<Code size={15} />}
+              onClick={() => onViewModeChange('source')}
+            />
+          </Tooltip>
+          <Tooltip content={t('preview.preview')}>
+            <Button
+              size='mini'
+              type={viewMode === 'preview' ? 'secondary' : 'text'}
+              aria-label={t('preview.preview')}
+              aria-pressed={viewMode === 'preview'}
+              icon={<PreviewOpen size={15} />}
+              onClick={() => onViewModeChange('preview')}
+            />
+          </Tooltip>
+        </Button.Group>
+      )}
+      <div className={styles.extras}>
+        {leftExtra}
+        {rightExtra}
+      </div>
+      <Dropdown
+        trigger='click'
+        position='br'
+        droplist={
+          <Menu selectable={false}>
+            {showOpenInSystemButton && (
+              <Menu.Item key='open' onClick={onOpenInSystem}>
+                {t('preview.openInSystemApp')}
+              </Menu.Item>
+            )}
+            {shouldShowDownload(content_type, hasFilePath) && (
+              <Menu.Item key='download' onClick={onDownload}>
+                {isElectronDesktop() ? t('preview.saveAs') : t('preview.downloadFile')}
+              </Menu.Item>
+            )}
+            {switchable && !isDiff && (
+              <Menu.Item key='split' onClick={onSplitScreenToggle}>
+                {isSplitScreenEnabled ? t('preview.closeSplitScreen') : t('preview.openSplitScreen')}
+              </Menu.Item>
+            )}
+            {isHTML && !hasNoRenderableContent && onInspectModeToggle && (
+              <Menu.Item key='inspect' onClick={onInspectModeToggle}>
+                {inspectMode ? t('preview.html.inspectElementDisable') : t('preview.html.inspectElementEnable')}
+              </Menu.Item>
+            )}
+          </Menu>
+        }
+      >
+        <Button type='text' size='mini' aria-label={t('common.more')} icon={<More size={16} />} />
+      </Dropdown>
+      <div className='flex items-center gap-2px flex-shrink-0'>
+        {refreshState !== undefined && refreshState !== 'hidden' && (
+          <Tooltip content={refreshLabel}>
+            <Button
+              type='text'
+              size='mini'
               data-testid='preview-refresh'
               data-refresh-state={refreshState}
-              className={`${toolbarBtn} ${refreshState === 'updated' ? '!text-warning-6' : ''} ${
-                refreshActionable ? '' : '!cursor-not-allowed opacity-50'
-              }`}
-              onClick={refreshActionable ? onRefresh : undefined}
-              title={
-                refreshState === 'updated'
-                  ? t('preview.refresh.hasUpdate')
-                  : refreshState === 'idle-no-signal'
-                    ? t('preview.refresh.noSignalSource')
-                    : refreshState === 'disabled'
-                      ? t('preview.refresh.unavailable')
-                      : t('preview.refresh.tooltip')
-              }
-            >
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-              >
-                <path d='M21 12a9 9 0 1 1-3-6.7' />
-                <polyline points='21 3 21 9 15 9' />
-              </svg>
-              <span>{t('preview.refresh.label')}</span>
-            </div>
-          )}
-
-          {rightExtra}
-
-          {!preferActionButtonsInFront && showOpenInSystemButton && (
-            <div className={toolbarBtn} onClick={onOpenInSystem} title={t('preview.openInSystemApp')}>
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                className='text-t-secondary'
-              >
-                <path d='M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' />
-                <polyline points='15 3 21 3 21 9' />
-                <line x1='10' y1='14' x2='21' y2='3' />
-              </svg>
-              <span>{t('preview.openInSystemApp')}</span>
-            </div>
-          )}
-
-          {!preferActionButtonsInFront && showDownload && (
-            <div className={toolbarBtn} onClick={() => void onDownload()} title={t('preview.downloadFile')}>
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                className='text-t-secondary'
-              >
-                <path d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' />
-                <polyline points='7 10 12 15 17 10' />
-                <line x1='12' y1='15' x2='12' y2='3' />
-              </svg>
-              <span>{t('common.download')}</span>
-            </div>
-          )}
-
-          {isHTML && !hasNoRenderableContent && onInspectModeToggle && (
-            <div
-              className={`${toolbarBtn} ${inspectMode ? toolbarBtnActive : ''}`}
-              onClick={onInspectModeToggle}
-              title={inspectMode ? t('preview.html.inspectElementDisable') : t('preview.html.inspectElementEnable')}
-            >
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                className={inspectMode ? 'text-white' : 'text-t-secondary'}
-              >
-                <path d='M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z' />
-                <path d='M13 13l6 6' />
-              </svg>
-              <span>{inspectMode ? t('preview.html.inspecting') : t('preview.html.inspectElement')}</span>
-            </div>
-          )}
-
-          {/* 保存：可编辑类型才出现，放在这一栏最后、最靠右；无未保存修改时置灰不可点。
-              Save: appears only for editable types, placed last (rightmost) in this row;
-              greyed out and non-clickable when there is nothing unsaved. */}
-          {showSave && (
-            <div
+              aria-label={t('preview.refresh.label')}
+              disabled={!refreshActionable}
+              className={refreshState === 'updated' ? '!text-warning-6' : ''}
+              icon={<Refresh size={15} />}
+              onClick={onRefresh}
+            />
+          </Tooltip>
+        )}
+        {showSave && (
+          <Tooltip content={saveActionable ? t('preview.save.tooltip') : t('preview.save.clean')}>
+            <Button
+              type='text'
+              size='mini'
               data-testid='preview-save'
-              className={`${toolbarBtn} ${saveActionable ? '!text-warning-6' : '!cursor-not-allowed opacity-50'}`}
-              onClick={saveActionable ? onSave : undefined}
-              title={saveActionable ? t('preview.save.tooltip') : t('preview.save.clean')}
-            >
-              <svg
-                width={toolbarIconSize}
-                height={toolbarIconSize}
-                viewBox='0 0 24 24'
-                fill='none'
-                stroke='currentColor'
-                strokeWidth='2'
-                strokeLinecap='round'
-                strokeLinejoin='round'
-              >
-                <path d='M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z' />
-                <polyline points='17 21 17 13 7 13 7 21' />
-                <polyline points='7 3 7 8 15 8' />
-              </svg>
-              <span>{t('common.save')}</span>
-            </div>
-          )}
-        </div>
+              aria-label={t('common.save')}
+              disabled={!saveActionable}
+              className={saveActionable ? '!text-warning-6' : '!cursor-not-allowed'}
+              icon={<Save size={15} />}
+              onClick={onSave}
+            />
+          </Tooltip>
+        )}
       </div>
     </div>
   );

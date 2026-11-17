@@ -27,7 +27,7 @@ import { toLocalFileHref } from '@/renderer/components/Markdown/markdownUtils';
 import { PreviewToolbarExtrasProvider, type PreviewToolbarExtras } from '../../context/PreviewToolbarExtrasContext';
 import { usePreviewContext } from '../../context/PreviewContext';
 import { useResizableSplit } from '@/renderer/hooks/ui/useResizableSplit';
-import { Link, Message } from '@arco-design/web-react';
+import { Button, Link, Message } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DiffPreview from '../viewers/DiffViewer';
 import ExcelPreview from '../viewers/ExcelViewer';
@@ -39,6 +39,9 @@ import MarkdownEditor from '../editors/MarkdownEditor';
 import MarkdownPreview from '../viewers/MarkdownViewer';
 import PDFPreview from '../viewers/PDFViewer';
 import ArchivePreview from '../documents/ArchivePreview';
+import DirectoryPreview from '../documents/DirectoryPreview';
+import { FileActions } from '@/renderer/components/files/FileActions';
+import { SelectionActions } from '@/renderer/components/files/SelectionActions';
 import OfficeDocPreview from '../viewers/OfficeDocViewer';
 import PptViewer from '../viewers/PptViewer';
 import CodeEditor from '../editors/CodeEditor';
@@ -804,7 +807,9 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
     }
 
     try {
-      if (fileRef) {
+      if (content_type === 'directory' && filePath) {
+        await ipcBridge.shell.openFolderWith.invoke({ folder_path: filePath, tool: 'explorer' });
+      } else if (fileRef) {
         // 按 ChatFileRef 身份打开：后端 resolve 后调系统打开，前端拿不到绝对路径。
         // 这条分支让 Explorer 打开的 tab（刻意无 file_path）也有逃生出口。
         //
@@ -832,7 +837,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
         // Context holder may be unmounted after async operation
       }
     }
-  }, [metadata?.fileRef, metadata?.file_path, messageApi, t]);
+  }, [metadata?.fileRef, metadata?.file_path, content_type, messageApi, t]);
 
   // Every hook has now run, so bailing out here keeps the hook count stable.
   if (!isOpen || !activeTab) return null;
@@ -1161,6 +1166,8 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
           workspace={metadata?.workspace}
         />
       );
+    } else if (content_type === 'directory' && metadata?.file_path) {
+      return <DirectoryPreview path={metadata.file_path} tabId={activeTabId ?? undefined} />;
     } else if (content_type === 'archive') {
       return (
         <ArchivePreview tabId={activeTabId ?? undefined} fileRef={metadata?.fileRef} file_path={metadata?.file_path} />
@@ -1256,6 +1263,26 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
             viewMode={viewMode}
             isSplitScreenEnabled={isSplitScreenEnabled}
             file_name={metadata?.file_name || activeTab.title}
+            fileTitle={
+              metadata?.fileRef || metadata?.file_path ? (
+                <FileActions
+                  file={metadata?.fileRef ?? { kind: 'local', path: metadata!.file_path! }}
+                  path={metadata?.file_path}
+                  name={metadata?.file_name || activeTab.title}
+                  directory={content_type === 'directory' ? true : false}
+                  className='flex min-w-0 flex-1'
+                >
+                  <Button
+                    type='text'
+                    size='mini'
+                    className='!justify-start truncate min-w-0 !text-t-secondary'
+                    title={metadata?.file_path || metadata?.file_name}
+                  >
+                    {metadata?.file_name || activeTab.title}
+                  </Button>
+                </FileActions>
+              ) : undefined
+            }
             showOpenInSystemButton={showOpenInSystemButton}
             hasFilePath={Boolean(metadata?.file_path)}
             refreshState={refreshStateToken(refreshState)}
@@ -1285,7 +1312,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
         )}
 
         {/* 预览内容 / Preview content */}
-        {renderContent()}
+        <SelectionActions className='flex flex-col flex-1 min-h-0 min-w-0'>{renderContent()}</SelectionActions>
 
         {/* 浏览器层：常驻挂载，切 tab 不重新加载页面
             Browser layer: always mounted so tab switches don't reload pages */}

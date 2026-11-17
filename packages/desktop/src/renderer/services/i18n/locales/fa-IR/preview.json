@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} فایل و پوشه",
     "loadFailed": "پیش‌نمایش این بایگانی ممکن نیست"
-  }
+  },
+  "copyImage": "کپی تصویر",
+  "copyTable": "کپی جدول",
+  "selectAll": "انتخاب همه",
+  "fileActionFailed": "عملیات فایل انجام نشد",
+  "directory": {
+    "up": "پوشه بالاتر",
+    "search": "جستجوی فایل‌ها",
+    "loadFailed": "پوشه باز نشد",
+    "empty": "فایلی پیدا نشد",
+    "entries": "{{count}} مورد"
+  },
+  "saveAs": "ذخیره با نام…"
 }

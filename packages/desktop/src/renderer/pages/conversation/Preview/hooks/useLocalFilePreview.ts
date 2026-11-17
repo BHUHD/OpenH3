@@ -13,7 +13,7 @@ import { getCurrentProject } from '@/renderer/pages/conversation/explorer/curren
 import { useCallback } from 'react';
 
 const getFileNameFromPath = (file_path: string): string => {
-  const normalized = file_path.replace(/\\/g, '/');
+  const normalized = file_path.replace(/\\/g, '/').replace(/\/+$/, '');
   return normalized.split('/').pop() || file_path;
 };
 
@@ -22,7 +22,7 @@ const getPreviewLanguage = (file_name: string): string => {
   return dotIndex >= 0 ? file_name.slice(dotIndex + 1).toLowerCase() : '';
 };
 
-export const useLocalFilePreview = (workspace?: string) => {
+export const useLocalFilePreview = (workspace?: string, replace = true) => {
   const { openPreview } = usePreviewContext();
 
   return useCallback(
@@ -46,7 +46,7 @@ export const useLocalFilePreview = (workspace?: string) => {
 
         openPreview(
           payload.content,
-          contentType,
+          payload.isDirectory ? 'directory' : contentType,
           {
             title: fileName,
             file_name: fileName,
@@ -58,13 +58,16 @@ export const useLocalFilePreview = (workspace?: string) => {
             targetColumn: reference?.column,
             // An oversized file is read-only: no content was read, so there is
             // nothing to edit and no partial content that could be written back.
-            editable: contentType === 'markdown' || contentType === 'image' || payload.oversized ? false : undefined,
+            editable:
+              payload.isDirectory || contentType === 'markdown' || contentType === 'image' || payload.oversized
+                ? false
+                : undefined,
             oversized: payload.oversized,
             sizeBytes: payload.sizeBytes,
             thresholdBytes: payload.thresholdBytes,
             lastModified: payload.lastModified,
           },
-          { replace: true }
+          { replace }
         );
       } catch {
         openPreview(
@@ -82,10 +85,10 @@ export const useLocalFilePreview = (workspace?: string) => {
             editable: false,
             missingFile: true,
           },
-          { replace: true }
+          { replace }
         );
       }
     },
-    [openPreview, workspace]
+    [openPreview, workspace, replace]
   );
 };

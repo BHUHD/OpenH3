@@ -14,6 +14,7 @@ import type { LocalFileLinkReference } from './markdownUtils';
 import { buildFileStreamUrl } from '@/renderer/utils/file/fileUrls';
 import { useRenderedMedia } from './RenderedMediaContext';
 import FileTypeIcon from '@/renderer/pages/conversation/explorer/fileIcon/FileTypeIcon';
+import { FileActions } from '../files/FileActions';
 
 /** Command-produced edits are ordinary local files, not generation jobs. */
 function LocalVideoPreview({ path, label }: { path: string; label: string }) {
@@ -122,51 +123,58 @@ const LocalFileLink: React.FC<LocalFileLinkProps> = ({ reference, children, onOp
   );
 
   return (
-    <span
-      className='markdown-local-file inline-flex items-center gap-2px max-w-full align-baseline'
-      style={
-        showVideo
-          ? {
-              display: 'inline-flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              maxWidth: 'min(100%, 640px)',
-              verticalAlign: 'top',
-            }
-          : undefined
-      }
-      data-local-file-path={filePath}
-      data-local-file-line={line}
-      title={rawReference}
+    <FileActions
+      file={{ kind: 'local', path: filePath }}
+      path={filePath}
+      name={fallbackLabel}
+      onOpen={onOpen ? () => onOpen(filePath, reference) : undefined}
     >
-      {showVideo && <LocalVideoPreview key={filePath} path={filePath} label={textLabel} />}
-      <span className='inline-flex items-center gap-2px max-w-full'>
-        {canOpen ? (
-          <Button
-            type='text'
-            size='mini'
-            aria-label={locationLabel ? `${textLabel} ${locationLabel}` : isDocument ? fallbackLabel : textLabel}
-            title={isDocument ? `${textLabel}\n${filePath}` : rawReference}
-            className='markdown-local-file-link !px-0 !py-0 !h-auto !leading-normal !align-baseline max-w-full'
-            onClick={handleOpen}
-          >
-            {content}
-          </Button>
-        ) : (
-          <span className='markdown-local-file-link inline-flex items-center gap-4px max-w-full'>{content}</span>
-        )}
-        <Tooltip content={t('common.copy', { defaultValue: 'Copy' })}>
-          <Button
-            aria-label={t('common.copy', { defaultValue: 'Copy' })}
-            type='text'
-            size='mini'
-            className='markdown-local-file-copy !p-1px !w-20px !h-20px flex-shrink-0'
-            icon={<Copy theme='outline' size='14' fill={iconColors.secondary} />}
-            onClick={handleCopy}
-          />
-        </Tooltip>
+      <span
+        className='markdown-local-file inline-flex items-center gap-2px max-w-full align-baseline'
+        style={
+          showVideo
+            ? {
+                display: 'inline-flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                maxWidth: 'min(100%, 640px)',
+                verticalAlign: 'top',
+              }
+            : undefined
+        }
+        data-local-file-path={filePath}
+        data-local-file-line={line}
+        title={rawReference}
+      >
+        {showVideo && <LocalVideoPreview key={filePath} path={filePath} label={textLabel} />}
+        <span className='inline-flex items-center gap-2px max-w-full'>
+          {canOpen ? (
+            <Button
+              type='text'
+              size='mini'
+              aria-label={locationLabel ? `${textLabel} ${locationLabel}` : isDocument ? fallbackLabel : textLabel}
+              title={isDocument ? `${textLabel}\n${filePath}` : rawReference}
+              className='markdown-local-file-link !px-0 !py-0 !h-auto !leading-normal !align-baseline max-w-full'
+              onClick={handleOpen}
+            >
+              {content}
+            </Button>
+          ) : (
+            <span className='markdown-local-file-link inline-flex items-center gap-4px max-w-full'>{content}</span>
+          )}
+          <Tooltip content={t('common.copy', { defaultValue: 'Copy' })}>
+            <Button
+              aria-label={t('common.copy', { defaultValue: 'Copy' })}
+              type='text'
+              size='mini'
+              className='markdown-local-file-copy !p-1px !w-20px !h-20px flex-shrink-0'
+              icon={<Copy theme='outline' size='14' fill={iconColors.secondary} />}
+              onClick={handleCopy}
+            />
+          </Tooltip>
+        </span>
       </span>
-    </span>
+    </FileActions>
   );
 };
 

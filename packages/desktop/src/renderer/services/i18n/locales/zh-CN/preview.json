@@ -226,5 +226,17 @@
   "archive": {
     "entries": "{{count}} 个文件与文件夹",
     "loadFailed": "无法查看此压缩包"
-  }
+  },
+  "copyImage": "复制图片",
+  "copyTable": "复制表格",
+  "selectAll": "全选",
+  "fileActionFailed": "文件操作失败",
+  "directory": {
+    "up": "上一级",
+    "search": "搜索文件",
+    "loadFailed": "无法打开此文件夹",
+    "empty": "未找到文件",
+    "entries": "{{count}} 项"
+  },
+  "saveAs": "另存为…"
 }

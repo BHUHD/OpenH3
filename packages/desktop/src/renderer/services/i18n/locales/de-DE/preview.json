@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} Dateien und Ordner",
     "loadFailed": "Dieses Archiv kann nicht angezeigt werden"
-  }
+  },
+  "copyImage": "Bild kopieren",
+  "copyTable": "Tabelle kopieren",
+  "selectAll": "Alles auswählen",
+  "fileActionFailed": "Dateiaktion fehlgeschlagen",
+  "directory": {
+    "up": "Übergeordneter Ordner",
+    "search": "Dateien suchen",
+    "loadFailed": "Ordner kann nicht geöffnet werden",
+    "empty": "Keine Dateien gefunden",
+    "entries": "{{count}} Elemente"
+  },
+  "saveAs": "Speichern unter…"
 }

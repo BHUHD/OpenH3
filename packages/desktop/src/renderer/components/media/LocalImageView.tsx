@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useConversationContextSafe } from '@renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
 import ConversationImage from './ConversationImage';
+import { FileActions } from '../files/FileActions';
 
 const LocalImageView: React.FC<{
   src: string;
@@ -66,7 +67,16 @@ const LocalImageView: React.FC<{
         <span>{alt}</span>
       </span>
     );
-  return <ConversationImage src={url} alt={alt} className={className} />;
+  return (
+    <FileActions
+      file={{ kind: 'local', path: absolutePath }}
+      path={absolutePath}
+      name={absolutePath.split(/[\\/]/).pop() || alt}
+      directory={false}
+    >
+      <ConversationImage src={url} alt={alt} className={className} />
+    </FileActions>
+  );
 };
 
 export default LocalImageView;

@@ -67,6 +67,7 @@ export const CONTENT_FREE_TYPES = new Set<PreviewContentType>([
   'unsupported',
   'video',
   'archive',
+  'directory',
 ]);
 
 /**
@@ -104,6 +105,7 @@ const thresholdBytesFor = (contentType: PreviewContentType, textLimitBytes: numb
 
 /** Resolved payload for one preview tab. */
 export type PreviewPayload = {
+  isDirectory?: boolean;
   /** Read content, or `''` when the type reads none / the file is oversized. */
   content: string;
   /**
@@ -174,6 +176,9 @@ export const resolvePreviewPayload = async (
   ]);
 
   const sizeBytes = metadata.size;
+  if (metadata.isDirectory) {
+    return { isDirectory: true, content: '', oversized: false, sizeBytes, lastModified: metadata.lastModified };
+  }
   const thresholdBytes = thresholdBytesFor(contentType, textPreviewLimitBytes(storedLimitMb));
   // `>` not `>=`: a file of exactly the limit is within it, not over it.
   const oversized = thresholdBytes !== undefined && sizeBytes > thresholdBytes;

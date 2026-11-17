@@ -602,6 +602,23 @@ describe('MessageText attachment paths', () => {
     expect(metadata).not.toHaveProperty('targetEndLine');
   });
 
+  it('opens local directory links as a browsable directory without reading file bytes', async () => {
+    const path = '/workspace/demo/原片逐帧图片';
+    localFileLinkMocks.payload = { path, reference: undefined };
+    vi.mocked(ipcBridge.fs.getContentMetadata.invoke).mockResolvedValue({ ...fileMetadata(path), isDirectory: true });
+    renderMessageWithLocalLink(`[原片逐帧图片文件夹](${path})`);
+    fireEvent.click(screen.getByRole('button', { name: 'open local file' }));
+    await waitFor(() =>
+      expect(previewMocks.openPreview).toHaveBeenCalledWith(
+        '',
+        'directory',
+        expect.objectContaining({ file_path: path, file_name: '原片逐帧图片' }),
+        { replace: true }
+      )
+    );
+    expect(ipcBridge.fs.readContent.invoke).not.toHaveBeenCalled();
+  });
+
   it('opens office and pdf local markdown links without reading file content', async () => {
     const filePath = '/workspace/demo/reports/q2.pdf';
     localFileLinkMocks.payload = { path: filePath, reference: undefined };

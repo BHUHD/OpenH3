@@ -22,6 +22,24 @@ export type RawSkillFileNode = {
 
 export type RawWorkspaceFlatFile = { name: string; full_path: string; relative_path: string };
 
+export type RawDirectoryEntry = RawWorkspaceFlatFile & {
+  is_dir: boolean;
+  is_file: boolean;
+  children?: RawDirectoryEntry[];
+};
+
+/** Map the filesystem directory endpoint's wire fields at the transport boundary. */
+export function fromBackendDirectoryEntries(raw: RawDirectoryEntry[]): IDirOrFile[] {
+  return raw.map((entry) => ({
+    name: entry.name,
+    fullPath: entry.full_path,
+    relativePath: entry.relative_path,
+    isDir: entry.is_dir,
+    isFile: entry.is_file,
+    ...(entry.children ? { children: fromBackendDirectoryEntries(entry.children) } : {}),
+  }));
+}
+
 // ── Path helpers ───────────────────────────────────────────────────────
 
 function normalizeSlashes(p: string): string {

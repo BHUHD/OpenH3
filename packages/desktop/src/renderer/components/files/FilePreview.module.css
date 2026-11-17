@@ -1,0 +1,52 @@
+.menu :global(.arco-menu-inner) {
+  padding: 4px;
+}
+.menu :global(.arco-menu-item) {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  height: auto;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 8px;
+  flex-shrink: 0;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+  container-type: inline-size;
+}
+.title {
+  display: flex;
+  flex: 1;
+  min-width: 36px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-text-2);
+}
+.title > span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.extras {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 140px;
+  overflow: hidden;
+  font-size: 12px;
+}
+@container (max-width: 480px) {
+  .extras {
+    display: none;
+  }
+}

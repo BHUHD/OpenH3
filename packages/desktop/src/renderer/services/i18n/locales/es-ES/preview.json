@@ -225,5 +225,17 @@
   "archive": {
     "entries": "{{count}} archivos y carpetas",
     "loadFailed": "No se puede mostrar este archivo comprimido"
-  }
+  },
+  "copyImage": "Copiar imagen",
+  "copyTable": "Copiar tabla",
+  "selectAll": "Seleccionar todo",
+  "fileActionFailed": "No se pudo completar la operación",
+  "directory": {
+    "up": "Carpeta superior",
+    "search": "Buscar archivos",
+    "loadFailed": "No se puede abrir esta carpeta",
+    "empty": "No se encontraron archivos",
+    "entries": "{{count}} elementos"
+  },
+  "saveAs": "Guardar como…"
 }
