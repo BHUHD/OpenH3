@@ -7,7 +7,7 @@ import { useOptionalCloudAccount } from '../Provider';
 export const OfficialFailure: React.FC<{ message: TMessage }> = ({ message }) => {
   if (message.model_source?.kind !== 'cloud_account' || message.type !== 'tips' || message.content.type !== 'error')
     return null;
-  return <RecoveryActions failure />;
+  return <RecoveryActions failure={message.content.error?.code !== 'CLOUD_ACCOUNT_INSUFFICIENT_BALANCE'} />;
 };
 export const RecoveryActions: React.FC<{ failure?: boolean }> = ({ failure }) => {
   const cloud = useOptionalCloudAccount();

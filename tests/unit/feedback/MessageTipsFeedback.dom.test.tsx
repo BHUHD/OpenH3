@@ -118,6 +118,34 @@ const buildTips = (
   }) as IMessageTips;
 
 describe('MessageTips — FeedbackButton wiring', () => {
+  it('shows the trusted native balance refusal as an actionable account error', () => {
+    const message = buildTips('error', 'Cloud account balance is insufficient', {
+      message: 'Cloud account balance is insufficient',
+      code: 'CLOUD_ACCOUNT_INSUFFICIENT_BALANCE',
+      ownership: 'user_llm_provider',
+      retryable: false,
+      feedback_recommended: false,
+      resolution: { kind: 'check_provider_billing' },
+    });
+    message.model_source = {
+      kind: 'cloud_account',
+      issuer: 'fixture',
+      subject: '42',
+      provider_id: 'official',
+      model: 'original',
+      protocol: 'chat_completions',
+    };
+    render(<MessageTips message={message} />);
+    expect(screen.getByText('Cloud account balance is insufficient')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Check your account balance and top up if a payment method is available. Send the request again manually after adding funds.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'settings.cloudAccount.refreshWallet' })).toBeInTheDocument();
+    expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
+  });
+
   it('shows an actionable tool capability reason without inferring any official charge', () => {
     const message = buildTips('error', 'safe capability refusal', {
       message: 'safe capability refusal',

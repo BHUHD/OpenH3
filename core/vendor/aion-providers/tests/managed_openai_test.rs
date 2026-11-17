@@ -118,6 +118,59 @@ async fn managed_http_errors_are_not_replayed_or_retained() {
 }
 
 #[tokio::test]
+async fn managed_balance_error_requires_the_gateway_code_and_retains_no_payload() {
+    for mode in [OpenAiApiMode::ChatCompletions, OpenAiApiMode::Responses] {
+        let body =
+            json!({"error":{"code":"native_insufficient_balance", "message":SENTINEL, "token":"synthetic-credential"}});
+        let server = server(ResponseTemplate::new(402).set_body_json(body)).await;
+        let error = timeout(DEADLINE, collect(&provider(&server.uri(), mode)))
+            .await
+            .unwrap()
+            .unwrap_err();
+        assert_eq!(error.to_string(), "Cloud account balance is insufficient");
+        assert!(matches!(error, ProviderError::ManagedInsufficientBalance));
+        assert!(!error.is_retryable());
+        assert_safe(&format!("{error:?} {error}"));
+        assert_one(&server).await;
+    }
+}
+
+#[tokio::test]
+async fn managed_status_or_untrusted_balance_text_is_not_account_balance_evidence() {
+    for (status, body) in [
+        (402, json!({"error":{"message":"native_insufficient_balance"}})),
+        (402, json!({"code":"native_insufficient_balance"})),
+        (402, json!({"error":{"code":"insufficient_quota", "message":SENTINEL}})),
+        (
+            403,
+            json!({"error":{"code":"native_insufficient_balance", "message":SENTINEL}}),
+        ),
+    ] {
+        let server = server(ResponseTemplate::new(status).set_body_json(body)).await;
+        let error = collect(&provider(&server.uri(), OpenAiApiMode::ChatCompletions))
+            .await
+            .unwrap_err();
+        assert!(matches!(error, ProviderError::Api { status: s, .. } if s == status));
+        assert_safe(&format!("{error:?} {error}"));
+        assert_one(&server).await;
+    }
+}
+
+#[tokio::test]
+async fn byok_does_not_adopt_the_native_account_balance_classification() {
+    for status in [402, 403] {
+        let server = server(ResponseTemplate::new(status).set_body_json(json!({
+            "error":{"code":"native_insufficient_balance", "message":"BYOK provider error"}
+        })))
+        .await;
+        let provider = OpenAIProvider::new("byok-key", &server.uri(), ProviderCompat::openai_defaults());
+        let error = collect(&provider).await.unwrap_err();
+        assert!(matches!(error, ProviderError::Api { status: s, .. } if s == status));
+        assert_one(&server).await;
+    }
+}
+
+#[tokio::test]
 async fn managed_redirect_never_reaches_target() {
     let target = server(ResponseTemplate::new(200)).await;
     let origin = server(ResponseTemplate::new(307).insert_header("location", target.uri())).await;
@@ -162,6 +215,7 @@ async fn managed_json_errors_are_safe_in_debug_and_display() {
     for body in [
         json!({"error":{"code":429,"message":SENTINEL}}).to_string(),
         json!({"error":{"code":503,"message":SENTINEL}}).to_string(),
+        json!({"error":{"code":"native_insufficient_balance","status":402,"message":SENTINEL}}).to_string(),
         json!({"error":SENTINEL}).to_string(),
     ] {
         let server = server(ResponseTemplate::new(200).set_body_raw(body, "application/json")).await;
@@ -172,6 +226,7 @@ async fn managed_json_errors_are_safe_in_debug_and_display() {
         .await
         .unwrap();
         let error = result.unwrap_err();
+        assert!(!matches!(error, ProviderError::ManagedInsufficientBalance));
         assert_safe(&format!("{error:?} {error}"));
         assert_one(&server).await;
     }

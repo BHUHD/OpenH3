@@ -281,6 +281,10 @@
         "title": "Permissão negada pelo provedor de modelo",
         "body": "A conta do provedor não tem permissão para este modelo ou operação. Verifique as permissões da conta ou escolha outro modelo."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "O saldo da conta na nuvem é insuficiente",
+        "body": "Confira o saldo e recarregue se houver uma forma de pagamento disponível. Após adicionar fundos, envie a solicitação novamente de forma manual."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "É necessário faturamento no provedor de modelo",
         "body": "O provedor selecionado precisa de faturamento, créditos ou cota ativos para concluir esta solicitação."

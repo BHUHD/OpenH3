@@ -1,4 +1,3 @@
-import { RecoveryActions } from './Failure';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TMessage } from '@/common/chat/chatLib';
@@ -22,7 +21,6 @@ export const ModelSource: React.FC<{ message: TMessage }> = ({ message }) => {
         </span>
       )}
       <div>{t('settings.cloudAccount.sourceDisclaimer')}</div>
-      {source?.kind === 'cloud_account' && <RecoveryActions />}
     </div>
   );
 };

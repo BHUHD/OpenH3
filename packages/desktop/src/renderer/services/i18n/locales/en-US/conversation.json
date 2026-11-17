@@ -280,6 +280,10 @@
         "title": "Model provider permission denied",
         "body": "The provider account does not have permission for this model or operation. Check account permissions or choose another model."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "Cloud account balance is insufficient",
+        "body": "Check your account balance and top up if a payment method is available. Send the request again manually after adding funds."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "Model provider billing is required",
         "body": "The selected provider needs active billing, credits, or quota before it can complete this request."

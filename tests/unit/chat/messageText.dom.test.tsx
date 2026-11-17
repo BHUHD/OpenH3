@@ -245,9 +245,9 @@ describe('MessageText attachment paths', () => {
     expect(screen.getByText('original-model · Responses')).toBeInTheDocument();
     expect(screen.getByText('settings.cloudAccount.sourceDisclaimer')).toBeInTheDocument();
     expect(screen.queryByText('settings.cloudAccount.failureUnknown')).not.toBeInTheDocument();
-    expect(screen.getByText('settings.cloudAccount.manualByok')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.entry' }));
-    expect(forkMocks.navigate).toHaveBeenCalledWith('/settings/cloud-account');
+    expect(screen.queryByText('settings.cloudAccount.manualByok')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'settings.cloudAccount.entry' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'settings.cloudAccount.refreshWallet' })).not.toBeInTheDocument();
     expect(screen.getByTestId('message-text-content')).toHaveTextContent('answer');
   });
   it('shows unknown source for legacy raw JSON claiming official identity', () => {

@@ -263,6 +263,10 @@
         "title": "Model sağlayıcı izni reddetti",
         "body": "Sağlayıcı hesabının bu model veya işlem için izni yok. Hesap izinlerini kontrol edin veya başka bir model seçin."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "Bulut hesabı bakiyesi yetersiz",
+        "body": "Hesap bakiyenizi kontrol edin ve bir ödeme yöntemi varsa bakiye yükleyin. Yükleme sonrasında isteği elle yeniden gönderin."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "Model sağlayıcı için faturalandırma gerekiyor",
         "body": "Seçili sağlayıcının bu isteği tamamlamak için etkin faturalandırma, kredi veya kotaya ihtiyacı var."

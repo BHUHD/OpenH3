@@ -260,6 +260,10 @@
         "title": "Permiso denegado por el proveedor",
         "body": "La cuenta del proveedor no tiene permiso para este modelo u operación. Verifica los permisos de la cuenta o elige otro modelo."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "El saldo de la cuenta en la nube es insuficiente",
+        "body": "Consulta el saldo y recarga si hay un método de pago disponible. Tras añadir fondos, vuelve a enviar la solicitud manualmente."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "Se requiere facturación del proveedor",
         "body": "El proveedor seleccionado necesita facturación activa, créditos o cuota para completar esta solicitud."

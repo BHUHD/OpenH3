@@ -280,6 +280,10 @@
         "title": "Autorisation du fournisseur de modèles refusée",
         "body": "Le compte du fournisseur n'a pas l'autorisation pour ce modèle ou cette opération. Vérifiez les autorisations du compte ou choisissez un autre modèle."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "Le solde du compte cloud est insuffisant",
+        "body": "Consultez le solde et rechargez le compte si un moyen de paiement est disponible. Après le crédit, renvoyez la demande manuellement."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "La facturation du fournisseur modèle est requise",
         "body": "Le fournisseur sélectionné a besoin d'une facturation active, de crédits ou d'un quota avant de pouvoir répondre à cette demande."

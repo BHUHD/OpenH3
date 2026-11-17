@@ -82,28 +82,30 @@ const MessageTipsBody: React.FC<{ message: IMessageTips }> = ({ message }) => {
 
   if (structuredError || neutralOfficial) {
     const errorCode = structuredError?.code;
+    const nativeBalanceRefusal = errorCode === 'CLOUD_ACCOUNT_INSUFFICIENT_BALANCE';
     const ownership = structuredError?.ownership;
     const title =
-      errorCode && !neutralOfficial
+      errorCode && (!neutralOfficial || nativeBalanceRefusal)
         ? t(`conversation.agentError.codes.${errorCode}.title`, {
             defaultValue: t('conversation.agentError.fallbackTitle'),
           })
         : t('conversation.agentError.fallbackTitle');
-    const body = neutralOfficial
-      ? errorCode === 'USER_LLM_PROVIDER_TOOL_CAPABILITY'
-        ? t('conversation.agentError.codes.USER_LLM_PROVIDER_TOOL_CAPABILITY.body')
-        : undefined
-      : errorCode
-        ? t(
-            structuredError?.workspacePath
-              ? `conversation.agentError.codes.${errorCode}.bodyWithPath`
-              : `conversation.agentError.codes.${errorCode}.body`,
-            {
-              workspacePath: structuredError?.workspacePath,
-              defaultValue: structuredError?.message || content,
-            }
-          )
-        : structuredError?.message || content;
+    const body =
+      neutralOfficial && !nativeBalanceRefusal
+        ? errorCode === 'USER_LLM_PROVIDER_TOOL_CAPABILITY'
+          ? t('conversation.agentError.codes.USER_LLM_PROVIDER_TOOL_CAPABILITY.body')
+          : undefined
+        : errorCode
+          ? t(
+              structuredError?.workspacePath
+                ? `conversation.agentError.codes.${errorCode}.bodyWithPath`
+                : `conversation.agentError.codes.${errorCode}.body`,
+              {
+                workspacePath: structuredError?.workspacePath,
+                defaultValue: structuredError?.message || content,
+              }
+            )
+          : structuredError?.message || content;
     const ownershipLabel =
       ownership && !neutralOfficial
         ? t(`conversation.agentError.ownership.${ownership}`, {

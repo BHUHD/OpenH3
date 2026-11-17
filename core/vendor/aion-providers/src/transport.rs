@@ -340,8 +340,11 @@ async fn send_projected_json_request_with_policy(
     let status = response.status();
     if !status.is_success() {
         if managed {
-            // Drop the body without collecting or draining attacker-controlled
-            // bytes. In particular, never call response.text() for paid errors.
+            // Only the native gateway's exact HTTP/code pair is account evidence.
+            // All other status/body combinations retain the generic safe error.
+            if status.as_u16() == 402 && is_native_balance_refusal(response).await {
+                return Err(ProviderError::ManagedInsufficientBalance);
+            }
             return Err(map_common_status(status.as_u16(), String::new(), tool_wire_shape).managed());
         }
         let body_text = response.text().await.unwrap_or_default();
@@ -354,6 +357,21 @@ async fn send_projected_json_request_with_policy(
     }
 
     Ok(response)
+}
+
+async fn is_native_balance_refusal(mut response: reqwest::Response) -> bool {
+    let mut bytes = Vec::new();
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) if bytes.len() + chunk.len() <= MAX_JSON_ERROR_INSPECTION_BYTES => {
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(None) => break,
+            _ => return false,
+        }
+    }
+    serde_json::from_slice::<Value>(&bytes)
+        .is_ok_and(|body| body.pointer("/error/code").and_then(Value::as_str) == Some("native_insufficient_balance"))
 }
 
 fn is_json_response(response: &reqwest::Response) -> bool {

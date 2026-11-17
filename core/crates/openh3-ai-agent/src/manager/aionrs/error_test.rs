@@ -3,6 +3,28 @@ use openh3_api_types::{AgentErrorCode, AgentErrorOwnership};
 use super::*;
 
 #[test]
+fn aionrs_native_balance_refusal_is_distinct_from_supplier_http_status() {
+    let error = AionrsAgentError::Provider(ProviderError::ManagedInsufficientBalance);
+    let classified = aionrs_engine_error_to_send_error(&error);
+    assert_eq!(classified.code(), Some(AgentErrorCode::CloudAccountInsufficientBalance));
+    assert_eq!(classified.stream_error().retryable, Some(false));
+    let summary = aionrs_runtime_error_summary(&error);
+    assert_eq!(summary.provider_error_class, Some("account_balance"));
+    assert_eq!(summary.http_status, Some(402));
+
+    for status in [402, 403] {
+        let error = AionrsAgentError::Provider(ProviderError::Api {
+            status,
+            message: "native_insufficient_balance".into(),
+        });
+        assert_ne!(
+            aionrs_engine_error_to_send_error(&error).code(),
+            Some(AgentErrorCode::CloudAccountInsufficientBalance),
+        );
+    }
+}
+
+#[test]
 fn aionrs_stream_json_error_retains_provider_ownership() {
     let error = AionrsAgentError::ApiError(
         "SSE parse error: Provider returned a JSON error response without an HTTP status: upstream stream failed after response started".into(),

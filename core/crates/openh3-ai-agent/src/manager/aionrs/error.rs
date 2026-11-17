@@ -55,6 +55,10 @@ impl AionrsRuntimeErrorSummary {
 
 pub(super) fn aionrs_runtime_error_summary(error: &AionrsAgentError) -> AionrsRuntimeErrorSummary {
     match error {
+        AionrsAgentError::Provider(ProviderError::ManagedInsufficientBalance) => AionrsRuntimeErrorSummary {
+            http_status: Some(402),
+            ..AionrsRuntimeErrorSummary::new("provider", Some("account_balance"))
+        },
         AionrsAgentError::Provider(ProviderError::Api { status, .. }) => AionrsRuntimeErrorSummary {
             http_status: Some(*status),
             ..AionrsRuntimeErrorSummary::new("provider", Some("http_status"))
@@ -102,6 +106,14 @@ pub(super) fn aionrs_runtime_error_summary(error: &AionrsAgentError) -> AionrsRu
 
 fn aionrs_provider_error_to_send_error(error: &ProviderError, detail: String) -> AgentSendError {
     match error {
+        ProviderError::ManagedInsufficientBalance => provider_send_error(
+            "Cloud account balance is insufficient",
+            AgentErrorCode::CloudAccountInsufficientBalance,
+            detail,
+            false,
+            AgentErrorResolutionKind::CheckProviderBilling,
+            None,
+        ),
         ProviderError::Parse(message) if message == crate::services::managed::TOOL_CAPABILITY_ERROR => {
             provider_send_error(
                 crate::services::managed::TOOL_CAPABILITY_ERROR,

@@ -43,6 +43,7 @@ pub enum AgentErrorCode {
     UserLlmProviderAwsSsoExpired,
     UserLlmProviderPermissionDenied,
     UserLlmProviderBillingRequired,
+    CloudAccountInsufficientBalance,
     UserLlmProviderConfigError,
     UserLlmProviderModelNotFound,
     UserLlmProviderUnsupportedModel,

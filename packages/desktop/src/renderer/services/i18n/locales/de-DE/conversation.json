@@ -280,6 +280,10 @@
         "title": "Berechtigung des Modellanbieters verweigert",
         "body": "Das Anbieterkonto hat keine Berechtigung für dieses Modell oder diese Operation. Überprüfe Kontoberechtigungen oder wähle ein anderes Modell."
       },
+      "CLOUD_ACCOUNT_INSUFFICIENT_BALANCE": {
+        "title": "Das Cloud-Kontoguthaben reicht nicht aus",
+        "body": "Prüfen Sie Ihr Kontoguthaben und laden Sie es auf, falls eine Zahlungsmethode verfügbar ist. Senden Sie die Anfrage nach der Gutschrift erneut manuell."
+      },
       "USER_LLM_PROVIDER_BILLING_REQUIRED": {
         "title": "Abrechnung des Modellanbieters erforderlich",
         "body": "Der ausgewählte Anbieter benötigt aktive Abrechnung, Gutschriften oder Kontingent, bevor diese Anfrage abgeschlossen werden kann."

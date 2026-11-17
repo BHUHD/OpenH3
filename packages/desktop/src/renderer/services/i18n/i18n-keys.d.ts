@@ -366,6 +366,8 @@ export type I18nKey =
   | 'conversation.agentError.codes.AIONUI_STATE_INCONSISTENT.title'
   | 'conversation.agentError.codes.AIONUI_STREAM_BROKEN.body'
   | 'conversation.agentError.codes.AIONUI_STREAM_BROKEN.title'
+  | 'conversation.agentError.codes.CLOUD_ACCOUNT_INSUFFICIENT_BALANCE.body'
+  | 'conversation.agentError.codes.CLOUD_ACCOUNT_INSUFFICIENT_BALANCE.title'
   | 'conversation.agentError.codes.MCP_HTTP_RESPONSE_READ_FAILED.body'
   | 'conversation.agentError.codes.MCP_HTTP_RESPONSE_READ_FAILED.title'
   | 'conversation.agentError.codes.MCP_TCP_READ_FAILED.body'

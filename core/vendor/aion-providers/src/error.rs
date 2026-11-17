@@ -6,6 +6,9 @@ pub enum ProviderError {
     Http(#[from] reqwest::Error),
     #[error("API error {status}: {message}")]
     Api { status: u16, message: String },
+    /// Fixed native gateway business classification; never contains response text.
+    #[error("Cloud account balance is insufficient")]
+    ManagedInsufficientBalance,
     #[error("SSE parse error: {0}")]
     Parse(String),
     // Display intentionally omits `body` — it may contain provider response
@@ -25,6 +28,7 @@ impl ProviderError {
     /// including fields exposed by Debug rather than Display.
     pub(crate) fn managed(self) -> Self {
         match self {
+            Self::ManagedInsufficientBalance => Self::ManagedInsufficientBalance,
             Self::Api { status, .. } => Self::Api {
                 status,
                 message: "Managed provider request failed".into(),
