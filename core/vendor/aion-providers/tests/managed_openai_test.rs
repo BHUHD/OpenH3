@@ -77,6 +77,27 @@ fn assert_safe(text: &str) {
 }
 
 #[tokio::test]
+async fn managed_prefix_preserves_base_path_for_both_protocols() {
+    for (mode, route) in [
+        (OpenAiApiMode::ChatCompletions, "/v1/chat/completions"),
+        (OpenAiApiMode::Responses, "/v1/responses"),
+    ] {
+        for prefix in ["", "/hhaiapi", "/hhaiapi/"] {
+            let server = server(ResponseTemplate::new(401).set_body_string(SENTINEL)).await;
+            let endpoint = format!("{}{prefix}", server.uri());
+            assert!(collect(&provider(&endpoint, mode)).await.is_err());
+            let requests = server.received_requests().await.unwrap();
+            assert_eq!(requests.len(), 1);
+            assert_eq!(
+                requests[0].url.path(),
+                format!("{}{route}", prefix.trim_end_matches('/'))
+            );
+            assert_eq!(requests[0].headers["authorization"], "Bearer synthetic-credential");
+        }
+    }
+}
+
+#[tokio::test]
 async fn managed_http_errors_are_not_replayed_or_retained() {
     for status in [500, 502, 429, 401] {
         let server = server(ResponseTemplate::new(status).set_body_string(SENTINEL)).await;

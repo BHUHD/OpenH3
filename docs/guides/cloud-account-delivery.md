@@ -13,7 +13,7 @@
 }
 ```
 
-网关部署并确认 HTTPS 后，把开关改为字符串 `"1"`，endpoint 填经审核的 **HTTPS 根 origin**；不含 `/api`、`/v1`、用户名、密码、查询或 fragment。Core 自行请求 `/api/openh3/*`。域名、证书和网关必须就绪后再启用；只设置客户端变量不能修复网关 `capabilities` 的 404。
+网关部署并确认 HTTPS 后，把开关改为字符串 `"1"`，endpoint 填经审核的 **HTTPS 基址**；可包含反向代理路径前缀（例如 `https://api.bhhaihuan.com/hhaiapi/`），不含 `/api/openh3`、`/v1`、用户名、密码、查询或 fragment。Core 自行请求 `/api/openh3/*`。域名、证书和网关必须就绪后再启用；只设置客户端变量不能修复网关 `capabilities` 的 404。
 
 正式版和测试版使用同一现有交付入口：
 
@@ -24,7 +24,7 @@
 | CI `dist:*`                                | `OPENH3_DISTRIBUTION_DEFAULTS_JSON`                  | 现有 reusable build 从同名仓库 Secret 注入                  |
 | 开发、`package` 直调 Vite 或安装包临时验证 | 当前启动/构建进程的上述两个环境变量                  | `package` 不经过发行配置文件 loader；开发启动只使用运行环境 |
 
-显式构建环境变量优先于发行 JSON，包括 `OPENH3_CLOUD_ACCOUNT_ENABLED=0`。生产构建只把非秘密开关和经校验的 HTTPS 根地址编入 Electron **main**；图标启动时，main 在启动其 Core 子进程时填充缺省值。运行环境变量再次优先，包括显式 `0` 或空 endpoint。这不会写入 renderer 配置或改动 Core 的 HTTPS、认证、权限、重试规则。无发行配置的源码构建默认关闭。
+显式构建环境变量优先于发行 JSON，包括 `OPENH3_CLOUD_ACCOUNT_ENABLED=0`。生产构建只把非秘密开关和经校验的 HTTPS 基址编入 Electron **main**；图标启动时，main 在启动其 Core 子进程时填充缺省值。运行环境变量再次优先，包括显式 `0` 或空 endpoint。这不会写入 renderer 配置或改动 Core 的 HTTPS、认证、权限、重试规则。无发行配置的源码构建默认关闭。
 
 更换入口或开关会使自动增量构建缓存失效。切换这两个值时正常运行 `dist:*`，不要用 `--skip-vite` 强行打包旧 main。必须随包提供包含账号路由的同版本 Core；仅重建 renderer 不会替换 Core。
 
@@ -45,7 +45,7 @@
 
 ## 环境负责人须提供
 
-- 经批准的预发布/正式域名、DNS、受信任的 HTTPS 证书及完整链、反向代理路由和可达范围。客户端入口保持 root origin；确认对外原生账号 capabilities 成功。
+- 经批准的预发布/正式域名、DNS、受信任的 HTTPS 证书及完整链、反向代理路由和可达范围。客户端入口保持 HTTPS 基址及路径前缀；确认对外原生账号 capabilities 成功。
 - 网关原生账号启用、邮箱/验证策略、受支持的认证方式和真实注册/恢复邮件通道。凭据及数据库/Redis秘密由服务端部署存储管理。
 - 管理员验证的精确模型 ID、协议和工具能力、渠道、价格、额度换算和同步计费策略，以及专用测试账号/额度。模型名不能代替能力证据。
 - 真实收费需要单独确定合规、商户、支付方式、金额/币种、额度、回调 HTTPS 地址和对账负责人。客户端配置不启用真实收费，也不提供默认商户或费率；预发布验证从受控测试额度开始。

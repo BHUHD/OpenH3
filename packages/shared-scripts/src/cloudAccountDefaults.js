@@ -10,24 +10,20 @@ function resolveCloudAccountDefaults(env) {
   try {
     url = new URL(endpoint);
   } catch {
-    throw new Error(
-      'OPENH3_CLOUD_ACCOUNT_ENDPOINT must be an HTTPS root origin without credentials, query or fragment.'
-    );
+    throw new Error('OPENH3_CLOUD_ACCOUNT_ENDPOINT must be an HTTPS base URL without credentials, query or fragment.');
   }
   if (
     url.protocol !== 'https:' ||
     !url.hostname ||
     url.username ||
     url.password ||
-    url.pathname !== '/' ||
     endpoint.includes('?') ||
     endpoint.includes('#')
   ) {
-    throw new Error(
-      'OPENH3_CLOUD_ACCOUNT_ENDPOINT must be an HTTPS root origin without credentials, query or fragment.'
-    );
+    throw new Error('OPENH3_CLOUD_ACCOUNT_ENDPOINT must be an HTTPS base URL without credentials, query or fragment.');
   }
-  return { enabled, endpoint: url.origin + '/' };
+  if (!url.pathname.endsWith('/')) url.pathname += '/';
+  return { enabled, endpoint: url.href };
 }
 
 module.exports = { resolveCloudAccountDefaults };

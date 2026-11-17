@@ -20,7 +20,7 @@ impl Gateway {
         let Some(endpoint) = &config.endpoint else {
             return Ok(None);
         };
-        let endpoint = Url::parse(endpoint).map_err(|_| Error::Policy)?;
+        let mut endpoint = Url::parse(endpoint).map_err(|_| Error::Policy)?;
         let loopback = matches!(endpoint.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"));
         if (endpoint.scheme() != "https"
             && !(config.allow_insecure_loopback && loopback && endpoint.scheme() == "http"))
@@ -28,9 +28,12 @@ impl Gateway {
             || endpoint.password().is_some()
             || endpoint.query().is_some()
             || endpoint.fragment().is_some()
-            || endpoint.path() != "/"
         {
             return Err(Error::Policy);
+        }
+        // Account routes are relative to this trusted base, including its prefix.
+        if !endpoint.path().ends_with('/') {
+            endpoint.path_segments_mut().map_err(|_| Error::Policy)?.push("");
         }
         let client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())

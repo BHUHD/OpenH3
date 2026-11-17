@@ -635,13 +635,91 @@ async fn mfa_handles_are_owner_bound_invalidated_by_new_login_and_restart() {
 }
 
 #[test]
+fn trusted_endpoint_accepts_https_prefix_and_normalizes_issuer() {
+    for endpoint in [
+        "https://api.bhhaihuan.com/hhaiapi",
+        "https://api.bhhaihuan.com/hhaiapi/",
+    ] {
+        let gateway = client::Gateway::new(&CloudAccountConfig {
+            enabled: true,
+            endpoint: Some(endpoint.into()),
+            allow_insecure_loopback: false,
+        })
+        .unwrap()
+        .unwrap();
+        assert_eq!(gateway.issuer(), "https://api.bhhaihuan.com/hhaiapi/");
+    }
+}
+
+#[tokio::test]
+async fn trusted_endpoint_prefix_reaches_account_routes_issuer_and_inference_credentials() {
+    for prefix in ["", "/hhaiapi", "/hhaiapi/"] {
+        let server = MockServer::start().await;
+        let endpoint = format!("{}{prefix}", server.uri());
+        let issuer = format!("{}/", endpoint.trim_end_matches('/'));
+        let route = |suffix: &str| format!("{}/api/openh3/{suffix}", prefix.trim_end_matches('/'));
+        for (verb, suffix, data) in [
+            ("GET", "capabilities", capabilities()),
+            ("POST", "login", pending()),
+            ("POST", "activate", active()),
+            ("GET", "wallet", json!({"fixture": true})),
+            ("POST", "auth/verify", json!({"fixture": true})),
+            ("GET", "topup/options", json!({"fixture": true})),
+        ] {
+            Mock::given(method(verb))
+                .and(path(route(suffix)))
+                .respond_with(ok(data))
+                .expect(1)
+                .mount(&server)
+                .await;
+        }
+        let db = init_database_memory().await.unwrap();
+        let owner: String = sqlx::query_scalar("SELECT id FROM users LIMIT 1")
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+        let svc = CloudAccountService::new(
+            Arc::new(SqliteCloudAccountRepository::new(db.pool().clone())),
+            [7; 32],
+            CloudAccountConfig {
+                enabled: true,
+                endpoint: Some(endpoint),
+                allow_insecure_loopback: true,
+            },
+        )
+        .unwrap();
+        svc.login(&owner, login()).await.unwrap();
+        let grant = svc.read(&owner).await.unwrap().unwrap();
+        assert_eq!(grant.issuer, issuer);
+        assert_eq!(svc.gateway().unwrap().issuer(), issuer);
+        assert_eq!(
+            svc.inference_credentials(&owner, &grant.provider_id)
+                .await
+                .unwrap()
+                .endpoint(),
+            issuer
+        );
+        let gateway = svc.gateway().unwrap();
+        gateway.get::<Value>("wallet", Some("synthetic-token")).await.unwrap();
+        gateway.post::<Value>("auth/verify", &json!({}), None).await.unwrap();
+        gateway.get::<Value>("topup/options", None).await.unwrap();
+        assert_eq!(server.received_requests().await.unwrap().len(), 6);
+    }
+}
+
+#[test]
 fn trusted_endpoint_rejects_credentials_query_fragment_and_insecure_remote() {
     for endpoint in [
         "https://user:secret@example.com",
         "https://example.com?token=x",
         "https://example.com/#x",
         "http://example.com",
-        "https://example.com/arbitrary",
+        "https://user:secret@example.com/hhaiapi/",
+        "https://example.com/hhaiapi/?token=x",
+        "https://example.com/hhaiapi/?",
+        "https://example.com/hhaiapi/#x",
+        "https://example.com/hhaiapi/#",
+        "http://example.com/hhaiapi/",
     ] {
         assert!(matches!(
             client::Gateway::new(&CloudAccountConfig {

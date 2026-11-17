@@ -116,7 +116,7 @@ describe('build-with-builder', () => {
       expect(hash({ [key]: 'first' })).not.toBe(hash({ [key]: 'second' }));
     }
   });
-  it('embeds only an explicitly enabled HTTPS root account gateway', () => {
+  it('embeds only an explicitly enabled HTTPS account gateway base URL', () => {
     expect(resolveCloudAccountDefaults({})).toEqual({ enabled: '0', endpoint: '' });
     expect(
       resolveCloudAccountDefaults({
@@ -124,20 +124,26 @@ describe('build-with-builder', () => {
         OPENH3_CLOUD_ACCOUNT_ENDPOINT: 'https://accounts.example',
       })
     ).toEqual({ enabled: '1', endpoint: 'https://accounts.example/' });
+    for (const endpoint of ['https://api.bhhaihuan.com/hhaiapi', 'https://api.bhhaihuan.com/hhaiapi/']) {
+      expect(
+        resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENABLED: '1', OPENH3_CLOUD_ACCOUNT_ENDPOINT: endpoint })
+      ).toEqual({ enabled: '1', endpoint: 'https://api.bhhaihuan.com/hhaiapi/' });
+    }
     expect(() => resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENABLED: '1' })).toThrow(
       'OPENH3_CLOUD_ACCOUNT_ENDPOINT'
     );
     for (const endpoint of [
       'http://10.1.2.2:3000',
       'http://127.0.0.1:3000',
-      'https://accounts.example/api/openh3',
       'https://user:secret@accounts.example',
+      'https://user:secret@accounts.example/hhaiapi/',
       'https://accounts.example/?',
       'https://accounts.example/#',
+      'https://accounts.example/hhaiapi/?token=x',
+      'https://accounts.example/hhaiapi/#fragment',
+      'http://accounts.example/hhaiapi/',
     ]) {
-      expect(() => resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENDPOINT: endpoint })).toThrow(
-        'HTTPS root origin'
-      );
+      expect(() => resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENDPOINT: endpoint })).toThrow('HTTPS base URL');
     }
   });
   it('rejects skip-vite when renderer output is only a source html shell', () => {
