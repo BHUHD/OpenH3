@@ -4,6 +4,7 @@
 
 - [WebUI](webui.md)：浏览器访问与配置。
 - [服务部署状态](deploy-server.md)：当前支持边界。
+- [原生云账号交付](cloud-account-delivery.md)：可信 HTTPS 入口、发行默认值和冷启动验收。
 - [自定义主题](custom-theme.md)：界面样式与[设计 tokens](../theming/tokens.md)。
 
 开发者请使用[开发环境指南](../contributing/development.md)、[CDP 调试](../contributing/cdp.md)和[Hub 测试](../contributing/hub-testing.md)。协议实现说明见[ACP 图片输出](../architecture/acp-image-output.zh-CN.md)。

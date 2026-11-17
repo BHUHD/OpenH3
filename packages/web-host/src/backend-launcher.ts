@@ -14,6 +14,9 @@ import { connect, createServer, type Socket } from 'node:net';
 import { cleanupRegisteredAgentProcesses } from './agent-process-registry.js';
 import type { AppMetadata, BackendBinaryResolver } from './types.js';
 
+// Electron main supplies these nonsecret build defaults. Standalone WebUI uses its environment.
+declare const __OPENH3_CLOUD_ACCOUNT_DEFAULTS__: { enabled: string; endpoint: string } | undefined;
+
 type BackendStatus = 'stopped' | 'starting' | 'running' | 'error';
 type BackendStartupStage =
   | 'resolve_binary'
@@ -243,6 +246,12 @@ export function buildSpawnEnv(
     OPENH3_CLOUD_ACCOUNT_CAPABILITY: _cloudCapability,
     ...parentEnv
   } = process.env;
+  if (typeof __OPENH3_CLOUD_ACCOUNT_DEFAULTS__ !== 'undefined') {
+    parentEnv.OPENH3_CLOUD_ACCOUNT_ENABLED =
+      process.env.OPENH3_CLOUD_ACCOUNT_ENABLED ?? __OPENH3_CLOUD_ACCOUNT_DEFAULTS__.enabled;
+    parentEnv.OPENH3_CLOUD_ACCOUNT_ENDPOINT =
+      process.env.OPENH3_CLOUD_ACCOUNT_ENDPOINT ?? __OPENH3_CLOUD_ACCOUNT_DEFAULTS__.endpoint;
+  }
   // Windows inherited environment names are case-insensitive; object-rest is not.
   for (const key of Object.keys(parentEnv)) {
     if (key.toUpperCase() === 'OPENH3_CLOUD_ACCOUNT_CAPABILITY') delete parentEnv[key];

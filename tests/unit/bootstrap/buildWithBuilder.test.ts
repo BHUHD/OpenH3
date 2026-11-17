@@ -22,6 +22,7 @@ import { runInNewContext } from 'node:vm';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { resolveCloudAccountDefaults } from '../../../packages/shared-scripts/src/cloudAccountDefaults.js';
 
 const repoRoot = resolve(__dirname, '../../..');
 
@@ -60,7 +61,7 @@ describe('build-with-builder', () => {
     )?.[0];
     expect(functionText).toBeTruthy();
     for (const version of ['3.0.10', '3.0.10-beta.29']) {
-      const env = {
+      const env: Record<string, string> = {
         CI: 'true',
         OPENH3_DEFAULT_MODEL: 'explicit-model',
         OPENH3_DISTRIBUTION_DEFAULTS_JSON: JSON.stringify({
@@ -68,6 +69,10 @@ describe('build-with-builder', () => {
           OPENH3_DEFAULT_MODEL: 'distribution-model',
           OPENH3_DEFAULT_API_KEY: 'fixture-key',
           OPENH3_EMBED_DEFAULT_API_KEY: '1',
+          OPENH3_CLOUD_ACCOUNT_ENABLED: '1',
+          OPENH3_CLOUD_ACCOUNT_ENDPOINT: 'https://accounts.example',
+          OPENH3_CLOUD_ACCOUNT_CAPABILITY: 'must-not-be-distributed',
+          OPENH3_CLOUD_ACCOUNT_ALLOW_LOOPBACK_HTTP: '1',
         }),
         npm_package_version: version,
       };
@@ -76,7 +81,14 @@ describe('build-with-builder', () => {
         OPENH3_GATEWAY_URL: 'https://gateway.example/v1',
         OPENH3_DEFAULT_MODEL: 'explicit-model',
         OPENH3_DEFAULT_API_KEY: 'fixture-key',
+        OPENH3_CLOUD_ACCOUNT_ENABLED: '1',
+        OPENH3_CLOUD_ACCOUNT_ENDPOINT: 'https://accounts.example',
       });
+      expect(env).not.toHaveProperty('OPENH3_CLOUD_ACCOUNT_CAPABILITY');
+      expect(env).not.toHaveProperty('OPENH3_CLOUD_ACCOUNT_ALLOW_LOOPBACK_HTTP');
+      Object.assign(env, { OPENH3_CLOUD_ACCOUNT_ENABLED: '0' });
+      runInNewContext(`${functionText}; loadDistributionDefaults()`, { process: { env }, fs, path });
+      expect(env.OPENH3_CLOUD_ACCOUNT_ENABLED).toBe('0');
     }
   });
   it('invalidates the cached bundle when distribution defaults or credentials change', () => {
@@ -97,9 +109,35 @@ describe('build-with-builder', () => {
       'OPENH3_DEFAULT_MODEL',
       'OPENH3_DEFAULT_API_KEY',
       'OPENH3_DEFAULT_THOUGHT_LEVEL',
+      'OPENH3_CLOUD_ACCOUNT_ENABLED',
+      'OPENH3_CLOUD_ACCOUNT_ENDPOINT',
     ]) {
       expect(hash({ [key]: 'first' })).not.toBe(plain);
       expect(hash({ [key]: 'first' })).not.toBe(hash({ [key]: 'second' }));
+    }
+  });
+  it('embeds only an explicitly enabled HTTPS root account gateway', () => {
+    expect(resolveCloudAccountDefaults({})).toEqual({ enabled: '0', endpoint: '' });
+    expect(
+      resolveCloudAccountDefaults({
+        OPENH3_CLOUD_ACCOUNT_ENABLED: '1',
+        OPENH3_CLOUD_ACCOUNT_ENDPOINT: 'https://accounts.example',
+      })
+    ).toEqual({ enabled: '1', endpoint: 'https://accounts.example/' });
+    expect(() => resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENABLED: '1' })).toThrow(
+      'OPENH3_CLOUD_ACCOUNT_ENDPOINT'
+    );
+    for (const endpoint of [
+      'http://10.1.2.2:3000',
+      'http://127.0.0.1:3000',
+      'https://accounts.example/api/openh3',
+      'https://user:secret@accounts.example',
+      'https://accounts.example/?',
+      'https://accounts.example/#',
+    ]) {
+      expect(() => resolveCloudAccountDefaults({ OPENH3_CLOUD_ACCOUNT_ENDPOINT: endpoint })).toThrow(
+        'HTTPS root origin'
+      );
     }
   });
   it('rejects skip-vite when renderer output is only a source html shell', () => {

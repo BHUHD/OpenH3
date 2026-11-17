@@ -6,6 +6,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 import UnoCSS from 'unocss/vite';
 import unoConfig from '../../uno.config.ts';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { resolveCloudAccountDefaults } from '../shared-scripts/src/cloudAccountDefaults.js';
 
 // Read the real OpenH3 version from the repo-root package.json.
 // `packages/desktop/package.json` is a workspace-internal placeholder pinned
@@ -72,6 +73,7 @@ export default defineConfig(({ mode }) => {
     throw new Error('Embedding a distribution credential requires OPENH3_EMBED_DEFAULT_API_KEY=1.');
   }
   const isDevelopment = mode === 'development';
+  const cloudAccountDefaults = isDevelopment ? undefined : resolveCloudAccountDefaults(process.env);
   const enableSentrySourceMaps =
     !isDevelopment &&
     !!process.env.SENTRY_AUTH_TOKEN &&
@@ -158,6 +160,8 @@ export default defineConfig(({ mode }) => {
         },
       },
       define: {
+        // Nonsecret operator defaults, consumed only when spawning the owned Core.
+        ...(!isDevelopment ? { __OPENH3_CLOUD_ACCOUNT_DEFAULTS__: JSON.stringify(cloudAccountDefaults) } : {}),
         'process.env.NODE_ENV': JSON.stringify(mode),
         'process.env.env': JSON.stringify(process.env.env),
         'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN ?? ''),

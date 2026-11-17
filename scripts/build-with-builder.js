@@ -34,6 +34,8 @@ function loadDistributionDefaults() {
     'OPENH3_DEFAULT_API_KEY',
     'OPENH3_DEFAULT_THOUGHT_LEVEL',
     'OPENH3_EMBED_DEFAULT_API_KEY',
+    'OPENH3_CLOUD_ACCOUNT_ENABLED',
+    'OPENH3_CLOUD_ACCOUNT_ENDPOINT',
   ]) {
     if (process.env[key] === undefined && typeof defaults[key] === 'string') process.env[key] = defaults[key];
   }
@@ -299,6 +301,8 @@ function computeSourceHash() {
     'OPENH3_DEFAULT_MODEL',
     'OPENH3_DEFAULT_API_KEY',
     'OPENH3_DEFAULT_THOUGHT_LEVEL',
+    'OPENH3_CLOUD_ACCOUNT_ENABLED',
+    'OPENH3_CLOUD_ACCOUNT_ENDPOINT',
   ]) {
     hash.update(`${key}:${process.env[key] ?? ''}\0`);
   }

@@ -229,6 +229,30 @@ describe('buildSpawnArgs', () => {
 });
 
 describe('buildSpawnEnv', () => {
+  it('passes bundled account defaults to Core on cold start and preserves explicit runtime overrides', () => {
+    vi.stubGlobal('__OPENH3_CLOUD_ACCOUNT_DEFAULTS__', {
+      enabled: '1',
+      endpoint: 'https://accounts.example/',
+    });
+    vi.stubEnv('OPENH3_CLOUD_ACCOUNT_ENABLED', undefined);
+    vi.stubEnv('OPENH3_CLOUD_ACCOUNT_ENDPOINT', undefined);
+    try {
+      const coldStart = buildSpawnEnv();
+      expect(coldStart.OPENH3_CLOUD_ACCOUNT_ENABLED).toBe('1');
+      expect(coldStart.OPENH3_CLOUD_ACCOUNT_ENDPOINT).toBe('https://accounts.example/');
+      expect(process.env.OPENH3_CLOUD_ACCOUNT_ENABLED).toBeUndefined();
+      vi.stubEnv('OPENH3_CLOUD_ACCOUNT_ENABLED', '0');
+      vi.stubEnv('OPENH3_CLOUD_ACCOUNT_ENDPOINT', 'https://override.example/');
+      const override = buildSpawnEnv();
+      expect(override.OPENH3_CLOUD_ACCOUNT_ENABLED).toBe('0');
+      expect(override.OPENH3_CLOUD_ACCOUNT_ENDPOINT).toBe('https://override.example/');
+      vi.stubEnv('OPENH3_CLOUD_ACCOUNT_ENDPOINT', '');
+      expect(buildSpawnEnv().OPENH3_CLOUD_ACCOUNT_ENDPOINT).toBe('');
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
   it('does not inherit stale content credentials and only injects the explicit host handle', () => {
     const priorPort = process.env.OPENH3_CONTENT_PORT,
       priorToken = process.env.OPENH3_CONTENT_TOKEN;
