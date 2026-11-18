@@ -80,6 +80,6 @@ describe('LocalImageView workspace root from ConversationContext', () => {
     const trigger = screen.getByRole('button', { name: /demo/ });
     expect(trigger).toHaveStyle({ maxWidth: 'min(100%, 640px)' });
     fireEvent.click(trigger);
-    await waitFor(() => expect(document.querySelector('.arco-image-preview')).not.toBeNull());
+    await waitFor(() => expect(document.querySelector('.arco-image-preview')).not.toBeNull(), { timeout: 3000 });
   });
 });

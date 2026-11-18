@@ -250,7 +250,10 @@ async function click(key: string) {
   )
     selectTab('purchaseTab');
   const options = { name: `settings.cloudAccount.${key}`, exact: true };
-  const target = screen.queryByRole('button', options) ?? (await screen.findByRole('button', options));
+  const target =
+    key === 'login'
+      ? (await screen.findAllByRole('button', options)).find((button) => button.matches('[type="submit"]'))!
+      : (screen.queryByRole('button', options) ?? (await screen.findByRole('button', options)));
   await act(async () => {
     fireEvent.click(target);
   });
