@@ -125,60 +125,62 @@ export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> 
   );
   return (
     <Form layout='vertical' onSubmit={submit} data-account-form={compact ? 'modal' : undefined}>
-      {!enabled && <Alert type='warning' content={t('settings.cloudAccount.unsupported')} className='mb-16px' />}
-      {expired && <Alert type='warning' content={t('settings.cloudAccount.expired')} className='mb-16px' />}
-      {invalid && <Alert type='error' content={t('settings.cloudAccount.invalid')} className='mb-16px' />}
-      {!recovery && !reset && field('username', username, setUsername)}
-      {(recovery || verifiedEmail) && (
-        <>
-          {field('email', email, (value) => {
-            setEmail(value);
-            setCode('');
-            clearSecrets();
-          })}
-          <Button
-            size='small'
-            className='mb-16px'
-            disabled={!enabled || !email.trim() || cloud.busy || cooling}
-            onClick={() => {
+      <div data-account-fields={compact ? '' : undefined}>
+        {!enabled && <Alert type='warning' content={t('settings.cloudAccount.unsupported')} className='mb-16px' />}
+        {expired && <Alert type='warning' content={t('settings.cloudAccount.expired')} className='mb-16px' />}
+        {invalid && <Alert type='error' content={t('settings.cloudAccount.invalid')} className='mb-16px' />}
+        {!recovery && !reset && field('username', username, setUsername)}
+        {(recovery || verifiedEmail) && (
+          <>
+            {field('email', email, (value) => {
+              setEmail(value);
+              setCode('');
               clearSecrets();
-              void cloud.run({
-                operation: 'emailCode',
-                input: { email, purpose: registration ? 'registration' : 'password_reset' },
-              });
-            }}
-          >
-            {t('settings.cloudAccount.sendCode')}
-          </Button>
-          {field('emailCode', code, setCode)}
-        </>
-      )}
-      {registration && !verifiedEmail && !compact && (
-        <Alert type='info' content={t('settings.cloudAccount.noVerifiedEmail')} className='mb-16px' />
-      )}
-      {!recovery && field('password', password, setPassword, true)}
-      {newPassword && (
-        <>
-          <div className='text-12px text-t-secondary mb-12px'>
-            {t('settings.cloudAccount.passwordLimits', {
-              min: policy.password_min_length,
-              max: policy.password_max_length,
             })}
-          </div>
-          {field('confirmPassword', confirm, setConfirm, true)}
-        </>
-      )}
-      {registration && (
-        <>
-          {!verifiedEmail && compact && (
-            <div data-account-registration-note>{t('settings.cloudAccount.registrationEmailNote')}</div>
-          )}
-          <Checkbox className='mb-16px' checked={acknowledged} onChange={setAcknowledged}>
-            {t('settings.cloudAccount.acknowledgement')}
-          </Checkbox>
-        </>
-      )}
-      <div className='flex flex-wrap gap-8px'>
+            <Button
+              size='small'
+              className='mb-16px'
+              disabled={!enabled || !email.trim() || cloud.busy || cooling}
+              onClick={() => {
+                clearSecrets();
+                void cloud.run({
+                  operation: 'emailCode',
+                  input: { email, purpose: registration ? 'registration' : 'password_reset' },
+                });
+              }}
+            >
+              {t('settings.cloudAccount.sendCode')}
+            </Button>
+            {field('emailCode', code, setCode)}
+          </>
+        )}
+        {registration && !verifiedEmail && !compact && (
+          <Alert type='info' content={t('settings.cloudAccount.noVerifiedEmail')} className='mb-16px' />
+        )}
+        {!recovery && field('password', password, setPassword, true)}
+        {newPassword && (
+          <>
+            <div className='text-12px text-t-secondary mb-12px'>
+              {t('settings.cloudAccount.passwordLimits', {
+                min: policy.password_min_length,
+                max: policy.password_max_length,
+              })}
+            </div>
+            {field('confirmPassword', confirm, setConfirm, true)}
+          </>
+        )}
+        {registration && (
+          <>
+            {!verifiedEmail && compact && (
+              <div data-account-registration-note>{t('settings.cloudAccount.registrationEmailNote')}</div>
+            )}
+            <Checkbox className='mb-16px' checked={acknowledged} onChange={setAcknowledged}>
+              {t('settings.cloudAccount.acknowledgement')}
+            </Checkbox>
+          </>
+        )}
+      </div>
+      <div className='flex flex-wrap gap-8px' data-account-actions={compact ? '' : undefined}>
         <Button htmlType='submit' type='primary' loading={cloud.busy} disabled={!enabled || expired || cooling}>
           {t(
             `settings.cloudAccount.${registration ? 'createAccount' : recovery ? 'verifyEmail' : reset ? 'savePassword' : 'login'}`

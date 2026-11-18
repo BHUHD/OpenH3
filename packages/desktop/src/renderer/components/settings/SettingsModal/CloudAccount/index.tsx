@@ -154,11 +154,13 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
               ) : (
                 <AccountForm key={cloud.revision} hideCancel={variant === 'modal'} compact={variant === 'modal'} />
               )}
-              {variant === 'modal' && cloud.view === 'login' && (
+              {variant === 'modal' && (
                 <div data-account-recovery>
-                  <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
-                    {t('settings.cloudAccount.recovery')}
-                  </Button>
+                  {cloud.view === 'login' && (
+                    <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
+                      {t('settings.cloudAccount.recovery')}
+                    </Button>
+                  )}
                 </div>
               )}
             </>

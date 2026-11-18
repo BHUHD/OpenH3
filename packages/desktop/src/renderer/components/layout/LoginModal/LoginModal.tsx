@@ -48,12 +48,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, showSkip = tr
             <User theme='outline' size={30} strokeWidth={3} fill='currentColor' />
           </div>
           <h2 className={styles.title}>{t(`settings.cloudAccount.${titleKey}`)}</h2>
-          {cloud?.view !== 'register' && (
-            <p className={styles.description}>{t('settings.cloudAccount.loginModalDescription')}</p>
-          )}
         </div>
       }
-      className={`${styles.modal} ${cloud?.view === 'register' ? styles.registration : ''}`}
+      className={styles.modal}
       wrapClassName={styles.wrapper}
       visible={visible}
       onCancel={onClose}

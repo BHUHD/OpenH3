@@ -4,6 +4,15 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Unreleased
 
+## 3.1.0
+
+- Add native cloud account registration and login, encrypted persistent sessions, device management, balance and usage views, and logout. Official account requests use the configured HTTPS gateway, including its path prefix.
+- Refine the account dialog with compact forms, aligned login/register tabs and bottom actions; show the signed-in identity and account/settings menu in the sidebar.
+- Show conversation work inline and include externally submitted media generation in the activity state.
+- Add directory browsing and shared preview actions for generated files, with a more consistent conversation and creation layout.
+- Report tools from the current model request, preserve isolated media-service identity, and improve ComfyUI GPU memory cleanup.
+- Publish Windows x64 updates through the existing Aliyun OSS channel. Payment and email recovery availability depend on the gateway configuration; the current gateway has no live payment or SMTP channel enabled.
+
 ## 3.0.9
 
 - Integrate the previously branch-only creation interface changes: glass model cards, a fixed action dock and the transparent bottom toolbar.

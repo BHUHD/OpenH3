@@ -15,21 +15,22 @@
 }
 
 .modal > :global([data-focus-lock-disabled]) {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .modal :global(.arco-modal-header) {
-  height: 196px;
-  min-height: 196px;
+  height: 108px;
+  min-height: 108px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   margin: 0;
-  padding: 36px 32px 24px;
+  padding: 28px 32px 20px;
   border: 0;
 }
 
@@ -38,9 +39,9 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
-  padding: 0 32px 28px;
+  padding: 0 32px 16px;
 }
 
 :global(body[arco-theme='dark']) .modal :global(.arco-modal-content) {
@@ -73,8 +74,8 @@
 
 .heading {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 12px;
   text-align: center;
 }
 
@@ -82,11 +83,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  margin-bottom: 20px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border-light));
-  border-radius: 20px;
+  border-radius: 15px;
   background: linear-gradient(145deg, var(--bg-base), var(--bg-2));
   color: var(--primary);
   box-shadow: 0 3px 8px color-mix(in srgb, var(--color-mask-bg) 10%, transparent);
@@ -95,26 +96,17 @@
 .title {
   margin: 0;
   color: var(--text-primary);
-  font-size: 25px;
+  font-size: 23px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.025em;
 }
 
-.description {
-  max-width: 300px;
-  margin: 10px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.65;
-  text-wrap: balance;
-}
-
 .body [data-account-navigation='switch'] {
   display: flex;
   gap: 4px;
-  margin-bottom: 24px;
+  flex-shrink: 0;
+  margin-bottom: 20px;
   padding: 4px;
   border-radius: 12px;
   background: var(--bg-2);
@@ -156,22 +148,37 @@
 }
 
 .body :global(.arco-form-item) {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .body :global(form[data-account-form='modal']) {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.body :global(form[data-account-form='modal'] > div:last-child) {
-  margin-top: auto;
-  padding-top: 8px;
+.body [data-account-fields] {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 3px;
+}
+
+.body [data-account-fields] > :global(.arco-checkbox) {
+  margin-bottom: 0;
+}
+
+.body [data-account-actions] {
+  flex-shrink: 0;
+  padding-top: 12px;
 }
 
 .body :global(.arco-form-label-item) {
-  padding-bottom: 7px;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+  line-height: 18px;
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -180,7 +187,7 @@
 .body :global(.arco-input),
 .body :global(.arco-input-inner-wrapper),
 .body :global(.arco-select-view) {
-  min-height: 46px;
+  min-height: 42px;
   border: 1px solid var(--border-base);
   border-radius: 10px;
   background: var(--bg-1);
@@ -193,7 +200,7 @@
 }
 
 .body :global(.arco-input-inner-wrapper .arco-input) {
-  min-height: 44px;
+  min-height: 40px;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -243,7 +250,9 @@
 .body [data-account-recovery] {
   display: flex;
   justify-content: center;
-  margin-top: 14px;
+  flex-shrink: 0;
+  height: 28px;
+  margin-top: 8px;
 }
 
 .body :global(.arco-btn),
@@ -274,44 +283,8 @@
   font-size: 13px;
 }
 
-.registration :global(.arco-modal-header) {
-  height: 196px;
-  min-height: 196px;
-  padding: 24px 32px;
-}
-
-.registration .avatar {
-  width: 44px;
-  height: 44px;
-  margin-bottom: 0;
-  border-radius: 15px;
-}
-
-.registration .heading {
-  flex-direction: row;
-  justify-content: center;
-  gap: 12px;
-}
-
-.registration .title {
-  font-size: 23px;
-}
-
-.registration [data-account-navigation='switch'] {
-  margin-bottom: 24px;
-}
-
-.registration :global(.arco-form-label-item) {
-  margin-bottom: 0;
-  padding-bottom: 4px;
-}
-
-.registration :global(.arco-modal-content) {
-  padding-bottom: 20px;
-}
-
 .body [data-account-registration-note] {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.5;
@@ -328,13 +301,12 @@
   }
 
   .modal :global(.arco-modal-content) {
-    padding: 0 24px 24px;
+    padding: 0 24px 16px;
   }
 
   .avatar {
-    width: 48px;
-    height: 48px;
-    margin-bottom: 14px;
+    width: 44px;
+    height: 44px;
     border-radius: 16px;
   }
 
