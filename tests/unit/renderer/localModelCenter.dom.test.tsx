@@ -196,8 +196,10 @@ describe('local model center', () => {
 
   it('keeps hardware visible during a refresh when returning to the window', async () => {
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
-    render(<LocalModelsPage />);
-    await screen.findByText('Test CPU');
+    await act(async () => {
+      render(<LocalModelsPage />);
+    });
+    expect(screen.getByText('Test CPU')).toBeInTheDocument();
     const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 10_000);
     mocks.load.mockReturnValueOnce(new Promise(() => {}));
     fireEvent.focus(window);
