@@ -5,7 +5,7 @@
  */
 
 import CloudAccount from './CloudAccount';
-import { CloudAccountAvatar, useCloudAccountIdentity } from './CloudAccount/Identity';
+import { CloudAccountIcon, useCloudAccountIdentity } from './CloudAccount/Identity';
 
 import OpenH3Modal from '@/renderer/components/base/OpenH3Modal';
 import OpenH3ScrollArea from '@/renderer/components/base/OpenH3ScrollArea';
@@ -200,7 +200,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onCancel, defaul
       {
         key: 'cloud-account',
         label: identity.label,
-        icon: <CloudAccountAvatar size={24} />,
+        icon: <CloudAccountIcon size={20} fill={iconColors.secondary} />,
       },
       {
         key: 'model',

@@ -4,10 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { CloudAccountRequest } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from './Provider';
 
-export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> = ({
-  hideCancel = false,
-  compact = false,
-}) => {
+export const AccountForm: React.FC = () => {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
   const formId = useId();
@@ -124,8 +121,8 @@ export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> 
     </Form.Item>
   );
   return (
-    <Form layout='vertical' onSubmit={submit} data-account-form={compact ? 'modal' : undefined}>
-      <div data-account-fields={compact ? '' : undefined}>
+    <Form layout='vertical' onSubmit={submit} data-account-form>
+      <div data-account-fields>
         {!enabled && <Alert type='warning' content={t('settings.cloudAccount.unsupported')} className='mb-16px' />}
         {expired && <Alert type='warning' content={t('settings.cloudAccount.expired')} className='mb-16px' />}
         {invalid && <Alert type='error' content={t('settings.cloudAccount.invalid')} className='mb-16px' />}
@@ -154,10 +151,14 @@ export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> 
             {field('emailCode', code, setCode)}
           </>
         )}
-        {registration && !verifiedEmail && !compact && (
-          <Alert type='info' content={t('settings.cloudAccount.noVerifiedEmail')} className='mb-16px' />
-        )}
         {!recovery && field('password', password, setPassword, true)}
+        {cloud.view === 'login' && (
+          <div data-account-recovery>
+            <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
+              {t('settings.cloudAccount.recovery')}
+            </Button>
+          </div>
+        )}
         {newPassword && (
           <>
             <div className='text-12px text-t-secondary mb-12px'>
@@ -171,7 +172,7 @@ export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> 
         )}
         {registration && (
           <>
-            {!verifiedEmail && compact && (
+            {!verifiedEmail && (
               <div data-account-registration-note>{t('settings.cloudAccount.registrationEmailNote')}</div>
             )}
             <Checkbox className='mb-16px' checked={acknowledged} onChange={setAcknowledged}>
@@ -180,22 +181,12 @@ export const AccountForm: React.FC<{ hideCancel?: boolean; compact?: boolean }> 
           </>
         )}
       </div>
-      <div className='flex flex-wrap gap-8px' data-account-actions={compact ? '' : undefined}>
+      <div data-account-actions>
         <Button htmlType='submit' type='primary' loading={cloud.busy} disabled={!enabled || expired || cooling}>
           {t(
             `settings.cloudAccount.${registration ? 'createAccount' : recovery ? 'verifyEmail' : reset ? 'savePassword' : 'login'}`
           )}
         </Button>
-        {!hideCancel && (
-          <Button
-            onClick={() => {
-              clearSecrets();
-              cloud.cancel();
-            }}
-          >
-            {t('settings.cloudAccount.cancel')}
-          </Button>
-        )}
       </div>
     </Form>
   );

@@ -28,7 +28,7 @@ import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { BUILTIN_TAB_IDS, LEGACY_ANCHOR_REMAP } from './SettingsSider';
 import './settings.css';
 import {
-  CloudAccountAvatar,
+  CloudAccountIcon,
   useCloudAccountIdentity,
 } from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 
@@ -51,7 +51,7 @@ export function getBuiltinSettingsNavItems(
     'cloud-account': {
       id: 'cloud-account',
       label: accountLabel,
-      icon: <CloudAccountAvatar size={20} />,
+      icon: <CloudAccountIcon />,
       path: 'cloud-account',
     },
     model: { id: 'model', label: t('settings.model'), icon: <LinkCloud theme='outline' size='16' />, path: 'model' },

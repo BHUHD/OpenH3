@@ -24,7 +24,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Tooltip } from '@arco-design/web-react';
 import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 import {
-  CloudAccountAvatar,
+  CloudAccountIcon,
   useCloudAccountIdentity,
 } from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 
@@ -94,7 +94,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
       'cloud-account': {
         id: 'cloud-account',
         label: identity.label,
-        icon: <CloudAccountAvatar size={20} />,
+        icon: <CloudAccountIcon />,
         path: 'cloud-account',
       },
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },

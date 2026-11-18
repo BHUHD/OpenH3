@@ -6,11 +6,11 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Button, Modal } from '@arco-design/web-react';
-import { User } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { CloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount';
 import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
-import styles from './LoginModal.module.css';
+import { CloudAccountHeading } from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
+import styles from '@/renderer/components/settings/SettingsModal/CloudAccount/AccountSurface.module.css';
 
 type LoginModalProps = {
   visible: boolean;
@@ -42,14 +42,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, showSkip = tr
   }, [visible, cloud?.view, cloud?.capabilities]);
   return (
     <Modal
-      title={
-        <div className={styles.heading}>
-          <div className={styles.avatar} aria-hidden='true'>
-            <User theme='outline' size={30} strokeWidth={3} fill='currentColor' />
-          </div>
-          <h2 className={styles.title}>{t(`settings.cloudAccount.${titleKey}`)}</h2>
-        </div>
-      }
+      title={<CloudAccountHeading>{t(`settings.cloudAccount.${titleKey}`)}</CloudAccountHeading>}
       className={styles.modal}
       wrapClassName={styles.wrapper}
       visible={visible}
@@ -62,7 +55,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ visible, onClose, showSkip = tr
           </Button>
         ) : null
       }
-      style={{ width: 440, maxWidth: 'calc(100vw - 32px)' }}
+      style={{ width: 410, maxWidth: 'calc(100vw - 32px)' }}
       unmountOnExit
       focusLock
       autoFocus={false}

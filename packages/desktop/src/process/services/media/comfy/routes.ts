@@ -81,18 +81,26 @@ export async function handleComfyRoute(
   }
   if (request.method === 'POST' && url.pathname === '/api/comfy/workflows/resolve') {
     const payload = envelope
-      .and(z.object({ profileId: z.string().min(1).optional(), input: z.unknown() }))
+      .and(
+        z.object({
+          profileId: z.string().min(1).optional(),
+          autoSelectImage: z.literal(true).optional(),
+          input: z.unknown(),
+        })
+      )
       .parse(await body(request));
     const result = payload.requestId
       ? service.resolveWorkflow(payload.requestId, payload.input)
       : payload.profileId
         ? service.resolveConversationWorkflow(payload.conversationId!, payload.profileId, payload.input)
-        : {
-            action: 'choose-model',
-            profiles: service.profiles(),
-            nextAction:
-              'Choose a registered profile matching the user goal, then resolve with its profileId. No model-card visit is required.',
-          };
+        : payload.autoSelectImage
+          ? await service.resolveAutomaticImageWorkflow(payload.conversationId!, payload.input)
+          : {
+              action: 'choose-model',
+              profiles: service.profiles(),
+              nextAction:
+                'Choose a registered profile matching the user goal, then resolve with its profileId. No model-card visit is required.',
+            };
     json(response, 200, result);
     return true;
   }

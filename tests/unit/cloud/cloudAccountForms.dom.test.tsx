@@ -49,7 +49,8 @@ async function fill(name: string, value: string) {
   fireEvent.change(await screen.findByLabelText(`settings.cloudAccount.${name}`), { target: { value } });
 }
 async function click(name: string) {
-  fireEvent.click(await screen.findByRole('button', { name: `settings.cloudAccount.${name}`, exact: true }));
+  const buttons = await screen.findAllByRole('button', { name: `settings.cloudAccount.${name}`, exact: true });
+  fireEvent.click(buttons.find((button) => button.getAttribute('type') === 'submit') ?? buttons[0]);
 }
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -616,7 +617,7 @@ it('fails closed for unsupported anti-bot policy and omits unverified email regi
   mount();
   await click('register');
   expect(screen.queryByLabelText('settings.cloudAccount.email')).not.toBeInTheDocument();
-  expect(screen.getByText('settings.cloudAccount.noVerifiedEmail')).toBeInTheDocument();
+  expect(screen.getByText('settings.cloudAccount.registrationEmailNote')).toBeInTheDocument();
   cleanup();
   f.request.mockImplementation(async (r) => ({
     success: true,
@@ -635,7 +636,11 @@ it('fails closed for unsupported anti-bot policy and omits unverified email regi
   }));
   mount();
   expect(await screen.findByText('settings.cloudAccount.antiBotRequired')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'settings.cloudAccount.login' })).toBeDisabled();
+  expect(
+    screen
+      .getAllByRole('button', { name: 'settings.cloudAccount.login' })
+      .find((button) => button.matches('[type="submit"]'))
+  ).toBeDisabled();
 });
 
 it.each(['login', 'verify'] as const)(

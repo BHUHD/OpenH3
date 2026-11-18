@@ -4,6 +4,11 @@ This file records OpenH3-specific changes. The project is currently in Alpha.
 
 ## Unreleased
 
+## 3.1.1
+
+- In ordinary chat, automatically use a compatible installed image workflow when no cloud image model is configured. Prefer workflows verified on the device and pass the requested image dimensions through to generation.
+- Share the account icon and compact login and registration layout across Settings and the login dialog. Keep the tabs and primary button aligned when switching forms.
+
 ## 3.1.0
 
 - Add native cloud account registration and login, encrypted persistent sessions, device management, balance and usage views, and logout. Official account requests use the configured HTTPS gateway, including its path prefix.

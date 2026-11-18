@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@arco-design/web-react';
 import { useNavigate } from 'react-router-dom';
 import { useOptionalCloudAccount } from './Provider';
-import { CloudAccountAvatar, useCloudAccountIdentity } from './Identity';
+import { CloudAccountIcon, useCloudAccountIdentity } from './Identity';
 
 export const CloudAccountEntry: React.FC<{ collapsed?: boolean; disconnectedOnly?: boolean }> = ({
   collapsed,
@@ -20,7 +20,7 @@ const EntryButton: React.FC<{ label: string; collapsed?: boolean }> = ({ label, 
       type='text'
       className='!text-t-primary max-w-full'
       aria-label={label}
-      icon={<CloudAccountAvatar size={22} />}
+      icon={<CloudAccountIcon />}
       onClick={() => {
         void navigate('/settings/cloud-account');
       }}

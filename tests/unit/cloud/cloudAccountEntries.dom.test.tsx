@@ -253,7 +253,11 @@ it('retains a BYOK selection through native login without a model-selection muta
   );
   fireEvent.change(await screen.findByLabelText('settings.cloudAccount.username'), { target: { value: 'alice' } });
   fireEvent.change(screen.getByLabelText('settings.cloudAccount.password'), { target: { value: 'password' } });
-  fireEvent.click(screen.getByRole('button', { name: 'settings.cloudAccount.login' }));
+  fireEvent.click(
+    screen
+      .getAllByRole('button', { name: 'settings.cloudAccount.login' })
+      .find((button) => button.matches('[type="submit"]'))!
+  );
   expect(await screen.findByText('Connected Alice')).toBeInTheDocument();
   expect(screen.getByText('own-model')).toBeInTheDocument();
   expect(select).not.toHaveBeenCalled();

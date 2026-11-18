@@ -6,7 +6,8 @@ import { useCloudAccount } from './Provider';
 import { AccountForm } from './AccountForm';
 import { ProofForm } from './ProofForm';
 import { ConnectedPanels } from './Panels';
-import { CloudAccountAvatar } from './Identity';
+import { CloudAccountAvatar, CloudAccountHeading } from './Identity';
+import styles from './AccountSurface.module.css';
 
 export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant = 'page' }) => {
   const cloud = useCloudAccount();
@@ -18,6 +19,7 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
   }, []);
   useEffect(() => cloud.cancel, [cloud.cancel]);
   const session = cloud.session;
+  const authPage = variant === 'page' && session?.state !== 'connected';
   const unavailable = session?.state === 'disabled' || session?.state === 'unconfigured';
   const error =
     cloud.error === 'CLOUD_RATE_LIMITED'
@@ -28,12 +30,11 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           ? 'verificationFailed'
           : 'requestFailed';
   return (
-    <section className='w-full max-w-720px text-t-primary' aria-label={t('settings.cloudAccount.title')}>
-      {variant === 'page' && session?.state !== 'connected' && (
-        <Typography.Title heading={5} className='!mt-0'>
-          {t('settings.cloudAccount.entry')}
-        </Typography.Title>
-      )}
+    <section
+      className={authPage ? `${styles.body} ${styles.pageAuth}` : 'w-full max-w-720px text-t-primary'}
+      aria-label={t('settings.cloudAccount.title')}
+    >
+      {authPage && <CloudAccountHeading>{t('settings.cloudAccount.loginModalTitle')}</CloudAccountHeading>}
       {cloud.registered && session?.state !== 'connected' && (
         <Alert type='success' content={t('settings.cloudAccount.registered')} className='mb-16px' />
       )}
@@ -96,48 +97,30 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           )}
           {cloud.capabilities ? (
             <>
-              {variant === 'modal' ? (
-                cloud.view === 'login' || cloud.view === 'register' ? (
-                  <div data-account-navigation='switch' role='group' aria-label={t('settings.cloudAccount.title')}>
-                    {(['login', 'register'] as const).map((view) => (
-                      <Button
-                        key={view}
-                        type='text'
-                        aria-pressed={cloud.view === view}
-                        onClick={() => {
-                          if (cloud.view !== view) cloud.switchView(view);
-                        }}
-                      >
-                        {t(`settings.cloudAccount.${view}`)}
-                      </Button>
-                    ))}
-                  </div>
-                ) : (
-                  <div data-account-navigation='back'>
+              {cloud.view === 'login' || cloud.view === 'register' ? (
+                <div data-account-navigation='switch' role='group' aria-label={t('settings.cloudAccount.title')}>
+                  {(['login', 'register'] as const).map((view) => (
                     <Button
+                      key={view}
                       type='text'
-                      size='small'
-                      icon={<ArrowLeft size={14} />}
-                      onClick={() => cloud.switchView('login')}
+                      aria-pressed={cloud.view === view}
+                      onClick={() => {
+                        if (cloud.view !== view) cloud.switchView(view);
+                      }}
                     >
-                      {t('settings.cloudAccount.backToLogin')}
+                      {t(`settings.cloudAccount.${view}`)}
                     </Button>
-                  </div>
-                )
+                  ))}
+                </div>
               ) : (
-                <div className='flex flex-wrap gap-8px mb-16px'>
-                  {cloud.view !== 'login' && (
-                    <Button size='small' type='text' onClick={() => cloud.switchView('login')}>
-                      {t('settings.cloudAccount.login')}
-                    </Button>
-                  )}
-                  {!cloud.registered && cloud.view !== 'register' && (
-                    <Button size='small' type='text' onClick={() => cloud.switchView('register')}>
-                      {t('settings.cloudAccount.register')}
-                    </Button>
-                  )}
-                  <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
-                    {t('settings.cloudAccount.recovery')}
+                <div data-account-navigation='back'>
+                  <Button
+                    type='text'
+                    size='small'
+                    icon={<ArrowLeft size={14} />}
+                    onClick={() => cloud.switchView('login')}
+                  >
+                    {t('settings.cloudAccount.backToLogin')}
                   </Button>
                 </div>
               )}
@@ -152,16 +135,7 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
                   onCancel={cloud.cancel}
                 />
               ) : (
-                <AccountForm key={cloud.revision} hideCancel={variant === 'modal'} compact={variant === 'modal'} />
-              )}
-              {variant === 'modal' && (
-                <div data-account-recovery>
-                  {cloud.view === 'login' && (
-                    <Button size='small' type='text' onClick={() => cloud.switchView('recovery')}>
-                      {t('settings.cloudAccount.recovery')}
-                    </Button>
-                  )}
-                </div>
+                <AccountForm key={cloud.revision} />
               )}
             </>
           ) : (
@@ -170,7 +144,7 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
         </>
       )}
       {variant === 'page' && (
-        <Button className='mt-16px' size='small' type='text' onClick={cloud.reload}>
+        <Button className={authPage ? 'self-center mt-4px' : 'mt-16px'} size='small' type='text' onClick={cloud.reload}>
           {t('settings.cloudAccount.refresh')}
         </Button>
       )}

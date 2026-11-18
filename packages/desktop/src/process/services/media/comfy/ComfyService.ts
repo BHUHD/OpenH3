@@ -485,6 +485,25 @@ export class ComfyService {
     if (this.cancelledConversations.has(conversation)) throw new Error('COMFY_CONVERSATION_UNAVAILABLE');
     return this.resolveProfileWorkflow(this.profile(profileId), input, 'auto');
   }
+
+  /** Choose a compatible installed route for an image request without a selected model. */
+  async resolveAutomaticImageWorkflow(conversationId: string, input: unknown) {
+    if (this.cancelledConversations.has(conversationId)) throw new Error('COMFY_CONVERSATION_UNAVAILABLE');
+    const parsed = comfyGenerationInputSchema.parse(input);
+    const profiles = await this.refreshProfiles();
+    const candidates = profiles
+      .filter((profile) => profile.kind === 'image')
+      .map((profile) => inspectComfyWorkflow(profile, parsed))
+      .filter(
+        (match) => !match.reasons.length && (match.status === 'verified' || match.status === 'pending-validation')
+      )
+      .sort(
+        (left, right) =>
+          Number(right.status === 'verified') - Number(left.status === 'verified') ||
+          left.profileId.localeCompare(right.profileId)
+      );
+    return { selectedProfileId: candidates[0]?.profileId };
+  }
   /** Watch authoritative user binding changes during one callback send, without treating repair progress as cancellation. */
   captureContinuationSelection(requestId: string, conversationId: string): () => boolean {
     const scope = this.bindings.get(requestId);

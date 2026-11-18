@@ -208,6 +208,30 @@ describe('local image tool routing', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('routes a plain-chat poster to a compatible installed workflow when no cloud provider is configured', async () => {
+    vi.stubEnv('AIONUI_CREATION_REQUEST_ID', '');
+    vi.stubEnv('AIONUI_CREATION_SOURCE', '');
+    vi.stubEnv('AIONUI_CONVERSATION_ID', 'plain-chat');
+    vi.stubEnv('AIONUI_IMG_MODEL', '');
+    respond({ selectedProfileId: profile.id });
+    const job = { id: 'poster-job', status: 'queued', profileId: profile.id, kind: 'image', artifacts: [] };
+    respond(job, 202);
+
+    const reply = await invoke({ prompt: 'A spring poster titled 花间来信', width: 768, height: 1024 });
+    const input = {
+      prompt: 'A spring poster titled 花间来信',
+      width: 768,
+      height: 1024,
+      requirements: { task: 'text-to-image' },
+    };
+    expect(fetchMock.mock.calls.map(([url, init]) => [new URL(url).pathname, JSON.parse(init.body)])).toEqual([
+      ['/api/comfy/workflows/resolve', { conversationId: 'plain-chat', autoSelectImage: true, input }],
+      ['/api/comfy/jobs', { conversationId: 'plain-chat', profileId: profile.id, input }],
+    ]);
+    expect(JSON.parse(reply.content[0].text)).toEqual({ comfyJobId: job.id, job });
+    expect(cloudMock).not.toHaveBeenCalled();
+  });
+
   it('never invents a missing session or treats unavailable selection as permission to use cloud', async () => {
     vi.stubEnv('AIONUI_CREATION_REQUEST_ID', '');
     const missing = await invoke({ prompt: 'A red sphere' });

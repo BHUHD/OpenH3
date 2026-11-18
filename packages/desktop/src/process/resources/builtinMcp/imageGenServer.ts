@@ -19,6 +19,7 @@ import { executeImageGeneration } from '@/common/chat/imageGenCore';
 import type { TProviderWithModel } from '@/common/config/storage';
 import {
   comfyGenerationInputSchema,
+  type ComfyGenerationInput,
   type ComfyGenerationJob,
   type ComfyProfile,
 } from '@/common/chat/document/creation/comfy';
@@ -54,6 +55,7 @@ function envValue(canonical: string, legacy: string): string | undefined {
 async function localImageGeneration(
   prompt: string,
   imageUris: string[] | undefined,
+  dimensions: Pick<ComfyGenerationInput, 'width' | 'height'>,
   requestId: string,
   profiles: ComfyProfile[],
   selection: CreationSelection
@@ -61,15 +63,31 @@ async function localImageGeneration(
   if (!selection.profileId) throw new Error('COMFY_SELECTED_PROFILE_REQUIRED');
   const profile = profiles.find((candidate) => candidate.id === selection.profileId);
   if (!profile || profile.kind !== 'image') throw new Error('CREATION_IMAGE_NOT_SELECTED');
+  return submitLocalImage(profile.id, { requestId }, localImageInput(prompt, imageUris, dimensions));
+}
+
+function localImageInput(
+  prompt: string,
+  imageUris: string[] | undefined,
+  dimensions: Pick<ComfyGenerationInput, 'width' | 'height'>
+) {
   if (imageUris?.some((uri) => /^https?:\/\//i.test(uri))) throw new Error('COMFY_LOCAL_IMAGE_PATH_REQUIRED');
-  const input = comfyGenerationInputSchema.parse({
+  return comfyGenerationInputSchema.parse({
     prompt,
+    ...dimensions,
     ...(imageUris?.length ? { imagePaths: imageUris.map((uri) => path.resolve(uri)) } : {}),
   });
+}
+
+async function submitLocalImage(
+  profileId: string,
+  scope: { requestId: string } | { conversationId: string },
+  input: ComfyGenerationInput
+) {
   const job = (await comfyRequest('/api/comfy/jobs', {
-    profileId: profile.id,
+    profileId,
     input,
-    requestId,
+    ...scope,
   })) as ComfyGenerationJob;
   return { content: [{ type: 'text' as const, text: JSON.stringify({ comfyJobId: job.id, job }) }] };
 }
@@ -105,7 +123,7 @@ async function main() {
     registerProductTool(
       server,
       name,
-      'Generate or edit images using the user-selected source and model. For a local creation session, use its currently selected registered ComfyUI image profile and the comfyui-local skill; the backend validates that profile before queueing a generic ComfyUI job and returning comfyJobId. Local inputs must be local image paths. For cloud sessions, use the configured provider. Pass all user-provided image inputs. Preserve explicitly selected source/model and reference roles. Diagnose and repair missing local prerequisites under the current session permissions. In ordinary chats use openh3_comfy_profiles and openh3_comfy_generate to choose a local model. When a local job is queued, retain comfyJobId and monitor that same job with openh3_comfy_job_status waitMs=30000 until terminal output, inspect it, and complete remaining authorized work before ending the turn.',
+      'Generate or edit an actual image. A bound creation session keeps its selected source and model. Ordinary chats use the configured image provider or automatically choose a compatible installed local image workflow if no cloud image model is configured. Pass all input images and preserve requested dimensions or aspect ratio by specifying width and height for local generation. Preserve exact text in the prompt. For named local models or specific reference roles (identity, style, structure, masks), use openh3_comfy_profiles, openh3_comfy_resolve_workflow and openh3_comfy_generate instead. On no matching workflow, inspect and prepare local routes with the comfyui-local skill under current permissions before treating configuration as a blocker. When a local job is queued, retain comfyJobId, use openh3_comfy_job_status waitMs=30000 until terminal, and deliver the actual result.',
       {
         prompt: z
           .string()
@@ -118,8 +136,21 @@ async function main() {
           .describe(
             'Optional: Array of paths to existing local image files or HTTP/HTTPS URLs to edit/modify. Examples: ["test.jpg", "https://example.com/img.png"]. For single image, use array format: ["test.jpg"]. Relative paths are resolved against the current working directory.'
           ),
+        width: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Local image width in pixels. For a 3:4 portrait, for example, pass 768.'),
+        height: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe('Local image height in pixels. For a 3:4 portrait at width 768, pass 1024.'),
       },
-      async ({ prompt, image_uris }) => {
+      async ({ prompt, image_uris, width, height }) => {
+        const dimensions = { width, height };
         const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
         let resolvedCloudSelection = false;
         let templateSnapshot: TemplateSnapshot | undefined;
@@ -134,7 +165,7 @@ async function main() {
             if (selection.kind === 'video' || selection.family === 'h3') throw new Error('CREATION_IMAGE_NOT_SELECTED');
             if (selection.intent !== 'generate') throw new Error('CREATION_GENERATION_NOT_SELECTED');
             if (selection.source === 'local' || selection.family || selection.profileId) {
-              return await localImageGeneration(prompt, image_uris, requestId, result.profiles, selection);
+              return await localImageGeneration(prompt, image_uris, dimensions, requestId, result.profiles, selection);
             }
             if (selection.source !== 'cloud') throw new Error('COMFY_SELECTION_CONTEXT_MISSING');
             templateSnapshot = selection.templateSnapshot;
@@ -171,6 +202,33 @@ async function main() {
         }
         const provider = getProviderFromEnv();
         if (!provider) {
+          const conversationId = envValue('OPENH3_CONVERSATION_ID', 'AIONUI_CONVERSATION_ID');
+          if (!resolvedCloudSelection && conversationId?.trim()) {
+            try {
+              const input = localImageInput(prompt, image_uris, dimensions);
+              if (!input.imagePaths?.length) input.requirements = { task: 'text-to-image' };
+              const scope = { conversationId };
+              const route = (await comfyRequest('/api/comfy/workflows/resolve', {
+                ...scope,
+                autoSelectImage: true,
+                input,
+              })) as { selectedProfileId?: string };
+              if (route.selectedProfileId) return await submitLocalImage(route.selectedProfileId, scope, input);
+              throw new Error(
+                'COMFY_NO_COMPATIBLE_IMAGE_WORKFLOW: inspect openh3_comfy_profiles and prepare a compatible local route before asking the user to configure a cloud provider.'
+              );
+            } catch (error) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: 'text' as const,
+                    text: `Local image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+                  },
+                ],
+              };
+            }
+          }
           return {
             content: [
               {

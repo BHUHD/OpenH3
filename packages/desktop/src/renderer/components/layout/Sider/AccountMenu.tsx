@@ -6,12 +6,13 @@
 
 import React from 'react';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
-import { User, Logout, SettingTwo, Wallet } from '@icon-park/react';
+import { Logout, SettingTwo, Wallet } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import {
   CloudAccountAvatar,
+  CloudAccountIcon,
   useCloudAccountIdentity,
 } from '@/renderer/components/settings/SettingsModal/CloudAccount/Identity';
 import type { SiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
@@ -51,7 +52,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
           ? `!h-34px !w-34px !p-0 shrink-0 !rd-0.5rem !flex items-center justify-center text-t-secondary hover:text-t-primary hover:bg-hover active:bg-active ${isMobile ? 'sider-footer-btn-mobile' : ''}`
           : rowClass
       }
-      icon={settingsTrigger ? <SettingTwo size={16} /> : account ? <CloudAccountAvatar /> : <User size={16} />}
+      icon={settingsTrigger ? <SettingTwo size={16} /> : account ? <CloudAccountAvatar /> : <CloudAccountIcon />}
       onClick={!account && !settingsTrigger ? onOpenLogin : undefined}
     >
       {!collapsed && !settingsTrigger && <span className='truncate text-14px font-[500]'>{label}</span>}
@@ -75,7 +76,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     >
       <Menu.Item key='account'>
         <span className='flex items-center gap-10px'>
-          <User size={16} />
+          <CloudAccountIcon />
           {t(account ? 'settings.cloudAccount.mine' : 'settings.cloudAccount.entry')}
         </span>
       </Menu.Item>

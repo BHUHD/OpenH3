@@ -121,6 +121,35 @@ function plan() {
   };
 }
 
+it('prefers a verified text-to-image route that accepts the requested dimensions', async () => {
+  const filename = path.join(root, 'state.json');
+  fs.writeFileSync(
+    filename,
+    JSON.stringify({
+      bindings: [],
+      operations: [],
+      jobs: [],
+      profiles: [
+        { ...profile, id: 'a-downloaded', state: 'downloaded', validation: undefined },
+        { ...profile, id: 'b-incompatible', bindings: { prompt: profile.bindings.prompt } },
+        { ...profile, id: 'c-excluded', state: 'invalid' },
+        profile,
+      ],
+    })
+  );
+  const { service, engine } = setup({ filename });
+
+  const result = await service.resolveAutomaticImageWorkflow('chat', {
+    prompt: 'Spring exhibition poster',
+    width: 768,
+    height: 1024,
+    requirements: { task: 'text-to-image' },
+  });
+
+  expect(result.selectedProfileId).toBe(profile.id);
+  expect(engine.generate).not.toHaveBeenCalled();
+});
+
 it('returns reference preparation guidance for an Omni creative request without submitting a job', () => {
   const { service, engine } = setup();
   const omni = {
