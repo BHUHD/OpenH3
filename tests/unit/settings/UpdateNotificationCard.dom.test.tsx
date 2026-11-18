@@ -456,7 +456,7 @@ describe('UpdateNotificationCard', () => {
     fireEvent.click(await screen.findByText('update.restartNow'));
     expect(mocks.autoUpdateQuitAndInstallMock).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('update.confirmInstall')).not.toBeInTheDocument();
-    expect(getSidebarUpdateState()?.status).toBe('downloaded');
+    await waitFor(() => expect(getSidebarUpdateState()?.status).toBe('downloaded'));
   });
 
   it('renders a bottom-right notification card for auto-update availability without a dialog', async () => {
