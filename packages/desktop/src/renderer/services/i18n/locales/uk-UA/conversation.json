@@ -851,6 +851,7 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "tab": "Прогрес",
     "title": "Перебіг роботи",
     "panel": "Права панель",
     "empty": "Тут показано багатоетапні та фонові завдання.",

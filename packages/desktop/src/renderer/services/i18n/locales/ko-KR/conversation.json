@@ -835,6 +835,7 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "tab": "진행 상황",
     "title": "작업 진행 상황",
     "panel": "오른쪽 패널",
     "empty": "여러 단계 작업과 백그라운드 작업이 여기에 표시됩니다.",

@@ -836,6 +836,7 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "tab": "Fortschritt",
     "title": "Arbeitsfortschritt",
     "panel": "Rechtes Panel",
     "empty": "Mehrstufige und Hintergrundaufgaben erscheinen hier.",

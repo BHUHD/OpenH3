@@ -509,40 +509,20 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
     }
   };
 
-  const tabButton = (key: 'files' | 'changes', label: string) => (
-    <Button
-      type='text'
-      size='small'
-      className={`flex-shrink-0 !px-8px ${activeTab === key ? '!text-t-primary !font-medium !bg-2' : '!text-t-secondary'}`}
-      onClick={() => setActiveTab(key)}
-    >
-      {label}
-    </Button>
-  );
-
   return (
     <div className='h-full flex flex-col min-h-0'>
-      {/* Host component-switcher tab bar: 文件 = explorer, 变更 = source control.
-          Tabs are left-aligned and scroll horizontally when they overflow; the
-          attach + open-externally cluster is pinned right (flex-shrink-0) with
-          container padding, so it never scrolls with the tabs nor clips at narrow
-          widths.
-
-          左内边距 12px 是本面板的对齐基准线，三处必须一致（见下方 SearchPanel 与
-          arco-override.css 的 .workspace-tree 规则）：外框一律从 12px 起，框内内容
-          （tab 文字 / 搜索图标 / 树箭头）一律从 20px 起。12px 不是随手取的——侧栏
-          的拖宽把手正好盖住最左 12px 且层级更高，任何落在其左侧的东西都点不到。
-
-          The 12px left padding is this panel's alignment baseline and must match in
-          all three places (see SearchPanel below and the .workspace-tree rules in
-          arco-override.css): outer boxes start at 12px, their inner content (tab
-          text / search icon / tree arrow) starts at 20px. 12px is not arbitrary —
-          the sider's resize handle covers the leftmost 12px and sits above this
-          content, so anything placed to its left cannot be clicked. */}
+      {/* Align the toolbar with the search box and tree past the resize handle. */}
       <div className='flex items-center gap-4px ps-12px pe-8px py-4px flex-shrink-0 border-b border-[var(--bg-3)]'>
-        <div className='flex items-center gap-2px overflow-x-auto flex-1 min-w-0'>
-          {tabButton('files', t('conversation.explorer.tabs.files'))}
-          {tabButton('changes', t('conversation.explorer.tabs.changes'))}
+        <div className='flex-1 min-w-0 overflow-x-auto'>
+          <Button
+            type='text'
+            size='small'
+            className={`!rd-control !px-8px ${activeTab === 'changes' ? '!text-t-primary !font-medium !bg-2' : '!text-t-secondary'}`}
+            aria-pressed={activeTab === 'changes'}
+            onClick={() => setActiveTab((current) => (current === 'files' ? 'changes' : 'files'))}
+          >
+            {t('conversation.explorer.tabs.changes')}
+          </Button>
         </div>
         <div className='flex items-center gap-2px flex-shrink-0'>
           {/* Right cluster order (VS Code parity): project-scope actions first (add

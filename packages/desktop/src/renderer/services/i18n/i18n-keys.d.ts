@@ -920,6 +920,7 @@ export type I18nKey =
   | 'conversation.workProgress.summaries.generateVideo'
   | 'conversation.workProgress.summaries.installModel'
   | 'conversation.workProgress.summaries.waitForGeneration'
+  | 'conversation.workProgress.tab'
   | 'conversation.workProgress.title'
   | 'conversation.workProgress.waitingHint'
   | 'conversation.workspace.addFile'

@@ -161,11 +161,7 @@ export function useWorkspaceCollapse({
 
   // Broadcast workspace state event
   useEffect(() => {
-    if (!workspaceEnabled) {
-      dispatchWorkspaceStateEvent(true);
-      return;
-    }
-    dispatchWorkspaceStateEvent(rightSiderCollapsed);
+    if (workspaceEnabled) dispatchWorkspaceStateEvent(rightSiderCollapsed);
   }, [rightSiderCollapsed, workspaceEnabled]);
 
   // Force collapse when workspace is disabled

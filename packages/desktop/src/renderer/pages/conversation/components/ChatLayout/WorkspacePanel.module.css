@@ -1,0 +1,37 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.panel > :global(.arco-tabs-header-nav) {
+  flex-shrink: 0;
+  padding-inline: 12px;
+}
+
+.panel > :global(.arco-tabs-header-nav) :global(.arco-tabs-header-title) {
+  min-inline-size: 44px;
+  margin-inline: 0 4px;
+  padding-inline: 8px;
+  border-radius: var(--radius-control);
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .panel > :global(.arco-tabs-header-nav) :global(.arco-tabs-header-title) {
+    min-height: 44px;
+    align-content: center;
+  }
+}
+
+.panel > :global(.arco-tabs-content) {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.panel > :global(.arco-tabs-content) > :global(.arco-tabs-content-inner),
+.panel > :global(.arco-tabs-content) > :global(.arco-tabs-content-inner) > :global(.arco-tabs-content-item-active) {
+  height: 100%;
+}

@@ -102,17 +102,9 @@ export type PreviewTabPatch = {
 export interface PreviewContextValue {
   // 预览面板状态 / Preview panel state
   isOpen: boolean;
-  /**
-   * 面板是否最大化：隐藏中间聊天区，让预览占满聊天区腾出的空间；左侧边栏与右侧
-   * 工作区/资源管理器列均保持不变。纯 session 级视图态，不随 scope 持久化 ——
-   * 关闭面板或切换 scope 都会归位，以免下次打开意外进入最大化。
-   *
-   * Whether the panel is maximized: the middle chat area is hidden and the preview
-   * fills the space it vacated, while the left sidebar and right workspace/explorer
-   * column stay unchanged. A session-only view state, not persisted per scope —
-   * closing the panel or switching scope resets it so reopening never lands in an
-   * unexpected maximized state.
-   */
+  /** Increments for each open request, including requests for the current file. */
+  openRevision: number;
+  /** Expands Preview into the chat area until the user closes or leaves the preview. */
   isMaximized: boolean;
   tabs: PreviewTab[]; // 所有打开的 tabs
   activeTabId: string | null; // 当前激活的 tab ID
@@ -542,6 +534,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // State starts empty; the active scope's persisted state is loaded on the first
   // `closePreviewIfScopeChanged` (per-project restore, see switchScope below).
   const [isOpen, setIsOpen] = useState(false);
+  const [openRevision, setOpenRevision] = useState(0);
   const [isMaximized, setIsMaximized] = useState(false);
   const [tabs, setTabs] = useState<PreviewTab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -867,6 +860,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setActiveTabId(targetTabId);
       setIsOpen(true);
+      setOpenRevision((revision) => revision + 1);
     },
     [extractFileName, findPreviewTabInList]
   );
@@ -963,6 +957,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setActiveTabId(loaded.activeTabId);
       activeTabIdRef.current = loaded.activeTabId;
       setIsOpen(loaded.isOpen);
+      if (loaded.isOpen) setOpenRevision((revision) => revision + 1);
       setIsMaximized(false);
       setDomSnippets([]);
     },
@@ -988,6 +983,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
           } else {
             // 没有 tab 了，关闭预览面板 / No more tabs, close preview panel
             setIsOpen(false);
+            setIsMaximized(false);
             setActiveTabId(null);
           }
         }
@@ -1365,6 +1361,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const previewContextValue = useMemo(() => {
     return {
       isOpen,
+      openRevision,
       isMaximized,
       tabs,
       activeTabId,
@@ -1396,6 +1393,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [
     isOpen,
+    openRevision,
     isMaximized,
     tabs,
     activeTabId,

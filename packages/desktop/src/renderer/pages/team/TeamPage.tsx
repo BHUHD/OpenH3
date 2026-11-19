@@ -537,7 +537,6 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
   warmupRuntimeStatus,
   onRetryWarmup,
 }) => {
-  const { t } = useTranslation();
   useActiveLease({ type: 'team', id: team.id });
   const { assistants, activeSlotId, switchTab, colorOf, colorOfConversation } = useTeamTabs();
   const [, messageContext] = Message.useMessage({ maxCount: 1 });
@@ -645,15 +644,6 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
   useEffect(() => {
     closePreviewIfScopeChanged(previewScopeKey(teamProjectId, effectiveWorkspace ?? null));
   }, [teamProjectId, effectiveWorkspace, closePreviewIfScopeChanged]);
-
-  const siderTitle = useMemo(
-    () => (
-      <div className='flex items-center justify-between'>
-        <span className='text-16px font-bold text-t-primary'>{t('conversation.workspace.title')}</span>
-      </div>
-    ),
-    [t]
-  );
 
   const sider = useMemo(() => {
     if (!workspaceEnabled || !dispatchConversation) return <div />;
@@ -802,7 +792,6 @@ const TeamPageContent: React.FC<TeamPageContentProps> = ({
         {messageContext}
         <ChatLayout
           title={team.name}
-          siderTitle={siderTitle}
           sider={sider}
           workspaceEnabled={workspaceEnabled}
           previewHosted={Boolean(teamProjectId)}

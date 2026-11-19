@@ -837,6 +837,7 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "tab": "İlerleme",
     "title": "İş ilerlemesi",
     "panel": "Sağ panel",
     "empty": "Çok adımlı ve arka plan görevleri burada gösterilir.",

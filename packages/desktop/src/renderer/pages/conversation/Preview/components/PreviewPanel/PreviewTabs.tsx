@@ -327,7 +327,8 @@ const PreviewTabs: React.FC<PreviewTabsProps> = ({
               <div
                 className='flex items-center justify-center w-20px h-20px rd-4px cursor-pointer hover:bg-bg-3 transition-colors'
                 onClick={onClosePanel}
-                title={t('preview.collapsePanel')}
+                title={t('preview.closePreview')}
+                aria-label={t('preview.closePreview')}
               >
                 <IconShrink style={{ fontSize: 14, color: iconColors.secondary }} />
               </div>

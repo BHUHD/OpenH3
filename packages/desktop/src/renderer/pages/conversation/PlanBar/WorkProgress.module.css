@@ -7,15 +7,8 @@
   color: var(--text-primary);
 }
 
-.heading {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
 .overview {
-  margin-block: 18px 12px;
+  margin-block-end: 12px;
 }
 
 .summary {
@@ -175,35 +168,6 @@
   white-space: normal;
 }
 
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.tabs .tab:global(.arco-btn):not(:global(.arco-btn-disabled)) {
-  height: 28px;
-  padding-inline: 8px;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.tabs .tab:global(.arco-btn)[aria-pressed='true'] {
-  background: var(--bg-2);
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.tabs .tab:global(.arco-btn):not(:global(.arco-btn-disabled)):hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.tab:global(.arco-btn):focus-visible,
 .detailsButton:global(.arco-btn):focus-visible,
 .resumeButton:global(.arco-btn):focus-visible {
   outline: 2px solid var(--primary);

@@ -165,6 +165,19 @@ describe('usePreviewKeyboardShortcuts — close active tab', () => {
 });
 
 describe('usePreviewKeyboardShortcuts — save', () => {
+  it('leaves save and close shortcuts alone while the mounted panel is hidden', () => {
+    const onSave = vi.fn();
+    const onCloseActiveTab = vi.fn();
+    renderHook(() =>
+      usePreviewKeyboardShortcuts({ enabled: false, isDirty: true, onSave, onCloseActiveTab, scopeRef: scopeRef() })
+    );
+
+    expect(press(scope, { key: 's', metaKey: true }).defaultPrevented).toBe(false);
+    expect(press(scope, { key: 'w', metaKey: true }).defaultPrevented).toBe(false);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onCloseActiveTab).not.toHaveBeenCalled();
+  });
+
   it('saves on Cmd+S when the tab is dirty', () => {
     const onSave = vi.fn();
     renderHook(() => usePreviewKeyboardShortcuts({ isDirty: true, onSave }));

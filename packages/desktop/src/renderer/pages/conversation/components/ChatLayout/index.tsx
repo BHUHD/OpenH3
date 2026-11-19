@@ -2,29 +2,19 @@ import { AgentLogoIcon } from '@/renderer/components/agent/AgentBadge';
 import type { PresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { useResizableSplit } from '@/renderer/hooks/ui/useResizableSplit';
+import { useWorkspacePanelWidth } from '@/renderer/hooks/ui/useWorkspacePanelWidth';
 import ChatTitleEditor from '@/renderer/pages/conversation/components/ChatTitleEditor';
-import MobileWorkspaceOverlay from './MobileWorkspaceOverlay';
-import WorkspacePanelHeader from './WorkspacePanelHeader';
+import WorkspaceOpenButton from './WorkspaceOpenButton';
+import WorkspacePanel from './WorkspacePanel';
+import WorkspacePanelFrame from './WorkspacePanelFrame';
 import { useContainerWidth } from '@/renderer/pages/conversation/hooks/useContainerWidth';
-import { useLayoutConstraints } from '@/renderer/pages/conversation/hooks/useLayoutConstraints';
 import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRename';
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
-import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
-import ConversationWorkProgress from '@/renderer/pages/conversation/PlanBar/ConversationWorkProgress';
-import { useWorkProgress } from '@/renderer/pages/conversation/PlanBar/workProgress';
+import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
 import classNames from 'classnames';
-import {
-  DEFAULT_WORKSPACE_PANEL_PX,
-  MAX_WORKSPACE_PANEL_PX,
-  MIN_WORKSPACE_PANEL_PX,
-  WORKSPACE_HEADER_HEIGHT,
-  calcLayoutMetrics,
-} from '@/renderer/pages/conversation/utils/layoutCalc';
 import { Layout as ArcoLayout } from '@arco-design/web-react';
 import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import './chat-layout.css';
 
@@ -33,7 +23,6 @@ const ChatLayout: React.FC<{
   children: React.ReactNode;
   title?: React.ReactNode;
   sider: React.ReactNode;
-  siderTitle?: React.ReactNode;
   backend?: string;
   /** Preset assistant info — when provided, badge shows assistant identity instead of backend */
   presetAssistant?: PresetAssistantInfo & { id?: string };
@@ -42,10 +31,8 @@ const ChatLayout: React.FC<{
   headerExtra?: React.ReactNode;
   workspaceEnabled?: boolean;
   /**
-   * When true (project conversations), the preview panel is hoisted to the
-   * Layout-level project host and this ChatLayout renders chat only — the preview
-   * region + its resize live at the Layout level, structurally persistent across
-   * same-project conversation switches (no remount).
+   * Project conversations use the Layout-level panel on every viewport so the
+   * Explorer and Preview survive same-project conversation switches.
    */
   previewHosted?: boolean;
   /** Conversation ID for mode switching */
@@ -70,45 +57,11 @@ const ChatLayout: React.FC<{
   const { conversation_id, workspacePath, isTemporaryWorkspace } = props;
   const { backend, presetAssistant, agent_name, workspaceEnabled = true, workspacePreferenceKey } = props;
   const layout = useLayoutContext();
-  const isDesktop = !layout?.isMobile;
   const isMobile = Boolean(layout?.isMobile);
-  const { t } = useTranslation();
-  const work = useWorkProgress(conversation_id);
-  const workIdentity = work.tasks.map((task) => task.id).join('\n');
-  const progressAvailable = Boolean(conversation_id);
-  // Project conversations use the Layout host on both desktop and mobile.
-  const rightPanelEnabled = !props.previewHosted && (workspaceEnabled || progressAvailable);
-  const [progressActive, setProgressActive] = useState(!workspaceEnabled);
+  const { isOpen, isMaximized, openRevision } = usePreviewContext();
+  const isPreviewOpen = isOpen && !props.previewHosted;
+  const rightPanelEnabled = !props.previewHosted && Boolean(workspaceEnabled || conversation_id || isPreviewOpen);
 
-  useEffect(() => {
-    if (!workspaceEnabled && progressAvailable) {
-      setProgressActive(true);
-    }
-  }, [progressAvailable, workspaceEnabled]);
-
-  // Preview panel state
-  const { isOpen: isPreviewOpenRaw, isMaximized } = usePreviewContext();
-  // Only hoist to the Layout host on desktop. On mobile (narrow width < 768) the
-  // host is not rendered (`previewRegionActive` in Layout.tsx is gated on
-  // `!isMobile`), so hoisting there would leave the preview with no renderer at
-  // all. Forcing `previewHosted` to false on mobile makes every conversation —
-  // including project conversations — fall back to ChatLayout's own mobile
-  // overlay path, exactly how non-project conversations still render today.
-  const previewHosted = Boolean(props.previewHosted) && !isMobile;
-  // For project conversations the preview lives at the Layout host, so this
-  // ChatLayout must behave as if there is no preview: chat fills, no split, no
-  // preview panel. Everywhere below uses `isPreviewOpen` for that local decision.
-  const isPreviewOpen = isPreviewOpenRaw && !previewHosted;
-  // 最大化（仅桌面）：隐藏聊天区、让内联预览铺满；工作区右栏保持不变。
-  // 项目会话的预览被提升到 Layout host（previewHosted），其最大化在 Layout 处理，
-  // 这里的 isPreviewOpen 已排除该情况。
-  // Maximized (desktop only): hide the chat area so the inline preview fills it;
-  // the right workspace sider stays unchanged. Project conversations hoist the
-  // preview to the Layout host (previewHosted) and handle maximizing there —
-  // isPreviewOpen already excludes that case here.
-  const previewMaximized = isDesktop && isPreviewOpen && isMaximized;
-
-  // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
     workspaceEnabled: rightPanelEnabled,
     isMobile,
@@ -118,16 +71,15 @@ const ChatLayout: React.FC<{
   });
 
   useEffect(() => {
-    // No longer auto-expand the right panel when tasks start —
-    // WorkProgressBar above the send box handles inline progress display.
-    if (!rightPanelEnabled || !workIdentity) return;
-    setProgressActive(false);
-  }, [conversation_id, workIdentity, rightPanelEnabled]);
+    if (isPreviewOpen) setRightSiderCollapsed(false);
+  }, [isMobile, isPreviewOpen, openRevision, setRightSiderCollapsed]);
+  const previewMaximized = !isMobile && !rightSiderCollapsed && isPreviewOpen && isMaximized;
 
-  // --- Hook B: container width ---
   const { containerRef, containerWidth } = useContainerWidth();
+  const { widthPx, createDragHandle } = useWorkspacePanelWidth(rightPanelEnabled && !isMobile ? containerWidth : 0);
+  const panelWidth = isMobile ? Math.min(420, Math.max(280, Math.round(containerWidth * 0.85))) : widthPx;
+  const titleAreaMaxWidth = Math.max(320, Math.min(820, containerWidth - 520));
 
-  // --- Hook C: title rename ---
   const { editingTitle, setEditingTitle, titleDraft, setTitleDraft, renameLoading, canRenameTitle, submitTitleRename } =
     useTitleRename({
       title: props.title,
@@ -139,69 +91,6 @@ const ChatLayout: React.FC<{
 
   // Compute display name with fallback chain
   const display_name = presetAssistant?.name || agent_name || capitalizedBackend;
-
-  const {
-    splitRatio: workspaceWidthPxPref,
-    setSplitRatio: setWorkspaceWidthPxPref,
-    createDragHandle: createWorkspaceDragHandle,
-  } = useResizableSplit({
-    unit: 'px',
-    defaultWidth: DEFAULT_WORKSPACE_PANEL_PX,
-    minWidth: MIN_WORKSPACE_PANEL_PX,
-    maxWidth: MAX_WORKSPACE_PANEL_PX,
-    storageKey: 'chat-workspace-width-px',
-  });
-
-  // Pre-hook metrics: compute dynamic min/max for the chat-preview split hook
-  const { dynamicChatMinRatio, dynamicChatMaxRatio } = calcLayoutMetrics({
-    containerWidth,
-    workspaceWidthPx: workspaceWidthPxPref,
-    chatSplitRatio: 60, // placeholder; only dynamicChatMinRatio/dynamicChatMaxRatio are used here
-    workspaceEnabled: rightPanelEnabled,
-    isDesktop,
-    isPreviewOpen,
-    rightSiderCollapsed,
-    isMobile,
-  });
-
-  const {
-    splitRatio: chatSplitRatio,
-    setSplitRatio: setChatSplitRatio,
-    createDragHandle: createPreviewDragHandle,
-  } = useResizableSplit({
-    defaultWidth: 60,
-    minWidth: dynamicChatMinRatio,
-    maxWidth: dynamicChatMaxRatio,
-    storageKey: 'chat-preview-split-ratio',
-  });
-
-  // Full metrics with real chatSplitRatio
-  const { chatFlex, workspaceWidthPx, titleAreaMaxWidth, mobileWorkspaceHandleRight } = calcLayoutMetrics({
-    containerWidth,
-    workspaceWidthPx: workspaceWidthPxPref,
-    chatSplitRatio,
-    workspaceEnabled: rightPanelEnabled,
-    isDesktop,
-    isPreviewOpen,
-    rightSiderCollapsed,
-    isMobile,
-  });
-
-  // --- Hook E: layout constraints ---
-  useLayoutConstraints({
-    containerWidth,
-    workspaceEnabled: rightPanelEnabled,
-    isDesktop,
-    isPreviewOpen,
-    rightSiderCollapsed,
-    setRightSiderCollapsed,
-    workspaceWidthPx: workspaceWidthPxPref,
-    setWorkspaceWidthPx: setWorkspaceWidthPxPref,
-    chatSplitRatio,
-    setChatSplitRatio,
-    dynamicChatMinRatio,
-    dynamicChatMaxRatio,
-  });
 
   const [mobileActionsSlot, setMobileActionsSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -265,150 +154,35 @@ const ChatLayout: React.FC<{
   );
 
   return (
-    <ArcoLayout
-      className='size-full color-black '
-      style={{
-        // fontFamily: `cursive,"anthropicSans","anthropicSans Fallback",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif`,
-      }}
-    >
+    <ArcoLayout className='size-full color-black'>
       <div ref={containerRef} className='flex flex-1 relative w-full overflow-hidden'>
-        {/* Unified layout: single DOM structure prevents children unmount/remount on preview toggle */}
-        <div
-          className='flex flex-col min-w-0'
-          style={{
-            flexGrow: 1,
-            flexShrink: 1,
-            flexBasis: 0,
-          }}
-        >
+        <div className='flex flex-1 flex-col min-w-0' style={{ display: previewMaximized ? 'none' : undefined }}>
           <div className='shrink-0 !bg-1'>{headerBlock}</div>
-          <div className='flex flex-1 min-h-0 relative'>
-            {/* Chat area - always mounted, never unmounted on preview toggle */}
-            <div
-              className='flex flex-col relative'
-              style={{
-                flexGrow: isPreviewOpen && isDesktop ? 0 : 1,
-                flexShrink: 0,
-                flexBasis: isPreviewOpen && isDesktop ? `${chatFlex}%` : 0,
-                // 最大化时（桌面）隐藏聊天区，预览铺满；移动端预览打开即覆盖聊天区。
-                // Hidden when maximized (desktop) so the preview fills; on mobile an
-                // open preview already covers the chat.
-                display: (isPreviewOpen && isMobile) || previewMaximized ? 'none' : 'flex',
-                minWidth: '240px',
-              }}
-              onClick={() => {
-                if (window.innerWidth < 768 && !rightSiderCollapsed) setRightSiderCollapsed(true);
-              }}
-            >
-              <ArcoLayout.Content className='flex flex-col flex-1 bg-1 overflow-hidden'>
-                {props.children}
-              </ArcoLayout.Content>
-            </div>
-            {/* Preview panel - conditionally rendered */}
-            {isPreviewOpen && (
-              <div
-                className={classNames(
-                  'preview-panel flex flex-col relative overflow-visible',
-                  // 移动端预览是覆盖层，保留内缩和圆角；桌面端不留边距，
-                  // 否则窗口底色会从缝隙透出（深色模式下尤其突兀）。
-                  // On mobile the preview is an overlay, so it keeps its inset and
-                  // rounding. On desktop no margin: a gap would expose the window's
-                  // own background, which is jarring in dark mode.
-                  isDesktop ? '' : 'm-[8px] rounded-[15px]'
-                )}
-                style={{
-                  flexGrow: 1,
-                  flexShrink: 1,
-                  flexBasis: 0,
-                  // 桌面端只用左边框分界；移动端覆盖层保留完整描边
-                  // Desktop: left divider only. Mobile overlay keeps a full border.
-                  ...(isDesktop ? { borderLeft: '1px solid var(--bg-3)' } : { border: '1px solid var(--bg-3)' }),
-                  minWidth: isDesktop ? '260px' : 0,
-                  maxWidth: isMobile ? 'calc(100% - 16px)' : undefined,
-                  width: isMobile ? 'calc(100% - 16px)' : undefined,
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* 最大化时聊天区隐藏，拖拽把手无处可拖，隐藏之。
-                    While maximized the chat is hidden, so the resize handle has
-                    nothing to drag against — hide it. */}
-                {isDesktop &&
-                  !previewMaximized &&
-                  createPreviewDragHandle({
-                    className: 'absolute top-0 bottom-0 z-30',
-                    style: { width: '20px', left: '-20px' },
-                    linePlacement: 'end',
-                    lineClassName: 'opacity-30 group-hover:opacity-100 group-active:opacity-100',
-                    lineStyle: { width: '2px' },
-                  })}
-                <div className={classNames('h-full w-full overflow-hidden', isDesktop ? '' : 'rounded-[15px]')}>
-                  <PreviewPanel conversationId={conversation_id} />
-                </div>
-              </div>
-            )}
-          </div>
+          <ArcoLayout.Content className='flex flex-col flex-1 min-h-0 bg-1 overflow-hidden'>
+            {props.children}
+          </ArcoLayout.Content>
         </div>
-        {rightPanelEnabled && !layout?.isMobile && (
-          <div
-            className={classNames('!bg-1 relative chat-layout-right-sider layout-sider')}
-            style={{
-              flexGrow: 0,
-              flexShrink: 0,
-              flexBasis: rightSiderCollapsed ? '0px' : `${Math.round(workspaceWidthPx)}px`,
-              width: rightSiderCollapsed ? '0px' : `${Math.round(workspaceWidthPx)}px`,
-              minWidth: rightSiderCollapsed ? '0px' : `${MIN_WORKSPACE_PANEL_PX}px`,
-              overflow: 'hidden',
-              borderLeft: rightSiderCollapsed ? 'none' : '1px solid var(--bg-3)',
-            }}
+        {rightPanelEnabled && (
+          <WorkspacePanelFrame
+            collapsed={rightSiderCollapsed}
+            isMobile={isMobile}
+            maximized={previewMaximized}
+            widthPx={panelWidth}
+            onCollapse={dispatchWorkspaceToggleEvent}
+            dragHandle={createDragHandle({ className: 'absolute start-0 top-0 bottom-0 z-20', reverse: true })}
           >
-            {isDesktop &&
-              !rightSiderCollapsed &&
-              createWorkspaceDragHandle({ className: 'absolute start-0 top-0 bottom-0', style: {}, reverse: true })}
-            <WorkspacePanelHeader
+            <WorkspacePanel
+              files={workspaceEnabled ? props.sider : undefined}
+              fileActions={
+                workspacePath && (
+                  <WorkspaceOpenButton workspacePath={workspacePath} isTemporary={isTemporaryWorkspace} />
+                )
+              }
+              conversationId={conversation_id}
               collapsed={rightSiderCollapsed}
-              onToggle={() => dispatchWorkspaceToggleEvent()}
-              togglePlacement={layout?.isMobile ? 'left' : 'right'}
-              workspacePath={workspacePath}
-              isTemporaryWorkspace={isTemporaryWorkspace}
-              progressAvailable={progressAvailable}
-              workspaceAvailable={workspaceEnabled}
-              progressActive={progressActive}
-              onProgressChange={setProgressActive}
-            >
-              {progressActive ? t('conversation.workProgress.title') : props.siderTitle}
-            </WorkspacePanelHeader>
-            <ArcoLayout.Content style={{ height: `calc(100% - ${WORKSPACE_HEADER_HEIGHT}px)` }}>
-              {progressActive && conversation_id ? (
-                <ConversationWorkProgress conversationId={conversation_id} />
-              ) : (
-                props.sider
-              )}
-            </ArcoLayout.Content>
-          </div>
-        )}
-
-        {/* Mobile workspace overlay: backdrop + fixed panel + floating collapse handle */}
-        {rightPanelEnabled && layout?.isMobile && (
-          <MobileWorkspaceOverlay
-            rightSiderCollapsed={rightSiderCollapsed}
-            setRightSiderCollapsed={setRightSiderCollapsed}
-            workspaceWidthPx={workspaceWidthPx}
-            mobileWorkspaceHandleRight={mobileWorkspaceHandleRight}
-            sider={
-              progressActive && conversation_id ? (
-                <ConversationWorkProgress conversationId={conversation_id} />
-              ) : (
-                props.sider
-              )
-            }
-            workspacePath={workspacePath}
-            isTemporaryWorkspace={isTemporaryWorkspace}
-            progressAvailable={progressAvailable}
-            workspaceAvailable={workspaceEnabled}
-            progressActive={progressActive}
-            onProgressChange={setProgressActive}
-            siderTitle={progressActive ? t('conversation.workProgress.title') : props.siderTitle}
-          />
+              onReturnToConversation={() => setRightSiderCollapsed(true)}
+            />
+          </WorkspacePanelFrame>
         )}
       </div>
     </ArcoLayout>

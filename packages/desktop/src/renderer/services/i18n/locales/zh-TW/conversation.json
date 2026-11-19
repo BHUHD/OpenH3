@@ -835,6 +835,7 @@
     "fileChanges": "檔案變更（{{count}}）"
   },
   "workProgress": {
+    "tab": "進度",
     "title": "工作進度",
     "panel": "右側面板",
     "empty": "多步驟任務和背景任務會顯示在這裡。",

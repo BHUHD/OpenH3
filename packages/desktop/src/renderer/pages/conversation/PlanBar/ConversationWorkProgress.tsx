@@ -98,8 +98,11 @@ export default function ConversationWorkProgress({ conversationId }: { conversat
     </li>
   );
   return (
-    <section data-testid='conversation-work-progress' className={styles.panel}>
-      <h3 className={styles.heading}>{t('conversation.workProgress.title')}</h3>
+    <section
+      data-testid='conversation-work-progress'
+      className={styles.panel}
+      aria-label={t('conversation.workProgress.title')}
+    >
       {!!entries.length && (
         <div className={styles.overview}>
           <div className={styles.summary}>

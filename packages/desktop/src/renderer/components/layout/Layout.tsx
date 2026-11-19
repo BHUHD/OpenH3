@@ -22,20 +22,13 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { setGlobalNavigate } from '@/renderer/utils/navigation';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview';
 import { ProjectPanelHost } from '@renderer/components/layout/ProjectPanelHost';
-import { ProjectPanelMobileOverlay } from '@renderer/components/layout/ProjectPanelMobileOverlay';
 import { setCurrentProject, useCurrentProject } from '@renderer/pages/conversation/explorer/currentProjectStore';
-import {
-  setCurrentConversation,
-  useCurrentConversation,
-} from '@renderer/pages/conversation/explorer/currentConversationStore';
+import { setCurrentConversation } from '@renderer/pages/conversation/explorer/currentConversationStore';
 import { useContainerWidth } from '@renderer/pages/conversation/hooks/useContainerWidth';
-import { useProjectExplorerColumnWidth } from '@renderer/hooks/ui/useProjectExplorerColumnWidth';
+import { useWorkspacePanelWidth } from '@renderer/hooks/ui/useWorkspacePanelWidth';
 import { useResizableSplit } from '@renderer/hooks/ui/useResizableSplit';
-import { useProjectPreviewRegionWidth } from '@renderer/hooks/ui/useProjectPreviewRegionWidth';
 import { useProjectPanelCollapse } from '@renderer/hooks/ui/useProjectPanelCollapse';
 import { dispatchWorkspaceToggleEvent } from '@renderer/utils/workspace/workspaceEvents';
-import { MIN_PREVIEW_PANEL_PX } from '@renderer/pages/conversation/utils/layoutCalc';
-import { PreviewPanel } from '@renderer/pages/conversation/Preview';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { NavigationHistoryProvider } from '@renderer/hooks/context/NavigationHistoryContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
@@ -142,7 +135,6 @@ const Layout: React.FC<{
   useDesktopTurnNotification();
   const navigate = useNavigate();
   const location = useLocation();
-  const activeConversationId = useCurrentConversation();
   const workspaceAvailable =
     location.pathname.startsWith('/conversation/') || (TEAM_MODE_ENABLED && location.pathname.startsWith('/team/'));
   const toggleSider = useCallback(() => {
@@ -187,44 +179,23 @@ const Layout: React.FC<{
     closePreview: closePreviewOnRouteChange,
     isOpen: isPreviewOpen,
     isMaximized: isPreviewMaximized,
+    openRevision,
   } = usePreviewContext();
-  // Layout-level explorer column width engine (stage3 FULL / P2): measure the
-  // [content | explorer] row, clamp the explorer width so chat (+ preview) keep
-  // their reserve. Active only when a project is bound and on desktop.
   const currentProject = useCurrentProject();
   const { containerRef: mainRowRef, containerWidth: mainRowWidth } = useContainerWidth();
-  const explorerActive = Boolean(currentProject) && !isMobile;
-  const { widthPx: explorerWidthPx, createDragHandle: createExplorerDragHandle } = useProjectExplorerColumnWidth(
-    mainRowWidth,
-    isPreviewOpen,
-    explorerActive
+  const { widthPx: panelWidthPx, createDragHandle: createPanelDragHandle } = useWorkspacePanelWidth(
+    currentProject && !isMobile ? mainRowWidth : 0
   );
-  // P3: host-level collapse (project-scoped on desktop; overlay on mobile). The
-  // explorer stays mounted (width 0) on collapse, so it is not remounted.
-  // Task progress is shown inline above the input; the project column never auto-expands for tasks.
-  const { collapsed: explorerCollapsed } = useProjectPanelCollapse({
+  const { collapsed: panelCollapsed, setCollapsed: setPanelCollapsed } = useProjectPanelCollapse({
     projectId: currentProject,
     isMobile,
     active: Boolean(currentProject),
   });
-  const toggleExplorer = useCallback(() => {
-    dispatchWorkspaceToggleEvent();
-  }, []);
-  // Mobile overlay width: most of the viewport, capped.
-  const explorerMobileWidthPx = Math.min(420, Math.max(280, Math.round(viewportWidth * 0.85)));
-  // P4 (②B): hoist the preview region to the Layout host for project
-  // conversations so it is structurally persistent (no remount on same-project
-  // switches). ChatLayout renders chat only in that case (previewHosted).
-  const previewRegionActive = Boolean(currentProject) && !isMobile && isPreviewOpen;
-  // 最大化：隐藏聊天区、让预览铺满它腾出的空间；左侧边栏与右侧资源管理器列均不动。
-  // Maximized: hide the chat area and let the preview fill the space it vacated;
-  // the left sidebar and the right explorer column are both left untouched.
-  const previewMaximized = previewRegionActive && isPreviewMaximized;
-  const { widthPx: previewWidthPx, createDragHandle: createPreviewRegionDragHandle } = useProjectPreviewRegionWidth(
-    mainRowWidth,
-    explorerCollapsed ? 0 : explorerWidthPx,
-    previewRegionActive
-  );
+  useEffect(() => {
+    if (currentProject && isPreviewOpen) setPanelCollapsed(false);
+  }, [currentProject, isMobile, isPreviewOpen, openRevision, setPanelCollapsed]);
+  const previewMaximized =
+    Boolean(currentProject) && !isMobile && !panelCollapsed && isPreviewOpen && isPreviewMaximized;
   const routeLayoutMountedRef = useRef(false);
   useEffect(() => {
     if (!routeLayoutMountedRef.current) {
@@ -485,28 +456,14 @@ const Layout: React.FC<{
                 })}
             </ArcoLayout.Sider>
 
-            {/* Content + project Explorer share one measured flex row (stage3
-                FULL / P2). `mainRowRef` gives the [content|explorer] width for the
-                explorer clamp (independent of the split → non-circular). The
-                explorer column is a sibling of the route content, above the
-                per-conversation subtree → persists across same-project switches. */}
+            {/* The project panel lives alongside the route so its content stays mounted. */}
             <div ref={mainRowRef} className='flex flex-1 min-h-0 overflow-hidden'>
               <ArcoLayout.Content
                 className={'bg-1 layout-content flex flex-col min-h-0 flex-1'}
                 onClick={() => {
                   if (isMobile && !collapsed) setCollapsed(true);
                 }}
-                style={
-                  isMobile
-                    ? {
-                        width: '100%',
-                      }
-                    : previewMaximized
-                      ? // 最大化时聊天区隐藏（保持挂载不卸载，还原后即刻恢复）
-                        // Hidden while maximized (kept mounted so restoring is instant)
-                        { display: 'none' }
-                      : undefined
-                }
+                style={{ width: isMobile ? '100%' : undefined, display: previewMaximized ? 'none' : undefined }}
               >
                 <Outlet />
                 <PwaPullToRefresh />
@@ -520,70 +477,19 @@ const Layout: React.FC<{
                 />
                 {IS_DISCONTINUED_BUILD && <UpdateMigrationDialog />}
               </ArcoLayout.Content>
-              {/* Hoisted preview region (project conversations only). Structurally
-                  persistent: lives above the per-conversation subtree, so a
-                  same-project conversation switch does not remount it. */}
-              {previewRegionActive && (
-                <div
-                  data-project-preview-region
-                  className='preview-panel flex flex-col relative overflow-visible'
-                  style={{
-                    // 最大化时铺满聊天区腾出的空间（explorer 列仍占其固定宽度）；
-                    // 否则用拖拽得到的固定宽度。还原后自动回到该宽度。
-                    // Maximized: fill the space the chat vacated (the explorer column
-                    // keeps its own fixed width); otherwise the dragged fixed width,
-                    // which restoring returns to automatically.
-                    ...(previewMaximized
-                      ? { flexGrow: 1, flexShrink: 1, flexBasis: 0 }
-                      : { width: `${Math.round(previewWidthPx)}px`, flexGrow: 0, flexShrink: 0 }),
-                    // 只保留左边框作为与会话区的分界；上/右/下不留边距，
-                    // 否则窗口底色会从缝隙里透出来（深色模式下尤其突兀）。
-                    // Left border only, as the divider from the chat area. No outer
-                    // margins: any gap would expose the window's own background,
-                    // which is jarring in dark mode.
-                    borderLeft: '1px solid var(--bg-3)',
-                    minWidth: `${MIN_PREVIEW_PANEL_PX}px`,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  {/* 最大化时聊天区已隐藏，拖拽把手无处可拖，隐藏之。
-                      While maximized the chat is hidden, so the resize handle has
-                      nothing to drag against — hide it. */}
-                  {!previewMaximized &&
-                    createPreviewRegionDragHandle({
-                      className: 'absolute top-0 bottom-0 z-30',
-                      style: { width: '20px', left: '-20px' },
-                      reverse: true,
-                      linePlacement: 'end',
-                      lineClassName: 'opacity-30 group-hover:opacity-100 group-active:opacity-100',
-                      lineStyle: { width: '2px' },
-                    })}
-                  <div className='h-full w-full overflow-hidden'>
-                    <PreviewPanel conversationId={activeConversationId ?? undefined} />
-                  </div>
-                </div>
-              )}
-              {!isMobile && (
-                <ProjectPanelHost
-                  widthPx={explorerWidthPx}
-                  collapsed={explorerCollapsed}
-                  dragHandle={createExplorerDragHandle({
-                    className: 'absolute start-0 top-0 bottom-0 z-20',
-                    reverse: true,
-                  })}
-                />
-              )}
-            </div>
-
-            {/* Mobile overlay: backdrop + fixed panel + floating collapse handle. */}
-            {isMobile && Boolean(currentProject) && (
-              <ProjectPanelMobileOverlay
-                projectId={currentProject as string}
-                collapsed={explorerCollapsed}
-                onCollapse={toggleExplorer}
-                widthPx={explorerMobileWidthPx}
+              <ProjectPanelHost
+                widthPx={isMobile ? Math.min(420, Math.max(280, Math.round(viewportWidth * 0.85))) : panelWidthPx}
+                isMobile={isMobile}
+                collapsed={panelCollapsed}
+                maximized={previewMaximized}
+                onCollapse={dispatchWorkspaceToggleEvent}
+                onReturnToConversation={() => setPanelCollapsed(true)}
+                dragHandle={createPanelDragHandle({
+                  className: 'absolute start-0 top-0 bottom-0 z-20',
+                  reverse: true,
+                })}
               />
-            )}
+            </div>
           </ArcoLayout>
         </div>
       </NavigationHistoryProvider>
