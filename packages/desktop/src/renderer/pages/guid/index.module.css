@@ -470,6 +470,43 @@
 .creationComposer {
   max-width: 848px;
   margin: 0 auto;
+  /* Gen-light glow: a pseudo-border via box-shadow so the layout flow is unaffected */
+  position: relative;
+}
+
+/* Creation composer: gen-light glow ring on the input card wrapper.
+ * Uses a gradient border trick: pseudo-element sits behind the card,
+ * padded 2px out, with the gen-light gradient and matching radius.
+ * Respects prefers-reduced-motion by skipping the pulse animation.
+ */
+.creationComposer::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: calc(var(--radius-card) + 2px);
+  background: var(--gen-light-gradient);
+  opacity: 0.42;
+  pointer-events: none;
+  z-index: 0;
+  animation: gen-light-creation-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes gen-light-creation-pulse {
+  0%, 100% { opacity: 0.28; }
+  50% { opacity: 0.52; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .creationComposer::before {
+    animation: none;
+    opacity: 0.3;
+  }
+}
+
+/* Ensure the card itself sits above the glow pseudo-element */
+.creationComposer > * {
+  position: relative;
+  z-index: 1;
 }
 
 .creationPage .heroHeader {
