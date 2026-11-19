@@ -65,6 +65,10 @@ export default function H3GenerationPanel() {
     if (next.status === 'succeeded' && next.artifacts[0]?.resourcePath)
       setOutputUrl(h3JobApi.resourceUrl(next.artifacts[0].resourcePath));
     if (['succeeded', 'failed', 'cancelled'].includes(next.status)) sourceRef.current?.close();
+    // Refresh version list when generation succeeds so new candidates appear
+    // without requiring a remount (SSE delivers the terminal event before the
+    // backend version index is fully updated, so fetch once here).
+    if (next.status === 'succeeded') refreshVersions();
   };
 
   const generate = async (): Promise<void> => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 const h3 = vi.hoisted(() => ({
@@ -42,6 +42,32 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 import H3GenerationPanel from '@/renderer/pages/conversation/Preview/components/Video/H3GenerationPanel';
 
 describe('H3 generation panel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h3.versions.mockResolvedValue([]);
+    h3.status.mockResolvedValue({
+      ready: true,
+      install: {
+        bundleRoot: 'bundle',
+        runtimeRoot: 'runtime',
+        modelsDirectory: 'models',
+        bundleVerified: true,
+        runtimePresent: true,
+        missingAssets: [],
+        missingCustomNodes: [],
+      },
+      acceleration: {
+        mode: 'auto',
+        backend: 'dense',
+        available: false,
+        tritonPresent: false,
+        pythonDevPresent: false,
+        reason: 'ACCEL_ROOT_NOT_CONFIGURED',
+      },
+    });
+    h3.events.mockReturnValue({ close: vi.fn() });
+    h3.resourceUrl.mockImplementation((resourcePath: string) => `http://127.0.0.1:33002${resourcePath}`);
+  });
   it('submits a generation job and renders its safe artifact resource', async () => {
     h3.create.mockResolvedValue({
       id: 'job-1',
@@ -92,6 +118,38 @@ describe('H3 generation panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'preview.video.h3Generate' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('INVALID_INPUT: CHECK_WORKFLOW_INPUTS (node 42)');
     expect(screen.getByRole('alert')).not.toHaveTextContent('traceback');
+  });
+
+  it('calls versions() after a succeeded job to refresh the candidate list', async () => {
+    // Verifies that finish() triggers refreshVersions() on succeeded,
+    // which is the fix for new candidates not appearing without remount.
+    h3.create.mockResolvedValue({
+      id: 'job-refresh',
+      status: 'queued',
+      progress: 0,
+      artifacts: [],
+      resolvedMode: 't2v',
+      spec: { prompt: 'refresh', mode: 'auto', references: [] },
+    });
+    render(<H3GenerationPanel />);
+    // versions() called once on mount
+    await waitFor(() => expect(h3.versions).toHaveBeenCalledTimes(1));
+    fireEvent.change(screen.getByRole('textbox', { name: 'preview.video.h3Prompt' }), {
+      target: { value: 'refresh' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'preview.video.h3Generate' }));
+    await waitFor(() => expect(h3.events).toHaveBeenCalled());
+    const onJob = h3.events.mock.calls[h3.events.mock.calls.length - 1][1] as (job: unknown) => void;
+    onJob({
+      id: 'job-refresh',
+      status: 'succeeded',
+      progress: 1,
+      artifacts: [{ resourcePath: '/api/h3/jobs/job-refresh/artifacts/0', mimeType: 'video/mp4' }],
+      resolvedMode: 't2v',
+      spec: { prompt: 'refresh', mode: 'auto', references: [] },
+    });
+    // versions() must be called a second time after succeeded
+    await waitFor(() => expect(h3.versions).toHaveBeenCalledTimes(2), { timeout: 3000 });
   });
 
   it('compares candidates and accepts against the selected source version', async () => {
