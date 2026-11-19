@@ -158,6 +158,39 @@ export default defineConfig({
     // Wiggle animation for attention indicators (e.g. pending permission badge)
     // Shakes briefly then pauses — 3s cycle, active in first ~20%
     ['animate-wiggle', { animation: 'wiggle 3s ease-in-out infinite' }],
+
+    // ── Design token utilities ─────────────────────────────────────────────
+    // Radius scale: rd-chip, rd-control, rd-card, rd-panel, rd-full
+    ['rd-chip', { 'border-radius': 'var(--radius-chip)' }],
+    ['rd-control', { 'border-radius': 'var(--radius-control)' }],
+    ['rd-card', { 'border-radius': 'var(--radius-card)' }],
+    ['rd-panel', { 'border-radius': 'var(--radius-panel)' }],
+    ['rd-full', { 'border-radius': 'var(--radius-full)' }],
+
+    // Elevation shadows: shadow-xs → shadow-xl, shadow-focus, shadow-focus-danger
+    ['shadow-xs', { 'box-shadow': 'var(--shadow-xs)' }],
+    ['shadow-sm', { 'box-shadow': 'var(--shadow-sm)' }],
+    ['shadow-md', { 'box-shadow': 'var(--shadow-md)' }],
+    ['shadow-lg', { 'box-shadow': 'var(--shadow-lg)' }],
+    ['shadow-xl', { 'box-shadow': 'var(--shadow-xl)' }],
+    ['shadow-focus', { 'box-shadow': 'var(--shadow-focus)' }],
+    ['shadow-focus-danger', { 'box-shadow': 'var(--shadow-focus-danger)' }],
+
+    // Motion duration utilities
+    ['duration-quick', { 'transition-duration': 'var(--duration-quick)' }],
+    ['duration-base', { 'transition-duration': 'var(--duration-base)' }],
+    ['duration-enter', { 'transition-duration': 'var(--duration-enter)' }],
+    ['duration-exit', { 'transition-duration': 'var(--duration-exit)' }],
+
+    // Motion easing utilities
+    ['ease-out-token', { 'transition-timing-function': 'var(--ease-out)' }],
+    ['ease-in-token', { 'transition-timing-function': 'var(--ease-in)' }],
+    ['ease-standard', { 'transition-timing-function': 'var(--ease-standard)' }],
+    ['ease-spring', { 'transition-timing-function': 'var(--ease-spring)' }],
+
+    // Gen-light animated shimmer
+    ['gen-light', { background: 'var(--gen-light-gradient)' }],
+    ['gen-light-soft', { background: 'var(--gen-light-gradient-soft)' }],
   ],
   // Preflights - Global base styles 全局基础样式
   preflights: [

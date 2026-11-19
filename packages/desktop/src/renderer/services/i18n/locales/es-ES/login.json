@@ -13,8 +13,8 @@
   "showPassword": "Mostrar contraseña",
   "hidePassword": "Ocultar contraseña",
   "languageToggle": "Cambiar idioma",
-  "footerPrimary": "Transforma tu IA de línea de comandos",
-  "footerSecondary": "Moderno y eficiente",
+  "footerPrimary": "De la idea al frame, generado en local",
+  "footerSecondary": "Estudio creativo de IA para imágenes y vídeo",
   "errors": {
     "empty": "Ingresa usuario y contraseña",
     "invalidCredentials": "Usuario o contraseña inválidos",

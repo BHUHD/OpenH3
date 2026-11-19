@@ -13,8 +13,8 @@
   "showPassword": "显示密码",
   "hidePassword": "隐藏密码",
   "languageToggle": "切换语言",
-  "footerPrimary": "命令行 AI 的现代化体验",
-  "footerSecondary": "高效且优雅",
+  "footerPrimary": "从想法到画面，本地生成",
+  "footerSecondary": "图像与视频的 AI 创作工作台",
   "errors": {
     "empty": "请输入用户名和密码",
     "invalidCredentials": "用户名或密码错误",

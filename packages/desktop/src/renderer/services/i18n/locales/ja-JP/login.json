@@ -13,8 +13,8 @@
   "showPassword": "パスワードを表示",
   "hidePassword": "パスワードを隠す",
   "languageToggle": "言語を切り替える",
-  "footerPrimary": "コマンドラインAIをモダンに変革",
-  "footerSecondary": "効率的でエレガント",
+  "footerPrimary": "アイデアから映像へ、ローカルで生成",
+  "footerSecondary": "画像・動画のための AI クリエイティブスタジオ",
   "errors": {
     "empty": "ユーザー名とパスワードを入力してください",
     "invalidCredentials": "ユーザー名またはパスワードが正しくありません",

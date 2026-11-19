@@ -13,8 +13,8 @@
   "showPassword": "Passwort anzeigen",
   "hidePassword": "Passwort ausblenden",
   "languageToggle": "Sprache ändern",
-  "footerPrimary": "Verwandle deine Kommandozeilen-KI",
-  "footerSecondary": "Modern & Effizient",
+  "footerPrimary": "Von der Idee zum Frame – lokal generiert",
+  "footerSecondary": "KI-Kreativstudio für Bilder und Video",
   "errors": {
     "empty": "Bitte Benutzername und Passwort eingeben",
     "invalidCredentials": "Ungültiger Benutzername oder Passwort",
