@@ -204,7 +204,7 @@ const DevSettings: React.FC = () => {
                       <div className='flex flex-1 items-center justify-between gap-8px'>
                         <div className='flex-1 min-w-0'>
                           <div className='text-13px text-t-primary font-medium'>chrome-devtools</div>
-                          <div className='text-11px text-t-tertiary truncate'>{t('settings.cdp.mcpConfigHint')}</div>
+                          <div className='text-12px text-t-tertiary truncate'>{t('settings.cdp.mcpConfigHint')}</div>
                         </div>
                         <Tooltip content={t('settings.cdp.copyMcpConfig')}>
                           <Button
@@ -224,7 +224,7 @@ const DevSettings: React.FC = () => {
                       </div>
                     }
                   >
-                    <pre className='text-11px text-t-secondary font-mono overflow-x-auto whitespace-pre-wrap break-all m-0 leading-relaxed py-4px px-8px bg-[var(--fill-2)] rounded-6px'>
+                    <pre className='text-12px text-t-secondary font-mono overflow-x-auto whitespace-pre-wrap break-all m-0 leading-relaxed py-4px px-8px bg-[var(--fill-2)] rounded-6px'>
                       {`{
   "mcpServers": {
     "chrome-devtools": {
@@ -246,7 +246,7 @@ const DevSettings: React.FC = () => {
                       <div className='flex flex-1 items-center justify-between gap-8px'>
                         <div className='flex-1 min-w-0'>
                           <div className='text-13px text-t-primary font-medium'>playwright</div>
-                          <div className='text-11px text-t-tertiary truncate'>
+                          <div className='text-12px text-t-tertiary truncate'>
                             {t('settings.cdp.playwrightMcpConfigHint')}
                           </div>
                         </div>
@@ -268,7 +268,7 @@ const DevSettings: React.FC = () => {
                       </div>
                     }
                   >
-                    <pre className='text-11px text-t-secondary font-mono overflow-x-auto whitespace-pre-wrap break-all m-0 leading-relaxed py-4px px-8px bg-[var(--fill-2)] rounded-6px'>
+                    <pre className='text-12px text-t-secondary font-mono overflow-x-auto whitespace-pre-wrap break-all m-0 leading-relaxed py-4px px-8px bg-[var(--fill-2)] rounded-6px'>
                       {`{
   "mcpServers": {
     "playwright": {

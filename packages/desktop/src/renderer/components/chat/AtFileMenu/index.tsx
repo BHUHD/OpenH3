@@ -55,7 +55,7 @@ const AtFileMenu: React.FC<AtFileMenuProps> = ({
               key={item.path}
               role='option'
               aria-selected={isActive}
-              className='px-12px py-8px rounded-10px cursor-pointer transition-colors shrink-0'
+              className='px-12px py-8px rd-card cursor-pointer transition-colors shrink-0'
               style={{
                 background: isActive ? 'var(--color-fill-2)' : 'transparent',
               }}

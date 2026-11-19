@@ -20,7 +20,7 @@ export default function ContentUpdatePanel() {
   };
   const working = status && ['checking', 'downloading', 'verifying', 'activating'].includes(status.phase);
   return (
-    <section className='flex flex-col gap-12px p-16px rounded-lg bg-fill-2' aria-label={t('update.content.title')}>
+    <section className='flex flex-col gap-12px p-16px rd-card bg-fill-2' aria-label={t('update.content.title')}>
       <h3 className='m-0 text-14px'>{t('update.content.title')}</h3>
       <p className='m-0 text-12px text-t-secondary'>{t('update.content.scope')}</p>
       <span className='text-12px'>{t('update.content.source')}</span>

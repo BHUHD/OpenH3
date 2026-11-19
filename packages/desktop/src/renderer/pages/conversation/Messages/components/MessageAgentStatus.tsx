@@ -52,7 +52,7 @@ const MessageAgentStatus: React.FC<MessageAgentStatusProps> = ({ message }) => {
 
   return (
     <div
-      className='agent-status-message flex items-center gap-3 p-3 rounded-lg border'
+      className='agent-status-message flex items-center gap-3 p-3 rd-card border'
       style={{
         backgroundColor: isError
           ? 'var(--color-danger-light-1)'

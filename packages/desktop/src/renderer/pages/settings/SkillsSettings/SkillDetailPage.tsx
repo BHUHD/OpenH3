@@ -218,7 +218,7 @@ const SkillDetailPage: React.FC = () => {
                     <span className='text-16px font-600 text-t-primary'>
                       {normalizeSkillDisplayName(skill.name, skill.source)}
                     </span>
-                    <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-11px text-t-secondary'>
+                    <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-12px text-t-secondary'>
                       {sourceLabel(skill)}
                     </span>
                   </div>
@@ -296,7 +296,7 @@ const SkillDetailPage: React.FC = () => {
                           {assistantLabel(assistant)}
                         </Typography.Text>
                         {isReadonly ? (
-                          <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-11px text-t-tertiary'>
+                          <span className='rounded-4px border border-border-2 bg-fill-1 px-6px py-1px text-12px text-t-tertiary'>
                             {t('settings.skillsHub.detailBuiltinAssistant', { defaultValue: 'Built-in' })}
                           </span>
                         ) : (

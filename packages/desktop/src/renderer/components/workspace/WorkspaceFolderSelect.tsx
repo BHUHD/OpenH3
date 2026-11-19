@@ -143,7 +143,7 @@ const WorkspaceFolderSelect: React.FC<WorkspaceFolderSelectProps> = ({
           }
           setMenuVisible((visible) => !visible);
         }}
-        className={`flex items-center gap-10px rounded-10px border px-12px py-10px transition-all ${
+        className={`flex items-center gap-10px rd-card border px-12px py-10px transition-all ${
           menuVisible
             ? 'border-primary-5 bg-fill-2 shadow-sm'
             : 'border-border-2 bg-fill-1 hover:border-border-1 hover:bg-fill-2'
@@ -223,7 +223,7 @@ const WorkspaceFolderSelect: React.FC<WorkspaceFolderSelectProps> = ({
                     />
                     <div className='min-w-0 flex-1'>
                       <div className='truncate text-13px leading-18px text-t-primary'>{recentName}</div>
-                      <div className='truncate text-11px leading-14px text-t-tertiary'>{path}</div>
+                      <div className='truncate text-12px leading-14px text-t-tertiary'>{path}</div>
                     </div>
                     {isSelected && (
                       <span className='flex h-20px w-20px shrink-0 items-center justify-center text-aou-6'>

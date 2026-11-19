@@ -32,8 +32,8 @@ const RuntimeBadge: React.FC<{
     <span
       className={
         framed
-          ? 'inline-flex items-center gap-4px rounded-8px border border-solid border-border-2 bg-fill-1 px-8px py-4px text-11px text-t-tertiary'
-          : 'inline-flex items-center gap-4px text-11px text-t-tertiary'
+          ? 'inline-flex items-center gap-4px rounded-8px border border-solid border-border-2 bg-fill-1 px-8px py-4px text-12px text-t-tertiary'
+          : 'inline-flex items-center gap-4px text-12px text-t-tertiary'
       }
       data-testid={`assistant-runtime-${assistant.id}`}
     >

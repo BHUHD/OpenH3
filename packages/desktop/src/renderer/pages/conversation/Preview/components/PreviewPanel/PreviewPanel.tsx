@@ -848,7 +848,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
 
     return (
       <div className='flex flex-1 flex-col items-center justify-center gap-10px px-24px text-center'>
-        <div className='text-15px font-medium text-t-primary'>
+        <div className='text-14px font-medium text-t-primary'>
           {t('preview.missingFile.title', { defaultValue: 'File not found' })}
         </div>
         <div className='max-w-560px break-all text-12px leading-18px text-t-secondary'>
@@ -875,7 +875,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
 
     return (
       <div className='flex flex-1 flex-col items-center justify-center gap-10px px-24px text-center'>
-        <div className='text-15px font-medium text-t-primary'>{t('preview.oversized.title')}</div>
+        <div className='text-14px font-medium text-t-primary'>{t('preview.oversized.title')}</div>
         <div className='max-w-560px text-12px leading-18px text-t-secondary'>
           {t('preview.oversized.detail', {
             // Rendered at whatever precision it takes to actually look bigger than
@@ -901,7 +901,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
   // officecli — which would not have helped for any of them.
   const renderUnsupported = () => (
     <div className='flex flex-1 flex-col items-center justify-center gap-10px px-24px text-center'>
-      <div className='text-15px font-medium text-t-primary'>{t('preview.unsupported.title')}</div>
+      <div className='text-14px font-medium text-t-primary'>{t('preview.unsupported.title')}</div>
       <div className='max-w-560px text-12px leading-18px text-t-secondary'>
         {t('preview.unsupported.detail', { format: (metadata?.language || '').toUpperCase() })}
       </div>

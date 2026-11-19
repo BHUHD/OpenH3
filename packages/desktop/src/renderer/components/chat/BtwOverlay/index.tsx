@@ -140,7 +140,7 @@ const BtwOverlay: React.FC<BtwOverlayProps> = ({
 
             <div className='flex justify-end'>
               <div
-                className={`${styles.questionBubble} max-w-[85%] rd-14px px-14px py-10px text-14px whitespace-pre-wrap break-words`}
+                className={`${styles.questionBubble} max-w-[85%] rd-card px-14px py-10px text-14px whitespace-pre-wrap break-words`}
               >
                 {question}
               </div>
@@ -148,7 +148,7 @@ const BtwOverlay: React.FC<BtwOverlayProps> = ({
 
             <div className='flex justify-start'>
               <div
-                className={`${styles.answerBubble} ${styles.answer} min-h-48px max-w-[85%] rd-14px px-14px py-10px text-14px text-t-primary`}
+                className={`${styles.answerBubble} ${styles.answer} min-h-48px max-w-[85%] rd-card px-14px py-10px text-14px text-t-primary`}
                 style={{ maxHeight: `${answerMaxHeight}px` }}
               >
                 {isLoading ? (

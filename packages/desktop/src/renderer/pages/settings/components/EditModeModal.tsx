@@ -212,7 +212,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
               <Input onBlur={handleBaseUrlBlur} />
             </Form.Item>
             {modelsMissingAfterRefresh.length > 0 && (
-              <div className='text-11px text-t-secondary -mt-8px mb-12px'>
+              <div className='text-12px text-t-secondary -mt-8px mb-12px'>
                 {t('settings.modelNotFoundAfterUrlChange', { model: modelsMissingAfterRefresh.join(', ') })}
               </div>
             )}
@@ -223,7 +223,7 @@ const EditModeModal = ModalHOC<{ data?: IProvider; onChange(data: IProvider): vo
               required={!isBedrock}
               rules={[{ required: !isBedrock }]}
               field={'api_key'}
-              extra={<div className='text-11px text-t-secondary mt-2'>💡 {t('settings.multiApiKeyEditTip')}</div>}
+              extra={<div className='text-12px text-t-secondary mt-2'>💡 {t('settings.multiApiKeyEditTip')}</div>}
             >
               <Input.TextArea rows={4} placeholder={t('settings.apiKeyPlaceholder')} />
             </Form.Item>

@@ -889,7 +889,7 @@ const SendBox: React.FC<{
   const renderExportFileNamePanel = () => {
     return (
       <div
-        className='rounded-14px border border-solid overflow-hidden p-12px flex flex-col gap-10px'
+        className='rd-card border border-solid overflow-hidden p-12px flex flex-col gap-10px'
         style={{
           borderColor: 'var(--color-border-2)',
           background: 'color-mix(in srgb, var(--color-bg-1) 88%, transparent)',
@@ -1961,7 +1961,7 @@ const SendBox: React.FC<{
       )}
       <div
         ref={containerRef}
-        className={`sendbox-panel relative p-16px border-3 b bg-dialog-fill-0 b-solid rd-20px flex flex-col ${isOverlayOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed sendbox-panel--dragging' : ''}`}
+        className={`sendbox-panel relative p-16px border-3 b bg-dialog-fill-0 b-solid rd-panel flex flex-col ${isOverlayOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed sendbox-panel--dragging' : ''}`}
         style={{
           transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
           ...(isFileDragging
@@ -2080,7 +2080,7 @@ const SendBox: React.FC<{
           {context}
           {/* Reply quote preview */}
           {replyQuote && (
-            <div className='flex items-start gap-10px mb-8px px-12px py-10px rd-10px bg-fill-1 b-1 b-solid b-border-2'>
+            <div className='flex items-start gap-10px mb-8px px-12px py-10px rd-card bg-fill-1 b-1 b-solid b-border-2'>
               <div className='flex-shrink-0 mt-2px' style={{ lineHeight: 0 }}>
                 <Quote theme='filled' size='16' fill='rgb(var(--primary-6))' />
               </div>

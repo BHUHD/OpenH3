@@ -21,7 +21,7 @@ export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel 
   const { t } = useTranslation();
   const logos = useAgentLogos();
   const { agents, loading, error, install, retryInstall, update } = useHubAgents();
-  const actionButtonClassName = '!min-w-80px !rounded-9px !px-10px';
+  const actionButtonClassName = '!min-w-80px !rd-control !px-10px';
   const openCatalogRepo = () => {
     void openExternalUrl(AGENT_CATALOG_REPO_URL).catch(console.error);
   };
@@ -153,20 +153,20 @@ export const AgentHubModal: React.FC<AgentHubModalProps> = ({ visible, onCancel 
                       <ThemedLogo
                         src={avatar.value}
                         alt={agent.display_name}
-                        className='h-36px w-36px rounded-10px object-contain'
+                        className='h-36px w-36px rd-card object-contain'
                       />
                     ) : avatar.kind === 'emoji' ? (
                       <span className='flex h-36px w-36px items-center justify-center text-22px leading-none'>
                         {avatar.value}
                       </span>
                     ) : (
-                      <div className='flex h-36px w-36px items-center justify-center rounded-10px bg-fill-2 text-16px font-bold text-t-secondary'>
+                      <div className='flex h-36px w-36px items-center justify-center rd-card bg-fill-2 text-16px font-bold text-t-secondary'>
                         {agent.display_name.charAt(0)}
                       </div>
                     )}
                   </div>
 
-                  <Typography.Text className='mb-10px block min-h-28px text-center text-11px leading-15px text-t-secondary line-clamp-2'>
+                  <Typography.Text className='mb-10px block min-h-28px text-center text-12px leading-15px text-t-secondary line-clamp-2'>
                     {agent.description}
                   </Typography.Text>
 

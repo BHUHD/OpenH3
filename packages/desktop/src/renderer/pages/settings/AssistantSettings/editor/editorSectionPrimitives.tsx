@@ -79,7 +79,7 @@ export const ConfigRow: React.FC<ConfigRowProps> = ({ label, children, hint, ico
       <FieldLabel icon={icon}>{label}</FieldLabel>
       <div className='min-w-0 flex-1 space-y-8px'>
         {children}
-        {hint ? <div className='text-11px leading-18px text-t-tertiary'>{hint}</div> : null}
+        {hint ? <div className='text-12px leading-18px text-t-tertiary'>{hint}</div> : null}
       </div>
     </div>
   );

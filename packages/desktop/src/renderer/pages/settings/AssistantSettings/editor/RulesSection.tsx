@@ -46,7 +46,7 @@ const RulesSection: React.FC<RulesSectionProps> = ({
             </span>
           ) : null}
           {isRuleEditable ? (
-            <div className='flex items-center rounded-10px bg-fill-1 p-2px'>
+            <div className='flex items-center rd-card bg-fill-1 p-2px'>
               <Button
                 type='text'
                 size='mini'

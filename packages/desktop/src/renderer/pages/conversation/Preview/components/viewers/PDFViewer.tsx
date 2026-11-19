@@ -117,7 +117,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ tabId, fileRef, file_path, cont
       left: (
         <div className='flex items-center gap-8px'>
           <span className='text-13px text-t-secondary'>📄 {t('preview.pdf.title')}</span>
-          <span className='text-11px text-t-tertiary'>{t('preview.readOnlyLabel')}</span>
+          <span className='text-12px text-t-tertiary'>{t('preview.readOnlyLabel')}</span>
         </div>
       ),
       right: null,
@@ -132,7 +132,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ tabId, fileRef, file_path, cont
         <div className='flex items-center justify-between h-40px px-12px bg-bg-2 flex-shrink-0'>
           <div className='flex items-center gap-8px'>
             <span className='text-13px text-t-secondary'>📄 {t('preview.pdf.title')}</span>
-            <span className='text-11px text-t-tertiary'>{t('preview.readOnlyLabel')}</span>
+            <span className='text-12px text-t-tertiary'>{t('preview.readOnlyLabel')}</span>
           </div>
           {file_path && (
             <Button size='mini' type='text' onClick={handleOpenInSystem} title={t('preview.openInSystemApp')}>

@@ -42,7 +42,7 @@ const TeamMemberDraftList: React.FC<Props> = ({
   return (
     <div className='flex min-h-0 flex-1 flex-col'>
       <div className='mb-4px flex items-center justify-between gap-8px'>
-        <span className='text-15px font-600 leading-22px text-t-secondary'>
+        <span className='text-14px font-600 leading-22px text-t-secondary'>
           {t('team.create.selectedMembersTitleWithCount', {
             count: members.length,
             defaultValue: `Selected members ${members.length}`,

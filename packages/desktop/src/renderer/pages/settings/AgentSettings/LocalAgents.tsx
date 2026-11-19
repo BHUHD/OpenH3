@@ -265,7 +265,7 @@ const LocalAgents: React.FC = () => {
       />
 
       {isRefreshing ? (
-        <div className='text-11px text-t-tertiary'>{t('settings.agentManagement.refreshingStatuses')}</div>
+        <div className='text-12px text-t-tertiary'>{t('settings.agentManagement.refreshingStatuses')}</div>
       ) : null}
 
       {/* Detected Agents section */}

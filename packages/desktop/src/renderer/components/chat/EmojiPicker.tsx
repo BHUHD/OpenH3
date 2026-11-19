@@ -533,7 +533,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
         {categoryKeys.map((key) => (
           <button
             key={key}
-            className={`flex-shrink-0 w-28px h-28px flex items-center justify-center rounded-md text-16px cursor-pointer border-none bg-transparent hover:bg-fill-2 transition-colors ${activeCategory === key ? 'bg-fill-2' : ''}`}
+            className={`flex-shrink-0 w-28px h-28px flex items-center justify-center rd-control text-16px cursor-pointer border-none bg-transparent hover:bg-fill-2 transition-colors ${activeCategory === key ? 'bg-fill-2' : ''}`}
             onClick={() => setActiveCategory(key)}
             title={EMOJI_CATEGORIES[key].label}
           >
@@ -549,7 +549,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
             {currentEmojis.map((emoji: string, index: number) => (
               <button
                 key={`${emoji}-${index}`}
-                className='w-32px h-32px flex items-center justify-center text-20px cursor-pointer border-none bg-transparent rounded-md hover:bg-fill-2 transition-colors'
+                className='w-32px h-32px flex items-center justify-center text-20px cursor-pointer border-none bg-transparent rd-control hover:bg-fill-2 transition-colors'
                 onClick={() => handleSelectEmoji(emoji)}
               >
                 {emoji}
@@ -575,13 +575,13 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
               <Button
                 key={avatarOption.id}
                 type='text'
-                className={`!h-auto !w-full !justify-start !rounded-10px !border !border-solid !px-6px !py-8px transition-colors ${
+                className={`!h-auto !w-full !justify-start !rd-card !border !border-solid !px-6px !py-8px transition-colors ${
                   isSelected ? 'border-primary bg-primary-1' : 'border-transparent bg-transparent hover:bg-fill-1'
                 }`}
                 onClick={() => handleSelectBuiltinAvatar(avatarOption.src)}
               >
                 <div className='flex w-full items-center justify-center'>
-                  <div className='h-48px w-48px overflow-hidden rounded-10px bg-fill-1'>
+                  <div className='h-48px w-48px overflow-hidden rd-card bg-fill-1'>
                     <img src={avatarOption.src} alt={avatarOption.label} className='h-full w-full object-cover' />
                   </div>
                 </div>
@@ -637,7 +637,7 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
       unmountOnExit
     >
       {children || (
-        <div className='w-40px h-40px flex items-center justify-center text-24px bg-fill-2 rounded-lg cursor-pointer hover:bg-fill-3 transition-colors'>
+        <div className='w-40px h-40px flex items-center justify-center text-24px bg-fill-2 rd-card cursor-pointer hover:bg-fill-3 transition-colors'>
           {value || '😀'}
         </div>
       )}

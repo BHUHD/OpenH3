@@ -275,7 +275,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
         <Tag
           size='small'
           bordered={false}
-          className='!rounded-10px !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-primary-6'
+          className='!rd-card !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-primary-6'
         >
           {t('settings.builtin', { defaultValue: 'Built-in' })}
         </Tag>
@@ -286,7 +286,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
         <Tag
           size='small'
           bordered={false}
-          className='!rounded-10px !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-[rgb(var(--arcoblue-6))]'
+          className='!rd-card !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-[rgb(var(--arcoblue-6))]'
         >
           {t('settings.assistantSourceCli', { defaultValue: 'CLI' })}
         </Tag>
@@ -297,7 +297,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
       <Tag
         size='small'
         bordered={false}
-        className='!rounded-10px !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-[rgb(var(--success-6))]'
+        className='!rd-card !bg-fill-1 !px-8px !py-1px !text-10px !font-600 !leading-16px !text-[rgb(var(--success-6))]'
       >
         {t('settings.assistantSourceCustom', { defaultValue: 'Custom' })}
       </Tag>

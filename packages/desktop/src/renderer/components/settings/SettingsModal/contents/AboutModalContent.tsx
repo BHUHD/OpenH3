@@ -188,7 +188,7 @@ const AboutModalContent: React.FC = () => {
 
             {/* Check Update Section */}
             {isElectron && (
-              <div className='flex flex-col items-center gap-12px w-full max-w-300px bg-fill-2 p-16px rounded-lg'>
+              <div className='flex flex-col items-center gap-12px w-full max-w-300px bg-fill-2 p-16px rd-card'>
                 <Button
                   type='primary'
                   long

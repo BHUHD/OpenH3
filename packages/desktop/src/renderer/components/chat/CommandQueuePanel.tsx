@@ -182,7 +182,7 @@ const QueueItemCard: React.FC<QueueItemCardProps> = ({
     <div
       {...(dragViaCard ? cardDragListeners : {})}
       ref={dragViaCard ? cardDragRef : undefined}
-      className='group flex items-center justify-between gap-6px rd-10px px-8px py-5px transition-[background-color,opacity] duration-180 ease-out'
+      className='group flex items-center justify-between gap-6px rd-card px-8px py-5px transition-[background-color,opacity] duration-180 ease-out'
       data-command-id={item.id}
       data-sortable={dragDisabled ? 'disabled' : 'enabled'}
       aria-grabbed={isDragging}
@@ -237,12 +237,12 @@ const QueueItemCard: React.FC<QueueItemCardProps> = ({
           </span>
         </div>
         <div className='min-w-0 flex-1 flex items-center gap-6px'>
-          <Typography.Ellipsis rows={1} showTooltip className='min-w-0 flex-1 text-11px leading-16px text-t-secondary'>
+          <Typography.Ellipsis rows={1} showTooltip className='min-w-0 flex-1 text-12px leading-16px text-t-secondary'>
             {preview}
           </Typography.Ellipsis>
           {fileCountLabel ? (
             <span
-              className='inline-flex items-center rd-999px px-5px py-1px text-9px leading-none shrink-0'
+              className='inline-flex items-center rd-999px px-5px py-1px text-10px leading-none shrink-0'
               style={{
                 color: 'var(--color-text-3)',
                 background: 'color-mix(in srgb, var(--color-fill-2) 72%, transparent)',
@@ -518,7 +518,7 @@ const CommandQueuePanel: React.FC<CommandQueuePanelProps> = ({
                   fontWeight: 600,
                 }}
               >
-                <span className='inline-flex items-center gap-4px text-11px'>
+                <span className='inline-flex items-center gap-4px text-12px'>
                   {modeLabel}
                   <SortTwo theme='outline' size='12' strokeWidth={3} style={{ opacity: 0.7 }} />
                 </span>

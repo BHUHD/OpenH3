@@ -399,12 +399,12 @@ const ConversationSearchPopover: React.FC<ConversationSearchPopoverProps> = ({
                   <div className='min-w-0 flex-1'>
                     <div className='conversation-search-modal__result-title-row'>
                       <ConversationAgentMark conversation={item.conversation} />
-                      <div className='conversation-search-modal__result-title text-15px font-600 text-t-primary truncate'>
+                      <div className='conversation-search-modal__result-title text-14px font-600 text-t-primary truncate'>
                         {item.conversation.name || t('conversation.historySearch.untitled')}
                       </div>
                     </div>
                   </div>
-                  <span className='shrink-0 text-11px text-t-secondary'>
+                  <span className='shrink-0 text-12px text-t-secondary'>
                     {formatTime(item.message_created_at, i18n.language)}
                   </span>
                 </div>

@@ -605,7 +605,7 @@ const WebuiModalContent: React.FC = () => {
                 <div className='text-12px text-t-secondary truncate'>{t('settings.webui.featureChannelsDesc')}</div>
               </div>
             </div>
-            <Button type='primary' size='small' className='rd-100px' onClick={() => setActiveTab('channels')}>
+            <Button type='primary' size='small' className='rd-full' onClick={() => setActiveTab('channels')}>
               {t('settings.webui.goToChannels')}
             </Button>
           </div>
@@ -614,7 +614,7 @@ const WebuiModalContent: React.FC = () => {
         {/* WebUI 服务卡片 / WebUI Service Card */}
         <div className='px-[12px] md:px-[28px] py-14px bg-2 rd-16px'>
           {/* WebUI 引导提示 / WebUI hint */}
-          <div className='mb-8px rd-10px border border-line bg-fill-1 px-10px py-8px flex items-start gap-6px'>
+          <div className='mb-8px rd-card border border-line bg-fill-1 px-10px py-8px flex items-start gap-6px'>
             <Earth theme='outline' size='16' className='mt-1px text-[rgb(var(--primary-6))]' />
             <div className='text-12px text-t-secondary leading-relaxed'>{t('settings.webui.featureRemoteDesc')}</div>
           </div>
@@ -689,13 +689,13 @@ const WebuiModalContent: React.FC = () => {
           {/* 账号 / Account */}
           <div className='flex items-center justify-between gap-12px py-12px'>
             <span className='text-14px text-t-secondary shrink-0'>{t('settings.webui.username')}:</span>
-            <div className='inline-flex items-center gap-8px rd-100px border border-line bg-fill-1 px-10px py-4px min-w-0'>
+            <div className='inline-flex items-center gap-8px rd-full border border-line bg-fill-1 px-10px py-4px min-w-0'>
               <span className='text-14px text-t-primary truncate'>{displayUsername}</span>
               <Tooltip content={t('common.copy')}>
                 <Button
                   type='text'
                   size='mini'
-                  className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  className='rd-full !px-6px inline-flex items-center !h-24px'
                   onClick={() => handleCopy(displayUsername)}
                 >
                   <Copy size={14} />
@@ -705,7 +705,7 @@ const WebuiModalContent: React.FC = () => {
                 <Button
                   type='text'
                   size='mini'
-                  className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  className='rd-full !px-6px inline-flex items-center !h-24px'
                   onClick={handleResetUsername}
                 >
                   <EditTwo size={14} />
@@ -717,13 +717,13 @@ const WebuiModalContent: React.FC = () => {
           {/* 密码 / Password */}
           <div className='flex items-center justify-between gap-12px py-12px'>
             <span className='text-14px text-t-secondary shrink-0'>{t('settings.webui.initialPassword')}:</span>
-            <div className='inline-flex items-center gap-8px rd-100px border border-line bg-fill-1 px-10px py-4px min-w-0'>
+            <div className='inline-flex items-center gap-8px rd-full border border-line bg-fill-1 px-10px py-4px min-w-0'>
               <span className='text-14px text-t-primary truncate'>{displayPassword}</span>
               <Tooltip content={t('settings.webui.resetPasswordTooltip')}>
                 <Button
                   type='text'
                   size='mini'
-                  className='rd-100px !px-6px inline-flex items-center !h-24px'
+                  className='rd-full !px-6px inline-flex items-center !h-24px'
                   onClick={handleResetPassword}
                 >
                   <EditTwo size={14} />
@@ -741,7 +741,7 @@ const WebuiModalContent: React.FC = () => {
 
               <div className='flex flex-col items-center gap-12px'>
                 {/* 二维码显示区域 / QR Code display area */}
-                <div className='p-12px bg-fill-1 border border-line rd-10px'>
+                <div className='p-12px bg-fill-1 border border-line rd-card'>
                   {qrLoading ? (
                     <div className='w-140px h-140px flex items-center justify-center'>
                       <span className='text-14px text-t-tertiary'>{t('common.loading')}</span>

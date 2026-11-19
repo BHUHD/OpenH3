@@ -72,7 +72,7 @@ const SkillConfirmModals: React.FC<SkillConfirmModalsProps> = ({
             defaultValue: `Are you sure you want to remove "${deletePendingSkillName}"? This skill has not been imported yet.`,
           })}
         </p>
-        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rounded-lg'>
+        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rd-card'>
           {t('settings.deletePendingSkillNote', {
             defaultValue:
               'This will only remove the skill from the pending list. If you want to add it again later, you can use "Add Skills".',
@@ -107,7 +107,7 @@ const SkillConfirmModals: React.FC<SkillConfirmModalsProps> = ({
             defaultValue: `Are you sure you want to remove "${deleteCustomSkillName}" from this assistant?`,
           })}
         </p>
-        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rounded-lg'>
+        <div className='mt-12px text-12px text-t-secondary bg-fill-2 p-12px rd-card'>
           {t('settings.removeCustomSkillNote', {
             defaultValue:
               'This will only remove the skill from this assistant. The skill will remain in Builtin Skills and can be re-added later.',

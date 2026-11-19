@@ -150,7 +150,7 @@ const PromptsSection: React.FC<PromptsSectionProps> = ({
           ) : null}
 
           {addingPrompt && isPromptEditable ? (
-            <div className='flex items-center gap-8px rounded-10px bg-base p-4px'>
+            <div className='flex items-center gap-8px rd-card bg-base p-4px'>
               <Input
                 value={newPromptDraft}
                 onChange={(value) => setNewPromptDraft(value)}

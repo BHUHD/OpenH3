@@ -59,7 +59,7 @@ const SkillUsedByStack: React.FC<{ assistants: Assistant[]; max?: number }> = ({
         ))}
         {overflow > 0 && (
           <div
-            className='flex items-center justify-center rounded-full border-2 border-solid border-bg-2 bg-fill-3 text-9px font-600 text-t-secondary'
+            className='flex items-center justify-center rounded-full border-2 border-solid border-bg-2 bg-fill-3 text-10px font-600 text-t-secondary'
             style={{ width: 22, height: 22, marginInlineStart: -7 }}
           >
             +{overflow}

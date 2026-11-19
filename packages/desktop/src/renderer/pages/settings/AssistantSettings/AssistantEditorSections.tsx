@@ -512,7 +512,7 @@ const AssistantEditorSections: React.FC<AssistantEditorSectionsProps> = ({ edito
                 </Select.Option>
               ))}
             </Select>
-            <div className='mt-6px text-11px text-t-tertiary'>
+            <div className='mt-6px text-12px text-t-tertiary'>
               {t('settings.assistantEngineAffectsDefaults', {
                 defaultValue: 'Changing the main agent updates which model and permission values are available below.',
               })}

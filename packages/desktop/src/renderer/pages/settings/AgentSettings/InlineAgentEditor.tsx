@@ -450,7 +450,7 @@ const InlineAgentEditor: React.FC<InlineAgentEditorProps> = ({ agent, onSave, on
             type='outline'
             size='mini'
             data-testid='btn-agent-avatar-upload'
-            className='!h-auto !w-full !rounded-8px !border-[var(--color-border-2)] !px-6px !py-1px !text-11px'
+            className='!h-auto !w-full !rounded-8px !border-[var(--color-border-2)] !px-6px !py-1px !text-12px'
             onClick={() => void handlePickAvatarImage()}
           >
             {t('settings.assistantAvatarUploadImage', { defaultValue: 'Upload image' })}
@@ -509,7 +509,7 @@ const InlineAgentEditor: React.FC<InlineAgentEditorProps> = ({ agent, onSave, on
           disabled={isTestDisabled}
           onClick={handleTestConnection}
           loading={testStatus === 'testing'}
-          className='!rounded-10px'
+          className='!rd-card'
         >
           {testStatus === 'testing' ? t('settings.testConnectionTesting') : t('settings.testConnectionBtn')}
         </Button>
@@ -585,10 +585,10 @@ const InlineAgentEditor: React.FC<InlineAgentEditorProps> = ({ agent, onSave, on
 
       {/* Actions */}
       <div className='flex justify-end gap-10px pt-4px'>
-        <Button className='!rounded-10px !px-20px' onClick={onCancel}>
+        <Button className='!rd-card !px-20px' onClick={onCancel}>
           {t('common.cancel') || 'Cancel'}
         </Button>
-        <Button type='primary' disabled={isSubmitDisabled} onClick={handleSubmit} className='!rounded-10px !px-20px'>
+        <Button type='primary' disabled={isSubmitDisabled} onClick={handleSubmit} className='!rd-card !px-20px'>
           {t('common.save') || 'Save'}
         </Button>
       </div>

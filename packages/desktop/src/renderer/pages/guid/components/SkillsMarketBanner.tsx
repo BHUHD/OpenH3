@@ -74,7 +74,7 @@ const SkillsMarketBanner: React.FC = () => {
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className='flex items-center border border-solid border-[var(--color-border-2)] bg-fill-0 transition-all duration-300 gap-8px rd-10px overflow-hidden'
+        className='flex items-center border border-solid border-[var(--color-border-2)] bg-fill-0 transition-all duration-300 gap-8px rd-card overflow-hidden'
         style={{
           padding: hovered ? '10px 16px' : '6px 10px',
           maxWidth: hovered ? '300px' : '220px',
