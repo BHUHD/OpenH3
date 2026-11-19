@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { H3Version } from '@/common/chat/document/h3Job';
+import type { H3Job, H3Version } from '@/common/chat/document/h3Job';
 
 export class H3VersionStore {
   private readonly versions = new Map<string, H3Version>();
@@ -20,6 +20,47 @@ export class H3VersionStore {
   list(): H3Version[] {
     return [...this.versions.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
+
+  private selectedVersion(): H3Version | undefined {
+    return [...this.versions.values()].find((version) => version.selected);
+  }
+
+  submissionContext(sourceVersionId?: string): Pick<H3Job, 'parentVersionId' | 'autoSelectAtRevision'> {
+    const current = this.selectedVersion();
+    const selectedId = current?.id ?? null;
+    const parentVersionId = sourceVersionId ?? selectedId;
+    return {
+      parentVersionId,
+      ...(parentVersionId === selectedId ? { autoSelectAtRevision: current?.selectionRevision ?? null } : {}),
+    };
+  }
+
+  /** Reviewable output survives a changed selection or a missing pre-upgrade submission snapshot. */
+  publishCompletedJob(job: H3Job): void {
+    const artifactPath = job.artifacts[0]?.resourcePath;
+    if (job.status !== 'succeeded' || !artifactPath) return;
+    if ([...this.versions.values()].some((version) => version.jobId === job.id)) return;
+
+    const current = this.selectedVersion();
+    const version: H3Version = {
+      id: crypto.randomUUID(),
+      parentId: job.parentVersionId ?? null,
+      label: `H3 ${this.versions.size + 1}`,
+      jobId: job.id,
+      createdAt: new Date().toISOString(),
+      selected: false,
+      review: 'candidate',
+      artifactPath,
+    };
+    this.versions.set(version.id, version);
+    if (
+      job.parentVersionId === (current?.id ?? null) &&
+      job.autoSelectAtRevision === (current?.selectionRevision ?? null)
+    )
+      this.setSelection(version, current);
+    this.flush();
+  }
+
   create(version: H3Version): H3Version {
     this.versions.set(version.id, {
       ...version,
@@ -47,25 +88,24 @@ export class H3VersionStore {
     const target = this.versions.get(id);
     if (!target) throw new Error('H3_VERSION_NOT_FOUND');
     if (target.review === 'rejected') throw new Error('H3_VERSION_REJECTED');
-    const current = [...this.versions.values()].find((value) => value.selected);
+    const current = this.selectedVersion();
     if (expectedSelectedId !== undefined && expectedSelectedId !== (current?.id ?? null))
       throw new Error('H3_VERSION_CONFLICT');
-    if (target.parentId && current?.id !== target.parentId) throw new Error('H3_VERSION_CONFLICT');
-
-    const next = [...this.versions.values()].map((value) => {
-      if (value.id === target.id)
-        return {
-          ...value,
-          selected: true,
-          review: 'accepted' as const,
-          ...(current && current.id !== target.id ? { previousSelectedId: current.id } : {}),
-        };
-      return { ...value, selected: false, ...(value.id === current?.id ? { review: 'candidate' as const } : {}) };
-    });
-    this.versions.clear();
-    for (const value of next) this.versions.set(value.id, value);
+    if (current?.id === target.id) return this.list();
+    this.setSelection(target, current);
     this.flush();
     return this.list();
+  }
+
+  private setSelection(target: H3Version, current?: H3Version): void {
+    if (current) this.versions.set(current.id, { ...current, selected: false, review: 'candidate' });
+    this.versions.set(target.id, {
+      ...target,
+      selected: true,
+      review: 'accepted',
+      previousSelectedId: current?.id,
+      selectionRevision: crypto.randomUUID(),
+    });
   }
 
   /** Backward-compatible name used by the original UI/API. */
@@ -102,7 +142,12 @@ export class H3VersionStore {
       review: 'candidate',
       previousSelectedId: undefined,
     });
-    this.versions.set(previous.id, { ...previous, selected: true, review: 'accepted' });
+    this.versions.set(previous.id, {
+      ...previous,
+      selected: true,
+      review: 'accepted',
+      selectionRevision: crypto.randomUUID(),
+    });
     this.flush();
     return this.list();
   }

@@ -49,7 +49,11 @@ import { MediaJobStore } from '../packages/desktop/src/process/services/media/Me
 import { MediaJobRunner } from '../packages/desktop/src/process/services/media/MediaJobRunner';
 import { JsonMediaJobStore } from '../packages/desktop/src/process/services/media/JsonMediaJobStore';
 import { mediaJobSpecSchema } from '../packages/desktop/src/common/chat/document/mediaJob';
-import { h3GenerationSpecSchema, type H3Job, type H3Version } from '../packages/desktop/src/common/chat/document/h3Job';
+import {
+  h3GenerationSpecSchema,
+  type H3GenerationSpec,
+  type H3Job,
+} from '../packages/desktop/src/common/chat/document/h3Job';
 import { FileH3JobStore } from '../packages/desktop/src/process/services/runtime/H3JobStore';
 import { H3JobRunner } from '../packages/desktop/src/process/services/runtime/H3JobRunner';
 import { H3ComfyClient } from '../packages/desktop/src/process/services/runtime/H3ComfyClient';
@@ -225,7 +229,7 @@ const creationOperations = new CreationOperations(path.join(dataDir, 'creation-o
   installed: () => inspectCreationInventory(h3Runtime.installStatus(), false).h3.installed,
   enqueue: async (spec, id) => {
     if (h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
-    const job = await h3Runner.enqueue(spec, id);
+    const job = await enqueueH3(spec, id);
     startH3Job(job);
     return job.id;
   },
@@ -391,6 +395,11 @@ function startH3Job(job: H3Job): void {
   if (job.status !== 'queued' || h3Active.has(job.id)) return;
   pumpH3Jobs();
 }
+
+function enqueueH3(spec: H3GenerationSpec, id?: string, sourceVersionId?: string): Promise<H3Job> {
+  return h3Runner.enqueue(spec, id, versionStore.submissionContext(sourceVersionId));
+}
+
 for (const job of h3Runner.recover()) startH3Job(job);
 let reconciling = false;
 const reconcileTimer = setInterval(() => {
@@ -417,35 +426,7 @@ function publish(job: { id: string; status: string; progress: number }): void {
   if (['succeeded', 'failed', 'cancelled'].includes(job.status)) subscribers.delete(job.id);
 }
 function publishH3(job: H3Job): void {
-  if (
-    job.status === 'succeeded' &&
-    job.artifacts[0]?.resourcePath &&
-    !versionStore.list().some((version) => version.jobId === job.id)
-  ) {
-    const previous = job.parentVersionId
-      ? versionStore.list().find((item) => item.id === job.parentVersionId)
-      : versionStore.list().find((item) => item.selected);
-    const version: H3Version = {
-      id: crypto.randomUUID(),
-      parentId: previous?.id ?? null,
-      label: `H3 ${versionStore.list().length + 1}`,
-      jobId: job.id,
-      createdAt: new Date().toISOString(),
-      // Keep the new artifact a candidate until the store atomically accepts
-      // it against the version that was current when this job was derived.
-      selected: false,
-      artifactPath: job.artifacts[0].resourcePath,
-    };
-    versionStore.create(version);
-    try {
-      versionStore.accept(version.id, previous?.id ?? null);
-    } catch (error) {
-      // A different session may have accepted a newer version while this job
-      // was running. Keep the artifact as an explicit candidate for review;
-      // never replace the newer selected version implicitly.
-      console.warn('[h3] candidate acceptance conflicted', error instanceof Error ? error.message : String(error));
-    }
-  }
+  versionStore.publishCompletedJob(job);
   const serialized = JSON.stringify(job);
   if (lastH3Event.get(job.id) !== serialized) {
     lastH3Event.set(job.id, serialized);
@@ -693,7 +674,7 @@ const server = http.createServer(async (req, res) => {
       if (h3Setup.busy()) return json(res, 409, { error: 'H3_SETUP_BUSY' });
       if (h3Runner.blocked()) return json(res, 409, { error: 'H3_REMOTE_STATE_UNCONFIRMED' });
       const spec = h3GenerationSpecSchema.parse(await body(req));
-      const job = await h3Runner.enqueue(spec);
+      const job = await enqueueH3(spec);
       startH3Job(job);
       return json(res, 201, job);
     }
@@ -710,7 +691,7 @@ const server = http.createServer(async (req, res) => {
         throw new Error('H3_VERSION_SOURCE_REQUIRED');
       if (payload.expectedSelectedId !== null && typeof payload.expectedSelectedId !== 'string')
         throw new Error('H3_VERSION_SOURCE_REQUIRED');
-      return json(res, 200, versionStore.accept(payload.id, payload.expectedSelectedId));
+      return json(res, 200, versionStore.select(payload.id, payload.expectedSelectedId));
     }
     if (req.method === 'POST' && url.pathname === '/api/h3/versions/reject') {
       const payload = (await body(req)) as { id?: string };
@@ -734,8 +715,7 @@ const server = http.createServer(async (req, res) => {
         seed: number;
       }>;
       const spec = h3GenerationSpecSchema.parse({ ...parentJob.spec, ...patch });
-      const job = await h3Runner.enqueue(spec);
-      h3Store.update(job.id, { parentVersionId: version.id });
+      const job = await enqueueH3(spec, undefined, version.id);
       startH3Job(job);
       return json(res, 201, job);
     }
