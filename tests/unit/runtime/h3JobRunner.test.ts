@@ -34,6 +34,38 @@ it('archives completed outputs before returning the successful generation withou
   expect(client.generate).toHaveBeenCalledOnce();
 });
 
+it('settles an undecodable managed output without marking success or replacing the remote job', async () => {
+  const store = memoryStore(createH3Job({ prompt: 'first clip' }, 'managed-job'));
+  const client = {
+    generate: vi.fn(async () => ({ promptId: 'existing-prompt', artifacts: [] })),
+    resume: vi.fn(),
+    cancel: vi.fn(),
+  };
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  try {
+    const runner = new H3JobRunner(
+      store,
+      client,
+      { validate: async () => undefined },
+      undefined,
+      undefined,
+      async () => {
+        throw new Error('Could not decode');
+      }
+    );
+    await expect(runner.run('managed-job')).resolves.toMatchObject({
+      status: 'failed',
+      remoteUncertain: false,
+      promptId: 'existing-prompt',
+      error: 'H3_OUTPUT_VERIFICATION_FAILED',
+    });
+    expect(client.generate).toHaveBeenCalledOnce();
+    expect(client.cancel).not.toHaveBeenCalled();
+  } finally {
+    warn.mockRestore();
+  }
+});
+
 it('coordinates legacy H3 OOM cleanup and retries the original spec once with a persisted allowance', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-oom-'));
   try {

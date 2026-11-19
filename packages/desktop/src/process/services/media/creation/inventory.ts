@@ -9,14 +9,29 @@ const WORKFLOWS = [
   '05_ref2va_4step_sla_lowvram.api.json',
 ];
 
+function missingH3Workflows(install: H3PortableInstallStatus): string[] {
+  return WORKFLOWS.filter((name) => !fs.existsSync(path.join(install.bundleRoot, 'workflows', 'lowvram', name)));
+}
+
+export function isManagedH3Installed(
+  install: H3PortableInstallStatus,
+  missingWorkflows = missingH3Workflows(install)
+): boolean {
+  return (
+    install.bundleVerified &&
+    install.runtimePresent &&
+    install.missingAssets.length === 0 &&
+    install.missingCustomNodes.length === 0 &&
+    missingWorkflows.length === 0
+  );
+}
+
 /** Read installed files without starting ComfyUI, following links, or downloading models. */
 export function inspectCreationInventory(
   install: H3PortableInstallStatus,
   runtimeRunning: boolean
 ): LocalCreationInventory {
-  const missingWorkflows = WORKFLOWS.filter(
-    (name) => !fs.existsSync(path.join(install.bundleRoot, 'workflows', 'lowvram', name))
-  );
+  const missingWorkflows = missingH3Workflows(install);
   const models: LocalCreationInventory['models'] = [];
   const names = new Set<string>();
   const scan = (root: string, relative = '', depth = 0): void => {
@@ -41,12 +56,7 @@ export function inspectCreationInventory(
   scan(path.join(install.runtimeRoot, 'ComfyUI', 'models'));
   return {
     h3: {
-      installed:
-        install.bundleVerified &&
-        install.runtimePresent &&
-        install.missingAssets.length === 0 &&
-        install.missingCustomNodes.length === 0 &&
-        missingWorkflows.length === 0,
+      installed: isManagedH3Installed(install, missingWorkflows),
       runtimeRunning,
       missingWorkflows,
     },

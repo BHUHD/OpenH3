@@ -17,10 +17,14 @@ import { buildVideoForm, createVideoAdapter, validateVideoInput } from './videoA
 type RecordJob = { job: CloudVideoJob; connection: CloudVideoConnection };
 type State = {
   connections: CloudVideoConnection[];
-  bindings: Record<string, { conversationId: string; connectionId: string }>;
+  bindings: Record<string, { conversationId: string; connectionId: string; managed?: boolean }>;
   jobs: RecordJob[];
 };
-type Options = { root: string; adapter?: (connection: CloudVideoConnection) => VideoAdapter };
+type Options = {
+  root: string;
+  adapter?: (connection: CloudVideoConnection) => VideoAdapter;
+  verifyManagedOutput?: (file: string) => Promise<void>;
+};
 
 /** Owns cloud credentials, immutable job connections and durable single-submission identities. */
 export class CloudVideoService {
@@ -69,23 +73,37 @@ export class CloudVideoService {
     this.persist();
     return this.connections().find((item) => item.id === connection.id)!;
   }
-  bind(requestId: string, conversationId: string, connectionId: string): void {
+  bind(requestId: string, conversationId: string, connectionId: string, managed = false): void {
     if (!this.state.connections.some((item) => item.id === connectionId))
       throw new Error('CLOUD_VIDEO_CONNECTION_MISSING');
     const prior = this.state.bindings[requestId];
-    if (prior && (prior.conversationId !== conversationId || prior.connectionId !== connectionId))
+    if (
+      prior &&
+      (prior.conversationId !== conversationId ||
+        prior.connectionId !== connectionId ||
+        Boolean(prior.managed) !== managed)
+    )
       throw new Error('CLOUD_VIDEO_SCOPE_MISMATCH');
-    this.state.bindings[requestId] = { conversationId, connectionId };
+    this.state.bindings[requestId] = { conversationId, connectionId, ...(managed ? { managed } : {}) };
     this.persist();
   }
-  async submit(requestId: string, raw: CloudVideoInput, submissionId = requestId): Promise<CloudVideoJob> {
+  async submit(
+    requestId: string,
+    raw: CloudVideoInput,
+    submissionId = requestId,
+    expected?: Pick<CloudVideoConnection, 'protocol' | 'baseUrl'>
+  ): Promise<CloudVideoJob> {
     const matches = ({ job }: RecordJob): boolean =>
       job.requestId === requestId && (job.submissionId ?? job.requestId) === submissionId;
     const prior = this.state.jobs.find(matches);
     if (prior) return { ...prior.job };
     const binding = this.state.bindings[requestId];
     if (!binding) throw new Error('CLOUD_VIDEO_BINDING_REQUIRED');
-    const connection = this.state.connections.find((item) => item.id === binding.connectionId)!;
+    if (Boolean(binding.managed) !== Boolean(expected)) throw new Error('CLOUD_VIDEO_SCOPE_MISMATCH');
+    const connection = this.state.connections.find((item) => item.id === binding.connectionId);
+    if (!connection) throw new Error('CLOUD_VIDEO_CONNECTION_MISSING');
+    if (expected && (expected.protocol !== connection.protocol || expected.baseUrl !== connection.baseUrl))
+      throw new Error('CREATION_CLOUD_CONNECTION_CHANGED');
     const input = cloudVideoInputSchema.parse(raw);
     validateVideoInput(connection, input);
     // Validate every local upload before reserving the submission identity.
@@ -96,7 +114,8 @@ export class CloudVideoService {
       id: randomUUID(),
       requestId,
       submissionId,
-      ...binding,
+      conversationId: binding.conversationId,
+      connectionId: binding.connectionId,
       model: connection.model || connection.name,
       status: 'queued',
       progress: 0,
@@ -186,6 +205,14 @@ export class CloudVideoService {
       throw error;
     }
     fs.closeSync(fd);
+    if (this.state.bindings[record.job.requestId]?.managed && this.options.verifyManagedOutput) {
+      try {
+        await this.options.verifyManagedOutput(temp);
+      } catch {
+        fs.rmSync(temp, { force: true });
+        throw new Error('CLOUD_VIDEO_OUTPUT_VERIFICATION_FAILED');
+      }
+    }
     fs.renameSync(temp, target);
   }
   async poll(): Promise<void> {
@@ -218,17 +245,27 @@ export class CloudVideoService {
           }
         } catch (error) {
           const status = (error as { status?: number }).status;
+          const outputError =
+            error instanceof Error &&
+            [
+              'CLOUD_VIDEO_INVALID_MP4',
+              'CLOUD_VIDEO_OUTPUT_TOO_LARGE',
+              'CLOUD_VIDEO_OUTPUT_VERIFICATION_FAILED',
+            ].includes(error.message)
+              ? error.message
+              : undefined;
           const permanent = status !== undefined && [400, 401, 403, 404, 422].includes(status);
-          if (permanent) {
+          if (permanent || outputError) {
             job.status = 'failed';
             job.stage = 'failed';
           }
           job.error =
-            status === 404
+            outputError ??
+            (status === 404
               ? 'CLOUD_VIDEO_REMOTE_LOST'
               : permanent
                 ? `CLOUD_VIDEO_HTTP_${status}`
-                : 'CLOUD_VIDEO_CONNECTION_RETRYING';
+                : 'CLOUD_VIDEO_CONNECTION_RETRYING');
         }
         this.persist();
       }

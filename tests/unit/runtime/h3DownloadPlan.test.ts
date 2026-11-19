@@ -1,5 +1,12 @@
-import { expect, it } from 'vitest';
-import { buildH3DownloadPlan } from '@/process/services/runtime/h3DownloadPlan';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { expect, it, vi } from 'vitest';
+import {
+  buildH3DownloadPlan,
+  inspectH3DownloadSpace,
+  recordH3VerifiedDownload,
+} from '@/process/services/runtime/h3DownloadPlan';
 import { matlowaiCompleteOfflineBundle } from '@/process/services/runtime/h3OfflineBundle';
 it('covers every pinned dependency without HTML or floating model revisions', () => {
   const plan = buildH3DownloadPlan();
@@ -41,4 +48,53 @@ it('keeps pinned hashes when adding mirrors and refuses an empty isolated source
   expect(file.urls?.[0]).toContain('https://hf-mirror.com/');
   expect(file.urls?.[1]).toBe(file.url);
   expect(() => buildH3DownloadPlan({ publicSources: false })).toThrow('NO_SOURCE');
+});
+
+it('budgets pinned network assets separately from embedded workflows', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-download-space-'));
+  try {
+    const plan = buildH3DownloadPlan();
+    const space = inspectH3DownloadSpace(root);
+    const networkBytes = plan.files
+      .filter((file) => !file.embeddedBase64)
+      .reduce((sum, file) => sum + file.sizeBytes, 0);
+    expect(space.downloadBytes).toBe(networkBytes);
+    expect(space.requiredBytes).toBe(plan.totalBytes + plan.reserveBytes);
+  } finally {
+    fs.rmSync(root, { recursive: true });
+  }
+});
+
+it('permits resuming on the remaining space using allocated partials and a verified download', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-download-resume-'));
+  const plan = buildH3DownloadPlan();
+  const completeContents = Buffer.alloc(8192, 1);
+  const completed = { ...plan.files[0], relativePath: 'completed.bin', sizeBytes: completeContents.length };
+  const pending = { ...plan.files[0], relativePath: 'pending.bin', sizeBytes: 16384 };
+  const resumePlan = { ...plan, files: [completed, pending], totalBytes: completed.sizeBytes + pending.sizeBytes };
+  const pretendDisk = vi.spyOn(fs, 'statfsSync');
+  try {
+    const completePath = path.join(root, completed.relativePath);
+    fs.writeFileSync(completePath, completeContents);
+    recordH3VerifiedDownload(root, completed);
+    fs.writeFileSync(path.join(root, pending.relativePath + '.part'), Buffer.alloc(8192, 2));
+    pretendDisk.mockReturnValue({ bavail: resumePlan.reserveBytes + 8192, bsize: 1 } as fs.StatsFs);
+    expect(inspectH3DownloadSpace(root, resumePlan)).toMatchObject({
+      downloadBytes: 8192,
+      requiredBytes: resumePlan.reserveBytes + 8192,
+      enough: true,
+    });
+
+    // Replacements at the same size must not inherit a checksum receipt.
+    fs.writeFileSync(completePath, Buffer.alloc(8192, 3));
+    fs.utimesSync(completePath, new Date(100_000), new Date(100_000));
+    expect(inspectH3DownloadSpace(root, resumePlan)).toMatchObject({
+      downloadBytes: 16384,
+      requiredBytes: resumePlan.reserveBytes + 16384,
+      enough: false,
+    });
+  } finally {
+    pretendDisk.mockRestore();
+    fs.rmSync(root, { recursive: true });
+  }
 });

@@ -3,7 +3,8 @@ import { comfyApi } from '@/common/chat/document/creation/comfyApi';
 import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
 import type { TemplateSnapshot } from '@/common/contentCatalog/snapshot';
 import { ipcBridge } from '@/common';
-import type { CreationRequest } from '@/common/chat/document/creation/creation';
+import { MANAGED_H3_MODEL_ID, type CreationRequest } from '@/common/chat/document/creation/creation';
+import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import type { TChatConversation } from '@/common/config/storage';
 import { mutate } from 'swr';
 
@@ -26,6 +27,11 @@ export function prepareCreationEntry(requestId: string, conversationId: string, 
   if (prior) return prior;
   const request = (async (): Promise<undefined> => {
     await mutate(['comfy.preparation-error', conversationId, requestId], null, false);
+    if (entry.id === MANAGED_H3_MODEL_ID && entry.source === 'local' && entry.kind === 'video') {
+      const bound = await h3JobApi.bindCreation(requestId, conversationId, true);
+      if (!bound.ok) throw new Error('H3_MANAGED_BIND_FAILED');
+      return undefined;
+    }
     if (entry.source === 'cloud' && entry.kind === 'video') {
       if (!entry.id?.startsWith('cloud-video:')) throw new Error('CLOUD_VIDEO_CONNECTION_MISSING');
       const bound = await cloudVideoApi.bind(requestId, conversationId, entry.id.slice('cloud-video:'.length));

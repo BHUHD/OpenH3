@@ -873,5 +873,18 @@
     "detecting": "Cihaz algılanıyor ve kurulum hazırlanıyor",
     "deviceInsufficient": "Cihaz gereksinimleri karşılanmıyor. Eksikleri aşağıda inceleyin.",
     "detectionIncomplete": "Algılama tamamlanmadı. Bu, cihazın uyumsuz olduğu anlamına gelmez."
+  },
+  "firstClipCloud": {
+    "loading": "Bulut bağlantıları yükleniyor…",
+    "loadError": "Bulut bağlantıları yüklenemedi. Bağlantı ayarlarını kontrol edip tekrar deneyin.",
+    "title": "Bulut bağlantısıyla oluştur",
+    "subtitle": "Yerel model henüz hazır değil. Bu isteği yapılandırdığınız bir bulut bağlantısına gönderebilirsiniz.",
+    "submit": "Bulutta oluştur",
+    "destination": "İsteminiz {{name}} ({{endpoint}}) adresine gönderilecek.",
+    "submitError": "Bulut oluşturma başlatılamadı. Tekrar deneyin.",
+    "incompatibleRefs": "Bu istek yerel referans dosyaları kullanıyor; bunlar bir bulut bağlantısına gönderilemez.",
+    "incompatibleSettings": "Bu istek, bulut oluşturmanın yeniden üretemeyeceği yerel ayarlar (çözünürlük, mod veya seed) kullanıyor.",
+    "noCompatibleConnections": "Uyumlu bir bulut bağlantısı yapılandırılmamış. Ayarlar'dan bir H3 (vllm-h3) bağlantısı ekleyin.",
+    "manualPath": "Bulutta oluşturmak için giriş kutusunda kaynağı Bulut olarak değiştirip isteği yeniden gönderin."
   }
 }

@@ -24,32 +24,6 @@ export default function WorkProgressBridge({ conversationId }: { conversationId:
   const runtime = useConversationRuntimeView(conversationId);
   const activeConversation = useCurrentConversation();
   const ids = useMemo(() => workComfyIds(messages), [messages]);
-  const cloudIds = useMemo(() => workCloudVideoIds(messages), [messages]);
-  const { data: cloudData } = useSWR(
-    activeConversation === conversationId && cloudIds.length ? ['work.cloud-video', conversationId, cloudIds] : null,
-    async () => {
-      const jobs: CloudVideoJob[] = [],
-        unavailable: string[] = [];
-      await Promise.all(
-        cloudIds.map(async (id) => {
-          try {
-            const job = await cloudVideoApi.job(id, conversationId);
-            if (job.id === id && job.conversationId === conversationId) jobs.push(job);
-            else unavailable.push(id);
-          } catch {
-            unavailable.push(id);
-          }
-        })
-      );
-      return { jobs, unavailable };
-    },
-    {
-      refreshInterval: (data) =>
-        !data || data.unavailable.length || data.jobs.some((job) => ['queued', 'running'].includes(job.status))
-          ? 2500
-          : 0,
-    }
-  );
   const creationIds = useMemo(() => creationOperationIds(messages), [messages]);
   const { data: creationData } = useSWR(
     activeConversation === conversationId && creationIds.length ? ['work.creation', conversationId, creationIds] : null,
@@ -78,6 +52,42 @@ export default function WorkProgressBridge({ conversationId }: { conversationId:
         )
           ? 1500
           : 5000,
+    }
+  );
+  const cloudIds = useMemo(
+    () => [
+      ...new Set([
+        ...workCloudVideoIds(messages),
+        ...(creationData?.operations ?? []).flatMap((operation) =>
+          operation.cloudJobId ? [operation.cloudJobId] : []
+        ),
+      ]),
+    ],
+    [messages, creationData]
+  );
+  const { data: cloudData } = useSWR(
+    activeConversation === conversationId && cloudIds.length ? ['work.cloud-video', conversationId, cloudIds] : null,
+    async () => {
+      const jobs: CloudVideoJob[] = [];
+      const unavailable: string[] = [];
+      await Promise.all(
+        cloudIds.map(async (id) => {
+          try {
+            const job = await cloudVideoApi.job(id, conversationId);
+            if (job.id === id && job.conversationId === conversationId) jobs.push(job);
+            else unavailable.push(id);
+          } catch {
+            unavailable.push(id);
+          }
+        })
+      );
+      return { jobs, unavailable };
+    },
+    {
+      refreshInterval: (data) =>
+        !data || data.unavailable.length || data.jobs.some((job) => ['queued', 'running'].includes(job.status))
+          ? 2500
+          : 0,
     }
   );
   const h3Ids = useMemo(

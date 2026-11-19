@@ -871,5 +871,18 @@
     "detecting": "Détection du matériel et préparation de l’installation",
     "deviceInsufficient": "Le matériel ne remplit pas les conditions. Consultez les éléments manquants ci-dessous.",
     "detectionIncomplete": "La détection est incomplète. Cela ne signifie pas que le matériel est incompatible."
+  },
+  "firstClipCloud": {
+    "loading": "Chargement des connexions cloud…",
+    "loadError": "Impossible de charger les connexions cloud. Vérifiez les paramètres de connexion et réessayez.",
+    "title": "Générer avec une connexion cloud",
+    "subtitle": "Le modèle local n'est pas encore prêt. Vous pouvez envoyer cette demande à une connexion cloud configurée.",
+    "submit": "Générer dans le cloud",
+    "destination": "Votre prompt sera envoyé à {{name}} ({{endpoint}}).",
+    "submitError": "Impossible de lancer la génération cloud. Réessayez.",
+    "incompatibleRefs": "Cette demande utilise des fichiers de référence locaux, qui ne peuvent pas être envoyés à une connexion cloud.",
+    "incompatibleSettings": "Cette demande utilise des réglages locaux (résolution, mode ou seed) que la génération cloud ne peut pas reproduire.",
+    "noCompatibleConnections": "Aucune connexion cloud compatible n'est configurée. Ajoutez une connexion H3 (vllm-h3) dans les paramètres.",
+    "manualPath": "Pour générer dans le cloud, choisissez la source Cloud dans la zone de saisie et renvoyez la demande."
   }
 }

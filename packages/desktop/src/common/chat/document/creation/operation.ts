@@ -20,6 +20,10 @@ export type CreationOperation = {
     | 'cancelled';
   spec: H3GenerationSpec;
   consent?: CreationInstallConsent;
+  managed?: boolean;
+  cloudConnectionId?: string;
+  cloudBaseUrl?: string;
+  cloudJobId?: string;
   jobId?: string;
   error?: string;
   updatedAt: string;

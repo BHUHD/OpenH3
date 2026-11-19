@@ -109,6 +109,31 @@ afterEach(() => {
 });
 
 describe('generic ComfyUI MCP tools', () => {
+  it('keeps the original generation in the explicitly selected managed H3 route', async () => {
+    vi.stubEnv('OPENH3_CREATION_SOURCE', 'local');
+    vi.stubEnv('OPENH3_CREATION_KIND', 'video');
+    vi.stubEnv('OPENH3_CREATION_MODEL', 'managed-h3');
+    const operationId = '12345678-1234-4234-8234-123456789abc';
+    const spec = {
+      prompt: 'Keep both reference frames',
+      durationSeconds: 6,
+      seed: 25,
+      references: [
+        { type: 'image', path: 'D:/first.png' },
+        { type: 'image', path: 'D:/last.png' },
+      ],
+    };
+    respond({ id: operationId, state: 'awaiting-consent', managed: true });
+    const reply = await invoke('openh3_h3_generate_video', spec);
+    expect(reply.isError).not.toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/api\/creation\/generate$/);
+    expect(requestBody()).toEqual({ requestId, spec });
+    expect(JSON.parse(reply.content[0].text)).toMatchObject({
+      creationOperationId: operationId,
+      nextAction: { type: 'await-user-consent' },
+    });
+  });
   it('forwards ordinary conversation context and the chosen profile through resolve and generation', async () => {
     vi.stubEnv('AIONUI_CREATION_REQUEST_ID', '');
     vi.stubEnv('OPENH3_CONVERSATION_ID', 'story-chat');

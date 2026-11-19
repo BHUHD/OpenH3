@@ -871,5 +871,18 @@
     "detecting": "Detecting device and preparing installation",
     "deviceInsufficient": "Device requirements are not met. See the specific missing requirements below.",
     "detectionIncomplete": "Detection is incomplete. This does not mean the device is incompatible."
+  },
+  "firstClipCloud": {
+    "loading": "Loading cloud connections…",
+    "loadError": "Couldn't load cloud connections. Check your connection settings and try again.",
+    "title": "Generate with a cloud connection",
+    "subtitle": "The local model isn't ready yet. You can send this request to a cloud connection you've configured instead.",
+    "submit": "Generate in the cloud",
+    "destination": "Your prompt will be sent to {{name}} ({{endpoint}}).",
+    "submitError": "Couldn't start cloud generation. Try again.",
+    "incompatibleRefs": "This request uses local reference files, which can't be sent to a cloud connection.",
+    "incompatibleSettings": "This request uses local-only settings (resolution, mode or seed) that cloud generation can't reproduce.",
+    "noCompatibleConnections": "No compatible cloud connection is configured. Add an H3 (vllm-h3) connection in Settings.",
+    "manualPath": "To generate in the cloud, switch the source to Cloud in the composer and send the request again."
   }
 }

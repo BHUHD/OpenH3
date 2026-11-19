@@ -1473,7 +1473,7 @@
     "firstRunTitle": "准备本地视频生成环境",
     "firstRunDescription": "檢查本機硬體與可用空間。確認授權與地區範圍後，將自動下載、驗證並設定 H3、ComfyUI 與執行依賴；你只需另外設定 GPT 等對話模型。下載可暫停並續傳。",
     "missingSummary": "模型缺失 {{models}} 项 · 节点缺失 {{nodes}} 项 · {{verification}}",
-    "downloadSummary": "完整下载 {{download}} · 预留空间 {{reserve}}",
+    "downloadSummary": "預估剩餘下載 {{download}} · 預留空間 {{reserve}}",
     "diskSummary": "磁盘可用 {{free}} · 预算需求 {{required}}",
     "hardwareSummary": "{{gpu}} · 内存 {{memory}} GiB · 驱动 {{driver}}",
     "missingModelNames": "模型未识别：{{models}}",

@@ -1471,7 +1471,7 @@
     "firstRunTitle": "Set up local video generation",
     "firstRunDescription": "Check local hardware and storage. After confirming the license and territory, the app downloads, verifies and configures H3, ComfyUI and runtime dependencies. You only need to configure GPT or another chat model separately. Downloads can be paused and resumed.",
     "missingSummary": "Missing models: {{models}} · Missing nodes: {{nodes}} · {{verification}}",
-    "downloadSummary": "Download: {{download}} · Reserve: {{reserve}}",
+    "downloadSummary": "Estimated download remaining: {{download}} · Reserve: {{reserve}}",
     "diskSummary": "Free disk: {{free}} · Required budget: {{required}}",
     "hardwareSummary": "{{gpu}} · Memory: {{memory}} GiB · Driver: {{driver}}",
     "missingModelNames": "Missing models: {{models}}",

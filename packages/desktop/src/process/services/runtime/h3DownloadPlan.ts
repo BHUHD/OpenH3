@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import workflows from './h3EmbeddedWorkflows.json';
 import {
   matlowaiCompleteOfflineBundle,
@@ -62,9 +63,61 @@ export function buildH3DownloadPlan(config: H3SourceConfig = {}) {
   return { files, totalBytes: files.reduce((sum, file) => sum + file.sizeBytes, 0), reserveBytes: 15 * 2 ** 30 };
 }
 
-/** Read-only estimate: existing bytes are not considered checksum-verified. */
-export function inspectH3DownloadSpace(bundleRoot: string) {
-  const plan = buildH3DownloadPlan();
+function plainFile(filename: string): fs.Stats | undefined {
+  const stat = fs.lstatSync(filename, { throwIfNoEntry: false });
+  return stat?.isFile() ? stat : undefined;
+}
+
+function receiptPath(destination: string): string {
+  return `${destination}.h3-verified.json`;
+}
+
+function downloadIdentity(file: H3DownloadFile, stat: fs.Stats) {
+  return {
+    sha256: file.sha256,
+    size: stat.size,
+    dev: stat.dev,
+    ino: stat.ino,
+    mtimeMs: stat.mtimeMs,
+    ctimeMs: stat.ctimeMs,
+  };
+}
+
+/** Record a completed download for space estimates only. The installer still checks the payload. */
+export function recordH3VerifiedDownload(bundleRoot: string, file: H3DownloadFile): void {
+  const destination = path.join(bundleRoot, file.relativePath);
+  const receipt = receiptPath(destination);
+  const temporary = `${receipt}.${randomUUID()}.tmp`;
+  try {
+    const stat = plainFile(destination);
+    if (!stat || stat.size !== file.sizeBytes) return;
+    fs.writeFileSync(temporary, JSON.stringify(downloadIdentity(file, stat)), { flag: 'wx' });
+    fs.renameSync(temporary, receipt);
+  } catch {
+    // An unwritable or interrupted receipt only affects the next estimate.
+    try {
+      fs.unlinkSync(temporary);
+    } catch {
+      // No temporary file was committed.
+    }
+  }
+}
+
+function hasVerifiedDownload(destination: string, file: H3DownloadFile): boolean {
+  const receipt = receiptPath(destination);
+  try {
+    const stat = plainFile(destination);
+    const proof = plainFile(receipt);
+    if (stat?.size !== file.sizeBytes || !proof || proof.size > 4096) return false;
+    const identity = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+    return Object.entries(downloadIdentity(file, stat)).every(([key, value]) => identity?.[key] === value);
+  } catch {
+    return false;
+  }
+}
+
+/** Estimate additional disk use and expected remaining network transfer from the pinned manifest. */
+export function inspectH3DownloadSpace(bundleRoot: string, plan = buildH3DownloadPlan()) {
   let ancestor = path.resolve(bundleRoot);
   while (!fs.existsSync(ancestor)) {
     const parent = path.dirname(ancestor);
@@ -72,13 +125,29 @@ export function inspectH3DownloadSpace(bundleRoot: string) {
     ancestor = parent;
   }
   const disk = fs.statfsSync(ancestor);
+  const device = fs.statSync(ancestor).dev;
   const freeBytes = disk.bavail * disk.bsize;
-  // Conservative: budget all replacement downloads even when old files are present.
-  const requiredBytes = plan.totalBytes + plan.reserveBytes;
+  let downloadBytes = 0;
+  let requiredBytes = plan.reserveBytes;
+  for (const file of plan.files) {
+    const destination = path.join(bundleRoot, file.relativePath);
+    if (!file.embeddedBase64 && hasVerifiedDownload(destination, file)) continue;
+    const partial = plainFile(`${destination}.part`);
+    // Sparse or linked data may occupy less reusable disk space than its logical length.
+    const allocated =
+      partial && partial.dev === device && partial.nlink === 1
+        ? Math.min(file.sizeBytes, partial.size, partial.blocks * 512)
+        : 0;
+    requiredBytes += file.sizeBytes - allocated;
+    if (!file.embeddedBase64) {
+      const resumable = partial && partial.size <= file.sizeBytes ? partial.size : 0;
+      downloadBytes += file.sizeBytes - resumable;
+    }
+  }
   return {
     freeBytes,
     requiredBytes,
-    downloadBytes: plan.totalBytes,
+    downloadBytes,
     reserveBytes: plan.reserveBytes,
     enough: freeBytes >= requiredBytes,
   };

@@ -38,12 +38,20 @@ export type H3RuntimeStatus = {
 };
 
 export type H3JobApiClient = {
-  bindCreation(requestId: string, conversationId: string): Promise<{ ok: boolean }>;
+  bindCreation(requestId: string, conversationId: string, managed?: boolean): Promise<{ ok: boolean }>;
   creationOperation(id: string): Promise<CreationOperation>;
   authorizeCreation(id: string, conversationId: string, consent: CreationInstallConsent): Promise<CreationOperation>;
+  confirmCreation(id: string, conversationId: string, consent: CreationInstallConsent): Promise<CreationOperation>;
+  chooseCloudCreation(
+    id: string,
+    conversationId: string,
+    connectionId: string,
+    baseUrl: string
+  ): Promise<CreationOperation>;
   cancelCreation(id: string): Promise<CreationOperation>;
   cancelConversationCreation(conversationId: string): Promise<{ ok: boolean }>;
   models(): Promise<LocalCreationInventory>;
+  managedStatus(): Promise<{ installed: boolean }>;
   create(spec: H3GenerationSpec): Promise<H3Job>;
   get(id: string): Promise<H3Job>;
   cancel(id: string): Promise<H3Job>;
@@ -98,19 +106,36 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+async function creationUiRequest<T>(url: string, payload: unknown): Promise<T> {
+  const token = typeof window === 'undefined' ? undefined : await window.electronAPI?.getMediaServiceUiToken?.();
+  return request(url, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    headers: token ? { 'x-openh3-ui-token': token } : undefined,
+  });
+}
+
 export const h3JobApi: H3JobApiClient = {
-  bindCreation: (requestId, conversationId) =>
-    request('/api/creation/bind', { method: 'POST', body: JSON.stringify({ requestId, conversationId }) }),
+  bindCreation: (requestId, conversationId, managed) =>
+    managed
+      ? creationUiRequest('/api/creation/bind', { requestId, conversationId, managed })
+      : request('/api/creation/bind', { method: 'POST', body: JSON.stringify({ requestId, conversationId }) }),
   creationOperation: (id) => request(`/api/creation/operations/${encodeURIComponent(id)}`),
   authorizeCreation: (id, conversationId, consent) =>
-    request(`/api/creation/operations/${encodeURIComponent(id)}/authorize`, {
-      method: 'POST',
-      body: JSON.stringify({ conversationId, consent }),
+    creationUiRequest(`/api/creation/operations/${encodeURIComponent(id)}/authorize`, { conversationId, consent }),
+  confirmCreation: (id, conversationId, consent) =>
+    creationUiRequest(`/api/creation/operations/${encodeURIComponent(id)}/confirm`, { conversationId, consent }),
+  chooseCloudCreation: (id, conversationId, connectionId, endpoint) =>
+    creationUiRequest(`/api/creation/operations/${encodeURIComponent(id)}/cloud`, {
+      conversationId,
+      connectionId,
+      baseUrl: endpoint,
     }),
   cancelCreation: (id) => request(`/api/creation/operations/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),
   cancelConversationCreation: (conversationId) =>
     request('/api/creation/cancel-conversation', { method: 'POST', body: JSON.stringify({ conversationId }) }),
   models: () => request<LocalCreationInventory>('/api/h3/models'),
+  managedStatus: () => request('/api/h3/managed-status'),
   setup: () => request<H3SetupState>('/api/h3/setup'),
   setupHardware: () => request<H3HardwareAssessment>('/api/h3/setup/hardware'),
   setupCapabilities: () => request('/api/h3/setup/capabilities'),

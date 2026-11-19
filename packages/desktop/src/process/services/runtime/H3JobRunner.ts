@@ -35,7 +35,8 @@ export class H3JobRunner {
     private readonly client: RunnerClient = new H3ComfyClient(),
     private readonly preflight: H3ReferencePreflightLike = new H3ReferencePreflight(),
     private readonly coordinator: ComfyRuntimeCoordinator = sharedComfyRuntimeCoordinator,
-    private readonly archive?: (id: string, result: H3GenerationResult) => Promise<void>
+    private readonly archive?: (id: string, result: H3GenerationResult) => Promise<void>,
+    private readonly verifyOutput?: (id: string, result: H3GenerationResult) => Promise<void>
   ) {}
 
   blocked(): boolean {
@@ -58,6 +59,23 @@ export class H3JobRunner {
   }
 
   private async succeed(id: string, result: H3GenerationResult): Promise<H3Job> {
+    try {
+      await this.verifyOutput?.(id, result);
+    } catch (error) {
+      console.warn('[h3] output verification failed', {
+        jobId: id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return this.store.update(id, {
+        status: 'failed',
+        finishedAt: new Date().toISOString(),
+        promptId: result.promptId,
+        submissionPending: false,
+        remoteUncertain: false,
+        cancelRequested: false,
+        error: 'H3_OUTPUT_VERIFICATION_FAILED',
+      });
+    }
     const job = this.store.update(id, {
       status: 'succeeded',
       finishedAt: new Date().toISOString(),

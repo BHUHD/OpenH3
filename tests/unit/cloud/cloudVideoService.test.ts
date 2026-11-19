@@ -30,6 +30,24 @@ function fixture() {
   return { root, adapter, service, connection, options };
 }
 describe('persistent cloud video jobs', () => {
+  it('only submits a managed first clip to its explicitly confirmed connection', async () => {
+    const { service, adapter, connection, options } = fixture();
+    service.bind('managed', 'conversation', connection.id, true);
+    await expect(service.submit('managed', { prompt: 'Unconfirmed' }, 'extra')).rejects.toThrow(
+      'CLOUD_VIDEO_SCOPE_MISMATCH'
+    );
+    const expected = { protocol: 'vllm-h3', baseUrl: connection.baseUrl } as const;
+    service.saveConnection({ ...connection, baseUrl: 'http://different/v1' });
+    const recovered = new CloudVideoService(options);
+    await expect(recovered.submit('managed', { prompt: 'Original' }, 'clip', expected)).rejects.toThrow(
+      'CREATION_CLOUD_CONNECTION_CHANGED'
+    );
+    expect(adapter.submit).not.toHaveBeenCalled();
+    recovered.saveConnection(connection);
+    const job = await recovered.submit('managed', { prompt: 'Original' }, 'clip', expected);
+    expect(job).toMatchObject({ conversationId: 'conversation', requestId: 'managed', submissionId: 'clip' });
+    expect(adapter.submit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ prompt: 'Original' }));
+  });
   it('preserves submitted state and marks omitted percentages as unknown on every poll', async () => {
     const { service, adapter } = fixture();
     adapter.submit.mockResolvedValueOnce({ id: 'remote-1', status: 'in_progress', progress: 23 });
@@ -86,6 +104,19 @@ describe('persistent cloud video jobs', () => {
     adapter.retrieve.mockRejectedValue(Object.assign(new Error('unauthorized'), { status: 401 }));
     await service.poll();
     expect(service.job(job.id, 'conversation')).toMatchObject({ status: 'failed', error: 'CLOUD_VIDEO_HTTP_401' });
+  });
+  it('reports an invalid completed file as a terminal failure without another download or generation', async () => {
+    const { service, adapter } = fixture();
+    adapter.download.mockResolvedValueOnce(new Response('not footage'));
+    const job = await service.submit('request', { prompt: 'fox' });
+    await service.poll();
+    await service.poll();
+    expect(service.job(job.id, 'conversation')).toMatchObject({
+      status: 'failed',
+      error: 'CLOUD_VIDEO_INVALID_MP4',
+    });
+    expect(adapter.download).toHaveBeenCalledOnce();
+    expect(adapter.submit).toHaveBeenCalledOnce();
   });
   it('retries failed downloads without submitting another generation', async () => {
     const { service, adapter } = fixture();
