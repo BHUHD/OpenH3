@@ -14,11 +14,13 @@ Help users reach a verified creative result through Agent reasoning, curated mod
 
 ## Brand Personality
 
-Clear, practical, restrained. Preserve the existing desktop interface, Arco components, semantic theme tokens, and conversation-first interaction.
+Studio light. The interface is a quiet graphite stage — neutral surfaces, restrained type, no decorative color — so generated images and videos can be the most vivid thing on screen. The one visual signature is the gen-light gradient (warm amber → magenta → daylight blue), reserved exclusively for active generation states and the primary creative entry point. Everything else defers to the work.
+
+Reuse existing Arco components, semantic theme tokens, and the conversation-first layout. Motion is functional: it marks state changes (generation progress, panel open/close, result arrival) and respects prefers-reduced-motion.
 
 ## Anti-references
 
-Avoid chat images that fill the message width and push most of a portrait below the viewport. Avoid cropped generation previews, forced landscape frames, decorative nested cards, and installation checklists imposed on generic task progress.
+Avoid chat images that fill the message width and push most of a portrait below the viewport. Avoid cropped generation previews, forced landscape frames, decorative nested cards, and installation checklists imposed on generic task progress. Avoid scattering gen-light outside generation and creation contexts — overuse kills the signature.
 
 ## Design Principles
 
