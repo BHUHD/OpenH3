@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 /**
  * Reusable selectors for E2E tests.
  *
@@ -64,6 +66,16 @@ export const USER_TEXT_MESSAGE = '[data-testid="message-text-right"]';
 
 /** Text content element inside a message (works for both user/AI). */
 export const MESSAGE_TEXT_CONTENT = '[data-testid="message-text-content"]';
+
+/** Files in the shared project panel, in the E2E suite's English and Chinese locales. */
+export function projectFilesTab(page: Page) {
+  return page.locator('[data-project-panel-host]').getByRole('tab', { name: /^(Files|文件)$/ });
+}
+
+/** File names can also appear in Preview, so target the Explorer tree. */
+export function projectExplorerFile(page: Page, name: string) {
+  return page.locator('[data-project-panel-host] .workspace-tree').getByText(name, { exact: true }).first();
+}
 
 // ── Sidebar ─────────────────────────────────────────────────────────────────
 

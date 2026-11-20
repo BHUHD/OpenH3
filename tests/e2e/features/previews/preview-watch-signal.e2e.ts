@@ -27,8 +27,8 @@ import path from 'path';
 
 import { expect, test } from '../../fixtures';
 import { goToGuid } from '../../helpers';
+import { projectExplorerFile, projectFilesTab } from '../../helpers/selectors';
 
-/** Verified present at Layout.tsx:550 rather than guessed. */
 const PREVIEW_PANEL = '[data-project-preview-region]';
 
 /**
@@ -72,7 +72,8 @@ async function openConversationOn(page: import('@playwright/test').Page, workspa
  * Asserting before it settles would test the wrong state.
  */
 async function openFileAndSettle(page: import('@playwright/test').Page, fileName: string) {
-  await page.getByText(fileName, { exact: true }).first().click();
+  await projectFilesTab(page).click();
+  await projectExplorerFile(page, fileName).click();
   const button = page.locator(`${PREVIEW_PANEL} ${REFRESH_BUTTON}`).first();
   await expect(button).toBeVisible({ timeout: 20_000 });
   await expect(button).toHaveAttribute('data-refresh-state', 'idle', { timeout: 20_000 });
