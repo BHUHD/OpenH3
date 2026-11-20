@@ -698,19 +698,47 @@ describe('configured model list', () => {
   });
 });
 
-it('keeps managed providers out of generic row actions and bulk health mutation while retaining BYOK', async () => {
+it('shows one cloud account entry and keeps a same-named BYOK provider editable', async () => {
+  const oldLogin = provider({ id: 'previous', name: 'Cloud account', managed_by: 'cloud_account', enabled: false });
+  const currentLogin = provider({ id: 'current', name: 'Cloud account', managed_by: 'cloud_account', enabled: true });
+  const byok = provider({ id: 'byok', name: 'Cloud account', models: ['byok-model'] });
+  mocks.updateProvider.mockClear().mockResolvedValue(byok);
+  mocks.providers.splice(0, mocks.providers.length, oldLogin, byok, currentLogin);
+  const view = render(<ModelModalContent />);
+
+  expect(screen.getAllByText('settings.cloudAccount.managed')).toHaveLength(1);
+  expect(screen.getByRole('heading', { name: 'settings.cloudAccount.title' })).toBeInTheDocument();
+  const byokRow = screen.getByText('Cloud account').closest('section')!;
+  expect(within(byokRow).getByText('byok-model')).toBeInTheDocument();
+  fireEvent.click(within(byokRow).getByRole('button', { name: 'edit-provider' }));
+  expect(mocks.editModeOpen).toHaveBeenCalledWith({ data: byok });
+  expect(screen.getAllByRole('button', { name: 'edit-provider' })).toHaveLength(1);
+
+  fireEvent.click(screen.getByRole('button', { name: 'settings.clearStatus' }));
+  await waitFor(() => expect(mocks.updateProvider).toHaveBeenCalledWith({ id: 'byok', model_health: {} }));
+  expect(mocks.updateProvider).toHaveBeenCalledTimes(1);
+  expect(mocks.providerMutate).toHaveBeenCalledWith(
+    [oldLogin, { ...byok, model_health: undefined }, currentLogin],
+    false
+  );
+
+  mocks.providers.splice(0, mocks.providers.length, byok);
+  view.rerender(<ModelModalContent />);
+  expect(screen.queryByText('settings.cloudAccount.managed')).not.toBeInTheDocument();
+  expect(screen.getByText('Cloud account')).toBeInTheDocument();
+});
+
+it('shows the account entry when all remaining records belong to disconnected cloud logins', () => {
   mocks.providers.splice(
     0,
     mocks.providers.length,
-    provider({ id: 'official', name: 'Official managed', managed_by: 'cloud_account' }),
-    provider({ id: 'byok', name: 'BYOK editable' })
+    provider({ id: 'old', managed_by: 'cloud_account', enabled: false }),
+    provider({ id: 'older', managed_by: 'cloud_account', enabled: false })
   );
   render(<ModelModalContent />);
-  expect(screen.getByText('settings.cloudAccount.managed')).toBeInTheDocument();
-  expect(screen.getAllByRole('button', { name: 'edit-provider' })).toHaveLength(1);
-  fireEvent.click(screen.getByRole('button', { name: 'settings.clearStatus' }));
-  await waitFor(() => expect(mocks.updateProvider).toHaveBeenCalledWith({ id: 'byok', model_health: {} }));
-  expect(mocks.updateProvider.mock.calls.some(([r]) => r.id === 'official')).toBe(false);
+  expect(screen.getAllByText('settings.cloudAccount.managed')).toHaveLength(1);
+  expect(screen.queryByRole('button', { name: 'edit-provider' })).not.toBeInTheDocument();
+  expect(screen.queryByText('settings.noConfiguredModels')).not.toBeInTheDocument();
 });
 it('blocks direct managed model editor conversion and submit', () => {
   mocks.onSubmit.mockClear();

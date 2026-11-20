@@ -115,6 +115,8 @@ const ModelModalContent: React.FC = () => {
   const [collapseKey, setCollapseKey] = useState<Record<string, boolean>>({});
   const [healthCheckLoading, setHealthCheckLoading] = useState<Record<string, boolean>>({});
   const { data, mutate } = useProvidersQuery();
+  const editableProviders = data?.filter((provider) => provider.managed_by !== 'cloud_account') ?? [];
+  const hasManagedProviders = data?.some((provider) => provider.managed_by === 'cloud_account');
   const [message, messageContext] = Message.useMessage();
 
   /**
@@ -303,9 +305,7 @@ const ModelModalContent: React.FC = () => {
     void mutate(nextArray, false);
 
     Promise.all(
-      (data || [])
-        .filter((platform) => platform.managed_by !== 'cloud_account')
-        .map((platform) => ipcBridge.mode.updateProvider.invoke({ id: platform.id, model_health: {} }))
+      editableProviders.map((platform) => ipcBridge.mode.updateProvider.invoke({ id: platform.id, model_health: {} }))
     )
       .then(() => {
         void mutate();
@@ -437,19 +437,7 @@ const ModelModalContent: React.FC = () => {
           </div>
         ) : (
           <div className='space-y-16px'>
-            {(data || []).map((platform: IProvider) => {
-              if (platform.managed_by === 'cloud_account')
-                return (
-                  <section
-                    key={platform.id}
-                    className='border border-solid border-[var(--color-border-2)] rd-8px p-12px text-t-primary'
-                  >
-                    <div>{platform.name}</div>
-                    <Tag>{t('settings.cloudAccount.managed')}</Tag>
-                    <div className='text-12px text-t-secondary mt-8px'>{t('settings.cloudAccount.managedNotice')}</div>
-                    <CloudAccountEntry />
-                  </section>
-                );
+            {editableProviders.map((platform) => {
               const key = platform.id;
               const isExpanded = collapseKey[platform.id] ?? false;
               return (
@@ -745,6 +733,18 @@ const ModelModalContent: React.FC = () => {
                 </Collapse>
               );
             })}
+            {hasManagedProviders && (
+              <section className='flex flex-wrap items-center justify-between gap-12px border border-solid border-[var(--color-border-2)] rd-12px p-12px'>
+                <div className='min-w-0'>
+                  <div className='flex flex-wrap items-center gap-8px'>
+                    <h3 className='m-0 text-14px font-600 text-t-primary'>{t('settings.cloudAccount.title')}</h3>
+                    <Tag>{t('settings.cloudAccount.managed')}</Tag>
+                  </div>
+                  <p className='m-0 mt-4px text-12px text-t-secondary'>{t('settings.cloudAccount.managedNotice')}</p>
+                </div>
+                <CloudAccountEntry />
+              </section>
+            )}
           </div>
         )}
       </OpenH3ScrollArea>
