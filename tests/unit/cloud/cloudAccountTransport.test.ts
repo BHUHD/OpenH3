@@ -591,11 +591,16 @@ describe('bounded WebUI topup HTTP', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     for (const variant of ['valid', 'declared', 'chunked', 'error', '401', 'deadline', 'redirect'] as const) {
       let calls = 0;
+      const deadlineController = new AbortController();
       const server = createServer((request, response) => {
         calls++;
         expect(request.url).toBe('/api/cloud-account/topup/options');
         expect(request.method).toBe('POST');
-        if (variant === 'deadline') return;
+        if (variant === 'deadline') {
+          // Expire the simulated deadline after the loopback request reaches the fixture.
+          deadlineController.abort();
+          return;
+        }
         if (variant === 'redirect') {
           response.writeHead(302, { location: '/redirected' });
           response.end();
@@ -650,11 +655,7 @@ describe('bounded WebUI topup HTTP', () => {
       vi.stubGlobal('fetch', fetcher);
       const deadline =
         variant === 'deadline'
-          ? vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => {
-              const controller = new AbortController();
-              setTimeout(() => controller.abort(), 20);
-              return controller.signal;
-            })
+          ? vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadlineController.signal)
           : undefined;
       try {
         if (variant === 'valid') {
