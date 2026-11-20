@@ -13,8 +13,8 @@
   "showPassword": "Show password",
   "hidePassword": "Hide password",
   "languageToggle": "Change language",
-  "footerPrimary": "Transform your command-line AI",
-  "footerSecondary": "Modern & Efficient",
+  "footerPrimary": "From idea to frame, generated locally",
+  "footerSecondary": "AI creative studio for images and video",
   "errors": {
     "empty": "Please enter username and password",
     "invalidCredentials": "Invalid username or password",

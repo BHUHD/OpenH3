@@ -102,7 +102,7 @@ const MyAssistantsList: React.FC<MyAssistantsListProps> = ({
 
   const renderCreatedEmpty = () => (
     <div
-      className='flex flex-col items-center rounded-14px border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center'
+      className='flex flex-col items-center rd-card border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center'
       data-testid='created-empty'
     >
       <div className='mb-6px text-13px font-600 text-t-primary'>
@@ -165,7 +165,7 @@ const MyAssistantsList: React.FC<MyAssistantsListProps> = ({
       </div>
 
       {searchActive && !hasVisibleAssistants ? (
-        <div className='rounded-14px border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center text-13px text-t-secondary'>
+        <div className='rd-card border border-dashed border-border-2 bg-fill-1/40 px-20px py-28px text-center text-13px text-t-secondary'>
           {t('settings.assistantNoMatch', { defaultValue: 'No assistants match the current filters.' })}
         </div>
       ) : null}

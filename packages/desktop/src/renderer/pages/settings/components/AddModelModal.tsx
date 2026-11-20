@@ -141,7 +141,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
                 options={NEW_API_PROTOCOL_OPTIONS}
                 triggerProps={{ getPopupContainer: (node) => node.parentElement || document.body }}
               />
-              <div className='text-11px text-t-secondary leading-4'>{t('settings.modelProtocolTip')}</div>
+              <div className='text-12px text-t-secondary leading-4'>{t('settings.modelProtocolTip')}</div>
             </div>
           )}
 
@@ -159,7 +159,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
                 { label: t('settings.imageInputUnsupported'), value: 'unsupported' },
               ]}
             />
-            <div className='text-11px text-t-secondary leading-4'>{t('settings.imageInputTip')}</div>
+            <div className='text-12px text-t-secondary leading-4'>{t('settings.imageInputTip')}</div>
           </div>
 
           {showOpenAiApiMode && (
@@ -174,12 +174,12 @@ const AddModelModal = ModalHOC<{ data?: IProvider; model?: string; onSubmit: (mo
                   { label: t('settings.openAiApiModeResponses'), value: 'responses' },
                 ]}
               />
-              <div className='text-11px text-t-secondary leading-4'>{t('settings.openAiApiModeTip')}</div>
+              <div className='text-12px text-t-secondary leading-4'>{t('settings.openAiApiModeTip')}</div>
             </div>
           )}
 
           {!isEditing && models.length > 1 && (
-            <div className='text-11px text-t-secondary leading-4'>{t('settings.modelSettingsApplyToSelected')}</div>
+            <div className='text-12px text-t-secondary leading-4'>{t('settings.modelSettingsApplyToSelected')}</div>
           )}
         </div>
       </OpenH3Modal>

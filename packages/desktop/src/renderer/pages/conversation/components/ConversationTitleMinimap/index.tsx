@@ -167,7 +167,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({
                   data-minimap-item-index={idx}
                   aria-selected={activeResultIndex === idx}
                   className={classNames(
-                    'conversation-minimap-item w-full text-start px-12px py-10px border-none rounded-10px hover:bg-fill-2 transition-colors cursor-pointer block',
+                    'conversation-minimap-item w-full text-start px-12px py-10px border-none rd-card hover:bg-fill-2 transition-colors cursor-pointer block',
                     isSearchMode && activeResultIndex === idx ? 'bg-fill-2' : 'bg-transparent'
                   )}
                   onMouseEnter={() => {
@@ -180,7 +180,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({
                 >
                   <div
                     className={classNames(
-                      'text-11px mb-2px',
+                      'text-12px mb-2px',
                       isIndexMatch(item.index, normalizedKeyword)
                         ? 'text-[rgb(var(--primary-6))] font-semibold'
                         : 'text-t-secondary'
@@ -254,7 +254,7 @@ const ConversationTitleMinimap: React.FC<ConversationTitleMinimapProps> = ({
         >
           <IconSearch
             className={classNames(
-              'text-15px transition-all duration-150',
+              'text-14px transition-all duration-150',
               visible
                 ? 'scale-103 opacity-100 text-[rgb(var(--primary-6))]'
                 : 'opacity-76 hover:scale-103 hover:opacity-100 focus:scale-103 focus:opacity-100'

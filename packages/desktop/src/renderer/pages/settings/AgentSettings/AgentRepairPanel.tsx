@@ -208,7 +208,7 @@ const AgentRepairPanel: React.FC<AgentRepairPanelProps> = ({ agent, onSaved }) =
         onChange={setCommandOverride}
         placeholder={t('settings.repair.pathPlaceholder', { command: agent.command || '' })}
       />
-      <Typography.Text type='secondary' className='mt-4px block text-11px leading-16px text-t-tertiary'>
+      <Typography.Text type='secondary' className='mt-4px block text-12px leading-16px text-t-tertiary'>
         {t('settings.repair.pathHelp')}
       </Typography.Text>
     </div>
@@ -219,22 +219,22 @@ const AgentRepairPanel: React.FC<AgentRepairPanelProps> = ({ agent, onSaved }) =
       <Typography.Text className='mb-6px block text-13px font-medium text-t-primary'>
         {t('settings.repair.envLabel')}
       </Typography.Text>
-      <Typography.Text type='secondary' className='mb-6px block text-11px leading-16px text-t-tertiary'>
+      <Typography.Text type='secondary' className='mb-6px block text-12px leading-16px text-t-tertiary'>
         {t('settings.repair.envHelp')}
       </Typography.Text>
       {/* What configuring env vars can fix — grounded in how AionUi injects them
           per-agent at spawn time. Deliberately excludes OAuth login (stored in
           the CLI's own config, not reachable via env), called out in envOauthNote. */}
       <div className='mb-8px rounded-6px bg-aou-2 px-10px py-8px'>
-        <Typography.Text className='block text-11px font-medium text-t-secondary'>
+        <Typography.Text className='block text-12px font-medium text-t-secondary'>
           {t('settings.repair.envScenariosTitle')}
         </Typography.Text>
-        <ul className='my-4px ps-16px text-11px leading-18px text-t-tertiary'>
+        <ul className='my-4px ps-16px text-12px leading-18px text-t-tertiary'>
           <li>{t('settings.repair.envScenarioApiKey')}</li>
           <li>{t('settings.repair.envScenarioBaseUrl')}</li>
           <li>{t('settings.repair.envScenarioProxy')}</li>
         </ul>
-        <Typography.Text className='block text-11px leading-16px text-t-tertiary'>
+        <Typography.Text className='block text-12px leading-16px text-t-tertiary'>
           {t('settings.repair.envOauthNote')}
         </Typography.Text>
       </div>
@@ -243,7 +243,7 @@ const AgentRepairPanel: React.FC<AgentRepairPanelProps> = ({ agent, onSaved }) =
   );
 
   return (
-    <div className='mt-10px flex flex-col gap-12px rounded-10px bg-aou-1 px-12px py-12px'>
+    <div className='mt-10px flex flex-col gap-12px rd-card bg-aou-1 px-12px py-12px'>
       {/* Status-aware diagnostic banner: explains where the agent stands and
           which field below to use. */}
       <Alert type={banner.type} title={banner.title} content={banner.content} className='!rounded-8px' />

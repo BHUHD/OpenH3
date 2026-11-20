@@ -207,7 +207,7 @@ const TeamCreateModal: React.FC<Props> = ({ visible, onClose, onCreated }) => {
         className='flex min-h-0 flex-col border-e border-border-3 px-20px pb-18px pt-12px'
         data-testid='team-create-assistant-pane'
       >
-        <div className='mb-12px text-15px font-600 leading-22px text-t-secondary'>
+        <div className='mb-12px text-14px font-600 leading-22px text-t-secondary'>
           {t('team.create.allAssistantsWithCount', {
             count: allAssistants.length,
             defaultValue: `All assistants (${allAssistants.length})`,

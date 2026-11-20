@@ -1,0 +1,160 @@
+/* OpenH3 — extended design tokens: radius scale, elevation, motion, gen-light.
+ * Imported after default-color-scheme.css so values are available globally.
+ * These tokens are intentionally NOT in the user-theme contract (decorative only);
+ * core semantic colors live in default-color-scheme.css.
+ */
+
+/* ── Radius scale ────────────────────────────────────────────────────────────
+ * Four steps, used consistently:
+ *   chip     — tags, badges, pills (tight inline elements)
+ *   control  — buttons, inputs, selects, dropdowns
+ *   card     — conversation cards, model cards, composer box
+ *   panel    — modals, dialogs, side panels
+ *   full     — avatars, icons, circular indicators
+ */
+:root {
+  --radius-chip: 4px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-full: 9999px;
+}
+
+/* ── Elevation ───────────────────────────────────────────────────────────────
+ * Zero-tint approach: a 1px border + progressively deeper soft umbra.
+ * Never a heavy blur — heavier layers just go darker, not fuzzier.
+ */
+:root {
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 8px 28px rgba(15, 23, 42, 0.11), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --shadow-xl: 0 16px 48px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.07);
+
+  /* Focus ring — primary-tinted halo */
+  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  --shadow-focus-danger: 0 0 0 3px color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+[data-theme='dark'] {
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.26), 0 1px 2px rgba(0, 0, 0, 0.16);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.42), 0 2px 6px rgba(0, 0, 0, 0.26);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.56), 0 4px 12px rgba(0, 0, 0, 0.32);
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────────
+ * One timing function per semantic role.
+ * --duration-quick   : micro-interactions (hover, check, press) 120 ms
+ * --duration-base    : standard transitions (panel open, item expand) 180 ms
+ * --duration-enter   : elements arriving (slide-up, fade-in) 220 ms
+ * --duration-exit    : elements leaving — faster than entering 160 ms
+ */
+:root {
+  --duration-quick: 120ms;
+  --duration-base: 180ms;
+  --duration-enter: 220ms;
+  --duration-exit: 160ms;
+
+  /* ease-out for entrances (fast start, gentle settle) */
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  /* ease-in for exits */
+  --ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+  /* standard for state changes (hover, press, check) */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  /* spring for springy confirmations */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Shorthand properties */
+  --transition-quick: var(--duration-quick) var(--ease-standard);
+  --transition-base: var(--duration-base) var(--ease-standard);
+  --transition-enter: var(--duration-enter) var(--ease-out);
+  --transition-exit: var(--duration-exit) var(--ease-in);
+}
+
+/* Respect user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-quick: 0ms;
+    --duration-base: 0ms;
+    --duration-enter: 0ms;
+    --duration-exit: 0ms;
+  }
+}
+
+/* ── Login backdrop ──────────────────────────────────────────────────────────
+ * The login page always needs a deep graphite stage so the gen-light orbs
+ * glow. This token is intentionally pinned: it must stay dark regardless of
+ * the theme because the user may not have set a theme yet when they see the
+ * login page. It is NOT the inverse of bg-base; it is a fixed dark value.
+ */
+:root {
+  --login-backdrop: #111318;
+}
+
+/* ── Gen-light gradient ──────────────────────────────────────────────────────
+ * The signature visual for active generation and the creation entry point.
+ * Tungsten amber (#f5a623) → warm magenta (#d946a8) → daylight blue (#4f9ef8).
+ * Used ONLY for:
+ *   - The generation progress indicator / shimmer
+ *   - The creation page composer border glow
+ *   - The send button while generating
+ * Never for static decoration.
+ */
+:root {
+  --gen-light-start: #f5a623;
+  --gen-light-mid: #d946a8;
+  --gen-light-end: #4f9ef8;
+
+  --gen-light-gradient: linear-gradient(
+    90deg,
+    var(--gen-light-start) 0%,
+    var(--gen-light-mid) 50%,
+    var(--gen-light-end) 100%
+  );
+
+  /* Softer version for large surfaces and glows */
+  --gen-light-gradient-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--gen-light-start) 72%, transparent) 0%,
+    color-mix(in srgb, var(--gen-light-mid) 72%, transparent) 50%,
+    color-mix(in srgb, var(--gen-light-end) 72%, transparent) 100%
+  );
+
+  /* Animated sweep — attach to an element that needs the shimmer */
+  --gen-light-sweep-size: 300%;
+}
+
+@keyframes gen-light-sweep {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes gen-light-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Utility: apply the animated gen-light sweep to any element */
+.gen-light-animate {
+  background: var(--gen-light-gradient);
+  background-size: var(--gen-light-sweep-size) 100%;
+  animation: gen-light-sweep 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gen-light-animate {
+    animation: none;
+    background-size: 100% 100%;
+  }
+}

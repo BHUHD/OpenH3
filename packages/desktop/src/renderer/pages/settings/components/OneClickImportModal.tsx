@@ -282,7 +282,7 @@ const OneClickImportModal: React.FC<OneClickImportModalProps> = ({
     <div>
       {loadingImport ? (
         <div className='py-8'>
-          <div className='flex items-center gap-3 bg-fill-1 rounded-lg p-4'>
+          <div className='flex items-center gap-3 bg-fill-1 rd-card p-4'>
             <Spin size={20} />
             <div className='text-t-secondary text-sm'>{t('settings.mcpLoadingTools')}</div>
           </div>
@@ -297,7 +297,7 @@ const OneClickImportModal: React.FC<OneClickImportModalProps> = ({
             <Tag color='arcoblue'>{t('settings.mcpWillImportCount', { count: importableFetchedServers.length })}</Tag>
             <Tag color='gray'>{t('settings.mcpSkippedCount', { count: skippedFetchedServers.length })}</Tag>
           </div>
-          <div className='bg-base rounded-lg max-h-[320px] overflow-y-auto'>
+          <div className='bg-base rd-card max-h-[320px] overflow-y-auto'>
             {orderedFetchedServers.map((server, index) => {
               const status = getFetchStatus(server);
               return (
@@ -339,7 +339,7 @@ const OneClickImportModal: React.FC<OneClickImportModalProps> = ({
           </Tag>
         </div>
         {fetchedServers.length > 0 ? (
-          <div className='bg-base rounded-lg max-h-[320px] overflow-y-auto'>
+          <div className='bg-base rd-card max-h-[320px] overflow-y-auto'>
             {orderedFetchedServers.map((server, index) => {
               const status = getImportResultStatus(server);
               return (

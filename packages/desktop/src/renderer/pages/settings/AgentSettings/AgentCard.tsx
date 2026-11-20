@@ -169,7 +169,7 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
             </Tag>
             {diagnostics && (
               <Tooltip content={diagnostics}>
-                <Typography.Text className='flex-shrink-0 text-11px text-t-secondary'>ⓘ</Typography.Text>
+                <Typography.Text className='flex-shrink-0 text-12px text-t-secondary'>ⓘ</Typography.Text>
               </Tooltip>
             )}
           </div>

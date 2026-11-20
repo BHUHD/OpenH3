@@ -13,8 +13,8 @@
   "showPassword": "비밀번호 표시",
   "hidePassword": "비밀번호 숨기기",
   "languageToggle": "언어 변경",
-  "footerPrimary": "명령줄 AI의 혁신",
-  "footerSecondary": "현대적이고 효율적인",
+  "footerPrimary": "아이디어에서 프레임까지, 로컬 생성",
+  "footerSecondary": "이미지와 영상을 위한 AI 크리에이티브 스튜디오",
   "errors": {
     "empty": "사용자 이름과 비밀번호를 입력하세요",
     "invalidCredentials": "잘못된 사용자 이름 또는 비밀번호",

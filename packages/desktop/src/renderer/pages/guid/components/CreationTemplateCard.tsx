@@ -125,7 +125,7 @@ const CreationTemplateCard: React.FC<CreationTemplateCardProps> = ({
           <h3 className='m-0 text-14px font-medium text-t-primary truncate' title={title}>
             {title}
           </h3>
-          <span className='text-11px text-t-secondary shrink-0'>{template.ratio}</span>
+          <span className='text-12px text-t-secondary shrink-0'>{template.ratio}</span>
         </div>
         <p className={styles.creationTemplatePrompt} title={prompt}>
           {prompt}

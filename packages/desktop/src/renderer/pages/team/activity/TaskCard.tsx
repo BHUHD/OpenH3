@@ -135,7 +135,7 @@ const TaskCard: React.FC<Props> = ({ task, identity }) => {
         </div>
       )}
 
-      <div className='flex items-center gap-8px text-11px text-[color:var(--color-text-3)]'>
+      <div className='flex items-center gap-8px text-12px text-[color:var(--color-text-3)]'>
         {description.length > 0 && (isClamped || expanded) && (
           <Tooltip
             content={

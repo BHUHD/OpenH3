@@ -187,7 +187,7 @@ const UpdateMigrationDialog: React.FC = () => {
           {/* Signature block: right-aligned above a hairline, like a hand-signed letter */}
           <div className='flex justify-end'>
             <div className='text-end pt-12px border-t border-[var(--border-base)] min-w-160px'>
-              <span className='text-15px' style={LETTER_SERIF}>
+              <span className='text-14px' style={LETTER_SERIF}>
                 {t('update.migration.letter.signature')}
               </span>
             </div>

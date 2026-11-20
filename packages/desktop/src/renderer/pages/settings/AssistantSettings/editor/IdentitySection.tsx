@@ -53,7 +53,7 @@ const IdentitySection: React.FC<IdentitySectionProps> = ({
     >
       <div className='flex items-start gap-14px'>
         {!isIdentityEditable ? (
-          <Avatar shape='square' size={42} className='!rounded-10px bg-fill-1'>
+          <Avatar shape='square' size={42} className='!rd-card bg-fill-1'>
             {renderAvatarPreview()}
           </Avatar>
         ) : (
@@ -70,9 +70,9 @@ const IdentitySection: React.FC<IdentitySectionProps> = ({
               <Button
                 type='text'
                 data-testid='btn-assistant-avatar-emoji'
-                className='!h-42px !w-42px !rounded-10px !bg-fill-1 !p-0'
+                className='!h-42px !w-42px !rd-card !bg-fill-1 !p-0'
               >
-                <Avatar shape='square' size={42} className='!rounded-10px bg-fill-1'>
+                <Avatar shape='square' size={42} className='!rd-card bg-fill-1'>
                   {renderAvatarPreview()}
                 </Avatar>
               </Button>
@@ -81,7 +81,7 @@ const IdentitySection: React.FC<IdentitySectionProps> = ({
               type='outline'
               size='mini'
               data-testid='btn-assistant-avatar-upload'
-              className='!rounded-8px !border-border-2 !bg-base !px-8px !text-11px'
+              className='!rounded-8px !border-border-2 !bg-base !px-8px !text-12px'
               onClick={onPickAvatarImage}
             >
               {t('settings.assistantAvatarUploadImage', { defaultValue: 'Upload image' })}

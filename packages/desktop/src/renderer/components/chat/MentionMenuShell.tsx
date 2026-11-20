@@ -94,7 +94,7 @@ const MentionMenuShell: React.FC<MentionMenuShellProps> = ({
 
   return (
     <div
-      className='rounded-14px border border-solid shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden'
+      className='rd-card border border-solid shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden'
       style={{
         borderColor: 'var(--color-border-2)',
         background: 'color-mix(in srgb, var(--color-bg-1) 78%, transparent)',

@@ -117,12 +117,12 @@ const TeamWarmupOverlay: React.FC<Props> = ({ phase, assistants, runtimeStatus, 
                   conversation_id={a.conversation_id}
                   className='!gap-0'
                   logoClassName={`w-34px h-34px object-cover rounded-full ${isFailed ? 'grayscale' : ''}`}
-                  avatarClassName='w-34px h-34px rounded-full flex items-center justify-center text-15px leading-none bg-fill-2'
+                  avatarClassName='w-34px h-34px rounded-full flex items-center justify-center text-14px leading-none bg-fill-2'
                   nameClassName='hidden'
                 />
                 {isFailed && (
                   <span
-                    className='absolute -end-2px -bottom-2px w-14px h-14px rounded-full flex items-center justify-center text-9px font-700 text-white'
+                    className='absolute -end-2px -bottom-2px w-14px h-14px rounded-full flex items-center justify-center text-10px font-700 text-white'
                     style={{ background: 'var(--danger)', border: '1.5px solid var(--bg-1)' }}
                   >
                     !
@@ -135,7 +135,7 @@ const TeamWarmupOverlay: React.FC<Props> = ({ phase, assistants, runtimeStatus, 
 
         {isFailure ? (
           <>
-            <div className='text-15px font-600 text-t-primary text-center'>
+            <div className='text-14px font-600 text-t-primary text-center'>
               {isMulti
                 ? t('team.warmup.multiFailedTitle', {
                     defaultValue: '{{count}} members failed to start',
@@ -163,7 +163,7 @@ const TeamWarmupOverlay: React.FC<Props> = ({ phase, assistants, runtimeStatus, 
                 {failedMembers.map((m) => (
                   <div
                     key={m.assistant.slot_id}
-                    className='flex items-start gap-6px text-11px leading-relaxed text-start'
+                    className='flex items-start gap-6px text-12px leading-relaxed text-start'
                   >
                     <span className='shrink-0 font-600' style={{ color: 'var(--danger)' }}>
                       {m.assistant.assistant_name}
@@ -179,7 +179,7 @@ const TeamWarmupOverlay: React.FC<Props> = ({ phase, assistants, runtimeStatus, 
             ) : single?.error ? (
               <div
                 data-testid='team-warmup-error'
-                className='max-w-320px max-h-64px overflow-y-auto text-11px leading-relaxed text-start rounded-6px px-10px py-6px'
+                className='max-w-320px max-h-64px overflow-y-auto text-12px leading-relaxed text-start rounded-6px px-10px py-6px'
                 style={{ background: 'color-mix(in srgb, var(--danger) 8%, var(--bg-base))', color: 'var(--danger)' }}
               >
                 {simplifyWarmupError(single.error)}
@@ -209,7 +209,7 @@ const TeamWarmupOverlay: React.FC<Props> = ({ phase, assistants, runtimeStatus, 
           </>
         ) : (
           <>
-            <div className='text-15px font-600 text-t-primary'>
+            <div className='text-14px font-600 text-t-primary'>
               {t('team.warmup.title', { defaultValue: 'Waking up the team…' })}
             </div>
             <div className='text-12px text-t-tertiary'>

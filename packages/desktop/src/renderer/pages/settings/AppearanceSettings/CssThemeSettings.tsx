@@ -166,7 +166,7 @@ const ThemeLayoutPreview: React.FC<{ palette: ThemePreviewPalette }> = ({ palett
           style={{ borderColor: palette.border, background: palette.headerBg }}
         >
           <span className='block w-5px h-5px rounded-full' style={{ background: palette.accent, opacity: 0.9 }}></span>
-          <span className='text-8px font-semibold tracking-0.2px' style={{ color: palette.textMuted }}>
+          <span className='text-10px font-semibold tracking-0.2px' style={{ color: palette.textMuted }}>
             OpenH3
           </span>
           <span

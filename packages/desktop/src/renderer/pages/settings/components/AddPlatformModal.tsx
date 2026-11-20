@@ -136,7 +136,7 @@ const ProtocolDetectionStatus: React.FC<ProtocolDetectionStatusProps> = ({
           {showSwitchButton && onSwitchPlatform && (
             <button
               type='button'
-              className='shrink-0 px-8px py-2px rounded-4px text-11px font-medium transition-colors'
+              className='shrink-0 px-8px py-2px rounded-4px text-12px font-medium transition-colors'
               style={{
                 backgroundColor: iconConfig.bgColor,
                 color: iconConfig.color,
@@ -150,7 +150,7 @@ const ProtocolDetectionStatus: React.FC<ProtocolDetectionStatusProps> = ({
 
         {/* Multi-key test result */}
         {multiKeyResult && multiKeyResult.total > 1 && (
-          <div className='flex items-center gap-6px text-11px text-t-tertiary ps-22px'>
+          <div className='flex items-center gap-6px text-12px text-t-tertiary ps-22px'>
             <span>
               {multiKeyResult.invalid === 0
                 ? t('settings.multiKeyAllValid', { total: String(multiKeyResult.total) })
@@ -510,7 +510,7 @@ const AddPlatformModal = ModalHOC<{
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 12 }}>
               <Switch size='small' checked={isFullUrl} onChange={setIsFullUrl} />
               <span className='text-12px text-t-secondary'>{t('settings.fullUrlMode', '完整 URL')}</span>
-              <span className='text-11px text-t-tertiary'>
+              <span className='text-12px text-t-tertiary'>
                 {isFullUrl
                   ? t('settings.fullUrlHint', '直接使用此地址，不拼接路径')
                   : t('settings.baseUrlHint', '系统会自动拼接请求路径')}
@@ -527,7 +527,7 @@ const AddPlatformModal = ModalHOC<{
             field={'api_key'}
             extra={
               <div className='space-y-2px'>
-                <div className='text-11px text-t-secondary mt-2 leading-4'>{t('settings.multiApiKeyTip')}</div>
+                <div className='text-12px text-t-secondary mt-2 leading-4'>{t('settings.multiApiKeyTip')}</div>
                 {/* 协议检测状态 / Protocol detection status */}
                 {shouldShowDetectionResult && (
                   <ProtocolDetectionStatus
@@ -720,7 +720,7 @@ const AddPlatformModal = ModalHOC<{
           {isNewApi && (
             <Form.Item
               label={t('settings.modelProtocol')}
-              extra={<span className='text-11px text-t-secondary'>{t('settings.modelProtocolTip')}</span>}
+              extra={<span className='text-12px text-t-secondary'>{t('settings.modelProtocolTip')}</span>}
             >
               <Select value={modelProtocol} onChange={setModelProtocol} options={NEW_API_PROTOCOL_OPTIONS} />
             </Form.Item>

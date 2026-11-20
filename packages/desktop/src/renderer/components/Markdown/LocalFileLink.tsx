@@ -115,7 +115,7 @@ const LocalFileLink: React.FC<LocalFileLinkProps> = ({ reference, children, onOp
       <FileTypeIcon node={{ name: fallbackLabel, relativePath: filePath, isFile: true }} />
       <span className='markdown-local-file-name'>{label}</span>
       {locationLabel && (
-        <span className='flex-shrink-0 rd-4px bg-fill-2 px-4px text-11px font-mono text-t-secondary'>
+        <span className='flex-shrink-0 rd-4px bg-fill-2 px-4px text-12px font-mono text-t-secondary'>
           {locationLabel}
         </span>
       )}

@@ -166,7 +166,7 @@ const ScheduledTasksPage: React.FC = () => {
             isMobile ? 'gap-14px' : 'gap-16px'
           )}
         >
-          <div className='grid w-full box-border grid-cols-[minmax(0,1fr)_auto] items-center gap-x-12px gap-y-10px rounded-12px border border-solid border-[var(--color-border-2)] bg-fill-2 px-14px py-12px sm:rounded-14px sm:px-16px max-[520px]:grid-cols-1'>
+          <div className='grid w-full box-border grid-cols-[minmax(0,1fr)_auto] items-center gap-x-12px gap-y-10px rounded-12px border border-solid border-[var(--color-border-2)] bg-fill-2 px-14px py-12px sm:rd-card sm:px-16px max-[520px]:grid-cols-1'>
             <span
               className={classNames(
                 'min-w-0 text-t-primary',
@@ -224,7 +224,7 @@ const ScheduledTasksPage: React.FC = () => {
                   >
                     <div className='flex min-w-0 flex-1 items-center gap-8px'>
                       <Tooltip content={agentMeta.name}>
-                        <div className='flex h-24px w-24px shrink-0 items-center justify-center overflow-hidden rounded-50% bg-fill-2 text-11px text-t-secondary'>
+                        <div className='flex h-24px w-24px shrink-0 items-center justify-center overflow-hidden rounded-50% bg-fill-2 text-12px text-t-secondary'>
                           {agentMeta.logo ? (
                             <ThemedLogo
                               src={agentMeta.logo}
@@ -244,7 +244,7 @@ const ScheduledTasksPage: React.FC = () => {
                           <span className='min-w-0 truncate text-14px leading-19px font-medium text-t-primary'>
                             {job.name}
                           </span>
-                          <span className='shrink-0 rounded-4px bg-fill-2 px-5px py-1px text-11px leading-15px text-t-secondary'>
+                          <span className='shrink-0 rounded-4px bg-fill-2 px-5px py-1px text-12px leading-15px text-t-secondary'>
                             {executionModeLabel}
                           </span>
                         </div>

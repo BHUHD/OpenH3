@@ -5,3 +5,6 @@
 
 /* Color Schemes */
 @import './default-color-scheme.css';
+
+/* Extended design tokens: radius, elevation, motion, gen-light */
+@import './design-tokens.css';

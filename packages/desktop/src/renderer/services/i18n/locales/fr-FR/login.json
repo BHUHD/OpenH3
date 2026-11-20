@@ -13,8 +13,8 @@
   "showPassword": "Afficher le mot de passe",
   "hidePassword": "Masquer le mot de passe",
   "languageToggle": "Changer de langue",
-  "footerPrimary": "Transformez votre IA en ligne de commande",
-  "footerSecondary": "Moderne et efficace",
+  "footerPrimary": "De l'idée à l'image, généré en local",
+  "footerSecondary": "Studio créatif IA pour images et vidéo",
   "errors": {
     "empty": "Veuillez entrer un nom d'utilisateur et un mot de passe",
     "invalidCredentials": "Nom d'utilisateur ou mot de passe invalide",

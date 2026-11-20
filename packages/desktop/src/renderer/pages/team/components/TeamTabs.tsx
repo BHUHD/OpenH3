@@ -151,7 +151,7 @@ const TeamTabView: React.FC<TeamTabViewProps> = ({
       {editing ? (
         <input
           ref={inputRef}
-          className='text-15px flex-1 min-w-0 bg-transparent border-none outline-none text-[color:var(--color-text-1)] p-0'
+          className='text-14px flex-1 min-w-0 bg-transparent border-none outline-none text-[color:var(--color-text-1)] p-0'
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={commitRename}
@@ -183,7 +183,7 @@ const TeamTabView: React.FC<TeamTabViewProps> = ({
               warmupFailed ? (
                 <span
                   data-testid={`team-tab-failed-${slot_id}`}
-                  className='absolute -end-2px -bottom-2px w-12px h-12px rounded-full flex items-center justify-center text-9px font-700 text-white'
+                  className='absolute -end-2px -bottom-2px w-12px h-12px rounded-full flex items-center justify-center text-10px font-700 text-white'
                   style={{ background: 'var(--danger)', border: '1.5px solid var(--bg-base)' }}
                 >
                   !

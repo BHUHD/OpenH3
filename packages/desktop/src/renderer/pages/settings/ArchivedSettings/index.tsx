@@ -474,7 +474,7 @@ const ArchivedSettings: React.FC = () => {
                   <Button
                     size='small'
                     type='secondary'
-                    className='!h-32px !rounded-10px !px-12px !text-14px'
+                    className='!h-32px !rd-card !px-12px !text-14px'
                     onClick={handleCancelSelectionMode}
                   >
                     {t('settings.archived.cancelSelect')}
@@ -482,7 +482,7 @@ const ArchivedSettings: React.FC = () => {
                   <Button
                     size='small'
                     status='warning'
-                    className='!h-32px !rounded-10px !px-12px !text-14px'
+                    className='!h-32px !rd-card !px-12px !text-14px'
                     disabled={selectedRows.length === 0}
                     onClick={handleDeleteSelected}
                   >
@@ -494,7 +494,7 @@ const ArchivedSettings: React.FC = () => {
                   size='default'
                   type='secondary'
                   icon={<ListCheckbox theme='outline' size='16' />}
-                  className='!h-34px !rounded-10px !px-14px !text-14px !font-[500]'
+                  className='!h-34px !rd-card !px-14px !text-14px !font-[500]'
                   onClick={() => setSelectionMode(true)}
                 >
                   {t('settings.archived.multiSelect')}

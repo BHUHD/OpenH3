@@ -8,37 +8,42 @@
   max-width: 100%;
   aspect-ratio: var(--generation-ratio);
   overflow: hidden;
-  border: 1px solid var(--model-center-feature-border, var(--border-base));
-  border-radius: 12px;
-  background: var(--model-center-tint, var(--bg-2));
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-card);
+  background: var(--bg-2);
 }
 
+/* Gen-light sweep: the signature amber→magenta→blue gradient as a moving shimmer */
 .sweep {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     110deg,
-    transparent 30%,
-    color-mix(in srgb, var(--model-center-accent, var(--primary)) 24%, transparent) 50%,
-    transparent 70%
+    transparent 20%,
+    color-mix(in srgb, var(--gen-light-start) 18%, transparent) 36%,
+    color-mix(in srgb, var(--gen-light-mid) 22%, transparent) 50%,
+    color-mix(in srgb, var(--gen-light-end) 18%, transparent) 64%,
+    transparent 80%
   );
   transform: translateX(-100%);
-  animation: generation-sweep 1.8s ease-in-out infinite;
+  animation: generation-sweep 2s ease-in-out infinite;
 }
 
+/* Progress track at the bottom: gen-light gradient fills from left */
 .track {
   position: absolute;
   inset-inline: 0;
   inset-block-end: 0;
   height: 3px;
-  background: color-mix(in srgb, var(--model-center-accent, var(--primary)) 18%, transparent);
+  background: color-mix(in srgb, var(--gen-light-mid) 16%, transparent);
 }
 
 .fill {
   height: 100%;
-  background: var(--model-center-accent, var(--primary));
+  background: var(--gen-light-gradient);
+  background-size: 200% 100%;
   transform-origin: left center;
-  transition: transform 200ms ease-out;
+  transition: transform var(--duration-base) var(--ease-out);
 }
 
 [dir='rtl'] .fill {
@@ -55,7 +60,7 @@
   .sweep {
     animation: none;
     transform: none;
-    opacity: 0.5;
+    opacity: 0.4;
   }
 
   .fill {

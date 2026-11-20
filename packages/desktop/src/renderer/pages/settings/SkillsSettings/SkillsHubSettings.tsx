@@ -543,7 +543,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     }
 
     return (
-      <div className='mt-10px border border-[rgba(var(--warning-6),0.24)] bg-[rgba(var(--warning-6),0.08)] rd-10px px-12px py-10px'>
+      <div className='mt-10px border border-[rgba(var(--warning-6),0.24)] bg-[rgba(var(--warning-6),0.08)] rd-card px-12px py-10px'>
         <div className='flex items-start gap-8px'>
           <span className='shrink-0 mt-1px text-warning-6 text-13px'>!</span>
           <div className='min-w-0 text-12px leading-relaxed text-warning-6'>
@@ -567,7 +567,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   const importHistoryContent = (
     <div data-testid='skill-import-history-page' className='flex flex-col h-full w-full'>
       <div className='space-y-16px pb-24px'>
-        <div className='px-[16px] md:px-[32px] py-20px bg-base rd-16px md:rd-24px shadow-sm border border-b-base'>
+        <div className='px-[16px] md:px-[32px] py-20px bg-base rd-16px md:rd-panel shadow-sm border border-b-base'>
           <div className='flex flex-col sm:flex-row sm:items-start justify-between gap-12px'>
             <div>
               <div className='flex items-center gap-10px'>
@@ -591,9 +591,9 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
           </div>
         </div>
 
-        <div className='px-[16px] md:px-[32px] py-16px bg-base rd-16px md:rd-24px shadow-sm border border-b-base'>
+        <div className='px-[16px] md:px-[32px] py-16px bg-base rd-16px md:rd-panel shadow-sm border border-b-base'>
           {importHistoryGroups.length === 0 ? (
-            <div className='border border-dashed border-border-1 bg-fill-1 rd-10px px-12px py-14px text-12px text-t-tertiary'>
+            <div className='border border-dashed border-border-1 bg-fill-1 rd-card px-12px py-14px text-12px text-t-tertiary'>
               {t('settings.skillsHub.importHistoryEmpty', { defaultValue: 'No import records yet.' })}
             </div>
           ) : (
@@ -623,7 +623,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
                             {group.sourceLabel}
                           </span>
                           <span
-                            className={`shrink-0 border text-11px px-6px py-1px rd-4px font-medium ${getImportHistoryStatusClass(group)}`}
+                            className={`shrink-0 border text-12px px-6px py-1px rd-4px font-medium ${getImportHistoryStatusClass(group)}`}
                           >
                             {getImportHistoryStatusLabel(group)}
                           </span>
@@ -666,7 +666,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
         <div className='shrink-0 flex items-start sm:mt-2px'>
           {isExtension || isAuto ? (
             <div
-              className={`w-40px h-40px rd-10px bg-[rgba(var(--${accent}-6),0.08)] flex items-center justify-center shadow-sm`}
+              className={`w-40px h-40px rd-card bg-[rgba(var(--${accent}-6),0.08)] flex items-center justify-center shadow-sm`}
             >
               {isExtension ? (
                 <Puzzle theme='filled' size={20} fill='rgb(var(--primary-6))' />
@@ -676,7 +676,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
             </div>
           ) : (
             <div
-              className={`w-40px h-40px rd-10px flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
+              className={`w-40px h-40px rd-card flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
             >
               {normalizeSkillDisplayName(skill.name, skill.source).charAt(0).toUpperCase()}
             </div>
@@ -865,7 +865,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
               )}
               <div className='shrink-0 flex items-start sm:mt-2px'>
                 <div
-                  className={`w-40px h-40px rd-10px flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
+                  className={`w-40px h-40px rd-card flex items-center justify-center font-bold text-16px shadow-sm text-transform-uppercase ${getAvatarColorClass(skill.name)}`}
                 >
                   {normalizeSkillDisplayName(skill.name, skill.source).charAt(0).toUpperCase()}
                 </div>

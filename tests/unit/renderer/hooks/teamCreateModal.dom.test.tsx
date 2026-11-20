@@ -204,7 +204,7 @@ describe('TeamCreateModal', () => {
     expect(assistantPane).toHaveClass('px-20px', 'pt-12px', 'pb-18px');
     expect(detailsPane).toHaveClass('px-20px', 'pt-12px', 'pb-14px');
     expect(within(assistantPane).getByText('All assistants (3)')).toBeInTheDocument();
-    expect(within(assistantPane).getByText('All assistants (3)')).toHaveClass('text-15px');
+    expect(within(assistantPane).getByText('All assistants (3)')).toHaveClass('text-14px');
     expect(searchInput.tagName).toBe('INPUT');
     expect(searchInput).toHaveAttribute('placeholder', 'Search');
     expect(within(assistantPane).getByTestId('team-create-agent-picker-body')).not.toHaveClass('bg-fill-1');
@@ -212,7 +212,7 @@ describe('TeamCreateModal', () => {
     expect(within(assistantPane).getByTestId('team-create-agent-option-bare-aionrs')).toHaveClass('!h-44px');
     expect(within(assistantPane).getByTestId('team-create-agent-option-bare-aionrs')).toHaveClass('hover:!bg-fill-2');
     expect(within(detailsPane).getByText('Selected members 0')).toBeInTheDocument();
-    expect(within(detailsPane).getByText('Selected members 0')).toHaveClass('text-15px');
+    expect(within(detailsPane).getByText('Selected members 0')).toHaveClass('text-14px');
     expect(nameInput).toHaveClass('!h-38px', '!text-13px');
     expect(within(detailsPane).getByTestId('workspace-folder-select')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirm Create' })).toHaveClass('!h-38px', '!text-13px');

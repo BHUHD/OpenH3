@@ -43,7 +43,7 @@ const DeleteAssistantModal: React.FC<DeleteAssistantModalProps> = ({
         })}
       </p>
       {activeAssistant && (
-        <div className='mt-12px p-12px bg-fill-2 rounded-lg flex items-center gap-12px'>
+        <div className='mt-12px p-12px bg-fill-2 rd-card flex items-center gap-12px'>
           <AssistantAvatar assistant={activeAssistant} size={32} />
           <div>
             <div className='font-medium'>{activeAssistant.name}</div>

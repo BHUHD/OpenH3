@@ -88,14 +88,14 @@ const EnvVarEditor: React.FC<EnvVarEditorProps> = ({ value, onChange }) => {
                   isVisible ? <PreviewClose theme='outline' size={16} /> : <PreviewOpen theme='outline' size={16} />
                 }
                 onClick={() => toggleVisibility(envVar.id)}
-                className='!h-36px !w-36px !rounded-10px !px-0 text-t-tertiary hover:text-t-secondary'
+                className='!h-36px !w-36px !rd-card !px-0 text-t-tertiary hover:text-t-secondary'
               />
               <Button
                 type='text'
                 size='small'
                 icon={<Delete theme='outline' size={16} />}
                 onClick={() => handleRemove(envVar.id)}
-                className='!h-36px !w-36px !rounded-10px !px-0 text-t-tertiary hover:text-danger'
+                className='!h-36px !w-36px !rd-card !px-0 text-t-tertiary hover:text-danger'
               />
             </div>
           );

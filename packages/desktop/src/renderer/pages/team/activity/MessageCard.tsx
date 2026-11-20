@@ -91,7 +91,7 @@ const MessageCard: React.FC<Props> = ({ message, identity }) => {
         {body}
       </div>
 
-      <div className='flex items-center gap-8px text-11px text-[color:var(--color-text-3)]'>
+      <div className='flex items-center gap-8px text-12px text-[color:var(--color-text-3)]'>
         {attachments > 0 && (
           <span className='inline-flex items-center gap-2px'>
             <Paperclip theme='outline' size='11' fill='currentColor' />

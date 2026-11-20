@@ -122,7 +122,7 @@ const SkillFileBrowser: React.FC<SkillFileBrowserProps> = ({ skill }) => {
   }
 
   return (
-    <div className='h-420px min-h-0 flex overflow-hidden rounded-10px border border-solid border-border-3 bg-bg-1'>
+    <div className='h-420px min-h-0 flex overflow-hidden rd-card border border-solid border-border-3 bg-bg-1'>
       <div data-testid='skill-file-tree-panel' className='w-220px min-w-160px shrink-0 overflow-auto bg-2 p-8px'>
         <Tree
           data-testid='skill-file-tree'

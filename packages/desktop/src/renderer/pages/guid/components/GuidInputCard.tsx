@@ -107,7 +107,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
 
   return (
     <div
-      className={`${styles.guidInputCardWrap} guid-input-card-shell relative rd-24px flex flex-col b b-solid ${slashCommandMenu ? 'overflow-visible' : 'overflow-hidden'} transition-all duration-200 ${isFileDragging ? 'border-dashed guid-input-card-shell--dragging' : ''}`}
+      className={`${styles.guidInputCardWrap} guid-input-card-shell relative rd-panel flex flex-col b b-solid ${slashCommandMenu ? 'overflow-visible' : 'overflow-hidden'} transition-all duration-200 ${isFileDragging ? 'border-dashed guid-input-card-shell--dragging' : ''}`}
       style={{
         zIndex: 1,
         transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
@@ -133,7 +133,7 @@ const GuidInputCard: React.FC<GuidInputCardProps> = ({
           autoSize={textareaAutoSize}
           placeholder={placeholder}
           spellCheck={false}
-          className={`text-14px focus:b-none rounded-xl !bg-transparent !b-none !resize-none !py-0 !pe-0 !ps-7px ${styles.lightPlaceholder}`}
+          className={`text-14px focus:b-none rd-panel !bg-transparent !b-none !resize-none !py-0 !pe-0 !ps-7px ${styles.lightPlaceholder}`}
           value={input}
           onChange={onInputChange}
           onPaste={onPaste}

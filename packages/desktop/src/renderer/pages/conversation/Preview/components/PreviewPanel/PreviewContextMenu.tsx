@@ -154,7 +154,7 @@ const MenuItem: React.FC<{
     }}
   >
     <span>{label}</span>
-    {shortcut && <span className='text-11px text-t-tertiary flex-shrink-0'>{shortcut}</span>}
+    {shortcut && <span className='text-12px text-t-tertiary flex-shrink-0'>{shortcut}</span>}
   </div>
 );
 
