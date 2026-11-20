@@ -7,6 +7,7 @@
 import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
+import { chatModelChoice, rememberChatModel } from '@/renderer/pages/guid/utils/chatModelPreference';
 import { useModelProviderList, useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -84,11 +85,15 @@ export const useAionrsModelSelection = ({
       setCurrentModel(undefined);
   }, [cloud?.session, current_model, storedModel, configuredProviders]);
 
-  const selectionAuthority = useRef({ scope: cloud?.scope, providers });
-  selectionAuthority.current = { scope: cloud?.scope, providers };
+  const authority = { owner: cloud?.ownerId, scope: cloud?.scope, providers };
+  const selectionAuthority = useRef(authority);
+  selectionAuthority.current = authority;
+  const lastRequest = useRef(0);
   const handleSelectModel = useCallback(
     async (provider: IProvider, modelName: string) => {
+      const request = ++lastRequest.current;
       const scope = cloud?.scope;
+      const owner = cloud?.ownerId;
       if (
         provider.managed_by === 'cloud_account' &&
         (cloud?.session?.state !== 'connected' ||
@@ -102,6 +107,8 @@ export const useAionrsModelSelection = ({
       const ok = await onSelectModel(provider, modelName);
       if (
         ok &&
+        request === lastRequest.current &&
+        owner === selectionAuthority.current.owner &&
         (provider.managed_by !== 'cloud_account' ||
           (selectionAuthority.current.scope === scope &&
             selectionAuthority.current.providers.some(
@@ -112,10 +119,19 @@ export const useAionrsModelSelection = ({
           key: `${provider.id}:${modelName}`,
           protocol: provider.model_settings?.[modelName]?.openai_api_mode,
         };
+        if (owner) rememberChatModel(owner, chatModelChoice(provider, modelName, cloud?.accountKey));
         setCurrentModel(selected);
       }
     },
-    [onSelectModel, cloud?.scope, cloud?.session?.state, providers, getAvailableModels]
+    [
+      onSelectModel,
+      cloud?.scope,
+      cloud?.accountKey,
+      cloud?.ownerId,
+      cloud?.session?.state,
+      providers,
+      getAvailableModels,
+    ]
   );
 
   const getDisplayModelName = useCallback(

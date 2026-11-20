@@ -40,6 +40,7 @@ type State = {
 };
 export type OwnedRead = (request: CloudAccountRequest) => Promise<CloudAccountResponse | undefined>;
 type Lifecycle = State & {
+  ownerId?: string;
   scope: string;
   accountKey: string;
   captureScope: () => () => boolean;
@@ -526,6 +527,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   }, [scope, current.session?.state]);
   const value: Lifecycle = {
     ...current,
+    ownerId: owner,
     scope,
     // Intent identity survives unrelated read/dialog epochs. Consumers never parse it.
     accountKey: JSON.stringify([

@@ -1,4 +1,3 @@
-import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 /**
  * @license
  * Copyright 2025 AionUi (aionui.com)
@@ -6,168 +5,128 @@ import { useOptionalCloudAccount } from '@/renderer/components/settings/Settings
  */
 
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
+import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import { useGoogleAuthModels } from '@/renderer/hooks/agent/useGoogleAuthModels';
 import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  chatModelChoice,
+  parseChatModelChoice,
+  rememberChatModel,
+  useRememberedChatModel,
+  type ChatModelChoice,
+} from '../utils/chatModelPreference';
 import { getAvailableModels, hasAvailableModels } from '../utils/modelUtils';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-/**
- * Build a unique key for a provider/model pair.
- */
-const buildModelKey = (providerId?: string, modelName?: string) => {
-  if (!providerId || !modelName) return null;
-  return `${providerId}:${modelName}`;
-};
-
-/**
- * Check if a model key still exists in the provider list.
- */
-const isModelKeyAvailable = (key: string | null, providers?: IProvider[]) => {
-  if (!key || !providers || providers.length === 0) return false;
-  return providers.some((provider) => {
-    if (!provider.id || !provider.models?.length) return false;
-    return provider.models.some((modelName) => buildModelKey(provider.id, modelName) === key);
-  });
-};
-
-/** Provider-based agent keys that share the model list UI */
-type ProviderAgentKey = 'aionrs';
-
+type SelectOptions = { persistPreference?: boolean; automatic?: boolean; fixed?: boolean };
 export type GuidModelSelectionResult = {
   modelList: IProvider[];
   isGoogleAuth: boolean;
   formatGeminiModelLabel: (provider: { platform?: string } | undefined, modelName?: string) => string;
   current_model: TProviderWithModel | undefined;
-  setCurrentModel: (
-    model_info: TProviderWithModel,
-    options?: { persistPreference?: boolean; automatic?: boolean }
-  ) => Promise<void>;
+  setCurrentModel: (model: TProviderWithModel, options?: SelectOptions) => Promise<void>;
   resetCurrentModel: (options?: { persistPreference?: boolean }) => Promise<void>;
 };
 
-/**
- * Hook that manages the provider-backed model selection state for the Guid page.
- * Assistant-driven defaults are applied by the caller; this hook only owns the
- * transient in-page selection.
- * @param agentKey - current provider-based agent (currently only 'aionrs')
- */
-export const useGuidModelSelection = (agentKey: ProviderAgentKey = 'aionrs'): GuidModelSelectionResult => {
+/** Resolve choices against live provider records so sends always receive the current provider and model. */
+export const useGuidModelSelection = (_agentKey: 'aionrs' = 'aionrs'): GuidModelSelectionResult => {
   const cloud = useOptionalCloudAccount();
-  const explicitRequired = useRef(false);
-  const selectedProtocol = useRef<string | undefined>(undefined);
-  const selectedScope = useRef<string | undefined>(undefined);
+  const owner = cloud?.ownerId;
+  const accountKey = cloud?.accountKey ?? cloud?.scope;
   const { isGoogleAuth } = useGoogleAuthModels();
-  const { data: modelConfig } = useProvidersQuery();
-
-  const modelList = useMemo(() => {
-    const allProviders: IProvider[] = (modelConfig || []).filter(
-      (platform) =>
-        !!platform.models.length &&
-        (platform.managed_by !== 'cloud_account' ||
-          (platform.enabled !== false && cloud?.session?.state === 'connected'))
-    );
-    return allProviders.filter(hasAvailableModels);
-  }, [modelConfig, cloud?.session?.state]);
-
-  const formatGeminiModelLabel = useCallback((_provider: { platform?: string } | undefined, modelName?: string) => {
-    if (!modelName) return '';
-    return modelName;
-  }, []);
-
-  const [current_model, _setCurrentModel] = useState<TProviderWithModel>();
-  const selectedModelKeyRef = useRef<string | null>(null);
-
-  const setCurrentModel = useCallback(
-    async (model_info: TProviderWithModel, options?: { persistPreference?: boolean; automatic?: boolean }) => {
-      if (options?.automatic && (explicitRequired.current || model_info.managed_by === 'cloud_account')) return;
+  const { data: providers } = useProvidersQuery();
+  const modelList = useMemo(
+    () =>
+      (providers ?? []).filter(
+        (p) =>
+          p.enabled !== false &&
+          !p.platform?.toLowerCase().includes('gemini-with-google-auth') &&
+          (p.managed_by !== 'cloud_account' || cloud?.session?.state === 'connected') &&
+          hasAvailableModels(p)
+      ),
+    [providers, cloud?.session?.state]
+  );
+  const raw = useRememberedChatModel(owner);
+  const remembered = useMemo(() => parseChatModelChoice(raw), [raw]);
+  const [override, setOverride] = useState<{
+    owner?: string;
+    choice: ChatModelChoice | 'unavailable';
+    kind: 'manual' | 'fixed' | 'automatic';
+  }>();
+  const local = override?.owner === owner ? override : undefined;
+  const resolve = useCallback(
+    (choice?: ChatModelChoice | 'unavailable'): TProviderWithModel | undefined => {
+      if (!choice || choice === 'unavailable') return;
+      const provider = modelList.find((p) => p.id === choice.providerId);
+      if (!provider || !getAvailableModels(provider).includes(choice.modelName)) return;
+      if ((provider.managed_by === 'cloud_account') !== (choice.source === 'cloud_account')) return;
       if (
-        model_info.managed_by === 'cloud_account' &&
-        (cloud?.session?.state !== 'connected' ||
-          !modelList.some((p) => p.id === model_info.id && getAvailableModels(p).includes(model_info.use_model)))
+        choice.source === 'cloud_account' &&
+        (choice.accountKey !== accountKey ||
+          choice.protocol !== provider.model_settings?.[choice.modelName]?.openai_api_mode)
       )
         return;
-      explicitRequired.current = false;
-      selectedProtocol.current = model_info.model_settings?.[model_info.use_model]?.openai_api_mode;
-      selectedScope.current = cloud?.scope;
-      selectedModelKeyRef.current = buildModelKey(model_info.id, model_info.use_model);
-      _setCurrentModel(model_info);
+      return { ...provider, use_model: choice.modelName };
     },
-    [cloud?.scope, cloud?.session?.state, modelList]
+    [modelList, accountKey]
   );
 
-  const resetCurrentModel = useCallback(
-    async (options?: { persistPreference?: boolean }) => {
-      if (!modelList || modelList.length === 0) {
-        return;
-      }
+  const rememberedModel = useMemo(() => resolve(remembered), [remembered, resolve]);
+  // A fixed assistant can use a different configured default. For a matching model name,
+  // preserve the explicit provider instead of resolving it to the first same-named model.
+  const useLocal =
+    local &&
+    (local.kind === 'manual' ||
+      !remembered ||
+      (local.kind === 'fixed' &&
+        rememberedModel &&
+        local.choice !== 'unavailable' &&
+        local.choice.modelName !== rememberedModel.use_model));
+  const choice = useLocal ? local.choice : remembered;
+  const resolved = useMemo(() => resolve(choice), [resolve, choice]);
+  const waitingForOwner = cloud && 'ownerId' in cloud && !owner;
+  const fallback = useMemo(() => {
+    const provider = modelList.find((p) => p.managed_by !== 'cloud_account');
+    return provider ? { ...provider, use_model: getAvailableModels(provider)[0] } : undefined;
+  }, [modelList]);
 
-      selectedModelKeyRef.current = null;
-
-      if (explicitRequired.current) return;
-      const defaultModel = modelList.find((provider) => provider.managed_by !== 'cloud_account');
-      const resolvedUseModel = defaultModel ? (getAvailableModels(defaultModel)[0] ?? '') : '';
-
-      if (!defaultModel || !resolvedUseModel) return;
-
-      await setCurrentModel(
-        {
-          ...defaultModel,
-          use_model: resolvedUseModel,
-        },
-        options
-      );
-    },
-    [modelList, setCurrentModel]
-  );
-
-  // Set default model when modelList or agent changes
   useEffect(() => {
-    const setDefaultModel = async () => {
-      if (
-        current_model?.managed_by === 'cloud_account' &&
-        (cloud?.scope !== selectedScope.current ||
-          !modelList.some(
-            (p) =>
-              p.id === current_model.id &&
-              getAvailableModels(p).includes(current_model.use_model) &&
-              p.model_settings?.[current_model.use_model]?.openai_api_mode === selectedProtocol.current
-          ))
-      ) {
-        explicitRequired.current = true;
-        selectedModelKeyRef.current = null;
-        _setCurrentModel(undefined);
-        return;
-      }
-      if (explicitRequired.current || !modelList || modelList.length === 0) return;
-      const currentKey = selectedModelKeyRef.current || buildModelKey(current_model?.id, current_model?.use_model);
-      if (isModelKeyAvailable(currentKey, modelList)) {
-        if (!selectedModelKeyRef.current && currentKey) {
-          selectedModelKeyRef.current = currentKey;
-        }
-        return;
-      }
-      await resetCurrentModel();
-    };
+    if (!choice || choice === 'unavailable' || resolved || providers === undefined) return;
+    if (choice.source === 'cloud_account' && (!cloud?.session || cloud.catalogPending)) return;
+    // Wait for provider/session hydration; an authoritative withdrawal must not silently
+    // select another provider or reactivate a withdrawn billing source on the next chat.
+    if (useLocal) setOverride({ owner, choice: 'unavailable', kind: 'manual' });
+    else if (owner) rememberChatModel(owner, 'unavailable');
+  }, [choice, cloud?.session, cloud?.catalogPending, resolved, providers, owner, useLocal]);
 
-    setDefaultModel().catch((error) => {
-      console.error('Failed to set default model:', error);
-    });
-  }, [agentKey, cloud?.scope, current_model, modelList, resetCurrentModel]);
+  const setCurrentModel = useCallback(
+    async (model: TProviderWithModel, options?: SelectOptions) => {
+      const selected = chatModelChoice(model, model.use_model, accountKey);
+      if (!resolve(selected)) return;
+      if (options?.automatic) {
+        if (selected.source === 'cloud_account' || choice === 'unavailable' || (choice && !resolved)) return;
+        setOverride({ owner, choice: selected, kind: options.fixed ? 'fixed' : 'automatic' });
+      } else if (owner && options?.persistPreference !== false) {
+        rememberChatModel(owner, selected);
+        setOverride(undefined);
+      } else {
+        setOverride({ owner, choice: selected, kind: 'manual' });
+      }
+    },
+    [accountKey, choice, owner, resolve, resolved]
+  );
+  const resetCurrentModel = useCallback(async () => {
+    setOverride((current) => (current?.kind === 'manual' ? current : undefined));
+  }, []);
+  const formatGeminiModelLabel = useCallback(
+    (_provider: { platform?: string } | undefined, model?: string) => model ?? '',
+    []
+  );
   return {
     modelList,
     isGoogleAuth,
     formatGeminiModelLabel,
-    current_model:
-      current_model?.managed_by === 'cloud_account' &&
-      (selectedScope.current !== cloud?.scope ||
-        !modelList.some(
-          (p) =>
-            p.id === current_model.id &&
-            getAvailableModels(p).includes(current_model.use_model) &&
-            p.model_settings?.[current_model.use_model]?.openai_api_mode === selectedProtocol.current
-        ))
-        ? undefined
-        : current_model,
+    current_model: choice ? resolved : waitingForOwner ? undefined : fallback,
     setCurrentModel,
     resetCurrentModel,
   };

@@ -376,7 +376,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // another). Omit it: no pick means no override, and the agent resolves the
     // model from the user's own config.
     const assistantOverrideModel =
-      selectedAcpModel || (assistantBackend === 'aionrs' ? current_model?.use_model : undefined) || undefined;
+      (assistantBackend === 'aionrs' ? current_model?.use_model : selectedAcpModel) || undefined;
     const assistantOverrides = {
       model: assistantOverrideModel,
       permission: selectedMode || undefined,

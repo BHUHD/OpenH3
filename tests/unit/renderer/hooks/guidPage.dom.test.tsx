@@ -811,7 +811,7 @@ describe('GuidPage', () => {
           id: 'provider-openai',
           use_model: 'gpt-4.1',
         }),
-        { persistPreference: false, automatic: true }
+        { persistPreference: false, automatic: true, fixed: false }
       );
     });
   });

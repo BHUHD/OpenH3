@@ -474,7 +474,11 @@ const GuidPage: React.FC = () => {
                 ...matchedProvider,
                 use_model: resolvedDefaults.modelId,
               },
-              { persistPreference: false, automatic: true }
+              {
+                persistPreference: false,
+                automatic: true,
+                fixed: selectedAssistantDetail.defaults.model.mode === 'fixed',
+              }
             );
           }
         } else {
@@ -564,9 +568,9 @@ const GuidPage: React.FC = () => {
   const setGuidCurrentModel = useCallback(
     (model: TProviderWithModel) => {
       manualModelSelectionAssistantRef.current = selectedAssistantId;
-      return modelSelection.setCurrentModel(model, { persistPreference: !hasSelectedAssistant });
+      return modelSelection.setCurrentModel(model);
     },
-    [hasSelectedAssistant, modelSelection, selectedAssistantId]
+    [modelSelection, selectedAssistantId]
   );
 
   // Reset guid-local options before paint while retaining the unsent draft.

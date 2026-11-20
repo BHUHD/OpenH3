@@ -10,8 +10,11 @@ import path from 'node:path';
 import { createInstance } from 'i18next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18nConfig from '@/common/config/i18n-config.json';
-import type { IMcpServer } from '@/common/config/storage';
+import type { IMcpServer, IProvider } from '@/common/config/storage';
 import { useGuidSend, type GuidSendDeps } from '@/renderer/pages/guid/hooks/useGuidSend';
+import { useGuidModelSelection } from '@/renderer/pages/guid/hooks/useGuidModelSelection';
+import { useAionrsModelSelection } from '@/renderer/pages/conversation/platforms/aionrs/useAionrsModelSelection';
+import { getAvailableModels } from '@/renderer/pages/guid/utils/modelUtils';
 import { Message } from '@arco-design/web-react';
 import { resetGuidDraft, setGuidTemplateSnapshot, useGuidDraft } from '@/renderer/pages/guid/hooks/useGuidDraft';
 import { templateSnapshotFixture } from '../contentCatalog/galleryFixture';
@@ -23,6 +26,31 @@ const createConversationInvokeMock = vi.fn();
 const swrMutateMock = vi.fn();
 const bindCreationMock = vi.fn().mockResolvedValue({ ok: true });
 const checkCreationToolsMock = vi.fn();
+const modelSession = vi.hoisted(() => ({
+  ownerId: 'local-user-a',
+  scope: 'scope-a',
+  accountKey: 'identity-a-1',
+  connected: true,
+  sessionLoading: false,
+  providers: [] as IProvider[],
+}));
+vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/Provider', () => ({
+  useOptionalCloudAccount: () => ({
+    ownerId: modelSession.ownerId,
+    accountKey: modelSession.accountKey,
+    scope: modelSession.scope,
+    session: modelSession.sessionLoading
+      ? undefined
+      : modelSession.connected
+        ? { state: 'connected', account: { id: 'a' }, generation: '1' }
+        : { state: 'disconnected' },
+  }),
+}));
+vi.mock('@/renderer/hooks/agent/useGoogleAuthModels', () => ({ useGoogleAuthModels: () => ({ isGoogleAuth: false }) }));
+vi.mock('@/renderer/hooks/agent/useModelProviderList', () => ({
+  useProvidersQuery: () => ({ data: modelSession.providers }),
+  useModelProviderList: () => ({ providers: modelSession.providers, getAvailableModels, formatModelLabel: vi.fn() }),
+}));
 vi.mock('@/common/chat/document/h3JobApi', () => ({
   h3JobApi: { bindCreation: (...args: unknown[]) => bindCreationMock(...args) },
 }));
@@ -820,6 +848,127 @@ describe('useGuidSend', () => {
       userServers: [],
       builtinServers: [media],
     });
+  });
+
+  describe('model selection from an existing Aionrs conversation', () => {
+    const model = 'same-model';
+    const firstByok: IProvider = {
+      id: 'first-byok',
+      name: 'First BYOK',
+      platform: 'openai',
+      api_key: '',
+      base_url: '',
+      models: [model],
+    };
+    const official: IProvider = {
+      ...firstByok,
+      id: 'official',
+      name: 'Official',
+      managed_by: 'cloud_account',
+      model_settings: { [model]: { openai_api_mode: 'responses' } },
+    };
+    const otherByok: IProvider = { ...firstByok, id: 'other-byok', name: 'Other BYOK' };
+
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      modelSession.connected = true;
+      modelSession.sessionLoading = false;
+      modelSession.providers = [firstByok, official, otherByok];
+      modelSession.accountKey = 'identity-a-1';
+      modelSession.scope = 'scope-a';
+    });
+
+    const selectInChat = async (provider: IProvider, accepted = true) => {
+      const conversation = renderHook(() =>
+        useAionrsModelSelection({
+          initialModel: { ...firstByok, use_model: model },
+          onSelectModel: async () => accepted,
+        })
+      );
+      await act(() => conversation.result.current.handleSelectModel(provider, model));
+      if (accepted) expect(conversation.result.current.current_model?.id).toBe(provider.id);
+      conversation.unmount();
+    };
+
+    const newChat = () => {
+      const deps = { ...createDeps(), selectedAssistantBackend: 'aionrs', selectedAcpModel: 'stale-acp-model' };
+      return renderHook(() => {
+        const selection = useGuidModelSelection();
+        const { handleSend } = useGuidSend({ ...deps, current_model: selection.current_model });
+        return { selection, handleSend };
+      });
+    };
+
+    it('restores the selected funding source even when all providers offer the same model', async () => {
+      await selectInChat(official);
+      const fresh = newChat();
+      // Guid also applies assistant defaults after their independent query resolves.
+      await act(() =>
+        fresh.result.current.selection.setCurrentModel(
+          { ...firstByok, use_model: model },
+          { automatic: true, persistPreference: false }
+        )
+      );
+      await act(() => fresh.result.current.selection.resetCurrentModel({ persistPreference: false }));
+      await act(() => fresh.result.current.handleSend());
+      expect(fresh.result.current.selection.current_model?.id).toBe(official.id);
+      expect(createConversationInvokeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.objectContaining({ id: official.id, use_model: model }),
+          assistant: expect.objectContaining({ conversation_overrides: expect.objectContaining({ model }) }),
+        })
+      );
+    });
+
+    it('carries an intentional switch back to a specific BYOK provider into a new conversation', async () => {
+      await selectInChat(official);
+      await selectInChat(otherByok);
+      await selectInChat(firstByok, false);
+      const fresh = newChat();
+      await act(() => fresh.result.current.handleSend());
+      expect(fresh.result.current.selection.current_model?.id).toBe(otherByok.id);
+      expect(createConversationInvokeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.objectContaining({ id: otherByok.id, use_model: model }),
+        })
+      );
+    });
+
+    it('waits for the signed-in identity to load before restoring or sending a managed choice', async () => {
+      await selectInChat(official);
+      modelSession.sessionLoading = true;
+      const fresh = newChat();
+      await act(() => fresh.result.current.handleSend());
+      expect(fresh.result.current.selection.current_model).toBeUndefined();
+      expect(createConversationInvokeMock).not.toHaveBeenCalled();
+      modelSession.sessionLoading = false;
+      fresh.rerender();
+      expect(fresh.result.current.selection.current_model?.id).toBe(official.id);
+      await act(() => fresh.result.current.handleSend());
+      expect(createConversationInvokeMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.objectContaining({ id: official.id, use_model: model }),
+        })
+      );
+    });
+
+    it.each(['logout', 'account changed', 'model withdrawn'])(
+      'requires explicit selection after %s',
+      async (change) => {
+        await selectInChat(official);
+        if (change === 'logout') modelSession.connected = false;
+        if (change === 'account changed') {
+          modelSession.accountKey = 'identity-b-1';
+          modelSession.scope = 'scope-b';
+        }
+        if (change === 'model withdrawn') modelSession.providers = [firstByok, otherByok];
+        const fresh = newChat();
+        await act(() => fresh.result.current.handleSend());
+        expect(fresh.result.current.selection.current_model).toBeUndefined();
+        expect(createConversationInvokeMock).not.toHaveBeenCalled();
+      }
+    );
   });
 
   it('passes selected mode into assistant conversation overrides when creating a preset ACP conversation', async () => {
