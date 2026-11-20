@@ -123,7 +123,10 @@ export type H3Job = {
   /** Reserved before retrying, persisted so restarts cannot reset the OOM allowance. */
   oomRetryCount?: number;
   promptId?: string;
-  parentVersionId?: string;
+  /** Derivation source or selection at submission. Null indicates a root. */
+  parentVersionId?: string | null;
+  /** Selection revision at submission. Absent means completion must not change the selection. */
+  autoSelectAtRevision?: string | null;
   cancelRequested?: boolean;
   startedAt?: string;
   finishedAt?: string;
@@ -177,6 +180,8 @@ export const h3VersionSchema = z
     review: z.enum(['candidate', 'accepted', 'rejected']).optional(),
     /** The version that was selected immediately before this candidate was accepted. */
     previousSelectedId: z.string().min(1).optional(),
+    /** Updated whenever this version becomes the current selection. */
+    selectionRevision: z.string().min(1).optional(),
     artifactPath: z.string().min(1).optional(),
   })
   .strict();

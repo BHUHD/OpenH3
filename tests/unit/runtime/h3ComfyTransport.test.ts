@@ -28,7 +28,7 @@ async function listenOnFetchSafePort(server: ReturnType<typeof createServer>) {
   }
 }
 
-async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error') {
+async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error' | 'held') {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-transport-'));
   const workflowPath = path.join(directory, 'workflow.json');
   fs.writeFileSync(workflowPath, JSON.stringify({ '1': { class_type: 'TestNode', inputs: {} } }));
@@ -36,6 +36,7 @@ async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error') {
     histories = 0,
     clientId = '',
     connectedId = '';
+  let completed = mode !== 'held';
   const server = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
     if (req.url?.startsWith('/object_info/')) {
@@ -50,9 +51,15 @@ async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error') {
       res.end(JSON.stringify({ prompt_id: 'mine' }));
       return;
     }
+    if (req.url === '/system_stats') {
+      res.end('{}');
+      return;
+    }
     if (req.url === '/history/mine') {
       histories++;
-      if (histories === 1) {
+      if (!completed) {
+        res.end('{}');
+      } else if (mode !== 'held' && histories === 1) {
         res.end('{}');
         setTimeout(() => {
           for (const ws of sockets.clients) {
@@ -94,6 +101,13 @@ async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error') {
   });
   const port = await listenOnFetchSafePort(server);
   return {
+    workflowPath,
+    hold: () => {
+      completed = false;
+    },
+    complete: () => {
+      completed = true;
+    },
     client: new H3ComfyClient({
       baseUrl: `http://127.0.0.1:${port}`,
       workflowPath,
@@ -107,6 +121,65 @@ async function fixture(mode: 'events' | 'disconnect' | 'missing' | 'error') {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       fs.rmSync(directory, { recursive: true, force: true });
+    },
+  };
+}
+
+async function startMediaService(directory: string, backendUrl: string, workflowPath?: string) {
+  const reservation = createServer();
+  const port = await listenOnFetchSafePort(reservation);
+  await new Promise<void>((resolve) => reservation.close(() => resolve()));
+  const serviceFile = path.join(directory, 'service.cjs');
+  await build({
+    entryPoints: ['scripts/media-service.ts'],
+    outfile: serviceFile,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    external: ['better-sqlite3', 'electron'],
+    logLevel: 'silent',
+    tsconfig: 'tsconfig.json',
+  });
+  const child = spawn(process.execPath, [serviceFile], {
+    windowsHide: true,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    env: {
+      ...process.env,
+      NODE_PATH: path.resolve('node_modules'),
+      AIONUI_DATA_DIR: directory,
+      AIONUI_MEDIA_PORT: String(port),
+      AIONUI_H3_URL: backendUrl,
+      AIONUI_H3_WORKFLOW: workflowPath,
+    },
+  });
+  let diagnostics = '';
+  child.stderr.on('data', (data) => {
+    diagnostics += String(data);
+  });
+  const request = (route: string, init?: RequestInit) =>
+    fetch(`http://127.0.0.1:${port}${route}`, { ...init, signal: AbortSignal.timeout(10_000) });
+  return {
+    request,
+    ready: async () => {
+      await expect
+        .poll(
+          async () => {
+            const response = await request('/api/h3/versions').catch(() => undefined);
+            await response?.text();
+            return response?.status;
+          },
+          { timeout: 5_000, message: 'Media service did not start' }
+        )
+        .toBe(200)
+        .catch((error: Error) => {
+          throw new Error(`${error.message}\n${diagnostics}`, { cause: error });
+        });
+    },
+    close: async () => {
+      if (child.exitCode !== null || child.signalCode !== null) return;
+      const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+      child.kill();
+      await exited;
     },
   };
 }
@@ -128,56 +201,16 @@ describe('H3 preflight and WebSocket transport integration', () => {
       );
     });
     const backendPort = await listenOnFetchSafePort(backend);
-    const reservation = createServer();
-    const servicePort = await listenOnFetchSafePort(reservation);
-    await new Promise<void>((resolve) => reservation.close(() => resolve()));
-    const serviceFile = path.join(directory, 'service.cjs');
-    await build({
-      entryPoints: ['scripts/media-service.ts'],
-      outfile: serviceFile,
-      bundle: true,
-      platform: 'node',
-      format: 'cjs',
-      external: ['better-sqlite3', 'electron'],
-      logLevel: 'silent',
-      tsconfig: 'tsconfig.json',
-    });
     fs.writeFileSync(
       path.join(directory, 'h3-jobs.json'),
       JSON.stringify([
         { ...createH3Job({ prompt: 'test' }, 'blocked'), status: 'failed', promptId: 'remote', remoteUncertain: true },
       ])
     );
-    const child = spawn(process.execPath, [serviceFile], {
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        NODE_PATH: path.resolve('node_modules'),
-        AIONUI_DATA_DIR: directory,
-        AIONUI_MEDIA_PORT: String(servicePort),
-        AIONUI_H3_URL: `http://127.0.0.1:${backendPort}`,
-      },
-    });
-    let diagnostics = '';
-    child.stderr?.on('data', (data) => {
-      diagnostics += String(data);
-    });
-    const request = (route: string, init?: RequestInit) =>
-      fetch(`http://127.0.0.1:${servicePort}${route}`, { ...init, signal: AbortSignal.timeout(10_000) });
+    const service = await startMediaService(directory, `http://127.0.0.1:${backendPort}`);
+    const { request } = service;
     try {
-      let ready = false;
-      for (let attempt = 0; attempt < 50; attempt++) {
-        try {
-          const response = await request('/api/h3/jobs/blocked');
-          await response.text();
-          ready = true;
-          break;
-        } catch {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
-      expect(ready, diagnostics).toBe(true);
+      await service.ready();
       const missing = await request('/api/h3/jobs/missing');
       expect(missing.status).toBe(404);
       await missing.text();
@@ -196,14 +229,83 @@ describe('H3 preflight and WebSocket transport integration', () => {
       const stream = await request('/api/h3/jobs/blocked/events');
       expect(await stream.text()).toContain('"remoteUncertain":false');
     } finally {
-      const exited = new Promise<void>((resolve) => {
-        if (child.exitCode !== null) resolve();
-        else child.once('exit', () => resolve());
-      });
-      child.kill();
-      await exited;
+      await service.close();
       backend.closeAllConnections();
       await new Promise<void>((resolve) => backend.close(() => resolve()));
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it('preserves the submitted parent when the selected version changes during generation', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'h3-lineage-'));
+    const backend = await fixture('held');
+    fs.writeFileSync(
+      path.join(directory, 'h3-versions.json'),
+      JSON.stringify([
+        { id: 'a', jobId: 'job-a', parentId: null, selected: true, label: 'A', createdAt: '2026-01-01T00:00:00Z' },
+        { id: 'b', jobId: 'job-b', parentId: 'a', selected: false, label: 'B', createdAt: '2026-01-01T00:00:01Z' },
+      ])
+    );
+    fs.writeFileSync(
+      path.join(directory, 'h3-jobs.json'),
+      JSON.stringify([{ ...createH3Job({ prompt: 'Generate A' }, 'job-a'), status: 'succeeded' }])
+    );
+    const service = await startMediaService(directory, backend.client.getBaseUrl(), backend.workflowPath);
+    const { request } = service;
+    const post = (route: string, body: object) => request(route, { method: 'POST', body: JSON.stringify(body) });
+    try {
+      await service.ready();
+      const submission = await post('/api/h3/jobs', { prompt: 'Generate C' });
+      expect(submission.status).toBe(201);
+      const { id } = await submission.json();
+      const selectB = await post('/api/h3/versions/select', { id: 'b', expectedSelectedId: 'a' });
+      expect(selectB.status).toBe(200);
+      await selectB.text();
+      backend.complete();
+
+      await expect
+        .poll(async () => (await (await request('/api/h3/versions')).json()).length, { timeout: 10_000 })
+        .toBe(3);
+      const versions = await (await request('/api/h3/versions')).json();
+      expect(versions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'b', selected: true }),
+          expect.objectContaining({ jobId: id, parentId: 'a', selected: false, review: 'candidate' }),
+        ])
+      );
+      expect(await (await request(`/api/h3/jobs/${id}`)).json()).toMatchObject({
+        status: 'succeeded',
+        parentVersionId: 'a',
+      });
+      const candidate = versions.find((version: { jobId: string }) => version.jobId === id);
+      const selectC = await post('/api/h3/versions/select', { id: candidate.id, expectedSelectedId: 'b' });
+      expect(selectC.status).toBe(200);
+      expect(await selectC.json()).toContainEqual(
+        expect.objectContaining({ id: candidate.id, parentId: 'a', previousSelectedId: 'b', selected: true })
+      );
+      expect(await (await post('/api/h3/versions/undo', {})).json()).toContainEqual(
+        expect.objectContaining({ id: 'b', selected: true })
+      );
+
+      backend.hold();
+      const derivation = await post('/api/h3/versions/a/derive', { prompt: 'Derive from A' });
+      expect(derivation.status).toBe(201);
+      const derivedJob = await derivation.json();
+      expect(derivedJob).toMatchObject({ parentVersionId: 'a' });
+      expect((await post('/api/h3/versions/select', { id: 'a', expectedSelectedId: 'b' })).status).toBe(200);
+      backend.complete();
+      await expect
+        .poll(async () => (await (await request('/api/h3/versions')).json()).length, { timeout: 10_000 })
+        .toBe(4);
+      expect(await (await request('/api/h3/versions')).json()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'a', selected: true }),
+          expect.objectContaining({ jobId: derivedJob.id, parentId: 'a', selected: false }),
+        ])
+      );
+    } finally {
+      await service.close();
+      await backend.close();
       fs.rmSync(directory, { recursive: true, force: true });
     }
   }, 30_000);
