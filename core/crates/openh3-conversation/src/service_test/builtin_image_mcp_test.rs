@@ -192,3 +192,93 @@ async fn frozen_image_mcp_keeps_a_custom_snapshot_with_the_canonical_name() {
         vec![custom, frozen_stdio(&id, LEGACY_NAME, CURRENT_SCRIPT, json!({}))]
     );
 }
+
+#[tokio::test]
+async fn live_account_defaults_register_only_their_media_tools_for_an_existing_chat() {
+    let (mut service, _, conversations, _) = make_service();
+    let repo = make_repo().await;
+    let image = create_image_server(repo.as_ref(), IMAGE_MCP_NAME, true, "node").await;
+    let video = create_image_server(repo.as_ref(), "openh3-video-media", true, "node").await;
+    let video_script = CURRENT_SCRIPT.replace("image-gen", "video-media");
+    let video_config = json!({ "command": "node", "args": [video_script] }).to_string();
+    repo.update(
+        USER,
+        &video,
+        UpdateMcpServerParams {
+            transport_config: Some(&video_config),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    service.with_mcp_server_repo(repo);
+    let dir = tempfile::tempdir().unwrap();
+    let row = frozen_conversation(USER, dir.path(), &[]);
+    conversations.create(&row).await.unwrap();
+    let marker = dir.path().join("account-defaults.json");
+    let descriptor = json!({ "port": 4321, "publicKey": "public-only", "defaultsFile": marker }).to_string();
+    service.desktop_media = Some(descriptor.clone());
+    let mut initial = service.build_task_options(&row).await.unwrap();
+    assert!(initial.session_mcp_servers_mut().is_empty());
+    std::fs::write(
+        &marker,
+        r#"{"image":"bba1a92d-56fe-4df2-bde7-fbc59aecc1fc","video":"991d9fa1-17dc-449d-9830-8630c1b81483"}"#,
+    )
+    .unwrap();
+    let mut next = service.build_task_options(&row).await.unwrap();
+    next.apply_conversation_runtime_context(USER, &row.id, None, None, Some("live-helper"));
+    assert!(!initial.runtime_capabilities.satisfies(&next.runtime_capabilities));
+    let tools = next.session_mcp_servers_mut();
+    assert_eq!(tools.len(), 2);
+    assert_eq!(tools[0].id, image);
+    assert_eq!(tools[1].id, video);
+    for server in tools {
+        let SessionMcpTransport::Stdio { env, .. } = &server.transport else {
+            panic!()
+        };
+        assert_eq!(env["OPENH3_MEDIA_ACCOUNT_ONLY"], "1");
+        assert_eq!(env["OPENH3_CONVERSATION_ID"], row.id);
+        assert_eq!(env["OPENH3_USER_ID"], USER);
+        assert_eq!(env["OPENH3_MEDIA_WORKSPACE"], dir.path().to_str().unwrap());
+        assert_eq!(env["OPENH3_DESKTOP_MEDIA_CONTEXT"], descriptor);
+        assert_eq!(env["OPENH3_RUNTIME_TOKEN"], "live-helper");
+        assert!(!env.contains_key("OPENH3_IMG_MODEL"));
+    }
+    assert_eq!(
+        conversations.get(USER, &row.id).await.unwrap().unwrap().extra,
+        row.extra
+    );
+
+    let mut opted_out = row.clone();
+    opted_out.extra = json!({ "workspace": dir.path(), "account_media_excluded_kinds": ["video"] }).to_string();
+    let mut opts = service.build_task_options(&opted_out).await.unwrap();
+    assert_eq!(opts.session_mcp_servers_mut().len(), 1);
+    assert_eq!(opts.session_mcp_servers_mut()[0].id, image);
+    let mut creation = row.clone();
+    creation.extra =
+        json!({ "workspace": dir.path(), "creation_request": {"kind": "video", "source": "local"} }).to_string();
+    let mut opts = service.build_task_options(&creation).await.unwrap();
+    assert!(opts.session_mcp_servers_mut().is_empty());
+
+    let old = frozen_stdio(
+        &video,
+        "aionui-video-media",
+        &LEGACY_SCRIPT.replace("image-gen", "video-media"),
+        json!({"OPENH3_DESKTOP_MEDIA_CONTEXT":"stale", "OPENH3_MEDIA_WORKSPACE":"wrong", "OPENH3_RUNTIME_TOKEN":"stale", "CUSTOM":"session"}),
+    );
+    std::fs::remove_file(marker).unwrap();
+    let frozen = frozen_conversation(USER, dir.path(), &[old]);
+    let mut opts = service.build_task_options(&frozen).await.unwrap();
+    opts.apply_conversation_runtime_context(USER, &frozen.id, None, None, Some("fresh"));
+    let tool = &opts.session_mcp_servers_mut()[0];
+    assert_eq!(tool.name, "openh3-video-media");
+    let SessionMcpTransport::Stdio { args, env, .. } = &tool.transport else {
+        panic!()
+    };
+    assert_eq!(args, &[video_script]);
+    assert_eq!(env["OPENH3_RUNTIME_TOKEN"], "fresh");
+    assert_eq!(env["OPENH3_DESKTOP_MEDIA_CONTEXT"], descriptor);
+    assert_eq!(env["OPENH3_MEDIA_WORKSPACE"], dir.path().to_str().unwrap());
+    assert_eq!(env["CUSTOM"], "session");
+    assert!(!env.contains_key("OPENH3_MEDIA_ACCOUNT_ONLY"));
+}

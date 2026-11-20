@@ -4,6 +4,8 @@ import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { cloudVideoInputSchema } from '@/common/chat/document/creation/cloudVideo';
 import type { CloudVideoService } from './CloudVideoService';
+import { accountMediaRoutes } from './accountMediaRoutes';
+import { desktopChallenge } from './accountMediaChannel';
 
 type Ports = {
   service: CloudVideoService;
@@ -26,11 +28,23 @@ export async function handleCloudVideoRoute(
 ): Promise<boolean> {
   if (!url.pathname.startsWith('/api/cloud-video/')) return false;
   const { service, json, body } = ports;
+  if (request.method === 'GET' && url.pathname === '/api/cloud-video/account-challenge') {
+    const nonce = z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(url.searchParams.get('nonce'));
+    json(response, 200, {
+      signature: service.challenge(desktopChallenge(nonce, request.socket.localPort, request.socket.remotePort)),
+    });
+    return true;
+  }
+  const provided = request.headers['x-openh3-ui-token'];
+  const a = Buffer.from(typeof provided === 'string' ? provided : '');
+  const b = Buffer.from(ports.uiToken ?? '');
+  const uiAuthorized = b.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+  if (await accountMediaRoutes(request, response, url.pathname, service, uiAuthorized, json)) return true;
   if (request.method === 'POST' && ['/api/cloud-video/connections', '/api/cloud-video/bind'].includes(url.pathname)) {
-    const provided = request.headers['x-openh3-ui-token'];
-    const a = Buffer.from(typeof provided === 'string' ? provided : '');
-    const b = Buffer.from(ports.uiToken ?? '');
-    if (!b.length || a.length !== b.length || !timingSafeEqual(a, b)) {
+    if (!uiAuthorized) {
       json(response, 403, { error: 'CLOUD_VIDEO_UI_AUTH_REQUIRED' });
       return true;
     }
@@ -63,8 +77,32 @@ export async function handleCloudVideoRoute(
       .string()
       .min(1)
       .parse(url.searchParams.get('conversationId') ?? url.searchParams.get('requestId'));
+    const runtime = {
+      conversationId: String(request.headers['x-openh3-conversation-id'] || ''),
+      userId: String(request.headers['x-openh3-user-id'] || ''),
+      token: String(request.headers['x-openh3-runtime-token'] || ''),
+    };
+    let playbackToken: string | undefined;
+    try {
+      playbackToken = await service.authorizeJobRead(
+        match[1],
+        scope,
+        uiAuthorized,
+        runtime,
+        match[2] ? (url.searchParams.get('playbackToken') ?? '') : undefined
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        ['CLOUD_MEDIA_RUNTIME_REQUIRED', 'CLOUD_MEDIA_PLAYBACK_UNAUTHORIZED'].includes(error.message)
+      ) {
+        json(response, 403, { error: error.message });
+        return true;
+      }
+      throw error;
+    }
     if (!match[2]) {
-      json(response, 200, service.job(match[1], scope));
+      json(response, 200, { ...service.job(match[1], scope), ...(playbackToken ? { playbackToken } : {}) });
       return true;
     }
     const filename = service.artifact(match[1], scope);
@@ -91,7 +129,7 @@ export async function handleCloudVideoRoute(
       'content-type': 'video/mp4',
       'content-length': end - start + 1,
       'accept-ranges': 'bytes',
-      'cache-control': 'private, max-age=3600',
+      'cache-control': 'private, no-store',
       ...(range ? { 'content-range': `bytes ${start}-${end}/${size}` } : {}),
     });
     const stream = fs.createReadStream(filename, { start, end });

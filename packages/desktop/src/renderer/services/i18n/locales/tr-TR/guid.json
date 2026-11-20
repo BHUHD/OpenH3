@@ -156,6 +156,12 @@
     }
   },
   "creation": {
+    "accountModelUnavailable": "Bu model artık hesabınızda kullanılamıyor. Başka bir model seçin.",
+    "accountInputUnsupported": "Bu girdiyi destekleyen bir video modeli seçin. İlk kare için görüntüden video üretimi gerekir.",
+    "chatDefault": "Sohbet varsayılanı",
+    "clearChatDefault": "Sohbette otomatik seçimi kullan",
+    "noAccountModels": "Bu görev için hesap modeli yok",
+    "retryAccountModels": "Hesap modelleri yüklenemedi · Tekrar dene",
     "states": {
       "downloaded": "İndirildi",
       "loadable": "Yüklenebilir",

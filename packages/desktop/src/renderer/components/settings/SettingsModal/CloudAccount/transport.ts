@@ -12,6 +12,7 @@ const paths: Record<CloudAccountRequest['operation'], string> = {
   logout: 'logout',
   wallet: 'wallet',
   models: 'models',
+  mediaModels: 'media-models',
   usage: 'usage',
   emailCode: 'email-code',
   register: 'register',
@@ -33,7 +34,9 @@ export async function requestCloudAccount(request: CloudAccountRequest): Promise
         ? await window.electronAPI.cloudAccount(request)
         : safeCloudError({ code: 'LOCAL_AUTH_REQUIRED' });
     }
-    const get = ['capabilities', 'session', 'me', 'devices', 'wallet', 'models'].includes(request.operation);
+    const get = ['capabilities', 'session', 'me', 'devices', 'wallet', 'models', 'mediaModels'].includes(
+      request.operation
+    );
     const data = await httpRequest<Extract<CloudAccountResponse, { success: true }>['data']>(
       get ? 'GET' : 'POST',
       `/api/cloud-account/${paths[request.operation]}`,

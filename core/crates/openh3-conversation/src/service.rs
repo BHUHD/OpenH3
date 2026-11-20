@@ -70,16 +70,38 @@ const ACP_CANCEL_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
 const LEGACY_CONVERSATION_ARCHIVED_MESSAGE: &str =
     "This historical conversation can no longer be continued. Please start a new conversation.";
 const DEPRECATED_AGENT_TYPE_MESSAGE: &str = "This agent type is no longer supported for new conversations.";
-const BUILTIN_IMAGE_MCP_NAME: &str = "openh3-image-generation";
-const BUILTIN_IMAGE_MCP_SCRIPT_SUFFIX: &str = "/out/main/builtin-mcp-image-gen.js";
+#[derive(Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopMediaContext {
+    defaults_file: PathBuf,
+    port: u16,
+    public_key: String,
+}
+const DESKTOP_MEDIA_CONTEXT: &str = "OPENH3_DESKTOP_MEDIA_CONTEXT";
 
-fn is_builtin_image_mcp_snapshot(name: &str, command: &str, args: &[String]) -> bool {
-    matches!(
-        name,
-        BUILTIN_IMAGE_MCP_NAME | "aionui-image-generation" | "AionUi Image Generation" | "builtin-image-gen"
-    ) && command == "node"
+const BUILTIN_MEDIA_TOOLS: [(&str, &[&str], &str, &str); 2] = [
+    (
+        "openh3-image-generation",
+        &[
+            "aionui-image-generation",
+            "AionUi Image Generation",
+            "builtin-image-gen",
+        ],
+        "/out/main/builtin-mcp-image-gen.js",
+        "image",
+    ),
+    (
+        "openh3-video-media",
+        &["aionui-video-media"],
+        "/out/main/builtin-mcp-video-media.js",
+        "video",
+    ),
+];
+
+fn is_product_media_entrypoint(command: &str, args: &[String], suffix: &str) -> bool {
+    command == "node"
         && matches!(args, [script] if Path::new(script).is_absolute()
-            && script.replace('\\', "/").ends_with(BUILTIN_IMAGE_MCP_SCRIPT_SUFFIX))
+        && script.replace('\\', "/").ends_with(suffix))
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
@@ -349,6 +371,7 @@ pub struct ConversationService {
     /// conversation create/read behaves exactly as before.
     project_service: Arc<RwLock<Option<Arc<ProjectService>>>>,
     runtime_state: Arc<ConversationRuntimeStateService>,
+    pub(crate) desktop_media: Option<String>,
     runtime_helper_bin: Option<String>,
     runtime_base_url: Option<String>,
     runtime_token_service: Option<Arc<RuntimeTokenService>>,
@@ -433,6 +456,7 @@ impl ConversationService {
             agent_availability_feedback: Arc::new(RwLock::new(None)),
             project_service: Arc::new(RwLock::new(None)),
             runtime_state: Arc::new(ConversationRuntimeStateService::default()),
+            desktop_media: std::env::var(DESKTOP_MEDIA_CONTEXT).ok(),
             runtime_helper_bin: None,
             runtime_base_url: None,
             runtime_token_service: None,
@@ -4876,7 +4900,7 @@ impl ConversationService {
                 .build_options(row, seed)
                 .await?;
         self.refresh_live_skill_context(row, &mut options).await;
-        self.refresh_builtin_image_mcp_entrypoint(&mut options).await;
+        self.refresh_builtin_media_entrypoints(row, &mut options).await;
         Ok(options)
     }
 
@@ -4892,64 +4916,130 @@ impl ConversationService {
                 .build_options_with_workspace_override(row, workspace_override, seed)
                 .await?;
         self.refresh_live_skill_context(row, &mut options).await;
-        self.refresh_builtin_image_mcp_entrypoint(&mut options).await;
+        self.refresh_builtin_media_entrypoints(row, &mut options).await;
         Ok(options)
     }
 
-    /// Preserve frozen tool selections and preferences while repairing replaced product binaries.
-    async fn refresh_builtin_image_mcp_entrypoint(&self, options: &mut BuildTaskOptions) {
-        let Some(repo) = self
-            .mcp_server_repo
-            .read()
-            .ok()
-            .and_then(|guard| guard.as_ref().cloned())
-        else {
+    /// Reconcile installed media binaries at launch. Transient tools chosen via account
+    /// defaults and the private runtime context must never be written to conversation history.
+    async fn refresh_builtin_media_entrypoints(&self, row: &ConversationRow, options: &mut BuildTaskOptions) {
+        let Some(repo) = self.mcp_server_repo.read().ok().and_then(|guard| guard.clone()) else {
             return;
         };
-        let user_id = &options.context.conversation.user_id;
-        let conversation_id = &options.context.conversation.conversation_id;
-        let servers = match &mut options.context.kind {
-            AgentSessionKind::Acp(ctx) => &mut ctx.config.session_mcp_servers,
-            AgentSessionKind::Aionrs(ctx) => &mut ctx.config.session_mcp_servers,
-            AgentSessionKind::Antigravity(ctx) => &mut ctx.config.session_mcp_servers,
+        let desktop = self.desktop_media.as_deref().and_then(|raw| {
+            let ctx: DesktopMediaContext = serde_json::from_str(raw).ok()?;
+            (ctx.port > 0
+                && !ctx.public_key.is_empty()
+                && ctx.defaults_file.is_absolute()
+                && row.user_id == "system_default_user")
+                .then_some((raw, ctx))
+        });
+        let extra: serde_json::Value = serde_json::from_str(&row.extra).unwrap_or_default();
+        let ordinary = options.context.team.is_none() && extra.get("creation_request").is_none_or(|v| v.is_null());
+        let blocked = extra.get("account_media_excluded_kinds").and_then(|v| v.as_array());
+        let defaults: serde_json::Value = match desktop.as_ref() {
+            Some((_, ctx)) if ordinary => match tokio::fs::read(&ctx.defaults_file).await {
+                Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
+                Err(_) => serde_json::Value::Null,
+            },
+            _ => serde_json::Value::Null,
         };
-        let mut canonical_name_present = servers.iter().any(|server| server.name == BUILTIN_IMAGE_MCP_NAME);
-        for server in servers {
-            let SessionMcpTransport::Stdio { command, args, .. } = &mut server.transport else {
-                continue;
-            };
-            if !is_builtin_image_mcp_snapshot(&server.name, command, args) {
+        let workspace = options.context.workspace.path.clone();
+        for (canonical, aliases, suffix, kind) in BUILTIN_MEDIA_TOOLS {
+            let matches_name = |name: &str| name == canonical || aliases.contains(&name);
+            let allows_default =
+                ordinary && !blocked.is_some_and(|kinds| kinds.iter().any(|v| v.as_str() == Some(kind)));
+            let selected_default = allows_default && defaults[kind].as_str().is_some_and(|v| !v.is_empty());
+            let servers = options.session_mcp_servers_mut();
+            if !selected_default && !servers.iter().any(|server| matches_name(&server.name)) {
                 continue;
             }
-            let row = match repo.find_by_id(user_id, &server.id).await {
-                Ok(Some(row)) if row.builtin && row.name == BUILTIN_IMAGE_MCP_NAME => row,
+            let row_mcp = match repo.find_by_name(&row.user_id, canonical).await {
+                Ok(Some(current)) if current.builtin => current,
                 Ok(_) => continue,
                 Err(error) => {
-                    warn!(conversation_id, server_id = %server.id, %error, "Could not resolve built-in image MCP entrypoint");
+                    warn!(conversation_id = %row.id, server = canonical, %error, "Cannot resolve desktop media tool");
                     continue;
                 }
             };
-            let Ok(McpServerTransport::Stdio {
-                command: current_command,
-                args: current_args,
-                ..
-            }) = McpServerTransport::from_db(&row.transport_type, &row.transport_config)
+            let Ok(McpServerTransport::Stdio { command, args, .. }) =
+                McpServerTransport::from_db(&row_mcp.transport_type, &row_mcp.transport_config)
             else {
                 continue;
             };
-            if !is_builtin_image_mcp_snapshot(&row.name, &current_command, &current_args) {
+            if !is_product_media_entrypoint(&command, &args, suffix) {
                 continue;
             }
-            // The runtime identifies MCP servers by name. Keep a legacy alias
-            // if renaming it would replace another frozen server.
-            let rename = !canonical_name_present;
-            if rename || *args != current_args {
-                debug!(conversation_id, server_id = %server.id, "Refreshed frozen built-in image MCP launch target");
-                if rename {
-                    server.name = row.name;
-                    canonical_name_present = true;
+            // A frozen user server with a colliding name keeps its existing identity.
+            let added = selected_default && !servers.iter().any(|server| matches_name(&server.name));
+            if added {
+                servers.push(SessionMcpServer {
+                    id: row_mcp.id.clone(),
+                    name: canonical.into(),
+                    transport: SessionMcpTransport::Stdio {
+                        command,
+                        args: args.clone(),
+                        env: Default::default(),
+                    },
+                });
+            }
+            let mut canonical_present = servers.iter().any(|server| server.name == canonical);
+            let mut trusted = Vec::new();
+            for (index, server) in servers.iter_mut().enumerate() {
+                let SessionMcpTransport::Stdio {
+                    command,
+                    args: old_args,
+                    env,
+                } = &mut server.transport
+                else {
+                    continue;
+                };
+                if server.id != row_mcp.id
+                    || !matches_name(&server.name)
+                    || !is_product_media_entrypoint(command, old_args, suffix)
+                {
+                    continue;
                 }
-                *args = current_args;
+                *old_args = args.clone();
+                if !canonical_present {
+                    server.name = canonical.into();
+                    canonical_present = true;
+                }
+                // A frozen or supplied transport cannot redirect paid traffic, change the workspace
+                // or grant itself additional tools. The live desktop descriptor is the sole source.
+                env.retain(|key, _| {
+                    ![
+                        "OPENH3_DESKTOP_MEDIA_CONTEXT",
+                        "OPENH3_MEDIA_WORKSPACE",
+                        "OPENH3_MEDIA_ACCOUNT_ONLY",
+                        "OPENH3_MEDIA_DEFAULTS_DISABLED",
+                        "OPENH3_RUNTIME_TOKEN",
+                        "AIONUI_RUNTIME_TOKEN",
+                        "OPENH3_USER_ID",
+                        "AIONUI_USER_ID",
+                        "OPENH3_CONVERSATION_ID",
+                        "AIONUI_CONVERSATION_ID",
+                    ]
+                    .iter()
+                    .any(|reserved| key.eq_ignore_ascii_case(reserved))
+                });
+                if let Some((raw, _)) = desktop.as_ref() {
+                    env.insert(DESKTOP_MEDIA_CONTEXT.into(), (*raw).into());
+                    env.insert("OPENH3_USER_ID".into(), row.user_id.clone());
+                    env.insert("OPENH3_CONVERSATION_ID".into(), row.id.clone());
+                    env.insert("OPENH3_MEDIA_WORKSPACE".into(), workspace.clone());
+                    if !allows_default {
+                        env.insert("OPENH3_MEDIA_DEFAULTS_DISABLED".into(), "1".into());
+                    }
+                    if added {
+                        env.insert("OPENH3_MEDIA_ACCOUNT_ONLY".into(), "1".into());
+                    }
+                    trusted.push(index);
+                }
+            }
+            options.desktop_media_servers.extend(trusted);
+            if added {
+                options.runtime_capabilities.account_media_tools.push(canonical.into());
             }
         }
     }

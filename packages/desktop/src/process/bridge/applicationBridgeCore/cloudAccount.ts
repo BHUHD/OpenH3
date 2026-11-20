@@ -1,4 +1,5 @@
 import type { IpcMainInvokeEvent, WebContents } from 'electron';
+import { accountMediaCatalog } from '@/common/chat/document/creation/accountMedia';
 import type { CloudAccountRequest, CloudAccountResponse } from '@/common/types/platform/cloudAccount';
 import {
   cloudCheckout,
@@ -19,6 +20,7 @@ const operations = {
   devices: ['GET', 'devices', []],
   wallet: ['GET', 'wallet', []],
   models: ['GET', 'models', []],
+  mediaModels: ['GET', 'media-models', []],
   usage: ['POST', 'usage', ['page', 'page_size', 'start_time', 'end_time', 'model', 'device_id']],
   logout: ['POST', 'logout', []],
   emailCode: ['POST', 'email-code', ['email', 'purpose']],
@@ -206,6 +208,11 @@ export function createCloudAccountClient(
         return safeCloudError(null);
       if (request.operation.startsWith('topup') && originalEpoch !== epoch)
         return safeCloudError({ code: 'CLOUD_CONFLICT' });
+      if (request.operation === 'mediaModels') {
+        if (originalEpoch !== epoch) return safeCloudError({ code: 'CLOUD_CONFLICT' });
+        const catalog = accountMediaCatalog.safeParse(body.data);
+        return catalog.success ? { success: true, data: catalog.data } : safeCloudError({ code: 'CLOUD_PROTOCOL' });
+      }
       if (request.operation === 'topupCreateAndOpen') {
         const url = cloudCheckout(body.data, request.input);
         // Retain the committed order context, never the signed URL, on opener failure.

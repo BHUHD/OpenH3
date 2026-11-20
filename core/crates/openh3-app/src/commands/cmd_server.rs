@@ -358,6 +358,8 @@ pub(crate) async fn run_server(
     // between us and process exit.
     let drain_started = shutdown_tx.subscribe();
 
+    let router =
+        router.into_make_service_with_connect_info::<openh3_system::provider::cloud_account::routes::CoreMediaSocket>();
     let serve_future = axum::serve(listener, router)
         .with_graceful_shutdown(async move {
             let signal_result = shutdown_signal(parent_exit).await;

@@ -8,6 +8,7 @@ import GenerationCanvas from '@/renderer/pages/conversation/runtime/GenerationCa
 import { ratioFromSize } from '@/renderer/pages/conversation/runtime/GenerationCard/generationRatio';
 import GenerationActions from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationActions';
 import { creationTurnResults } from './turnResults';
+import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 
 export function cloudVideoJobIds(messages: Array<{ type: string; content: unknown }>): string[] {
   return [
@@ -27,8 +28,9 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
   const { t } = useTranslation();
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>();
   const [now, setNow] = useState(Date.now);
+  const account = useOptionalCloudAccount();
   const { data: job, error } = useSWR(
-    ['cloud-video.job', conversationId, id],
+    ['cloud-video.job', conversationId, id, account?.accountKey],
     () => cloudVideoApi.job(id, conversationId),
     {
       refreshInterval: (data) => (data && ['succeeded', 'failed'].includes(data.status) ? 0 : 2500),
@@ -37,6 +39,14 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
     }
   );
   const active = job && ['queued', 'running'].includes(job.status);
+  const failureLabel =
+    job?.error === 'CLOUD_MEDIA_CAPABILITY_UNSUPPORTED'
+      ? 'guid.creation.accountInputUnsupported'
+      : job?.error === 'CLOUD_MEDIA_MODEL_UNAVAILABLE'
+        ? 'guid.creation.accountModelUnavailable'
+        : active
+          ? 'guid.creation.cloudVideoSetup.retrying'
+          : 'guid.creation.cloudVideoSetup.failed';
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -98,10 +108,7 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
       )}
       {job?.submissionUncertain && <Alert type='warning' content={t('guid.creation.cloudVideoSetup.uncertain')} />}
       {(job?.error || error) && !job?.submissionUncertain && (
-        <Alert
-          type={active ? 'warning' : 'error'}
-          content={t(active ? 'guid.creation.cloudVideoSetup.retrying' : 'guid.creation.cloudVideoSetup.failed')}
-        />
+        <Alert type={active ? 'warning' : 'error'} content={t(failureLabel)} />
       )}
       {job?.status === 'succeeded' && (
         <video
@@ -119,14 +126,14 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
             if (video.videoWidth > 0 && video.videoHeight > 0)
               setDimensions({ width: video.videoWidth, height: video.videoHeight });
           }}
-          src={cloudVideoApi.artifactUrl(id, conversationId)}
+          src={cloudVideoApi.artifactUrl(id, conversationId, job.playbackToken)}
           aria-label={t('guid.creation.cloudVideo')}
         />
       )}
       {job?.status === 'succeeded' && (
         <GenerationActions
           conversationId={conversationId}
-          src={cloudVideoApi.artifactUrl(id, conversationId)}
+          src={cloudVideoApi.artifactUrl(id, conversationId, job.playbackToken)}
           fileName={`${id}.mp4`}
         />
       )}

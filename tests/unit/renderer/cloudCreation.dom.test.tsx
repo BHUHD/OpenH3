@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { cloudCreationModels } from '@/common/chat/document/creation/cloudModels';
+import { accountMediaRef } from '@/common/chat/document/creation/accountMedia';
 import type { IProvider } from '@/common/config/storage';
 import CloudModelSetup from '@/renderer/pages/guid/Creation/CloudModelSetup';
 import useConfigModelListWithImage from '@/renderer/hooks/agent/useConfigModelListWithImage';
@@ -139,5 +140,54 @@ describe('cloud creation catalog and setup', () => {
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }));
     await screen.findByText('guid.creation.cloudSetup.invalid');
     expect(state.update).not.toHaveBeenCalled();
+  });
+});
+describe('native account media catalog', () => {
+  const account = {
+    account_id: 'u1',
+    account_key: 'issuer-a-u1',
+    models: [
+      {
+        model_id: 'studio/a:b',
+        display_name: 'Illustration',
+        kind: 'image' as const,
+        capabilities: ['text-to-image' as const],
+      },
+      {
+        model_id: 'studio/video',
+        display_name: 'Motion',
+        kind: 'video' as const,
+        capabilities: ['image-to-video' as const],
+      },
+    ],
+  };
+  it('offers each verified model in its own creation slot without a provider key', () => {
+    for (const kind of ['image', 'video'] as const) {
+      const [model] = cloudCreationModels([], kind, [], account);
+      expect(model.available).toBe(true);
+      expect(model.provider).toBeUndefined();
+      expect(accountMediaRef(model.id)).toEqual({
+        accountId: 'issuer-a-u1',
+        modelId: account.models.find((m) => m.kind === kind)?.model_id,
+      });
+    }
+  });
+  it('keeps an empty media catalog empty even when a managed text model looks like an image model', () => {
+    const providers = [
+      {
+        id: 'account',
+        managed_by: 'cloud_account',
+        name: 'Account',
+        platform: 'openai',
+        models: ['gpt-image-test'],
+        api_key: '',
+      },
+    ] as IProvider[];
+    const models = cloudCreationModels(providers, 'image', [], {
+      account_id: 'u1',
+      account_key: 'issuer-a-u1',
+      models: [],
+    });
+    expect(models.some((m) => m.available || m.name === 'gpt-image-test')).toBe(false);
   });
 });

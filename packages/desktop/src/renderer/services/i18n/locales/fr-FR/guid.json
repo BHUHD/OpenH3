@@ -156,6 +156,12 @@
     }
   },
   "creation": {
+    "accountModelUnavailable": "Ce modèle n’est plus disponible pour votre compte. Choisissez-en un autre.",
+    "accountInputUnsupported": "Choisissez un modèle vidéo compatible avec cette entrée. Une première image nécessite la génération de vidéo à partir d’une image.",
+    "chatDefault": "Par défaut dans le chat",
+    "clearChatDefault": "Rétablir la sélection automatique dans le chat",
+    "noAccountModels": "Aucun modèle du compte pour cette tâche",
+    "retryAccountModels": "Échec du chargement des modèles · Réessayer",
     "states": {
       "downloaded": "Téléchargé",
       "loadable": "Chargeable",

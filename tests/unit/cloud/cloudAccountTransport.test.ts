@@ -19,6 +19,26 @@ afterEach(() => {
 });
 
 describe('native account transport', () => {
+  it('reads a full media catalog and projects only account ID and public model fields to the desktop', async () => {
+    const models = Array.from({ length: 2048 }, (_, i) => ({
+      model_id: String(i).padEnd(255, 'a'),
+      display_name: 'b'.repeat(256),
+      kind: 'image',
+      capabilities: ['text-to-image'],
+    }));
+    const data = { account_id: 'u1', account_key: 'issuer-a-u1', models };
+    const reply = JSON.stringify({ success: true, data: { ...data, binding: 'core-only-binding' } });
+    expect(Buffer.byteLength(reply)).toBeGreaterThan(1024 * 1024);
+    const fetcher = vi.fn(async () => new Response(reply));
+    const client = createCloudAccountClient(() => 33001, 'desktop-capability', fetcher);
+    const catalog = await client({ operation: 'mediaModels' });
+    expect(catalog).toEqual({ success: true, data });
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:33001/api/cloud-account/media-models',
+      expect.objectContaining({ method: 'GET' })
+    );
+    expect(cloudOperation({ operation: 'mediaModels', input: { account_id: 'another-account' } })).toBeNull();
+  });
   it('uses explicit official capabilities while preserving BYOK name matching', () => {
     const official = {
       managed_by: 'cloud_account',

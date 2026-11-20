@@ -52,6 +52,8 @@ export function firstClipCloudInput(spec: H3GenerationSpec): CloudVideoInput | u
   return { prompt: spec.prompt, duration: spec.durationSeconds, seed: spec.seed };
 }
 export type CloudVideoJob = {
+  /** Transient access to this finished account artifact, returned to the desktop UI only. */
+  playbackToken?: string;
   id: string;
   requestId: string;
   submissionId?: string;

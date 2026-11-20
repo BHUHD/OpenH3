@@ -10,6 +10,7 @@ import type { ComfyFamily, ComfyIntent, ComfyProfile } from './comfy';
 import type { TemplateSnapshot } from '@/common/contentCatalog/snapshot';
 import type { ModelConstraint, WorkflowSelectionMode } from './workflows/contracts';
 import type { LocalModelInstallContext } from './workflows/localModels';
+import { accountMediaRef, type AccountMediaCatalog } from './accountMedia';
 
 export type CreationKind = 'image' | 'video';
 export type CreationSource = 'local' | 'cloud';
@@ -31,6 +32,7 @@ export type CreationSelection = {
   kind: CreationKind;
   source: CreationSource;
   modelIds: Partial<Record<`${CreationSource}-${CreationKind}`, string>>;
+  sources?: Partial<Record<CreationKind, CreationSource>>;
   modelConstraint?: ModelConstraint;
 };
 export type CreationModel = {
@@ -40,6 +42,7 @@ export type CreationModel = {
   source: CreationSource;
   state: CreationModelState;
   available: boolean;
+  capabilities?: AccountMediaCatalog['models'][number]['capabilities'];
   provider?: TProviderWithModel;
   presetId?: string;
   profileId?: string;
@@ -95,8 +98,14 @@ export function creationSessionServers(
       server.transport.type !== 'stdio'
     )
       return server;
+    const managedMedia = request.source === 'cloud' && !!accountMediaRef(request.id);
+    const inherited = managedMedia
+      ? Object.fromEntries(
+          Object.entries(server.transport.env ?? {}).filter(([key]) => !/^(OPENH3|AIONUI)_IMG_/.test(key))
+        )
+      : server.transport.env;
     const env = {
-      ...server.transport.env,
+      ...inherited,
       OPENH3_CREATION_KIND: request.kind,
       OPENH3_CREATION_SOURCE: request.source,
       OPENH3_CREATION_MODEL: request.id,
@@ -119,7 +128,7 @@ export function creationSessionServers(
       transport: {
         ...server.transport,
         env:
-          isBuiltinImageGenerationName(server.name) && provider
+          isBuiltinImageGenerationName(server.name) && provider && !managedMedia
             ? {
                 ...env,
                 OPENH3_IMG_PROVIDER_ID: provider.id,

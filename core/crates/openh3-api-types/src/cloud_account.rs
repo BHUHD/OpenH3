@@ -531,3 +531,93 @@ pub struct CloudAccountTopupOrdersResponse {
     pub has_more: bool,
     pub next_before_id: i64,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CloudMediaKind {
+    Image,
+    Video,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CloudMediaCapability {
+    TextToImage,
+    TextToVideo,
+    ImageToVideo,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudMediaModel {
+    pub model_id: String,
+    pub display_name: String,
+    pub kind: CloudMediaKind,
+    pub capabilities: Vec<CloudMediaCapability>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CloudMediaSession {
+    pub account_id: String,
+    pub account_key: String,
+    pub binding: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CloudMediaModels {
+    pub account_id: String,
+    /// Stable across logins to the same issuer and subject under this local owner.
+    pub account_key: String,
+    /// Public identity of this specific login. Never usable as a credential.
+    pub binding: String,
+    pub models: Vec<CloudMediaModel>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudMediaImageRequest {
+    pub binding: String,
+    pub model: String,
+    pub prompt: String,
+    pub size: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudMediaVideoRequest {
+    pub binding: String,
+    pub model: String,
+    pub prompt: String,
+    pub size: Option<String>,
+    pub seconds: Option<u32>,
+    pub reference: Option<CloudMediaReference>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudMediaReference {
+    pub mime_type: String,
+    pub data: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CloudMediaJobRequest {
+    pub binding: String,
+    pub job_id: String,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CloudMediaStatus {
+    Queued,
+    InProgress,
+    Completed,
+    Failed,
+}
+
+#[derive(Serialize)]
+pub struct CloudMediaJob {
+    pub job_id: String,
+    pub status: CloudMediaStatus,
+}

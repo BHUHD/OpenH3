@@ -134,7 +134,7 @@ describe('cloud video client', () => {
       'src',
       'http://localhost/video.mp4'
     );
-    expect(cloudVideoApi.artifactUrl).toHaveBeenCalledWith('job-ui', 'conversation-ui');
+    expect(cloudVideoApi.artifactUrl).toHaveBeenCalledWith('job-ui', 'conversation-ui', undefined);
   });
   it('extracts submitted job IDs from results without taking IDs from tool arguments', () => {
     const id = '12345678-1234-1234-1234-123456789abc';

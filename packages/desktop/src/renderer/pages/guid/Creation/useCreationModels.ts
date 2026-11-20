@@ -8,6 +8,8 @@ import {
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { comfyApi, COMFY_INVENTORY_CACHE_KEY } from '@/common/chat/document/creation/comfyApi';
 import { cloudCreationModels } from '@/common/chat/document/creation/cloudModels';
+import { accountMediaId, accountMediaRef } from '@/common/chat/document/creation/accountMedia';
+import { useAccountMedia } from './useAccountMedia';
 import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
 import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSettings';
@@ -58,6 +60,7 @@ function storedSelection(): CreationSelection {
 export function useCreationModels(enabled: boolean) {
   const { modelListWithImage: providers } = useConfigModelListWithImage();
   const [selection, setState] = useState(storedSelection);
+  const accountMedia = useAccountMedia(enabled, selection.source === 'cloud', selection.kind);
   const currentProfiles = useRef<ComfyProfile[]>([]);
   const setSelection = useCallback((update: React.SetStateAction<CreationSelection>) => {
     const next = { ...(typeof update === 'function' ? update(draftSelection) : update) };
@@ -176,17 +179,33 @@ export function useCreationModels(enabled: boolean) {
       }
       return choices;
     }
-    return cloudCreationModels(providers, kind, videoConnections);
-  }, [selection.kind, selection.source, selection.modelIds, providers, profiles, videoConnections, managedInventory]);
+    return cloudCreationModels(providers, kind, videoConnections, accountMedia.catalog);
+  }, [
+    selection.kind,
+    selection.source,
+    selection.modelIds,
+    providers,
+    profiles,
+    videoConnections,
+    managedInventory,
+    accountMedia.catalog,
+  ]);
   const slot = `${selection.source}-${selection.kind}` as const;
   const savedModelId = selection.modelIds[slot];
+  const savedAccount = accountMediaRef(savedModelId);
+  const defaultRef = accountMedia.defaultModel;
+  const defaultId = defaultRef && accountMediaId(defaultRef.accountId, defaultRef.modelId);
   const unavailableSelection: CreationModel | undefined =
     savedModelId &&
     !models.some((item) => item.id === savedModelId) &&
     !(selection.source === 'local' && COMFY_FAMILIES.some((item) => item.family === savedModelId))
       ? {
           id: savedModelId,
-          name: savedModelId,
+          name: savedAccount
+            ? savedAccount.accountId === accountMedia.accountId
+              ? savedAccount.modelId
+              : ''
+            : savedModelId,
           kind: selection.kind,
           source: selection.source,
           state: 'unavailable',
@@ -197,10 +216,14 @@ export function useCreationModels(enabled: boolean) {
   const model =
     models.find((item) => item.id === savedModelId) ??
     unavailableSelection ??
+    (selection.source === 'cloud' && defaultId ? models.find((item) => item.id === defaultId) : undefined) ??
     models.find(
-      (item) => item.provider?.id === configuredImage?.id && item.provider?.use_model === configuredImage?.use_model
+      (item) =>
+        !!item.provider &&
+        item.provider.id === configuredImage?.id &&
+        item.provider.use_model === configuredImage?.use_model
     ) ??
-    models[0] ??
+    models.find((item) => !item.id.startsWith('account-media:')) ??
     ({
       id: `empty:${slot}`,
       name: '',
@@ -219,6 +242,7 @@ export function useCreationModels(enabled: boolean) {
     isLoading,
     error,
     inventoryError,
+    accountMedia,
     refresh: mutate,
   };
 }

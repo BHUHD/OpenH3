@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { resolveMediaBinary } from './mediaBinary';
 import { resolveComfyResourcesRoot } from './comfy/planning/catalog';
+import { accountMediaFetch } from './cloud/accountMediaChannel';
 
 /** Permit the application renderer, including its exact development origin. */
 export function mediaServiceCorsHeaders(origin?: string, rendererUrl?: string): Record<string, string> {
@@ -31,11 +32,13 @@ export type MediaServiceProcessOptions = {
   resourcesRoot?: string;
   port?: number;
   backendPort?: number;
+  accountMediaCapability?: string;
+  accountMediaPrivateKey?: string;
   command?: string;
   spawnProcess?: (
     command: string,
     args: string[],
-    options: { cwd: string; windowsHide: boolean; env: NodeJS.ProcessEnv; stdio: ['ignore', number, number] }
+    options: { cwd: string; windowsHide: boolean; env: NodeJS.ProcessEnv; stdio: ['ignore' | 'pipe', number, number] }
   ) => ChildProcess;
   fetchImpl?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
@@ -43,11 +46,13 @@ export type MediaServiceProcessOptions = {
 
 export class MediaServiceProcess {
   private child?: ChildProcess;
+  private ready = false;
   readonly port: number;
   /** Secret accepted only for consent actions initiated by the Electron UI. */
   readonly uiToken = crypto.randomBytes(32).toString('hex');
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly mediaPublicKey?: string;
 
   constructor(private readonly options: MediaServiceProcessOptions) {
     const configured = options.port ?? process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002;
@@ -56,11 +61,24 @@ export class MediaServiceProcess {
       throw new Error('MEDIA_SERVICE_PORT_INVALID');
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    if (Boolean(options.accountMediaPrivateKey) !== Boolean(options.accountMediaCapability))
+      throw new Error('CLOUD_MEDIA_DESKTOP_IDENTITY_REQUIRED');
+    if (options.accountMediaPrivateKey) {
+      const privateKey = crypto.createPrivateKey({
+        key: Buffer.from(options.accountMediaPrivateKey, 'base64'),
+        format: 'der',
+        type: 'pkcs8',
+      });
+      this.mediaPublicKey = crypto
+        .createPublicKey(privateKey)
+        .export({ format: 'der', type: 'spki' })
+        .toString('base64');
+    }
   }
 
   /** Unknown/crashed services cannot authorize an update. */
   get updateEndpoint(): string | null {
-    return this.child ? `http://127.0.0.1:${this.port}` : null;
+    return this.child && this.ready ? `http://127.0.0.1:${this.port}` : null;
   }
 
   async start(): Promise<void> {
@@ -86,6 +104,7 @@ export class MediaServiceProcess {
       AIONUI_FFMPEG_PATH: resolveMediaBinary('ffmpeg'),
       AIONUI_FFPROBE_PATH: resolveMediaBinary('ffprobe'),
       OPENH3_MEDIA_UI_TOKEN: this.uiToken,
+      OPENH3_MEDIA_OWNED_PIPE: this.options.accountMediaCapability ? '1' : '0',
       OPENH3_MEDIA_UI_ORIGIN: process.env.ELECTRON_RENDERER_URL ?? '',
       AIONUI_MEDIA_UI_TOKEN: this.uiToken,
       ...(this.options.backendPort ? { OPENH3_MEDIA_BACKEND_PORT: String(this.options.backendPort) } : {}),
@@ -99,11 +118,20 @@ export class MediaServiceProcess {
         cwd: this.options.dataDir,
         windowsHide: true,
         env,
-        stdio: ['ignore', logHandle, logHandle],
+        stdio: [this.options.accountMediaCapability ? 'pipe' : 'ignore', logHandle, logHandle],
       });
+      const launched = this.child;
       this.child.once('exit', () => {
-        this.child = undefined;
+        if (this.child === launched) {
+          this.child = undefined;
+          this.ready = false;
+        }
       });
+      this.child.stdin?.on('error', () => {
+        /* Closed child transport; recovery starts a new pipe. */
+      });
+      if (this.options.accountMediaPrivateKey)
+        this.child.stdin?.write(JSON.stringify({ privateKey: this.options.accountMediaPrivateKey }) + '\n');
     } finally {
       fs.closeSync(logHandle);
     }
@@ -118,8 +146,18 @@ export class MediaServiceProcess {
             // Readiness probes must authenticate sequentially before retrying.
             // eslint-disable-next-line no-await-in-loop
             await this.setBackendPort(this.options.backendPort);
+          } else if (this.mediaPublicKey) {
+            const verified = await accountMediaFetch('/health', {}, undefined, AbortSignal.timeout(5000), {
+              port: this.port,
+              publicKey: this.mediaPublicKey,
+            });
+            await verified.body?.cancel();
+            if (!verified.ok) continue;
           }
-          if (this.child) return;
+          if (this.child) {
+            this.ready = true;
+            return;
+          }
         }
       } catch {
         /* wait for the child service to bind */
@@ -135,16 +173,33 @@ export class MediaServiceProcess {
       throw new Error('MEDIA_SERVICE_BACKEND_PORT_INVALID');
     this.options.backendPort = backendPort;
     if (!this.child) return;
-    const response = await this.fetchImpl(`http://127.0.0.1:${this.port}/api/comfy/runtime-context`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-openh3-ui-token': this.uiToken },
-      body: JSON.stringify({ backendPort }),
-      signal: AbortSignal.timeout(5000),
-    });
+    if (this.options.accountMediaCapability && this.child.stdin?.writable)
+      this.child.stdin.write(
+        JSON.stringify({
+          port: backendPort,
+          capability: this.options.accountMediaCapability,
+        }) + '\n'
+      );
+    const headers = { 'content-type': 'application/json', 'x-openh3-ui-token': this.uiToken };
+    const body = JSON.stringify({ backendPort });
+    const signal = AbortSignal.timeout(5000);
+    const response = this.mediaPublicKey
+      ? await accountMediaFetch('/api/comfy/runtime-context', headers, body, signal, {
+          port: this.port,
+          publicKey: this.mediaPublicKey,
+        })
+      : await this.fetchImpl(`http://127.0.0.1:${this.port}/api/comfy/runtime-context`, {
+          method: 'POST',
+          headers,
+          body,
+          signal,
+        });
+    await response.body?.cancel();
     if (!response.ok) throw new Error('MEDIA_SERVICE_BACKEND_SYNC_FAILED');
   }
 
   stop(): void {
+    this.ready = false;
     this.child?.kill();
     this.child = undefined;
   }

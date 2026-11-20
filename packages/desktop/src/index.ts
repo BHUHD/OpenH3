@@ -20,7 +20,7 @@ import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell 
 import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
-import { randomBytes } from 'node:crypto';
+import { createHash, generateKeyPairSync, randomBytes } from 'node:crypto';
 import { acquireUpdateInstallLease } from './process/startup/updateInstallGuard';
 import { initMainAdapterWithWindow } from './common/adapter/main';
 import { ipcBridge } from './common';
@@ -246,6 +246,13 @@ const backendManager = new BackendLifecycleManager(
   resolveBinaryPath
 );
 const cloudCapability = randomBytes(32).toString('hex');
+const mediaIdentity = generateKeyPairSync('ed25519');
+const ownedMediaPort = Number(process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002);
+if (!isWebUIMode && !isRemoteMode)
+  backendManager.configureDesktopMedia(
+    ownedMediaPort,
+    mediaIdentity.publicKey.export({ type: 'spki', format: 'der' }).toString('base64')
+  );
 backendManager.configureCloudAccount(cloudCapability);
 const cloudClient = createCloudAccountClient(
   () => (backendManager.status === 'running' ? backendManager.port : 0),
@@ -273,7 +280,11 @@ let rendererInitialLanguage: string | null = null;
 let backendMigrationsPromise: Promise<boolean> | null = null;
 let ensureAdminUserPromise: Promise<void> | null = null;
 let mediaServiceProcess: MediaServiceProcess | null = null;
-ipcMain.handle('media-service:get-ui-token', () => mediaServiceProcess?.uiToken ?? null);
+ipcMain.handle('media-service:get-ui-token', (event) =>
+  trustedCloudSender(event, mainWindow?.webContents, cloudRendererUrls) && mediaServiceProcess?.updateEndpoint
+    ? mediaServiceProcess.uiToken
+    : null
+);
 ipcMain.on('get-media-service-port', (event) => {
   event.returnValue = mediaServiceProcess?.port ?? 33002;
 });
@@ -1047,6 +1058,11 @@ const handleAppReady = async (): Promise<void> => {
         ? [path.join(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs'), scriptPath]
         : [scriptPath];
       mediaServiceProcess = new MediaServiceProcess({
+        accountMediaPrivateKey: mediaIdentity.privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64'),
+        port: ownedMediaPort,
+        accountMediaCapability: createHash('sha256')
+          .update('openh3:media:v1\0' + cloudCapability)
+          .digest('hex'),
         scriptPath: isTypeScript ? args[1] : scriptPath,
         dataDir: getDataPath(),
         backendPort: (globalThis as typeof globalThis & { __backendPort?: number }).__backendPort,

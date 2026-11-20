@@ -24,6 +24,12 @@ import {
   type ComfyProfile,
 } from '@/common/chat/document/creation/comfy';
 import path from 'node:path';
+import { desktopMediaContext } from '../../services/media/cloud/accountMediaChannel';
+import {
+  accountCreationSelected,
+  accountImage,
+  canCheckAccountDefault,
+} from '../../services/media/cloud/accountMediaTool';
 import type { TemplateSnapshot } from '@/common/contentCatalog/snapshot';
 
 type CreationSelection = {
@@ -37,7 +43,7 @@ type CreationSelection = {
 
 async function comfyRequest(endpoint: string, body?: unknown): Promise<unknown> {
   const response = await fetch(
-    `http://127.0.0.1:${Number(process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002)}${endpoint}`,
+    `http://127.0.0.1:${desktopMediaContext()?.port ?? Number(process.env.OPENH3_MEDIA_PORT ?? process.env.AIONUI_MEDIA_PORT ?? 33002)}${endpoint}`,
     {
       ...(body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
       signal: AbortSignal.timeout(45_000),
@@ -154,6 +160,24 @@ async function main() {
         const requestId = envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID');
         let resolvedCloudSelection = false;
         let templateSnapshot: TemplateSnapshot | undefined;
+        try {
+          if (accountCreationSelected('image') || canCheckAccountDefault('image')) {
+            if (accountCreationSelected('image') && !requestId?.trim()) throw new Error('CLOUD_MEDIA_BINDING_REQUIRED');
+            const generated = await accountImage(prompt, image_uris, width, height);
+            if (generated) return generated;
+          }
+          if (process.env.OPENH3_MEDIA_ACCOUNT_ONLY === '1') throw new Error('CLOUD_MEDIA_NOT_SELECTED');
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text' as const,
+                text: `Cloud image generation failed: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+          };
+        }
         if (requestId?.trim()) {
           try {
             const result = (await comfyRequest(`/api/comfy/profiles?${new URLSearchParams({ requestId })}`)) as {

@@ -286,11 +286,15 @@ fn build_claude_mcp_config(servers: &[super::McpServerSpec]) -> Option<String> {
     let mut map = Map::new();
     for s in servers {
         let entry = match &s.transport {
-            McpTransport::Stdio { command, args, env } => json!({
-                "command": command,
-                "args": args,
-                "env": Value::Object(kv(env)),
-            }),
+            McpTransport::Stdio { command, args, env } => {
+                let mut vars = kv(env);
+                // Claude expands MCP env references. Keep the ephemeral helper token
+                // out of the --mcp-config command line and its diagnostic previews.
+                if vars.contains_key("OPENH3_DESKTOP_MEDIA_CONTEXT") && vars.contains_key("OPENH3_RUNTIME_TOKEN") {
+                    vars.insert("OPENH3_RUNTIME_TOKEN".into(), "${OPENH3_RUNTIME_TOKEN}".into());
+                }
+                json!({ "command": command, "args": args, "env": Value::Object(vars) })
+            }
             McpTransport::Http { url, headers } => json!({
                 "type": "http",
                 "url": url,
@@ -3982,6 +3986,29 @@ mod tests {
         assert_eq!(json["mcpServers"]["api"]["type"], "http");
         assert_eq!(json["mcpServers"]["api"]["url"], "https://example.com/mcp");
         assert_eq!(json["mcpServers"]["api"]["headers"]["Authorization"], "Bearer x");
+    }
+
+    #[test]
+    fn account_media_mcp_config_refers_to_the_spawn_token_without_putting_it_in_argv() {
+        use crate::backend::{McpServerSpec, McpTransport};
+        let args = build_claude_mcp_config(&[McpServerSpec {
+            name: "openh3-image-generation".into(),
+            transport: McpTransport::Stdio {
+                command: "node".into(),
+                args: vec![],
+                env: vec![
+                    ("OPENH3_DESKTOP_MEDIA_CONTEXT".into(), "descriptor".into()),
+                    ("OPENH3_RUNTIME_TOKEN".into(), "helper-secret".into()),
+                ],
+            },
+        }])
+        .unwrap();
+        assert!(!args.contains("helper-secret"));
+        let value: serde_json::Value = serde_json::from_str(&args).unwrap();
+        assert_eq!(
+            value["mcpServers"]["openh3-image-generation"]["env"]["OPENH3_RUNTIME_TOKEN"],
+            "${OPENH3_RUNTIME_TOKEN}"
+        );
     }
 
     /// The official claude-code ACP adapter preserves SSE as a distinct

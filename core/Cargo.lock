@@ -4203,6 +4203,7 @@ dependencies = [
  "base64",
  "dirs",
  "getrandom 0.2.17",
+ "hmac 0.12.1",
  "http-body-util",
  "openh3-api-types",
  "openh3-auth",

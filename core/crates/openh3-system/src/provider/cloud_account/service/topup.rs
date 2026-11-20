@@ -40,17 +40,6 @@ fn quote(q: &CloudAccountTopupQuote) -> Result<()> {
     }
     Ok(())
 }
-/// Exclude only credentials belonging to the currently authenticated grant.
-fn contains_grant_secret(value: &str, s: &Stored) -> bool {
-    [
-        Some(s.credentials.access_token.as_str()),
-        Some(s.credentials.refresh_token.as_str()),
-        s.inference_key.as_deref(),
-    ]
-    .into_iter()
-    .flatten()
-    .any(|secret| !secret.is_empty() && value.contains(secret))
-}
 /// Parse for safety, retain the original signed bytes for the handoff.
 fn checkout(value: &str, s: &Stored) -> Result<()> {
     if value.len() > 8192

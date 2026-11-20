@@ -636,8 +636,15 @@ fn build_codex_mcp_servers(servers: &[crate::backend::McpServerSpec]) -> Value {
     for s in servers {
         let entry = match &s.transport {
             McpTransport::Stdio { command, args, env } => {
-                let env_map: serde_json::Map<String, Value> = env.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
-                json!({ "command": command, "args": args, "env": Value::Object(env_map) })
+                let mut env_map: serde_json::Map<String, Value> =
+                    env.iter().map(|(k, v)| (k.clone(), json!(v))).collect();
+                let inherit_token = env_map.contains_key("OPENH3_DESKTOP_MEDIA_CONTEXT")
+                    && env_map.remove("OPENH3_RUNTIME_TOKEN").is_some();
+                let mut entry = json!({ "command": command, "args": args, "env": Value::Object(env_map) });
+                if inherit_token {
+                    entry["env_vars"] = json!(["OPENH3_RUNTIME_TOKEN"]);
+                }
+                entry
             }
             // codex streamable-http MCP: url + (optional) bearer token env var. The
             // neutral spec carries headers; codex takes a bearer_token_env_var, so we
@@ -8076,6 +8083,31 @@ mod tests {
         // (replace) — see preset_context_rides_developer_instructions_not_base.
         assert_eq!(frame["params"]["developerInstructions"], "You are a helpful assistant.");
         assert!(frame["params"].get("baseInstructions").is_none());
+    }
+
+    #[test]
+    fn account_media_config_forwards_the_spawn_token_to_mcp_by_name() {
+        use crate::backend::{McpServerSpec, McpTransport};
+        let config = build_codex_mcp_servers(&[McpServerSpec {
+            name: "openh3-video-media".into(),
+            transport: McpTransport::Stdio {
+                command: "node".into(),
+                args: vec![],
+                env: vec![
+                    ("OPENH3_DESKTOP_MEDIA_CONTEXT".into(), "descriptor".into()),
+                    ("OPENH3_RUNTIME_TOKEN".into(), "helper-secret".into()),
+                ],
+            },
+        }]);
+        assert_eq!(
+            config["openh3-video-media"]["env_vars"],
+            serde_json::json!(["OPENH3_RUNTIME_TOKEN"])
+        );
+        assert_eq!(
+            config["openh3-video-media"]["env"]["OPENH3_DESKTOP_MEDIA_CONTEXT"],
+            "descriptor"
+        );
+        assert!(!config.to_string().contains("helper-secret"));
     }
 
     /// The assistant preset must NOT replace codex's built-in system prompt.

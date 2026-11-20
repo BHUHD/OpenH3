@@ -2,6 +2,12 @@
   "aiCreation": "AI 创作",
   "aiCreationSubtitle": "让创作随灵感而生",
   "creation": {
+    "accountModelUnavailable": "此模型已对当前账号停用，请重新选择模型。",
+    "accountInputUnsupported": "请选择支持本次输入的视频模型。使用图片作为首帧时，需要支持图生视频。",
+    "chatDefault": "聊天默认模型",
+    "clearChatDefault": "恢复聊天自动选择",
+    "noAccountModels": "账号暂无此类型的模型",
+    "retryAccountModels": "账号模型加载失败，点击重试",
     "kind": "创作类型",
     "source": "模型来源",
     "model": "创作模型",
