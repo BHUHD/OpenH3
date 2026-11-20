@@ -83,6 +83,16 @@
   }
 }
 
+/* ── Login backdrop ──────────────────────────────────────────────────────────
+ * The login page always needs a deep graphite stage so the gen-light orbs
+ * glow. This token is intentionally pinned: it must stay dark regardless of
+ * the theme because the user may not have set a theme yet when they see the
+ * login page. It is NOT the inverse of bg-base; it is a fixed dark value.
+ */
+:root {
+  --login-backdrop: #111318;
+}
+
 /* ── Gen-light gradient ──────────────────────────────────────────────────────
  * The signature visual for active generation and the creation entry point.
  * Tungsten amber (#f5a623) → warm magenta (#d946a8) → daylight blue (#4f9ef8).

@@ -12,8 +12,10 @@
   justify-content: center;
   min-height: 100vh;
   font-family: inherit;
-  /* Dark graphite base so the gen-light orbs glow, not wash out */
-  background-color: #111318;
+  /* Always dark — the gen-light orbs need a dark stage and the user may not
+     have chosen a theme yet. Uses the named token from design-tokens.css,
+     which is fixed and does not invert with the colour scheme. */
+  background-color: var(--login-backdrop);
   overflow: hidden;
 }
 
@@ -167,44 +169,18 @@ body.login-page-active {
   margin-bottom: 16px;
 }
 
-/* Logo gets a gen-light mask so the black line art glows with the gradient */
+/* Logo: the asset is a black-on-transparent PNG mark.
+   Light theme: black logo on white card — readable as-is, no filter.
+   Dark theme: black logo on dark card — invert to white so it is visible. */
 .login-page__logo img {
   width: 180px;
   height: auto;
   max-height: 72px;
   object-fit: contain;
-  /* Mask the black logo with gen-light gradient */
-  mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'><rect width='1' height='1' fill='white'/></svg>");
-  /* Use CSS filter to tint the black logo */
-  filter: brightness(0) saturate(100%);
-  /* Overlay gradient via mix-blend-mode on a wrapper */
 }
 
-/* Wrapper creates the coloured background that shows through the logo's shape */
-.login-page__logo-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.login-page__logo-wrap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--gen-light-gradient);
-  mix-blend-mode: source-atop;
-  pointer-events: none;
-}
-
-/* Simpler approach: logo in a coloured glow pill */
-.login-page__logo-glow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 20px;
-  border-radius: var(--radius-card);
-  background: var(--gen-light-gradient-soft);
+[data-theme='dark'] .login-page__logo img {
+  filter: invert(1);
 }
 
 .login-page__title {
