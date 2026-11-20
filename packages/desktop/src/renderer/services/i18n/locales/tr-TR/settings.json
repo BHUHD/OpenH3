@@ -1619,7 +1619,6 @@
     "audio": "Ses",
     "video": "Video",
     "refreshWallet": "Yenile · Cüzdan",
-    "refreshUsage": "Yenile · Kullanım",
     "refreshDevices": "Yenile · Cihaz",
     "refreshCatalog": "Yenile · Model",
     "loading": "Yükleniyor…",
@@ -1745,6 +1744,17 @@
     "backToLogin": "Oturum açmaya dön",
     "registrationEmailNote": "Kayıtta e-posta bağlanmaz. Parolanızı güvenli bir yerde saklayın.",
     "mine": "Hesabım",
-    "balanceShortcut": "Bakiye"
+    "balanceShortcut": "Bakiye",
+    "refreshAccount": "Bakiyeyi ve hareketleri yenile",
+    "retryRead": "Yeniden oku",
+    "updatedAt": "Bakiye ve hareketler {{time}} itibarıyla okundu",
+    "settling": "Son kesintiler okunuyor. Bakiye hâlâ değişebilir…",
+    "settlementStale": "Bakiye son kesintiyi henüz içermiyor olabilir. Biraz sonra yeniden okuyun.",
+    "settlementNotice": "Bulut kesintileri gecikmeli işlenebilir; en sonuncusu bakiyeye daha sonra yansıyabilir.",
+    "supportDetails": "Destek bilgileri",
+    "emptyBalance": "Bakiyeniz tükendi. Resmî bulut modellerini kullanmaya devam etmek için yükleme yapın.",
+    "topUp": "Yükleme yap",
+    "recentActivity": "Son hareketler",
+    "viewAllActivity": "Tüm hareketleri gör"
   }
 }

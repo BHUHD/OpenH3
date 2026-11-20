@@ -1621,7 +1621,6 @@
     "audio": "오디오",
     "video": "동영상",
     "refreshWallet": "새로고침 · 지갑",
-    "refreshUsage": "새로고침 · 사용 내역",
     "refreshDevices": "새로고침 · 기기",
     "refreshCatalog": "새로고침 · 모델",
     "loading": "불러오는 중…",
@@ -1747,6 +1746,17 @@
     "backToLogin": "로그인으로 돌아가기",
     "registrationEmailNote": "가입 시 이메일이 연결되지 않습니다. 비밀번호를 안전하게 보관하세요.",
     "mine": "내 계정",
-    "balanceShortcut": "잔액"
+    "balanceShortcut": "잔액",
+    "refreshAccount": "잔액 및 내역 새로고침",
+    "retryRead": "다시 읽기",
+    "updatedAt": "잔액 및 내역 읽은 시각: {{time}}",
+    "settling": "최신 차감 내역을 읽는 중입니다. 잔액이 아직 바뀔 수 있습니다…",
+    "settlementStale": "잔액에 최신 차감이 아직 반영되지 않았을 수 있습니다. 잠시 후 다시 읽어 주세요.",
+    "settlementNotice": "클라우드 차감은 늦게 반영될 수 있어 최신 차감이 잔액에 나중에 반영될 수 있습니다.",
+    "supportDetails": "지원용 정보",
+    "emptyBalance": "잔액을 모두 사용했습니다. 공식 클라우드 모델을 계속 사용하려면 충전하세요.",
+    "topUp": "충전하기",
+    "recentActivity": "최근 내역",
+    "viewAllActivity": "전체 내역 보기"
   }
 }

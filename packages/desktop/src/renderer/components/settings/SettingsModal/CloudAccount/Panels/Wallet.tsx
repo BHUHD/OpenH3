@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Collapse, Typography } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
-import type { CloudQuota, CloudQuotaView } from '@/common/types/platform/cloudAccount';
+import type { CloudQuota, CloudQuotaView, CloudWallet } from '@/common/types/platform/cloudAccount';
 import { useCloudAccount } from '../Provider';
 import { formatAccountAmount, formatAccountTime } from './format';
 
@@ -117,7 +117,23 @@ const QuotaView: React.FC<{ name: string; value?: CloudQuotaView }> = ({ name, v
     </Field>
   );
 };
-export function WalletPanel() {
+/**
+ * Spendable money is zero or below and nothing else can fund use: wallet-only billing,
+ * or a subscription read that succeeded and shows no remaining allowance. Unknown subscriptions make no claim.
+ */
+function isEmptyBalance(wallet: CloudWallet): boolean {
+  const balance = wallet.wallet_balance;
+  if (wallet.billing_preference === 'subscription_only') return false;
+  if (balance.status !== 'available' && balance.status !== 'limited') return false;
+  const money = Number(balance.amount?.display_amount?.amount);
+  if (!Number.isFinite(money) || money > 0) return false;
+  if (wallet.billing_preference === 'wallet_only') return true;
+  if (wallet.subscriptions.status !== 'available') return false;
+  return !wallet.subscriptions.items.some(
+    (item) => item.unlimited || Number(item.remaining?.display_amount?.amount ?? 0) > 0
+  );
+}
+export function WalletPanel({ onTopUp }: { onTopUp?: () => void }) {
   const cloud = useCloudAccount();
   const { t, i18n } = useTranslation();
   const label = useSafeLabel();
@@ -134,6 +150,17 @@ export function WalletPanel() {
             : label(wallet?.wallet_balance.status)}
         </div>
         <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.quotaExplanation')}</div>
+        <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.settlementNotice')}</div>
+        {wallet && isEmptyBalance(wallet) && (
+          <div className='flex flex-wrap items-center justify-between gap-8px'>
+            <span className='text-12px text-warning'>{t('settings.cloudAccount.emptyBalance')}</span>
+            {onTopUp && (
+              <Button size='small' type='primary' onClick={onTopUp}>
+                {t('settings.cloudAccount.topUp')}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       {wallet?.wallet_balance.reason && <Field name='reason'>{label(wallet.wallet_balance.reason)}</Field>}
       {wallet?.device_limit.reason && <Field name='reason'>{label(wallet.device_limit.reason)}</Field>}
@@ -167,18 +194,15 @@ export function WalletPanel() {
               </Details>
             </div>
           ))}
-          <Details title='accountDetails'>
+          <Details title='supportDetails'>
             <Field name='walletBalance'>{quota(wallet.wallet_balance.amount)}</Field>
             {wallet.device_limit.amount && <Field name='deviceLimit'>{quota(wallet.device_limit.amount)}</Field>}
             <Field name='asOf'>{formatAccountTime(wallet.as_of, i18n?.language)}</Field>
             <Field name='readStartedAt'>{formatAccountTime(wallet.read_started_at, i18n?.language)}</Field>
-            <Field name='unit'>new_api_quota</Field>
+            <Field name='unit'>{`${t('settings.cloudAccount.quotaUnit')} (new_api_quota)`}</Field>
           </Details>
         </>
       )}
-      <Button size='small' onClick={cloud.refreshWallet}>
-        {t('settings.cloudAccount.refreshWallet')}
-      </Button>
     </Panel>
   );
 }

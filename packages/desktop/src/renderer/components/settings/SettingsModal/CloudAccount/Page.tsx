@@ -1,21 +1,16 @@
-import React, { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import SettingsPageWrapper from '@/renderer/pages/settings/components/SettingsPageWrapper';
 import CloudAccount from './index';
-import { useCloudAccount } from './Provider';
 
 export default function CloudAccountPage() {
   const [search] = useSearchParams();
-  const cloud = useCloudAccount();
-  const balance = search.get('view') === 'balance';
-  useEffect(() => {
-    if (balance && cloud.session?.state === 'connected') {
-      document.querySelector('[data-cloud-panel="wallet"]')?.scrollIntoView({ block: 'start' });
-    }
-  }, [balance, cloud.session?.state]);
+  const location = useLocation();
+  // A new location key per menu entry re-focuses the balance even when this page is already open.
+  const balanceRequest = search.get('view') === 'balance' ? location.key : undefined;
   return (
     <SettingsPageWrapper>
-      <CloudAccount />
+      <CloudAccount balanceRequest={balanceRequest} />
     </SettingsPageWrapper>
   );
 }

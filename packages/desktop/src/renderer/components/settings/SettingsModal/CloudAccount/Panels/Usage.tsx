@@ -5,6 +5,7 @@ import type { CloudAccountData, CloudAccountRequest, CloudUsage } from '@/common
 import { Details, Field, Panel, ReadState, useQuota, useSafeLabel } from './Wallet';
 import { useCloudRead } from './useCloudRead';
 import { formatAccountAmount, formatAccountTime } from './format';
+import { DEFAULT_USAGE_INPUT } from './freshness';
 const isUsage = (data: CloudAccountData): data is CloudUsage => !!data && 'completeness' in data;
 type Filters = Extract<CloudAccountRequest, { operation: 'usage' }>['input'];
 const bytes = (value: string) => new TextEncoder().encode(value).length;
@@ -13,7 +14,7 @@ export function UsagePanel() {
   const id = useId();
   const label = useSafeLabel();
   const quota = useQuota();
-  const [filters, setFilters] = useState<Filters>({ page: 1, page_size: 20 });
+  const [filters, setFilters] = useState<Filters>({ ...DEFAULT_USAGE_INPUT });
   const [model, setModel] = useState('');
   const [device, setDevice] = useState('');
   const [start, setStart] = useState(0);
@@ -132,14 +133,39 @@ export function UsagePanel() {
         </>
       )}
       <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.noTaskAccounting')}</div>
-      {usage.data && (
-        <Details title='accountDetails'>
-          <Field name='asOf'>{formatAccountTime(usage.data.as_of, i18n?.language)}</Field>
-          <Field name='readStartedAt'>{formatAccountTime(usage.data.read_started_at, i18n?.language)}</Field>
-        </Details>
+    </Panel>
+  );
+}
+
+const RECENT_ROWS = 3;
+
+/** Overview preview of the newest ledger rows; reuses the default first-page read of the full ledger. */
+export function RecentActivity({ onViewAll }: { onViewAll: () => void }) {
+  const { t, i18n } = useTranslation();
+  const label = useSafeLabel();
+  const usage = useCloudRead({ operation: 'usage', input: DEFAULT_USAGE_INPUT }, isUsage);
+  const rows = usage.data?.items?.slice(0, RECENT_ROWS) ?? [];
+  return (
+    <Panel title='recentActivity'>
+      <ReadState loading={usage.loading} failed={usage.failed} hasData={!!usage.data} />
+      {usage.data && rows.length === 0 && (
+        <div className='text-12px text-t-secondary'>{t('settings.cloudAccount.emptyUsage')}</div>
       )}
-      <Button size='small' onClick={usage.refresh}>
-        {t('settings.cloudAccount.refreshUsage')}
+      {rows.map((item) => (
+        <div key={item.id} className='flex flex-wrap items-baseline justify-between gap-8px min-w-0 text-12px'>
+          <div className='flex flex-col gap-2px min-w-0 [overflow-wrap:anywhere]'>
+            <span className='text-14px'>{item.model || label(item.kind)}</span>
+            <span className='text-t-secondary'>
+              {label(item.direction)} · {formatAccountTime(item.created_at, i18n?.language)}
+            </span>
+          </div>
+          <span className='text-14px font-500 tabular-nums'>
+            {formatAccountAmount(item.quota) ?? t('settings.cloudAccount.unavailable')}
+          </span>
+        </div>
+      ))}
+      <Button size='small' type='text' className='self-start' onClick={onViewAll}>
+        {t('settings.cloudAccount.viewAllActivity')}
       </Button>
     </Panel>
   );

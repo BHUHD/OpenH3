@@ -1621,7 +1621,6 @@
     "audio": "音声",
     "video": "動画",
     "refreshWallet": "更新 · ウォレット",
-    "refreshUsage": "更新 · 利用履歴",
     "refreshDevices": "更新 · デバイス",
     "refreshCatalog": "更新 · モデル",
     "loading": "読込中…",
@@ -1747,6 +1746,17 @@
     "backToLogin": "ログインに戻る",
     "registrationEmailNote": "登録時にメールは紐付けられません。パスワードを大切に保管してください。",
     "mine": "マイアカウント",
-    "balanceShortcut": "残高"
+    "balanceShortcut": "残高",
+    "refreshAccount": "残高と明細を更新",
+    "retryRead": "再読み込み",
+    "updatedAt": "残高と明細の読み込み時刻: {{time}}",
+    "settling": "最新の引き落としを読み込み中です。残高はまだ変わる可能性があります…",
+    "settlementStale": "残高に最新の引き落としがまだ反映されていない可能性があります。少し待ってから再読み込みしてください。",
+    "settlementNotice": "クラウドの引き落としは反映が遅れることがあり、最新分は後から残高に反映される場合があります。",
+    "supportDetails": "サポート用情報",
+    "emptyBalance": "残高がなくなりました。公式クラウドモデルを使い続けるにはチャージしてください。",
+    "topUp": "チャージ",
+    "recentActivity": "最近の明細",
+    "viewAllActivity": "すべての明細を見る"
   }
 }

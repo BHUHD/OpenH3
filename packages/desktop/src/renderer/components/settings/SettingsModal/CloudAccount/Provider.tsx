@@ -13,6 +13,8 @@ import type { IProvider } from '@/common/config/storage';
 import { useAuth } from '@/renderer/hooks/context/AuthContext';
 import { resolveCurrentUserId } from '@/renderer/hooks/system/currentUserId';
 import { requestCloudAccount } from './transport';
+import { ACCOUNT_FOCUS_THROTTLE, onAccountActivity, SETTLEMENT_RETRY_DELAYS } from './Panels/freshness';
+import { useManagedTurnSettlement } from './Panels/useManagedTurnSettlement';
 
 type View = 'login' | 'register' | 'recovery' | 'proof' | 'reset';
 type Ticket = { owner: string | undefined; epoch: number };
@@ -47,6 +49,13 @@ type Lifecycle = State & {
   walletLoading: boolean;
   walletFailed: boolean;
   refreshWallet: () => void;
+  /** Re-read session, wallet and usage together. */
+  refreshAccount: () => void;
+  /** Automatic, spaced wallet+usage read (page entry); no-op while rate limited. */
+  refreshBalance: () => void;
+  /** Re-read wallet and usage a bounded number of times while late debits settle. */
+  settle: () => void;
+  settling: boolean;
   refreshCatalog: () => Promise<void>;
   deviceTarget?: { id: string; label: string; current: boolean };
   chooseDevice: (target: { id: string; label: string; current: boolean }) => void;
@@ -58,6 +67,7 @@ type Lifecycle = State & {
 };
 const Context = createContext<Lifecycle | undefined>(undefined);
 const empty = (): State => ({ revision: 0, busy: false, view: 'login', retryAt: 0, registered: false });
+const BALANCE_READ_SPACING = 2000;
 const identityOperations = new Set(['login', 'logout', 'passwordResetComplete']);
 
 /** One lifecycle for every host. Only the original owner's operation may commit.
@@ -89,6 +99,10 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   }>();
   const [resourceRevision, setResourceRevision] = useState(0);
   const paidBilling = useRef({ scope: '', orders: new Set<string>() });
+  const settleTimers = useRef<number[]>([]);
+  const balanceLimitedUntil = useRef(0);
+  const lastBalanceRead = useRef(0);
+  const [settling, setSettling] = useState(false);
   const targetRef = useRef<Lifecycle['deviceTarget']>(undefined);
   const identityFlight = useRef<(Ticket & { generation?: string; operation: string; failed?: boolean }) | undefined>(
     undefined
@@ -408,6 +422,10 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       const result = await requestCloudAccount(request);
       if (!matchesRead(original)) return;
       if (request.operation === 'models') void mutate('providers');
+      if (result.success === false && result.code === 'CLOUD_RATE_LIMITED') {
+        const retry = result.retry_after ?? result.details?.retry_after ?? 60;
+        balanceLimitedUntil.current = Date.now() + retry * 1000;
+      }
       if (result.success === false && (result.code === 'CLOUD_AUTH_REQUIRED' || result.code === 'CLOUD_CONFLICT'))
         void query.mutate();
       return result;
@@ -423,6 +441,82 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       return { scope, wallet: result.data };
     },
     { shouldRetryOnError: false, revalidateOnFocus: false, revalidateOnReconnect: false }
+  );
+  const connected = current.session?.state === 'connected';
+  const revalidateUsage = () =>
+    mutate(
+      (key) =>
+        Array.isArray(key) &&
+        key[0] === 'cloud-read' &&
+        key[1] === scope &&
+        (key[2] as CloudAccountRequest | undefined)?.operation === 'usage'
+    );
+  /** Automatic reads are single-flight, spaced and paused by a gateway rate limit; deliberate refresh is not spaced. */
+  const readBalance = (deliberate = false) => {
+    const now = Date.now();
+    if (!connected || now < balanceLimitedUntil.current) return false;
+    if (!deliberate && (walletRef.current.isValidating || now - lastBalanceRead.current < BALANCE_READ_SPACING))
+      return true;
+    lastBalanceRead.current = now;
+    void walletRef.current.mutate();
+    void revalidateUsage();
+    return true;
+  };
+  const clearSettle = () => {
+    for (const timer of settleTimers.current) window.clearTimeout(timer);
+    settleTimers.current = [];
+  };
+  const settle = () => {
+    if (!connected) return;
+    clearSettle();
+    if (!readBalance()) return setSettling(false);
+    setSettling(true);
+    SETTLEMENT_RETRY_DELAYS.forEach((delay, index) => {
+      const timer = window.setTimeout(() => {
+        if (!readBalance() || index === SETTLEMENT_RETRY_DELAYS.length - 1) {
+          clearSettle();
+          setSettling(false);
+        }
+      }, delay);
+      settleTimers.current.push(timer);
+    });
+  };
+  const walletRef = useRef(walletQuery);
+  walletRef.current = walletQuery;
+  const readBalanceRef = useRef(readBalance);
+  readBalanceRef.current = readBalance;
+  useEffect(() => {
+    if (!connected) return;
+    let lastFocusRead = 0;
+    const onFocus = () => {
+      const now = Date.now();
+      if (document.visibilityState === 'hidden' || now - lastFocusRead < ACCOUNT_FOCUS_THROTTLE) return;
+      if (readBalanceRef.current()) lastFocusRead = now;
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [connected, scope]);
+  const settleRef = useRef(settle);
+  settleRef.current = settle;
+  useEffect(() => {
+    if (!connected) return;
+    return onAccountActivity(() => settleRef.current());
+  }, [connected]);
+  useManagedTurnSettlement(connected, () => {
+    const original = { ticket: { owner, epoch: renderEpoch }, publication };
+    const originalGeneration = generation.current;
+    return () => matchesRead(original) && originalGeneration === generation.current;
+  });
+  useEffect(
+    () => () => {
+      clearSettle();
+      setSettling(false);
+    },
+    [scope, connected]
   );
   useEffect(() => {
     if (targetRef.current && current.session?.state !== 'connected') {
@@ -454,16 +548,8 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       // This is revalidation deduplication, never a local balance or order status.
       if (paidBilling.current.scope !== scope) paidBilling.current = { scope, orders: new Set() };
       const unseen = paidOrderIds.filter((id) => !paidBilling.current.orders.has(id));
-      if (!unseen.length) return;
+      if (!unseen.length || !readBalance(true)) return;
       for (const id of unseen) paidBilling.current.orders.add(id);
-      void walletQuery.mutate();
-      void mutate(
-        (key) =>
-          Array.isArray(key) &&
-          key[0] === 'cloud-read' &&
-          key[1] === scope &&
-          (key[2] as CloudAccountRequest | undefined)?.operation === 'usage'
-      );
     },
     readOwned,
     wallet: walletQuery.data?.scope === scope ? walletQuery.data.wallet : undefined,
@@ -472,6 +558,16 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     refreshWallet: () => {
       void walletQuery.mutate();
     },
+    refreshAccount: () => {
+      if (!connected || !matches({ owner, epoch: renderEpoch })) return;
+      void query.mutate();
+      readBalance(true);
+    },
+    refreshBalance: () => {
+      readBalance();
+    },
+    settle,
+    settling,
     refreshCatalog: async () => {
       if (current.catalogPending || (catalogFlight.current && matchesRead(catalogFlight.current))) return;
       const original = { ticket: { owner, epoch: renderEpoch }, publication };

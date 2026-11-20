@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useCloudAccount } from '../Provider';
 import { Button, Tabs } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { Details, Field, Panel, ReadState, useSafeLabel, WalletPanel } from './Wallet';
 import { DevicesPanel } from './Devices';
-import { UsagePanel } from './Usage';
+import { RecentActivity, UsagePanel } from './Usage';
 import { PurchasePanel } from './Purchase';
+import { AccountStatusBar } from './StatusBar';
 export function CatalogPanel() {
   const cloud = useCloudAccount();
   useEffect(() => {
@@ -123,34 +124,56 @@ export function CatalogPanel() {
     </Panel>
   );
 }
-export function ConnectedPanels() {
+/** balanceRequest changes on every balance entry (account menu), even when the page is already open. */
+export function ConnectedPanels({ balanceRequest }: { balanceRequest?: string }) {
   const { t } = useTranslation();
+  const cloud = useCloudAccount();
+  const [tab, setTab] = useState('overview');
+  const cloudRef = useRef(cloud);
+  cloudRef.current = cloud;
+  const entered = useRef(false);
+  useEffect(() => {
+    // The provider outlives this page, so entering it must re-read a balance loaded earlier.
+    if (entered.current || cloudRef.current.wallet) cloudRef.current.refreshBalance();
+    entered.current = true;
+    if (!balanceRequest) return;
+    setTab('overview');
+    const frame = window.requestAnimationFrame(() =>
+      document.querySelector('[data-cloud-panel="wallet"]')?.scrollIntoView({ block: 'start' })
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [balanceRequest]);
   return (
-    <Tabs
-      defaultActiveTab='overview'
-      lazyload={false}
-      destroyOnHide={false}
-      animation={false}
-      className='my-16px'
-      headerPadding={false}
-    >
-      <Tabs.TabPane key='overview' title={t('settings.cloudAccount.overviewTab')}>
-        <div className='flex flex-col gap-12px'>
-          <WalletPanel />
-          <CatalogPanel />
-        </div>
-      </Tabs.TabPane>
-      <Tabs.TabPane key='purchase' title={t('settings.cloudAccount.purchaseTab')}>
-        <div className='flex flex-col gap-12px'>
-          <PurchasePanel />
-        </div>
-      </Tabs.TabPane>
-      <Tabs.TabPane key='activity' title={t('settings.cloudAccount.activityTab')}>
-        <UsagePanel />
-      </Tabs.TabPane>
-      <Tabs.TabPane key='devices' title={t('settings.cloudAccount.devicesTab')}>
-        <DevicesPanel />
-      </Tabs.TabPane>
-    </Tabs>
+    <>
+      <AccountStatusBar />
+      <Tabs
+        activeTab={tab}
+        onChange={setTab}
+        lazyload={false}
+        destroyOnHide={false}
+        animation={false}
+        className='my-16px'
+        headerPadding={false}
+      >
+        <Tabs.TabPane key='overview' title={t('settings.cloudAccount.overviewTab')}>
+          <div className='flex flex-col gap-12px'>
+            <WalletPanel onTopUp={() => setTab('purchase')} />
+            <RecentActivity onViewAll={() => setTab('activity')} />
+            <CatalogPanel />
+          </div>
+        </Tabs.TabPane>
+        <Tabs.TabPane key='purchase' title={t('settings.cloudAccount.purchaseTab')}>
+          <div className='flex flex-col gap-12px'>
+            <PurchasePanel />
+          </div>
+        </Tabs.TabPane>
+        <Tabs.TabPane key='activity' title={t('settings.cloudAccount.activityTab')}>
+          <UsagePanel />
+        </Tabs.TabPane>
+        <Tabs.TabPane key='devices' title={t('settings.cloudAccount.devicesTab')}>
+          <DevicesPanel />
+        </Tabs.TabPane>
+      </Tabs>
+    </>
   );
 }

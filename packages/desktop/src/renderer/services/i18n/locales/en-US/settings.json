@@ -1619,7 +1619,6 @@
     "audio": "Audio",
     "video": "Video",
     "refreshWallet": "Refresh balance",
-    "refreshUsage": "Refresh activity",
     "refreshDevices": "Refresh devices",
     "refreshCatalog": "Refresh models",
     "loading": "Loading…",
@@ -1745,6 +1744,17 @@
     "backToLogin": "Back to sign in",
     "registrationEmailNote": "Email is not linked at registration. Keep your password safe.",
     "mine": "My account",
-    "balanceShortcut": "Balance"
+    "balanceShortcut": "Balance",
+    "refreshAccount": "Refresh balance and activity",
+    "retryRead": "Read again",
+    "updatedAt": "Balance and activity read at {{time}}",
+    "settling": "Reading the latest charges. The balance may still change…",
+    "settlementStale": "The balance may not include the latest charge yet. Read again in a moment.",
+    "settlementNotice": "Cloud charges can post with a delay, so the latest one may reach the balance later.",
+    "supportDetails": "Support information",
+    "emptyBalance": "Your balance is used up. Top up to keep using official cloud models.",
+    "topUp": "Top up",
+    "recentActivity": "Recent activity",
+    "viewAllActivity": "View all activity"
   }
 }

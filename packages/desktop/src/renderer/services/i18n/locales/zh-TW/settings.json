@@ -1621,7 +1621,6 @@
     "audio": "音訊",
     "video": "影片",
     "refreshWallet": "重新整理餘額",
-    "refreshUsage": "重新整理明細",
     "refreshDevices": "重新整理裝置",
     "refreshCatalog": "重新整理模型",
     "loading": "正在讀取…",
@@ -1747,6 +1746,17 @@
     "backToLogin": "返回登入",
     "registrationEmailNote": "目前註冊不綁定電子郵件，請妥善保管密碼。",
     "mine": "我的",
-    "balanceShortcut": "餘額"
+    "balanceShortcut": "餘額",
+    "refreshAccount": "重新整理餘額與明細",
+    "retryRead": "重新讀取",
+    "updatedAt": "餘額與明細讀取於 {{time}}",
+    "settling": "正在讀取最新扣款，餘額可能稍後變動…",
+    "settlementStale": "餘額可能尚未包含最新扣款，請稍後重新讀取。",
+    "settlementNotice": "雲端扣款可能延遲入帳，最新一筆可能稍後才計入餘額。",
+    "supportDetails": "技術支援資訊",
+    "emptyBalance": "餘額已用完，需要儲值後才能繼續使用官方雲端模型。",
+    "topUp": "前往儲值",
+    "recentActivity": "最近明細",
+    "viewAllActivity": "查看全部明細"
   }
 }

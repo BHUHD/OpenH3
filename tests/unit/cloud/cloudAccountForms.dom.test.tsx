@@ -38,12 +38,20 @@ const capabilities = {
 };
 function mount() {
   return render(
-    <SWRConfig value={{ provider: () => new Map(), onError: () => {}, shouldRetryOnError: false }}>
+    <SWRConfig
+      value={{ provider: () => new Map(), onError: () => {}, shouldRetryOnError: false, focusThrottleInterval: 0 }}
+    >
       <CloudAccountProvider>
         <CloudAccount />
       </CloudAccountProvider>
     </SWRConfig>
   );
+}
+/** Connected accounts have no healthy refresh control; window focus re-reads the session. */
+async function refocus() {
+  await act(async () => {
+    window.dispatchEvent(new Event('focus'));
+  });
 }
 async function fill(name: string, value: string) {
   fireEvent.change(await screen.findByLabelText(`settings.cloudAccount.${name}`), { target: { value } });
@@ -712,7 +720,7 @@ it.each(['login', 'verify'] as const)(
     expect(await screen.findByText('settings.cloudAccount.catalogFailed')).toBeInTheDocument();
     // A later read of this same grant is authoritative and may update the profile.
     current = { ...current, account: { ...current.account, display_name: 'Refreshed Alice' } };
-    await click('refresh');
+    await refocus();
     expect(await screen.findByText('Refreshed Alice')).toBeInTheDocument();
     expect(reads).toBe(3);
   }
@@ -782,7 +790,7 @@ it.each(['login', 'verify'] as const)(
     await act(async () => finishRead({ success: false, code: 'CLOUD_TRANSPORT', error: 'obsolete read failure' }));
     expect(screen.getByText('Current Alice')).toBeInTheDocument();
     expect(screen.queryByText('settings.cloudAccount.requestFailed')).not.toBeInTheDocument();
-    await click('refresh');
+    await refocus();
     expect(await screen.findByText('settings.cloudAccount.requestFailed')).toBeInTheDocument();
     expect(screen.getByText('Current Alice')).toBeInTheDocument();
     expect(reads).toBe(3);

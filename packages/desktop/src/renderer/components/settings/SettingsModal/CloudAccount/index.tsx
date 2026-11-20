@@ -9,7 +9,10 @@ import { ConnectedPanels } from './Panels';
 import { CloudAccountAvatar, CloudAccountHeading } from './Identity';
 import styles from './AccountSurface.module.css';
 
-export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant = 'page' }) => {
+export const CloudAccount: React.FC<{ variant?: 'page' | 'modal'; balanceRequest?: string }> = ({
+  variant = 'page',
+  balanceRequest,
+}) => {
   const cloud = useCloudAccount();
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
@@ -83,7 +86,7 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           ) : (
             <>
               {session.account.email && <Typography.Paragraph>{session.account.email}</Typography.Paragraph>}
-              <ConnectedPanels />
+              <ConnectedPanels balanceRequest={balanceRequest} />
             </>
           )}
         </>
@@ -143,8 +146,8 @@ export const CloudAccount: React.FC<{ variant?: 'page' | 'modal' }> = ({ variant
           )}
         </>
       )}
-      {variant === 'page' && (
-        <Button className={authPage ? 'self-center mt-4px' : 'mt-16px'} size='small' type='text' onClick={cloud.reload}>
+      {authPage && (
+        <Button className='self-center mt-4px' size='small' type='text' onClick={cloud.reload}>
           {t('settings.cloudAccount.refresh')}
         </Button>
       )}

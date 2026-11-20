@@ -1619,7 +1619,6 @@
     "audio": "Audio",
     "video": "Vidéo",
     "refreshWallet": "Actualiser · Portefeuille",
-    "refreshUsage": "Actualiser · Utilisation",
     "refreshDevices": "Actualiser · Appareil",
     "refreshCatalog": "Actualiser · Modèle",
     "loading": "Chargement…",
@@ -1745,6 +1744,17 @@
     "backToLogin": "Retour à la connexion",
     "registrationEmailNote": "Aucune adresse e-mail n’est associée à l’inscription. Conservez votre mot de passe.",
     "mine": "Mon compte",
-    "balanceShortcut": "Solde"
+    "balanceShortcut": "Solde",
+    "refreshAccount": "Actualiser le solde et l’activité",
+    "retryRead": "Relire",
+    "updatedAt": "Solde et activité lus à {{time}}",
+    "settling": "Lecture des derniers débits. Le solde peut encore changer…",
+    "settlementStale": "Le solde n’inclut peut-être pas encore le dernier débit. Relisez dans un instant.",
+    "settlementNotice": "Les débits cloud peuvent être comptabilisés avec du retard ; le dernier peut apparaître plus tard dans le solde.",
+    "supportDetails": "Informations pour le support",
+    "emptyBalance": "Votre solde est épuisé. Rechargez pour continuer à utiliser les modèles cloud officiels.",
+    "topUp": "Recharger",
+    "recentActivity": "Activité récente",
+    "viewAllActivity": "Voir toute l’activité"
   }
 }

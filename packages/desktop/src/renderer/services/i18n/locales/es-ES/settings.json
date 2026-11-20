@@ -1619,7 +1619,6 @@
     "audio": "Audio",
     "video": "Vídeo",
     "refreshWallet": "Actualizar · Monedero",
-    "refreshUsage": "Actualizar · Uso",
     "refreshDevices": "Actualizar · Dispositivo",
     "refreshCatalog": "Actualizar · Modelo",
     "loading": "Cargando…",
@@ -1745,6 +1744,17 @@
     "backToLogin": "Volver al inicio de sesión",
     "registrationEmailNote": "No se vincula un correo al registrarte. Guarda tu contraseña.",
     "mine": "Mi cuenta",
-    "balanceShortcut": "Saldo"
+    "balanceShortcut": "Saldo",
+    "refreshAccount": "Actualizar saldo y actividad",
+    "retryRead": "Leer de nuevo",
+    "updatedAt": "Saldo y actividad leídos a las {{time}}",
+    "settling": "Leyendo los últimos cargos. El saldo aún puede cambiar…",
+    "settlementStale": "Es posible que el saldo aún no incluya el último cargo. Vuelve a leerlo en un momento.",
+    "settlementNotice": "Los cargos en la nube pueden registrarse con retraso, así que el último puede reflejarse más tarde.",
+    "supportDetails": "Información para soporte",
+    "emptyBalance": "Tu saldo se ha agotado. Recarga para seguir usando los modelos oficiales en la nube.",
+    "topUp": "Recargar",
+    "recentActivity": "Actividad reciente",
+    "viewAllActivity": "Ver toda la actividad"
   }
 }

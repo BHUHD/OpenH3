@@ -1619,7 +1619,6 @@
     "audio": "Audio",
     "video": "Video",
     "refreshWallet": "Aktualisieren · Guthaben",
-    "refreshUsage": "Aktualisieren · Verbrauch",
     "refreshDevices": "Aktualisieren · Gerät",
     "refreshCatalog": "Aktualisieren · Modell",
     "loading": "Wird geladen…",
@@ -1745,6 +1744,17 @@
     "backToLogin": "Zurück zur Anmeldung",
     "registrationEmailNote": "Bei der Registrierung wird keine E-Mail verknüpft. Bewahren Sie Ihr Passwort sicher auf.",
     "mine": "Mein Konto",
-    "balanceShortcut": "Guthaben"
+    "balanceShortcut": "Guthaben",
+    "refreshAccount": "Guthaben und Aktivität aktualisieren",
+    "retryRead": "Erneut abrufen",
+    "updatedAt": "Guthaben und Aktivität abgerufen um {{time}}",
+    "settling": "Neueste Abbuchungen werden abgerufen. Das Guthaben kann sich noch ändern…",
+    "settlementStale": "Das Guthaben enthält die neueste Abbuchung eventuell noch nicht. Bitte gleich erneut abrufen.",
+    "settlementNotice": "Cloud-Abbuchungen können verzögert verbucht werden, die neueste erscheint eventuell später im Guthaben.",
+    "supportDetails": "Support-Informationen",
+    "emptyBalance": "Dein Guthaben ist aufgebraucht. Lade es auf, um offizielle Cloud-Modelle weiter zu nutzen.",
+    "topUp": "Aufladen",
+    "recentActivity": "Letzte Aktivität",
+    "viewAllActivity": "Alle Aktivitäten anzeigen"
   }
 }

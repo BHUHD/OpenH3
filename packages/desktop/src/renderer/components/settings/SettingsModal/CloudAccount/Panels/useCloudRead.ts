@@ -18,7 +18,12 @@ export function useCloudRead<T extends CloudAccountData>(
   const query = useSWR<{ scope: string; data: T }, Error & { scope: string }>(
     cloud.session?.state === 'connected' ? ['cloud-read', scope, request] : null,
     fetcher,
-    { shouldRetryOnError: false, revalidateOnFocus: false, revalidateOnReconnect: false, keepPreviousData: false }
+    {
+      shouldRetryOnError: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      keepPreviousData: false,
+    }
   );
   return {
     data: query.data?.scope === scope ? query.data.data : undefined,

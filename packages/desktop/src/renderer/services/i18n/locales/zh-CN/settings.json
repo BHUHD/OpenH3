@@ -1620,7 +1620,6 @@
     "audio": "音频",
     "video": "视频",
     "refreshWallet": "刷新余额",
-    "refreshUsage": "刷新明细",
     "refreshDevices": "刷新设备",
     "refreshCatalog": "刷新模型",
     "loading": "正在读取…",
@@ -1746,6 +1745,17 @@
     "backToLogin": "返回登录",
     "registrationEmailNote": "当前注册不绑定邮箱，请妥善保存密码。",
     "mine": "我的",
-    "balanceShortcut": "余额"
+    "balanceShortcut": "余额",
+    "refreshAccount": "刷新余额与明细",
+    "retryRead": "重新读取",
+    "updatedAt": "余额与明细读取于 {{time}}",
+    "settling": "正在读取最新扣费，余额可能稍后变化…",
+    "settlementStale": "余额可能尚未包含最新扣费，请稍后重新读取。",
+    "settlementNotice": "云端扣费可能延迟入账，最新一笔可能稍后才计入余额。",
+    "supportDetails": "技术支持信息",
+    "emptyBalance": "余额已用完，需要充值后才能继续使用官方云端模型。",
+    "topUp": "去充值",
+    "recentActivity": "最近明细",
+    "viewAllActivity": "查看全部明细"
   }
 }

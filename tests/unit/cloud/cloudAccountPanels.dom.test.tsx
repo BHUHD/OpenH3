@@ -21,10 +21,14 @@ vi.mock('@/renderer/hooks/context/AuthContext', () => ({
 vi.mock('@/renderer/components/settings/SettingsModal/CloudAccount/transport', () => ({
   requestCloudAccount: f.request,
 }));
+vi.mock('@/common', () => ({
+  ipcBridge: { conversation: { turnCompleted: { on: () => () => {} } } },
+}));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 import { CloudAccountProvider } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import CloudAccount from '@/renderer/components/settings/SettingsModal/CloudAccount';
 import { formatAccountTime } from '@/renderer/components/settings/SettingsModal/CloudAccount/Panels/format';
+import { signalAccountActivity } from '@/renderer/components/settings/SettingsModal/CloudAccount/Panels/freshness';
 const wallet: CloudWallet = {
   read_started_at: 1700000000,
   as_of: 1700000001,
@@ -188,7 +192,7 @@ function response(r: CloudAccountRequest): CloudAccountResponse {
         items: [
           {
             id: 'refund',
-            created_at: 1700000001,
+            created_at: 1699999999,
             kind: 'refund',
             direction: 'credit',
             quota: {
@@ -212,10 +216,17 @@ let defaultTab = 'overviewTab';
 function selectTab(key: string) {
   fireEvent.click(screen.getByRole('tab', { name: `settings.cloudAccount.${key}` }));
 }
-async function mount() {
+async function mount({ immediateSessionFocus = false } = {}) {
   const cache = new Map();
   const tree = () => (
-    <SWRConfig value={{ provider: () => cache, shouldRetryOnError: false, onError: () => {} }}>
+    <SWRConfig
+      value={{
+        provider: () => cache,
+        shouldRetryOnError: false,
+        onError: () => {},
+        ...(immediateSessionFocus && { focusThrottleInterval: 0, dedupingInterval: 0 }),
+      }}
+    >
       <CloudAccountProvider>
         <CloudAccount />
       </CloudAccountProvider>
@@ -229,8 +240,8 @@ async function mount() {
   return { ...view, tree };
 }
 async function click(key: string) {
-  if (['refreshUsage', 'applyFilters', 'nextPage', 'previousPage'].includes(key)) selectTab('activityTab');
-  if (['refreshCatalog', 'refreshWallet'].includes(key)) selectTab('overviewTab');
+  if (['applyFilters', 'nextPage', 'previousPage'].includes(key)) selectTab('activityTab');
+  if (key === 'refreshCatalog') selectTab('overviewTab');
   if (
     [
       'confirmPurchase',
@@ -260,6 +271,13 @@ async function click(key: string) {
   if (key === 'cancel' && screen.queryByRole('tab', { name: `settings.cloudAccount.${defaultTab}` }))
     selectTab(defaultTab);
 }
+const recent = () => screen.getByRole('region', { name: 'settings.cloudAccount.recentActivity', exact: true });
+/** Connected accounts have no healthy refresh control; window focus re-reads account data. */
+async function refocus() {
+  await act(async () => {
+    window.dispatchEvent(new Event('focus'));
+  });
+}
 async function revoke(label: string) {
   selectTab('devicesTab');
   const options = { name: `settings.cloudAccount.revoke ${label}` };
@@ -285,7 +303,7 @@ it('shows exact server money and keeps account units and timestamps in collapsed
   expect(screen.getByText('0.000084 USD')).toBeVisible();
   const rawBalance = screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit');
   const balance = screen.getByRole('region', { name: 'settings.cloudAccount.wallet', exact: true });
-  const details = within(balance).getByRole('button', { name: 'settings.cloudAccount.accountDetails' });
+  const details = within(balance).getByRole('button', { name: 'settings.cloudAccount.supportDetails' });
   expect(details).toHaveAttribute('aria-expanded', 'false');
   expect(details.parentElement).toContainElement(rawBalance);
   expect(details.parentElement).toContainElement(screen.getByText('999 settings.cloudAccount.quotaUnit'));
@@ -316,7 +334,7 @@ it('shows unavailable money without deriving it from raw account units', async (
   await mount();
   const balance = await screen.findByRole('region', { name: 'settings.cloudAccount.wallet', exact: true });
   expect(await within(balance).findByText('500000 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
-  expect(within(balance).getByRole('button', { name: 'settings.cloudAccount.accountDetails' })).toHaveAttribute(
+  expect(within(balance).getByRole('button', { name: 'settings.cloudAccount.supportDetails' })).toHaveAttribute(
     'aria-expanded',
     'false'
   );
@@ -329,7 +347,7 @@ it('retains failed same-session wallet as visibly stale and clears on owner repl
   f.request.mockImplementation(async (r) =>
     r.operation === 'wallet' ? { success: false, code: 'CLOUD_TRANSPORT', error: 'RAW SECRET' } : response(r)
   );
-  await click('refreshWallet');
+  act(() => signalAccountActivity());
   expect(await screen.findByText('settings.cloudAccount.stale')).toBeInTheDocument();
   expect(screen.getByText('-99999999999999999999 settings.cloudAccount.quotaUnit')).toBeInTheDocument();
   f.owner = 'b';
@@ -344,14 +362,15 @@ it('uses validated filters, resets page, and displays refund/request association
   await mount();
   await screen.findByText('req-actual');
   selectTab('activityTab');
-  expect(screen.getByText('0.2468 USD')).toBeVisible();
+  const ledger = within(screen.getByRole('region', { name: 'settings.cloudAccount.usage', exact: true }));
+  expect(ledger.getByText('0.2468 USD')).toBeVisible();
   const rawAmount = screen.getByText('123400 settings.cloudAccount.quotaUnit');
   expect(rawAmount.closest('.arco-collapse-item')?.querySelector('[aria-expanded]')).toHaveAttribute(
     'aria-expanded',
     'false'
   );
-  expect(screen.getByText('settings.cloudAccount.credit')).toBeInTheDocument();
-  expect(screen.getByText('settings.cloudAccount.not_reconciled')).toBeInTheDocument();
+  expect(ledger.getByText('settings.cloudAccount.credit')).toBeInTheDocument();
+  expect(ledger.getByText('settings.cloudAccount.not_reconciled')).toBeInTheDocument();
   await click('nextPage');
   await waitFor(() =>
     expect(f.request).toHaveBeenCalledWith({ operation: 'usage', input: { page: 2, page_size: 20 } })
@@ -469,10 +488,11 @@ it('rejects a delayed old grant wallet after same-account generation replacement
         ? late.promise
         : Promise.resolve(response(r))
   );
-  await mount();
+  await mount({ immediateSessionFocus: true });
   await screen.findByText('Alice');
+  await waitFor(() => expect(walletCalls).toBe(1));
   current = { ...session, generation: '2', account: { ...session.account, display_name: 'Relogged Alice' } };
-  await click('refresh');
+  await refocus();
   await screen.findByText('Relogged Alice');
   await act(async () =>
     late.resolve({
@@ -575,7 +595,10 @@ it('shows unavailable wallet/usage and empty log pages as unknown accounting, wi
   await mount();
   expect(await screen.findByText('settings.cloudAccount.batch_updates_enabled')).toBeInTheDocument();
   expect(screen.getByText('settings.cloudAccount.unlimited')).toBeInTheDocument();
-  expect(screen.getByText('settings.cloudAccount.emptyUsage')).toBeInTheDocument();
+  expect(within(recent()).getByText('settings.cloudAccount.emptyUsage')).toBeVisible();
+  selectTab('activityTab');
+  const ledger = within(screen.getByRole('region', { name: 'settings.cloudAccount.usage', exact: true }));
+  expect(ledger.getByText('settings.cloudAccount.emptyUsage')).toBeVisible();
   expect(screen.queryByText('SECRET_RAW_REASON')).not.toBeInTheDocument();
 });
 it('finishes other-device proof once and renders the refreshed authoritative device list', async () => {
@@ -1072,10 +1095,11 @@ describe('native purchase and owned orders', () => {
           ? Promise.resolve({ success: true, data: current })
           : Promise.resolve(purchaseResponse(r))
     );
-    await mount();
+    await mount({ immediateSessionFocus: true });
     await buy();
+    expect(creates()).toHaveLength(1);
     current = { ...session, generation: '2', account: { ...session.account, display_name: 'Relogged Alice' } };
-    await click('refresh');
+    await refocus();
     await screen.findByText('Relogged Alice');
     await act(async () =>
       late.resolve({ success: true, data: purchaseOrder({ checkout_url: 'https://pay.example/?sign=SIGNED_SECRET' }) })
@@ -1184,16 +1208,24 @@ describe('native purchase and owned orders', () => {
       }
       return purchaseResponse(r);
     });
-    await mount();
+    await mount({ immediateSessionFocus: true });
     await screen.findByRole('radio');
     vi.useFakeTimers();
     await buy();
-    current = { success: true, data: { ...session, generation: '2' } };
-    await click('refresh');
-    await advance(0);
-    expect(screen.queryByText('original-order')).not.toBeInTheDocument();
-    await advance(10000);
+    expect(screen.getByText('original-order')).toBeInTheDocument();
     expect(orderReads()).toHaveLength(0);
+    current = {
+      success: true,
+      data: { ...session, generation: '2', account: { ...session.account, display_name: 'Relogged Alice' } },
+    };
+    await refocus();
+    await advance(0);
+    expect(screen.getByText('Relogged Alice')).toBeInTheDocument();
+    expect(screen.queryByText('original-order')).not.toBeInTheDocument();
+    // The foreground event also reads the current order once. Its scheduled polling must stop.
+    expect(orderReads()).toHaveLength(1);
+    await advance(10000);
+    expect(orderReads()).toHaveLength(1);
     await buy();
     await click('logout');
     await advance(0);
