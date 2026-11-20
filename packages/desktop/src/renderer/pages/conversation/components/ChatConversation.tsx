@@ -148,10 +148,7 @@ const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ co
 
 type AionrsConversation = Extract<TChatConversation, { type: 'aionrs' }>;
 
-const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; sliderTitle: React.ReactNode }> = ({
-  conversation,
-  sliderTitle,
-}) => {
+const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation }> = ({ conversation }) => {
   const runtimeView = useConversationRuntimeView(conversation.id);
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
@@ -206,7 +203,6 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
 
   const chatLayoutProps = {
     title: conversation.name,
-    siderTitle: sliderTitle,
     sider: <ChatSlider conversation={conversation} />,
     headerExtra: (
       <div className='flex items-center gap-8px'>
@@ -291,7 +287,6 @@ const ChatConversation: React.FC<{
   hideSendBox?: boolean;
 }> = ({ conversation, hideSendBox }) => {
   const [runtimeReadyConversationId, setRuntimeReadyConversationId] = useState<string | null>(null);
-  const { t } = useTranslation();
   // Stable identity: the selector reports readiness from an effect keyed on this
   // callback, so an inline arrow would re-run it on every render.
   const handleRuntimeReadyChange = useCallback(
@@ -382,14 +377,6 @@ const ChatConversation: React.FC<{
     acpAssistantId,
   ]);
 
-  const sliderTitle = useMemo(() => {
-    return (
-      <div className='flex items-center justify-between'>
-        <span className='text-16px font-bold text-t-primary'>{t('conversation.workspace.title')}</span>
-      </div>
-    );
-  }, [t]);
-
   // For ACP/Codex conversations, use AcpModelSelector that can show/switch models.
   // For other conversations, show disabled model selector.
   // Mobile: model selection moves into the sendbox `+` action sheet, so the
@@ -417,7 +404,7 @@ const ChatConversation: React.FC<{
   }, [conversation, isAionrsConversation, isMobile, isLegacyReadOnlyConversation, resolvedConversationBackend]);
 
   if (conversation && conversation.type === 'aionrs') {
-    return <AionrsConversationPanel key={conversation.id} conversation={conversation} sliderTitle={sliderTitle} />;
+    return <AionrsConversationPanel key={conversation.id} conversation={conversation} />;
   }
 
   // 如果有预设助手信息，使用预设助手的 logo 和名称；加载中时不进入 fallback；否则使用 backend 的 logo
@@ -457,7 +444,6 @@ const ChatConversation: React.FC<{
       title={conversation?.name}
       {...chatLayoutProps}
       headerExtra={headerExtraNode}
-      siderTitle={sliderTitle}
       sider={<ChatSlider conversation={conversation} />}
       workspaceEnabled={workspaceEnabled}
       previewHosted={Boolean(conversation?.project_id)}

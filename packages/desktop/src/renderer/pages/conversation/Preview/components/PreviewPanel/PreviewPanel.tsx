@@ -67,7 +67,6 @@ import {
 } from '../../constants';
 import { usePreviewKeyboardShortcuts, useScrollSync, useTabOverflow, useThemeDetection } from '../../hooks';
 import { useTranslation } from 'react-i18next';
-import './preview.css';
 
 /**
  * 预览面板主组件
@@ -89,7 +88,11 @@ class SaveRefusedError extends Error {
   }
 }
 
-const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId }) => {
+const PreviewPanel: React.FC<{
+  conversationId?: string;
+  isVisible?: boolean;
+  onReturnToConversation?: () => void;
+}> = ({ conversationId, isVisible = true, onReturnToConversation }) => {
   const { t, i18n } = useTranslation();
   const {
     isOpen,
@@ -622,6 +625,7 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
   // handleSaveActiveTab above, and calling it earlier would hit their temporal
   // dead zone.
   usePreviewKeyboardShortcuts({
+    enabled: isVisible,
     isDirty: activeTab?.isDirty,
     onSave: () => void handleSaveActiveTab(),
     onCloseActiveTab: handleCloseActiveTab,
@@ -1125,7 +1129,14 @@ const PreviewPanel: React.FC<{ conversationId?: string }> = ({ conversationId })
           fileRef={metadata?.fileRef}
           conversationId={conversationId}
           tabId={activeTabId ?? undefined}
-          onAdded={layout?.isMobile ? closePreview : undefined}
+          onAdded={
+            layout?.isMobile
+              ? () => {
+                  closePreview();
+                  onReturnToConversation?.();
+                }
+              : undefined
+          }
         />
       );
     } else if (content_type === 'pdf') {

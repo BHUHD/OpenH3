@@ -16,8 +16,8 @@ import path from 'path';
 
 import { expect, test } from '../../fixtures';
 import { goToGuid } from '../../helpers';
+import { projectExplorerFile, projectFilesTab } from '../../helpers/selectors';
 
-/** Verified present at Layout.tsx:550 rather than guessed. */
 const PREVIEW_PANEL = '[data-project-preview-region]';
 
 /**
@@ -74,13 +74,14 @@ test.describe('Preview — closing a tab with the middle mouse button', () => {
     fs.writeFileSync(path.join(workspace, 'second.md'), '# second\n');
     await openConversationWithWorkspace(page, workspace);
 
-    await page.getByText('first.md', { exact: true }).first().click();
-    await page.waitForTimeout(700);
-    await page.getByText('second.md', { exact: true }).first().click();
-
     const first = tabByTitle(page, 'first.md');
     const second = tabByTitle(page, 'second.md');
+    await projectExplorerFile(page, 'first.md').click();
     await expect(first).toBeVisible({ timeout: 20_000 });
+
+    await projectFilesTab(page).click();
+    await projectExplorerFile(page, 'second.md').click();
+    await expect(first).toBeVisible();
     await expect(second).toBeVisible({ timeout: 20_000 });
 
     await first.click({ button: 'middle' });
@@ -97,7 +98,7 @@ test.describe('Preview — closing a tab with the middle mouse button', () => {
     fs.writeFileSync(path.join(workspace, 'editable.txt'), 'saved contents\n');
     await openConversationWithWorkspace(page, workspace);
 
-    await page.getByText('editable.txt', { exact: true }).first().click();
+    await projectExplorerFile(page, 'editable.txt').click();
 
     const tab = tabByTitle(page, 'editable.txt');
     await expect(tab).toBeVisible({ timeout: 20_000 });

@@ -731,11 +731,11 @@ describe('work progress right-panel integration', () => {
     const explorer = screen.getByTestId('explorer');
     expect(explorer).toBeVisible();
     expect(screen.queryByTestId('conversation-work-progress')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('conversation.workProgress.title'));
+    fireEvent.click(screen.getByRole('tab', { name: 'conversation.workProgress.tab' }));
     expect(screen.getByTestId('conversation-work-progress')).toBeVisible();
     expect(screen.getByTestId('explorer')).toBe(explorer);
     expect(explorer).not.toBeVisible();
-    fireEvent.click(screen.getByText('conversation.workspace.title'));
+    fireEvent.click(screen.getByRole('tab', { name: 'conversation.explorer.tabs.files' }));
     expect(screen.getByTestId('explorer')).toBe(explorer);
     expect(explorer).toBeVisible();
     expect(screen.queryByTestId('conversation-work-progress')).not.toBeInTheDocument();
@@ -831,11 +831,11 @@ describe('work progress right-panel integration', () => {
     publishWorkProgress('c1', projectWorkProgress([], runtime, [operation()]));
     render(<ProjectPanelHost widthPx={320} collapsed={false} />);
     expect(screen.queryByText('Qwen-Edit')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('conversation.workProgress.title'));
+    fireEvent.click(screen.getByRole('tab', { name: 'conversation.workProgress.tab' }));
     expect(screen.getByText('Qwen-Edit')).toBeInTheDocument();
     act(() => setCurrentConversation('c2'));
     expect(screen.queryByText('Qwen-Edit')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('conversation.workProgress.title'));
+    fireEvent.click(screen.getByRole('tab', { name: 'conversation.workProgress.tab' }));
     expect(screen.getByText('conversation.workProgress.empty')).toBeInTheDocument();
   });
 

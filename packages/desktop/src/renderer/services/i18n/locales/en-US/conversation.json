@@ -835,6 +835,7 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "tab": "Progress",
     "title": "Work progress",
     "panel": "Right panel",
     "empty": "Multi-step and background tasks appear here.",

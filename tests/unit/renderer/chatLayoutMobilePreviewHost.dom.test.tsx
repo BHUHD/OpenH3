@@ -1,36 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// Regression guard for the narrow-width (mobile) project-conversation preview.
-//
-// Bug: project conversations pass `previewHosted={true}` so the preview is
-// hoisted to the Layout-level host. But that host only renders on desktop
-// (`previewRegionActive` in Layout.tsx is gated on `!isMobile`). On narrow
-// widths (< 768) neither ChatLayout nor the host rendered the preview, so
-// clicking a file in the tree opened nothing.
-//
-// Fix: ChatLayout forces `previewHosted` to false on mobile so every
-// conversation falls back to its own mobile overlay path — exactly how
-// non-project conversations already render.
-
 let mockIsMobile = false;
+let mockPreviewOpen = true;
 
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => ({ isMobile: mockIsMobile }),
 }));
 
-vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => ({ isOpen: true }),
-  PreviewPanel: () => <div data-testid='preview-panel'>preview</div>,
+vi.mock('@/renderer/pages/conversation/Preview/context/PreviewContext', () => ({
+  usePreviewContext: () => ({ isOpen: mockPreviewOpen, openRevision: 0, isMaximized: false }),
+  usePreviewContextOptional: () => ({ isOpen: mockPreviewOpen, openRevision: 0, isMaximized: false }),
 }));
 
-vi.mock('@/renderer/pages/conversation/components/ChatLayout/MobileWorkspaceOverlay', () => ({
-  default: () => <div data-testid='mobile-workspace-overlay' />,
-}));
-
-vi.mock('@/renderer/pages/conversation/components/ChatLayout/WorkspacePanelHeader', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+vi.mock('@/renderer/pages/conversation/Preview/components/PreviewPanel/PreviewPanel', () => ({
+  default: () => <div data-testid='preview-panel'>preview</div>,
 }));
 
 vi.mock('@/renderer/pages/conversation/components/ChatTitleEditor', () => ({
@@ -57,10 +42,6 @@ vi.mock('@/renderer/pages/conversation/hooks/useContainerWidth', () => ({
   useContainerWidth: () => ({ containerRef: { current: null }, containerWidth: 800 }),
 }));
 
-vi.mock('@/renderer/pages/conversation/hooks/useLayoutConstraints', () => ({
-  useLayoutConstraints: () => undefined,
-}));
-
 vi.mock('@/renderer/pages/conversation/hooks/useTitleRename', () => ({
   useTitleRename: () => ({
     editingTitle: false,
@@ -74,7 +55,10 @@ vi.mock('@/renderer/pages/conversation/hooks/useTitleRename', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/hooks/useWorkspaceCollapse', () => ({
-  useWorkspaceCollapse: () => ({ rightSiderCollapsed: true, setRightSiderCollapsed: vi.fn() }),
+  useWorkspaceCollapse: () => {
+    const [rightSiderCollapsed, setRightSiderCollapsed] = useState(true);
+    return { rightSiderCollapsed, setRightSiderCollapsed };
+  },
 }));
 
 import ChatLayout from '@/renderer/pages/conversation/components/ChatLayout';
@@ -88,31 +72,36 @@ function renderChatLayout(previewHosted: boolean) {
   );
 }
 
-describe('ChatLayout mobile preview host fallback', () => {
+describe('ChatLayout workspace panel', () => {
   afterEach(() => {
     mockIsMobile = false;
+    mockPreviewOpen = true;
     resetWorkProgressForTest();
   });
 
-  it('renders the preview overlay on mobile even for hoisted (project) conversations', () => {
+  it('yields the preview to the Layout host on mobile for project conversations', () => {
     mockIsMobile = true;
     renderChatLayout(true);
-    // The regression target: preview must render inside ChatLayout on mobile.
-    expect(screen.getByTestId('preview-panel')).toBeInTheDocument();
-  });
-
-  it('yields the preview to the Layout host on desktop for hoisted conversations (no double render)', () => {
-    mockIsMobile = false;
-    renderChatLayout(true);
-    // Desktop hoisted: ChatLayout must NOT render the preview — the host owns it.
     expect(screen.queryByTestId('preview-panel')).not.toBeInTheDocument();
   });
 
-  it('renders the preview locally on desktop for non-hoisted conversations', () => {
+  it('yields the preview to the Layout host on desktop for project conversations', () => {
     mockIsMobile = false;
-    renderChatLayout(false);
-    expect(screen.getByTestId('preview-panel')).toBeInTheDocument();
+    renderChatLayout(true);
+    expect(screen.queryByTestId('preview-panel')).not.toBeInTheDocument();
   });
+
+  it.each([false, true])(
+    'renders preview inside the local panel when isMobile=%s for a non-project conversation',
+    (isMobile) => {
+      mockIsMobile = isMobile;
+      const { container } = renderChatLayout(false);
+      const frame = container.querySelector('.chat-layout-right-sider');
+      expect(frame).toHaveAttribute('data-collapsed', 'false');
+      expect(frame).toContainElement(screen.getByTestId('preview-panel'));
+      expect(screen.getByText('chat body')).toBeVisible();
+    }
+  );
 
   it('does not allocate a second right column for project progress on either desktop or mobile', () => {
     publishWorkProgress('project-chat', {
@@ -133,10 +122,11 @@ describe('ChatLayout mobile preview host fallback', () => {
         <div>chat body</div>
       </ChatLayout>
     );
-    expect(screen.queryByTestId('mobile-workspace-overlay')).not.toBeInTheDocument();
+    expect(container.querySelector('.chat-layout-right-sider')).toBeNull();
   });
 
   it('keeps the right panel collapsed for task progress without a workspace', () => {
+    mockPreviewOpen = false;
     publishWorkProgress('no-workspace', {
       tasks: [{ id: 'bash', title: 'Build preview', kind: 'background', status: 'running' }],
       isProcessing: false,

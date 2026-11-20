@@ -150,7 +150,7 @@ describe('ExplorerContainer data integration', () => {
     expect(screen.getByText('Root Alpha')).toBeInTheDocument();
 
     // Switching back unmounts the SCM panel and keeps the tree.
-    fireEvent.click(screen.getByText('conversation.explorer.tabs.files'));
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.explorer.tabs.changes', pressed: true }));
     expect(screen.queryByText('conversation.explorer.scm.loadFailed')).not.toBeInTheDocument();
     expect(screen.getByText('Root Alpha')).toBeInTheDocument();
   });

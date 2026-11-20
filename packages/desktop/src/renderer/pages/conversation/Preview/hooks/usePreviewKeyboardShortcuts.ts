@@ -13,6 +13,8 @@ import { isPlatformPrimaryModifier } from '@/renderer/utils/ui/keyboardShortcuts
  * Preview panel keyboard shortcuts configuration
  */
 interface UsePreviewKeyboardShortcutsOptions {
+  /** The preview can stay mounted behind other workspace tabs. */
+  enabled?: boolean;
   /**
    * 当前是否有未保存的修改
    * Whether there are unsaved changes
@@ -46,12 +48,14 @@ interface UsePreviewKeyboardShortcutsOptions {
  * @param options - 快捷键配置 / Keyboard shortcuts configuration
  */
 export const usePreviewKeyboardShortcuts = ({
+  enabled = true,
   isDirty,
   onSave,
   onCloseActiveTab,
   scopeRef,
 }: UsePreviewKeyboardShortcutsOptions): void => {
   useEffect(() => {
+    if (!enabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl + S
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
@@ -91,5 +95,5 @@ export const usePreviewKeyboardShortcuts = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDirty, onSave, onCloseActiveTab, scopeRef]);
+  }, [enabled, isDirty, onSave, onCloseActiveTab, scopeRef]);
 };

@@ -29,6 +29,7 @@ import os from 'os';
 import path from 'path';
 import { test, expect } from '../../fixtures';
 import { goToGuid } from '../../helpers';
+import { projectExplorerFile, projectFilesTab } from '../../helpers/selectors';
 
 /** The hoisted preview region — verified present at `Layout.tsx:550`. */
 const PREVIEW_PANEL = '[data-project-preview-region]';
@@ -191,7 +192,7 @@ test.describe('Preview — tab identity and persistence', () => {
     await goToGuid(page);
     ids = await createProjectConversation(page, workspace);
 
-    await page.getByText('notes.txt', { exact: true }).first().click();
+    await projectExplorerFile(page, 'notes.txt').click();
     const panel = page.locator(PREVIEW_PANEL);
     await expect(panel).toBeVisible({ timeout: 20_000 });
 
@@ -244,7 +245,7 @@ test.describe('Preview — tab identity and persistence', () => {
     await page.waitForFunction((id) => window.location.hash === `#/conversation/${id}`, ids.conversationId, {
       timeout: 15_000,
     });
-    await expect(page.locator('.workspace-tree').first()).toBeVisible({ timeout: 30_000 });
+    await expect(projectFilesTab(page)).toBeVisible({ timeout: 30_000 });
 
     /**
      * Assert what was stored, not what is on screen. Leaving the route collapses
@@ -292,7 +293,7 @@ test.describe('Preview — tab identity and persistence', () => {
     await goToGuid(page);
     ids = await createProjectConversation(page, workspace);
 
-    await page.getByText('notes.txt', { exact: true }).first().click();
+    await projectExplorerFile(page, 'notes.txt').click();
     await expect(page.locator(PREVIEW_PANEL)).toBeVisible({ timeout: 20_000 });
 
     // Wait for the tab to reach storage before collapsing; the writer is debounced.
