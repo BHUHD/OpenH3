@@ -4,6 +4,7 @@ import { h3GenerationSpecSchema, type H3GenerationSpec, type H3Job } from '@/com
 import type { H3SetupState } from '@/common/chat/document/creation/h3Setup';
 import type { CreationInstallConsent, CreationOperation } from '@/common/chat/document/creation/operation';
 
+type RequestBinding = { conversationId: string; cancelled: boolean; managed?: boolean };
 type Ports = {
   setup: () => H3SetupState;
   install: (consent: CreationInstallConsent) => Promise<void>;
@@ -11,12 +12,15 @@ type Ports = {
   enqueue: (spec: H3GenerationSpec, id: string) => Promise<string>;
   getJob: (id: string) => Pick<H3Job, 'status' | 'remoteUncertain' | 'cancelRequested'> | undefined;
   cancelJob: (id: string) => Promise<unknown>;
+  validate?: (spec: H3GenerationSpec) => Promise<void>;
+  prepareCloud?: (operation: CreationOperation, connectionId: string, baseUrl: string) => void;
+  submitCloud?: (operation: CreationOperation, connectionId: string) => Promise<string>;
 };
 
 /** Persist the LLM's generation request while the user authorizes the existing installer. */
 export class CreationOperations {
   private operations = new Map<string, CreationOperation>();
-  private requests = new Map<string, { conversationId: string; cancelled: boolean }>();
+  private requests = new Map<string, RequestBinding>();
   private pumping = false;
   private starting = new Set<string>();
   private submitting = new Set<string>();
@@ -31,7 +35,7 @@ export class CreationOperations {
       try {
         const saved = JSON.parse(fs.readFileSync(filename, 'utf8')) as {
           operations: CreationOperation[];
-          requests: Array<[string, { conversationId: string; cancelled: boolean }]>;
+          requests: Array<[string, RequestBinding]>;
         };
         this.requests = new Map(saved.requests);
         for (const operation of saved.operations) {
@@ -40,17 +44,18 @@ export class CreationOperations {
           const job = this.ports.getJob(jobId);
           const cancelled =
             this.requests.get(operation.requestId)?.cancelled || ['cancelled', 'cancelling'].includes(operation.state);
-          const recovered: CreationOperation = cancelled
-            ? {
-                ...operation,
-                state: job && !this.jobSettled(job) ? 'cancelling' : 'cancelled',
-                ...(job ? { jobId } : {}),
-              }
-            : job
-              ? { ...operation, state: 'submitted', jobId }
-              : operation.state === 'installing'
-                ? { ...operation, state: 'paused' }
-                : operation;
+          const recovered: CreationOperation =
+            cancelled && !operation.cloudConnectionId
+              ? {
+                  ...operation,
+                  state: job && !this.jobSettled(job) ? 'cancelling' : 'cancelled',
+                  ...(job ? { jobId } : {}),
+                }
+              : job
+                ? { ...operation, state: 'submitted', jobId }
+                : operation.state === 'installing' && !operation.cloudConnectionId
+                  ? { ...operation, state: this.ports.installed() ? 'installing' : 'paused' }
+                  : operation;
           this.operations.set(operation.id, recovered);
         }
         this.flush();
@@ -63,16 +68,16 @@ export class CreationOperations {
       }
     }
   }
-  bind(requestId: string, conversationId: string): void {
+  bind(requestId: string, conversationId: string, managed = false): void {
     const prior = this.requests.get(requestId);
     if (
       typeof requestId !== 'string' ||
       !/^[a-f0-9-]{36}$/i.test(requestId) ||
       !conversationId ||
-      (prior && prior.conversationId !== conversationId)
+      (prior && (prior.conversationId !== conversationId || Boolean(prior.managed) !== managed))
     )
       throw new Error('CREATION_REQUEST_MISMATCH');
-    this.requests.set(requestId, prior ?? { conversationId, cancelled: false });
+    this.requests.set(requestId, prior ?? { conversationId, cancelled: false, ...(managed ? { managed } : {}) });
     this.flush();
   }
   get(id: string): CreationOperation {
@@ -102,6 +107,7 @@ export class CreationOperations {
       requestId,
       conversationId: scope.conversationId,
       spec,
+      ...(scope.managed ? { managed: true } : {}),
       state: 'awaiting-consent',
       updatedAt: new Date().toISOString(),
     };
@@ -109,10 +115,33 @@ export class CreationOperations {
     this.flush();
     return operation;
   }
+  async prepareGeneration(requestId: string, input: unknown): Promise<CreationOperation> {
+    if (!this.requests.get(requestId)?.managed) throw new Error('H3_MANAGED_ROUTE_NOT_SELECTED');
+    const spec = h3GenerationSpecSchema.parse(input);
+    await this.ports.validate?.(spec);
+    const operation = this.request(requestId, spec);
+    if (operation.state === 'awaiting-consent' && this.ports.installed()) {
+      this.update(operation.id, { state: 'installing' });
+      await this.submit(operation);
+    }
+    return this.get(operation.id);
+  }
+  async authorizeAndStart(
+    id: string,
+    conversationId: string,
+    consent: CreationInstallConsent
+  ): Promise<CreationOperation> {
+    const operation = this.get(id);
+    if (operation.conversationId !== conversationId || operation.cloudConnectionId)
+      throw new Error('CREATION_CONVERSATION_UNAVAILABLE');
+    if (operation.state === 'installing' || operation.state === 'submitted') return operation;
+    this.authorize(id, conversationId, consent);
+    return this.start(id, operation.requestId);
+  }
   authorize(id: string, conversationId: string, consent: CreationInstallConsent): CreationOperation {
     const operation = this.get(id);
-    if (this.wantsCancellation(id)) throw new Error('CREATION_CONVERSATION_UNAVAILABLE');
-    if (!conversationId || operation.conversationId !== conversationId || consent.acceptModelTerms !== true)
+    if (operation.cloudConnectionId || this.wantsCancellation(id)) throw new Error('CREATION_CONVERSATION_UNAVAILABLE');
+    if (!conversationId || operation.conversationId !== conversationId || consent?.acceptModelTerms !== true)
       throw new Error('H3_MODEL_TERMS_REQUIRED');
     if (!['awaiting-consent', 'paused', 'failed', 'authorized'].includes(operation.state))
       throw new Error('CREATION_OPERATION_NOT_AUTHORIZABLE');
@@ -151,7 +180,19 @@ export class CreationOperations {
         // Installer preflight still exposes the previous setup attempt's phase.
         if (this.starting.has(operation.id) || this.submitting.has(operation.id)) continue;
         if (operation.state !== 'installing') continue;
+        if (operation.cloudConnectionId) {
+          await this.submitCloud(operation);
+          continue;
+        }
         const setup = this.ports.setup();
+        if (
+          operation.managed &&
+          ['installed', 'paused', 'failed', 'idle'].includes(setup.phase) &&
+          this.ports.installed()
+        ) {
+          await this.submit(operation);
+          continue;
+        }
         if (setup.phase === 'paused' || setup.phase === 'failed') {
           this.update(operation.id, { state: setup.phase, error: setup.error });
           continue;
@@ -168,6 +209,25 @@ export class CreationOperations {
       this.pumping = false;
     }
   }
+  managedSubmissions(): CreationOperation[] {
+    return [...this.operations.values()].filter(
+      (operation) =>
+        operation.managed &&
+        operation.state === 'submitted' &&
+        Boolean(operation.consent || operation.cloudConnectionId) &&
+        !this.wantsCancellation(operation.id)
+    );
+  }
+
+  isCurrentManagedRequest(requestId: string, conversationId: string): boolean {
+    const binding = this.requests.get(requestId);
+    return binding?.managed === true && binding.conversationId === conversationId && !binding.cancelled;
+  }
+
+  isManagedJob(id: string): boolean {
+    return this.operations.get(id)?.managed === true;
+  }
+
   /** Include continuations that can enqueue a job after installer completion. */
   updateIdle(): boolean {
     return (
@@ -193,7 +253,39 @@ export class CreationOperations {
       if (this.wantsCancellation(operation.id)) await this.settleCancellation(operation.id);
     }
   }
+  async chooseCloud(
+    id: string,
+    conversationId: string,
+    connectionId: string,
+    baseUrl: string
+  ): Promise<CreationOperation> {
+    const operation = this.get(id);
+    if (!operation.managed || operation.conversationId !== conversationId || this.wantsCancellation(id))
+      throw new Error('CREATION_CONVERSATION_UNAVAILABLE');
+    if (operation.cloudConnectionId === connectionId) return operation;
+    if (operation.state !== 'awaiting-consent' || !this.ports.prepareCloud)
+      throw new Error('CREATION_CLOUD_CHOICE_UNAVAILABLE');
+    this.ports.prepareCloud(operation, connectionId, baseUrl);
+    await this.submitCloud(
+      this.update(id, { state: 'installing', cloudConnectionId: connectionId, cloudBaseUrl: baseUrl })
+    );
+    return this.get(id);
+  }
+  private async submitCloud(operation: CreationOperation): Promise<void> {
+    const connectionId = operation.cloudConnectionId;
+    if (!connectionId || !this.ports.submitCloud || this.submitting.has(operation.id)) return;
+    this.submitting.add(operation.id);
+    try {
+      const cloudJobId = await this.ports.submitCloud(operation, connectionId);
+      this.update(operation.id, { cloudJobId, state: 'submitted' });
+    } catch (error) {
+      this.update(operation.id, { state: 'failed', error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      this.submitting.delete(operation.id);
+    }
+  }
   async cancel(id: string): Promise<CreationOperation> {
+    if (this.get(id).cloudConnectionId) throw new Error('CREATION_CLOUD_CANCELLATION_UNSUPPORTED');
     this.update(id, { state: 'cancelling', error: undefined });
     await this.settleCancellation(id);
     return this.get(id);
@@ -236,7 +328,11 @@ export class CreationOperations {
     for (const scope of this.requests.values()) if (scope.conversationId === conversationId) scope.cancelled = true;
     this.flush();
     for (const operation of this.operations.values())
-      if (operation.conversationId === conversationId && operation.state !== 'cancelled')
+      if (
+        operation.conversationId === conversationId &&
+        operation.state !== 'cancelled' &&
+        !operation.cloudConnectionId
+      )
         await this.cancel(operation.id);
   }
   private update(id: string, patch: Partial<CreationOperation>): CreationOperation {

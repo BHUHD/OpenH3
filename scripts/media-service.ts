@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { prepareComfyWorkflowVariants } from '../packages/desktop/src/process/services/media/comfy/routing/preparation';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,13 +7,20 @@ import { Worker } from 'node:worker_threads';
 import { mediaServiceCorsHeaders } from '../packages/desktop/src/process/services/media/MediaServiceProcess';
 import { UpdateAdmissionGate } from '../packages/desktop/src/process/startup/updateInstallGuard';
 import { H3SetupTask } from '../packages/desktop/src/process/services/runtime/H3SetupTask';
-import { inspectCreationInventory } from '../packages/desktop/src/process/services/media/creation/inventory';
+import {
+  inspectCreationInventory,
+  isManagedH3Installed,
+} from '../packages/desktop/src/process/services/media/creation/inventory';
 import { CreationOperations } from '../packages/desktop/src/process/services/media/creation/CreationOperations';
 import { createComfyApprovalResolver } from '../packages/desktop/src/process/services/media/creation/installApproval';
-import { ComfyInstallContinuation } from '../packages/desktop/src/process/services/media/creation/installContinuation';
+import {
+  ComfyInstallContinuation,
+  type ManagedFirstClipUpdate,
+} from '../packages/desktop/src/process/services/media/creation/installContinuation';
 import { ComfyService } from '../packages/desktop/src/process/services/media/comfy/ComfyService';
 import { ComfyPromptObserver } from '../packages/desktop/src/process/services/media/creation/ComfyPromptObserver';
 import { ComfyWorkflowEngine } from '../packages/desktop/src/process/services/media/comfy/workflowEngine';
+import { verifyComfySmokeArtifact } from '../packages/desktop/src/process/services/media/comfy/mediaValidation';
 import {
   assertComfyInstallPlan,
   executeComfyInstall,
@@ -33,6 +41,7 @@ import {
   startLegacyH3Runtime,
 } from '../packages/desktop/src/process/services/media/comfy/discovery/legacyH3';
 import type { CreationInstallConsent } from '../packages/desktop/src/common/chat/document/creation/operation';
+import { firstClipCloudInput } from '../packages/desktop/src/common/chat/document/creation/cloudVideo';
 import { inspectH3DownloadSpace } from '../packages/desktop/src/process/services/runtime/h3DownloadPlan';
 import { probeSetupHardware } from '../packages/desktop/src/process/services/runtime/h3SetupHardware';
 import { inspectSetupCapabilities } from '../packages/desktop/src/process/services/runtime/h3SetupCapabilities';
@@ -51,6 +60,7 @@ import { JsonMediaJobStore } from '../packages/desktop/src/process/services/medi
 import { mediaJobSpecSchema } from '../packages/desktop/src/common/chat/document/mediaJob';
 import {
   h3GenerationSpecSchema,
+  normalizeH3GenerationSpec,
   type H3GenerationSpec,
   type H3Job,
 } from '../packages/desktop/src/common/chat/document/h3Job';
@@ -70,7 +80,19 @@ const updateGate = new UpdateAdmissionGate();
 const updateControlToken = process.env.OPENH3_UPDATE_CONTROL_TOKEN;
 const dataDir = process.env.AIONUI_DATA_DIR ?? path.resolve('.runtime/dev-data');
 fs.mkdirSync(dataDir, { recursive: true });
-const cloudVideoService = new CloudVideoService({ root: path.join(dataDir, 'cloud-video') });
+function verifyFirstClip(file: string, mimeType = 'video/mp4'): Promise<void> {
+  return verifyComfySmokeArtifact(
+    { path: file, mimeType },
+    'video',
+    AbortSignal.timeout(90_000),
+    undefined,
+    'generation'
+  );
+}
+const cloudVideoService = new CloudVideoService({
+  root: path.join(dataDir, 'cloud-video'),
+  verifyManagedOutput: verifyFirstClip,
+});
 const cloudVideoTimer = setInterval(() => {
   const finish = updateGate.enter();
   if (finish)
@@ -122,6 +144,7 @@ const h3Artifacts = new H3ArtifactArchive({
   directory: path.join(dataDir, 'h3-artifacts'),
   outputRoots: () => [path.join(h3Runtime.installStatus().runtimeRoot, 'ComfyUI', 'output')],
 });
+const h3ReferencePreflight = new H3ReferencePreflight();
 const h3Runner = new H3JobRunner(
   h3Store,
   {
@@ -138,7 +161,7 @@ const h3Runner = new H3JobRunner(
     confirmStopped: (promptId, requireKnown) => h3Client.confirmStopped(promptId, requireKnown),
     confirmIdle: () => h3Client.confirmIdle(),
   },
-  new H3ReferencePreflight(),
+  h3ReferencePreflight,
   undefined,
   async (id, result) => {
     await Promise.all(
@@ -146,6 +169,16 @@ const h3Runner = new H3JobRunner(
         h3Artifacts.resolve(id, index, artifact, () => h3Client.fetchArtifact(artifact, AbortSignal.timeout(60_000)))
       )
     );
+  },
+  async (id, result) => {
+    if (!creationOperations.isManagedJob(id)) return;
+    const index = result.artifacts.findIndex((artifact) => artifact.mimeType.startsWith('video/'));
+    if (index < 0) throw new Error('H3_OUTPUT_VIDEO_MISSING');
+    const artifact = result.artifacts[index];
+    const file = await h3Artifacts.resolve(id, index, artifact, () =>
+      h3Client.fetchArtifact(artifact, AbortSignal.timeout(60_000))
+    );
+    await verifyFirstClip(file, artifact.mimeType);
   }
 );
 const h3Setup = new H3SetupTask(
@@ -226,7 +259,32 @@ const creationOperations = new CreationOperations(path.join(dataDir, 'creation-o
   install: async (consent) => {
     await installH3(consent);
   },
-  installed: () => inspectCreationInventory(h3Runtime.installStatus(), false).h3.installed,
+  installed: () => isManagedH3Installed(h3Runtime.installStatus()),
+  validate: async (spec) => {
+    const { references } = normalizeH3GenerationSpec(spec);
+    for (const reference of references)
+      if (!path.isAbsolute(reference.path) || !fs.statSync(reference.path, { throwIfNoEntry: false })?.isFile())
+        throw new Error('H3_REFERENCE_FILE_NOT_FOUND');
+    await h3ReferencePreflight.validate(references);
+  },
+  prepareCloud: (operation, connectionId, baseUrl) => {
+    if (!firstClipCloudInput(operation.spec)) throw new Error('CREATION_CLOUD_INPUT_UNSUPPORTED');
+    const connection = cloudVideoService.connections().find((item) => item.id === connectionId);
+    if (connection?.protocol !== 'vllm-h3') throw new Error('CREATION_CLOUD_CONNECTION_UNSUPPORTED');
+    if (connection.baseUrl !== baseUrl) throw new Error('CREATION_CLOUD_CONNECTION_CHANGED');
+  },
+  submitCloud: async (operation, connectionId) => {
+    const input = firstClipCloudInput(operation.spec);
+    if (!input || !operation.conversationId || !operation.cloudBaseUrl)
+      throw new Error('CREATION_CLOUD_INPUT_UNSUPPORTED');
+    cloudVideoService.bind(operation.requestId, operation.conversationId, connectionId, true);
+    return (
+      await cloudVideoService.submit(operation.requestId, input, operation.id, {
+        protocol: 'vllm-h3',
+        baseUrl: operation.cloudBaseUrl,
+      })
+    ).id;
+  },
   enqueue: async (spec, id) => {
     if (h3Setup.busy()) throw new Error('H3_SETUP_BUSY');
     const job = await enqueueH3(spec, id);
@@ -366,7 +424,40 @@ const comfyContinuation = new ComfyInstallContinuation({
   backendPort: () => approvalBackendPort,
   operations: () => comfyService.installationUpdates(),
   validations: () => comfyService.installationValidationUpdates(),
-  captureSelection: (requestId, conversationId) => comfyService.captureContinuationSelection(requestId, conversationId),
+  firstClips: () =>
+    creationOperations.managedSubmissions().flatMap((operation): ManagedFirstClipUpdate[] => {
+      const { id, requestId, conversationId, jobId, cloudJobId } = operation;
+      if (!conversationId) return [];
+      if (cloudJobId) {
+        const job = cloudVideoService.job(cloudJobId, conversationId);
+        if (!['succeeded', 'failed'].includes(job.status)) return [];
+        return [
+          {
+            id,
+            requestId,
+            conversationId,
+            state: job.status === 'succeeded' ? 'completed' : 'failed',
+            snapshot: { jobId: cloudJobId, statusTool: 'openh3_cloud_video_status' },
+          },
+        ];
+      }
+      if (!jobId || h3Active.has(jobId)) return [];
+      const job = h3Store.get(jobId);
+      if (!job || job.remoteUncertain || !['succeeded', 'failed'].includes(job.status)) return [];
+      return [
+        {
+          id,
+          requestId,
+          conversationId,
+          state: job.status === 'succeeded' ? 'completed' : 'failed',
+          snapshot: { jobId, statusTool: 'openh3_h3_job_status' },
+        },
+      ];
+    }),
+  captureSelection: (requestId, conversationId) =>
+    creationOperations.isCurrentManagedRequest(requestId, conversationId)
+      ? () => creationOperations.isCurrentManagedRequest(requestId, conversationId)
+      : comfyService.captureContinuationSelection(requestId, conversationId),
 });
 const comfyContinuationTimer = setInterval(() => {
   void comfyContinuation.pump().catch(() => console.warn('[comfy] COMFY_CONTINUATION_UNAVAILABLE'));
@@ -444,6 +535,13 @@ function json(res: http.ServerResponse, status: number, body: unknown): void {
     'content-type': 'application/json',
   });
   res.end(JSON.stringify(body));
+}
+function hasCreationUiCapability(req: http.IncomingMessage): boolean {
+  const token = Buffer.from(process.env.AIONUI_MEDIA_UI_TOKEN ?? '');
+  const supplied = req.headers['x-openh3-ui-token'];
+  if (!token.length || typeof supplied !== 'string') return false;
+  const received = Buffer.from(supplied);
+  return received.length === token.length && timingSafeEqual(received, token);
 }
 async function body(req: http.IncomingMessage): Promise<unknown> {
   let text = '';
@@ -541,9 +639,15 @@ const server = http.createServer(async (req, res) => {
     )
       return;
     if (req.method === 'POST' && url.pathname === '/api/creation/bind') {
-      const payload = (await body(req)) as { requestId: string; conversationId: string };
-      creationOperations.bind(payload.requestId, payload.conversationId);
+      const payload = (await body(req)) as { requestId: string; conversationId: string; managed?: boolean };
+      if (payload.managed === true && !hasCreationUiCapability(req))
+        return json(res, 403, { error: 'CREATION_UI_AUTH_REQUIRED' });
+      creationOperations.bind(payload.requestId, payload.conversationId, payload.managed === true);
       return json(res, 200, { ok: true });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/creation/generate') {
+      const payload = (await body(req)) as { requestId: string; spec: unknown };
+      return json(res, 202, await creationOperations.prepareGeneration(payload.requestId, payload.spec));
     }
     if (req.method === 'POST' && url.pathname === '/api/creation/operations') {
       const payload = (await body(req)) as { requestId: string; spec: unknown };
@@ -557,24 +661,47 @@ const server = http.createServer(async (req, res) => {
       await comfyService.cancelConversation(payload.conversationId);
       return json(res, 200, { ok: true });
     }
-    const creationMatch = /^\/api\/creation\/operations\/([a-f0-9-]{36})(?:\/(authorize|start|cancel))?$/.exec(
-      url.pathname
-    );
+    const creationMatch =
+      /^\/api\/creation\/operations\/([a-f0-9-]{36})(?:\/(authorize|confirm|cloud|start|cancel))?$/.exec(url.pathname);
     if (creationMatch) {
       const [, id, action] = creationMatch;
-      if (req.method === 'GET' && !action) return json(res, 200, creationOperations.get(id));
+      if (req.method === 'GET' && !action) {
+        const operation = creationOperations.get(id);
+        const requestId = url.searchParams.get('requestId');
+        if (requestId !== null && requestId !== operation.requestId)
+          return json(res, 403, { error: 'CREATION_REQUEST_MISMATCH' });
+        return json(res, 200, operation);
+      }
       if (req.method === 'POST') {
         if (action === 'cancel') return json(res, 200, await creationOperations.cancel(id));
         const payload = (await body(req)) as {
           requestId: string;
           conversationId: string;
           consent: CreationInstallConsent;
+          connectionId: string;
+          baseUrl: string;
         };
+        if (['authorize', 'confirm', 'cloud'].includes(action) && !hasCreationUiCapability(req))
+          return json(res, 403, { error: 'CREATION_UI_AUTH_REQUIRED' });
         if (action === 'authorize')
           return json(res, 200, creationOperations.authorize(id, payload.conversationId, payload.consent));
+        if (action === 'confirm')
+          return json(
+            res,
+            202,
+            await creationOperations.authorizeAndStart(id, payload.conversationId, payload.consent)
+          );
+        if (action === 'cloud')
+          return json(
+            res,
+            202,
+            await creationOperations.chooseCloud(id, payload.conversationId, payload.connectionId, payload.baseUrl)
+          );
         if (action === 'start') return json(res, 202, await creationOperations.start(id, payload.requestId));
       }
     }
+    if (req.method === 'GET' && url.pathname === '/api/h3/managed-status')
+      return json(res, 200, { installed: isManagedH3Installed(h3Runtime.installStatus()) });
     if (req.method === 'GET' && url.pathname === '/api/h3/models') {
       const inventory = inspectCreationInventory(h3Runtime.installStatus(), false);
       inventory.profiles = await comfyService.refreshProfiles();

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import type { CreationModel, CreationSelection } from '@/common/chat/document/creation/creation';
+import {
+  MANAGED_H3_MODEL_ID,
+  type CreationModel,
+  type CreationSelection,
+} from '@/common/chat/document/creation/creation';
+import { isElectronDesktop } from '@/renderer/utils/platform';
 import { comfyApi, COMFY_INVENTORY_CACHE_KEY } from '@/common/chat/document/creation/comfyApi';
 import { cloudCreationModels } from '@/common/chat/document/creation/cloudModels';
 import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
+import { h3JobApi } from '@/common/chat/document/h3JobApi';
 import { getClientBusinessSetting } from '@/renderer/services/clientBusinessSettings';
 import useConfigModelListWithImage from '@/renderer/hooks/agent/useConfigModelListWithImage';
 import { COMFY_FAMILIES } from './comfyDraft';
@@ -93,6 +99,13 @@ export function useCreationModels(enabled: boolean) {
     shouldRetryOnError: false,
   });
   const profiles = inventory?.profiles ?? [];
+  const { data: managedInventory } = useSWR(
+    enabled && selection.kind === 'video' && selection.source === 'local' && isElectronDesktop()
+      ? 'creation.managed-h3-inventory'
+      : null,
+    () => h3JobApi.managedStatus(),
+    { refreshInterval: 30_000, shouldRetryOnError: false }
+  );
   currentProfiles.current = profiles;
   const inventoryError =
     error instanceof Error
@@ -125,7 +138,7 @@ export function useCreationModels(enabled: boolean) {
     if (source === 'local') {
       const matching = (Array.isArray(profiles) ? profiles : []).filter((profile) => profile.kind === kind);
       const preferredId = selection.modelIds[`local-${kind}`];
-      return groupComfyModels(matching).map(({ modelSetId, profiles: routes }): CreationModel => {
+      const choices = groupComfyModels(matching).map(({ modelSetId, profiles: routes }): CreationModel => {
         const profile =
           routes.find((route) => route.id === preferredId) ??
           routes.find((route) => comfyWorkflowStatus(route) === 'verified') ??
@@ -144,9 +157,27 @@ export function useCreationModels(enabled: boolean) {
           intent: 'generate',
         };
       });
+      if (
+        kind === 'video' &&
+        managedInventory &&
+        (preferredId === MANAGED_H3_MODEL_ID || !choices.some((choice) => choice.family === 'h3' && choice.available))
+      ) {
+        const managed: CreationModel = {
+          id: MANAGED_H3_MODEL_ID,
+          name: 'MiniMax H3',
+          kind,
+          source,
+          state: managedInventory.installed ? 'installed' : 'not-installed',
+          available: true,
+          intent: 'generate',
+        };
+        if (choices.some((choice) => choice.available)) choices.push(managed);
+        else choices.unshift(managed);
+      }
+      return choices;
     }
     return cloudCreationModels(providers, kind, videoConnections);
-  }, [selection.kind, selection.source, selection.modelIds, providers, profiles, videoConnections]);
+  }, [selection.kind, selection.source, selection.modelIds, providers, profiles, videoConnections, managedInventory]);
   const slot = `${selection.source}-${selection.kind}` as const;
   const savedModelId = selection.modelIds[slot];
   const unavailableSelection: CreationModel | undefined =

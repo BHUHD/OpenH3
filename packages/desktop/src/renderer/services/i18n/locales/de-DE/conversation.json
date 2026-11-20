@@ -872,5 +872,18 @@
     "detecting": "Gerät wird erkannt und Installation vorbereitet",
     "deviceInsufficient": "Die Geräteanforderungen sind nicht erfüllt. Fehlende Anforderungen stehen unten.",
     "detectionIncomplete": "Die Erkennung ist unvollständig. Das bedeutet nicht, dass das Gerät inkompatibel ist."
+  },
+  "firstClipCloud": {
+    "loading": "Cloud-Verbindungen werden geladen…",
+    "loadError": "Cloud-Verbindungen konnten nicht geladen werden. Prüfe die Verbindungseinstellungen und versuche es erneut.",
+    "title": "Mit einer Cloud-Verbindung generieren",
+    "subtitle": "Das lokale Modell ist noch nicht bereit. Du kannst die Anfrage stattdessen an eine konfigurierte Cloud-Verbindung senden.",
+    "submit": "In der Cloud generieren",
+    "destination": "Dein Prompt wird an {{name}} ({{endpoint}}) gesendet.",
+    "submitError": "Die Cloud-Generierung konnte nicht gestartet werden. Versuche es erneut.",
+    "incompatibleRefs": "Diese Anfrage verwendet lokale Referenzdateien, die nicht an eine Cloud-Verbindung gesendet werden können.",
+    "incompatibleSettings": "Diese Anfrage verwendet lokale Einstellungen (Auflösung, Modus oder Seed), die die Cloud-Generierung nicht nachbilden kann.",
+    "noCompatibleConnections": "Keine kompatible Cloud-Verbindung konfiguriert. Füge in den Einstellungen eine H3-Verbindung (vllm-h3) hinzu.",
+    "manualPath": "Um in der Cloud zu generieren, stelle die Quelle im Eingabefeld auf Cloud um und sende die Anfrage erneut."
   }
 }

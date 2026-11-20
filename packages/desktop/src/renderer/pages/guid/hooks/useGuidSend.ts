@@ -17,6 +17,7 @@ import {
 import {
   creationMessage,
   creationSessionServers,
+  MANAGED_H3_MODEL_ID,
   type CreationModel,
   type CreationRequest,
 } from '@/common/chat/document/creation/creation';
@@ -245,6 +246,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         : input;
     const creationRequestId = creationRequest ? (installationRequestId ?? crypto.randomUUID()) : undefined;
     const cloudVideo = creationRequest?.source === 'cloud' && creationRequest.kind === 'video';
+    const managedH3 = creationRequest?.id === MANAGED_H3_MODEL_ID && creationRequest.source === 'local';
     const requiresCreationBinding = creationRequest?.source === 'local' || cloudVideo;
     const agentInstallation =
       requiresCreationBinding && creationRequest.family && creationRequest.intent !== 'generate';
@@ -314,15 +316,22 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           const tools = new Set(check.tools?.map((tool) => tool.name));
           const needed = cloudVideo
             ? ['openh3_cloud_video_generate', 'openh3_cloud_video_status']
-            : creationRequest.intent === 'generate'
+            : managedH3
               ? [
-                  'openh3_comfy_environment',
-                  'openh3_comfy_profiles',
-                  'openh3_comfy_generate',
-                  'openh3_comfy_job_status',
-                  'openh3_comfy_cancel_job',
+                  'openh3_h3_generate_video',
+                  'openh3_h3_install_video_model',
+                  'openh3_h3_job_status',
+                  'openh3_cloud_video_status',
                 ]
-              : ['openh3_comfy_install'];
+              : creationRequest.intent === 'generate'
+                ? [
+                    'openh3_comfy_environment',
+                    'openh3_comfy_profiles',
+                    'openh3_comfy_generate',
+                    'openh3_comfy_job_status',
+                    'openh3_comfy_cancel_job',
+                  ]
+                : ['openh3_comfy_install'];
           const missing = needed.filter((name) => !hasCompatibleComfyTool(tools, name));
           if (!check.success || missing.length) {
             reason = !check.success
@@ -373,11 +382,11 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       permission: selectedMode || undefined,
       thought_level: selectedThoughtLevelValue || undefined,
       skill_ids:
-        creationRequest?.source === 'local'
+        creationRequest?.source === 'local' && !managedH3
           ? [...new Set([...(enabled_skills_to_send ?? []), 'comfyui-local'])]
           : enabled_skills_to_send,
       disabled_builtin_skill_ids:
-        creationRequest?.source === 'local'
+        creationRequest?.source === 'local' && !managedH3
           ? (excludeBuiltinSkills ?? []).filter((skill) => skill !== 'comfyui-local')
           : excludeBuiltinSkills,
       mcp_ids: creationRequest

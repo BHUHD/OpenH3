@@ -1,6 +1,6 @@
 import { H3LiveProgress } from '@renderer/pages/conversation/Messages/components/H3ToolResults';
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, Checkbox, Modal } from '@arco-design/web-react';
+import { Button, Checkbox } from '@arco-design/web-react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
 import { h3JobApi, type H3RuntimeStatus } from '@/common/chat/document/h3JobApi';
@@ -13,7 +13,15 @@ export default function H3EnvironmentContent({
   automatic = false,
   onReady,
   onInstall,
-}: { automatic?: boolean; onReady?: () => void; onInstall?: (consent: CreationInstallConsent) => Promise<void> } = {}) {
+  guided = false,
+  savedConsent,
+}: {
+  automatic?: boolean;
+  onReady?: () => void;
+  onInstall?: (consent: CreationInstallConsent) => Promise<void>;
+  guided?: boolean;
+  savedConsent?: CreationInstallConsent;
+} = {}) {
   const { t } = useTranslation();
   const attemptedRoot = useRef<string | undefined>(undefined);
   const [status, setStatus] = useState<H3RuntimeStatus>();
@@ -21,9 +29,9 @@ export default function H3EnvironmentContent({
   const [error, setError] = useState('');
   const [setup, setSetup] = useState<H3SetupState>({ phase: 'idle' });
   const [plan, setPlan] = useState<H3SetupPlan>();
-  const [accepted, setAccepted] = useState(false);
+  const [accepted, setAccepted] = useState(savedConsent?.acceptModelTerms === true);
   const [hardware, setHardware] = useState<H3HardwareAssessment>();
-  const [experimental, setExperimental] = useState(false);
+  const [experimental, setExperimental] = useState(savedConsent?.acceptExperimentalHardware === true);
   const [capabilities, setCapabilities] = useState<Awaited<ReturnType<typeof h3JobApi.setupCapabilities>>>();
   const [smoke, setSmoke] = useState<H3Job>();
   const smokeActive = smoke?.status === 'queued' || smoke?.status === 'running';
@@ -202,6 +210,7 @@ export default function H3EnvironmentContent({
       if (paths?.[0]) {
         setPlan(undefined);
         setAccepted(false);
+        setExperimental(false);
         setStatus(await h3JobApi.configureBundleRoot(paths[0]));
         setPlan(await h3JobApi.setupPlan());
       }
@@ -404,17 +413,21 @@ export default function H3EnvironmentContent({
               <Button disabled={busy || installing || (!!onInstall && !accepted)} onClick={() => void install()}>
                 {t('settings.h3Setup.offlineInstall')}
               </Button>
-              <Button disabled={busy || installing} onClick={() => void checkCapabilities()}>
-                {t('settings.h3Setup.check')}
-              </Button>
-              <Button
-                disabled={
-                  busy || installing || smokeActive || !capabilities?.modelsAvailable || !capabilities.nodesAvailable
-                }
-                onClick={() => void testGeneration()}
-              >
-                {t('settings.h3Setup.test')}
-              </Button>
+              {!guided && (
+                <Button disabled={busy || installing} onClick={() => void checkCapabilities()}>
+                  {t('settings.h3Setup.check')}
+                </Button>
+              )}
+              {!guided && (
+                <Button
+                  disabled={
+                    busy || installing || smokeActive || !capabilities?.modelsAvailable || !capabilities.nodesAvailable
+                  }
+                  onClick={() => void testGeneration()}
+                >
+                  {t('settings.h3Setup.test')}
+                </Button>
+              )}
               {smokeActive && (
                 <Button disabled={busy} onClick={() => void cancelSmoke()}>
                   {t('settings.h3Setup.cancel')}
@@ -450,12 +463,14 @@ export default function H3EnvironmentContent({
               {t('settings.h3Setup.pause')}
             </Button>
           )}
-          <Button
-            disabled={busy || installing || smokeActive || !hardware || hardware.status === 'blocked'}
-            onClick={() => void startRuntime()}
-          >
-            {t('settings.h3Setup.start')}
-          </Button>
+          {!guided && (
+            <Button
+              disabled={busy || installing || smokeActive || !hardware || hardware.status === 'blocked'}
+              onClick={() => void startRuntime()}
+            >
+              {t('settings.h3Setup.start')}
+            </Button>
+          )}
           <Button
             type='primary'
             disabled={
@@ -479,54 +494,18 @@ export default function H3EnvironmentContent({
   );
 }
 
-/** First-run setup stays discoverable before a conversation or video exists. */
-export function H3FirstRunSetup() {
+/** Setup inside the conversation that owns the original generation. */
+export function H3FirstRunSetup({
+  onInstall,
+  savedConsent,
+}: {
+  onInstall: (consent: CreationInstallConsent) => Promise<void>;
+  savedConsent?: CreationInstallConsent;
+}) {
   const { t } = useTranslation();
-  const [visible, setVisible] = useState(false);
-  const [probeError, setProbeError] = useState(false);
-  useEffect(() => {
-    let disposed = false;
-    // The media service may still be starting when the renderer mounts.
-    let timer: ReturnType<typeof setTimeout>;
-    let attempts = 0;
-    const inspect = async () => {
-      try {
-        const status = await h3JobApi.status();
-        if (!disposed) setVisible(!status.ready);
-      } catch {
-        if (!disposed) {
-          if (++attempts < 5) timer = setTimeout(() => void inspect(), 2000);
-          else {
-            setProbeError(true);
-            setVisible(true);
-          }
-        }
-      }
-    };
-    void inspect();
-    return () => {
-      disposed = true;
-      clearTimeout(timer);
-    };
-  }, []);
   return (
-    <Modal
-      visible={visible}
-      title={t('settings.h3Setup.firstRunTitle')}
-      footer={null}
-      onCancel={() => setVisible(false)}
-      style={{ width: 'min(760px, 94vw)' }}
-      unmountOnExit
-    >
-      {visible && (
-        <>
-          <p className='text-t-secondary text-13px leading-relaxed mb-20px'>
-            {t('settings.h3Setup.firstRunDescription')}
-          </p>
-          {probeError && <p role='alert'>{t('settings.h3Setup.serviceUnavailable')}</p>}
-          <H3EnvironmentContent automatic onReady={() => setVisible(false)} />
-        </>
-      )}
-    </Modal>
+    <section aria-label={t('settings.h3Setup.firstRunTitle')}>
+      <H3EnvironmentContent onInstall={onInstall} savedConsent={savedConsent} guided />
+    </section>
   );
 }

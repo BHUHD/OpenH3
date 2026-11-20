@@ -91,6 +91,7 @@ export const useAcpInitialMessage = ({
           bindingPending = true;
           finishBinding = beginComfySelectionChange(conversation_id);
           const request = initialMessage.creationRequest as {
+            id?: string;
             profileId?: string;
             family?: ComfyFamily;
             intent?: ComfyIntent;

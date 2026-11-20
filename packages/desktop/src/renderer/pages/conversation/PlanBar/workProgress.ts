@@ -444,7 +444,11 @@ export function projectWorkProgress(
       detail: [job?.error, job?.diagnosis?.action].filter(Boolean).join('\n') || undefined,
     });
   }
-  for (const id of new Set([...workCloudVideoIds(messages), ...cloudActivity.jobs.map((job) => job.id)])) {
+  for (const id of new Set([
+    ...workCloudVideoIds(messages),
+    ...creationOperations.flatMap((operation) => (operation.cloudJobId ? [operation.cloudJobId] : [])),
+    ...cloudActivity.jobs.map((job) => job.id),
+  ])) {
     const job = cloudActivity.jobs.find((item) => item.id === id);
     const unavailable = cloudActivity.unavailable.includes(id);
     tasks.set('cloud:' + id, {

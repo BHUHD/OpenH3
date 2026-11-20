@@ -871,5 +871,18 @@
     "detecting": "正在检测设备并生成安装计划",
     "deviceInsufficient": "设备条件不足，请查看下方具体缺项。",
     "detectionIncomplete": "环境检测尚未完成，这不代表设备不兼容。"
+  },
+  "firstClipCloud": {
+    "loading": "正在加载云端连接…",
+    "loadError": "无法加载云端连接，请检查连接设置后重试。",
+    "title": "使用云端连接生成",
+    "subtitle": "本地模型还没准备好，可以改用已配置的云端连接来生成。",
+    "submit": "在云端生成",
+    "destination": "提示词将发送到 {{name}}（{{endpoint}}）。",
+    "submitError": "云端生成未能启动，请重试。",
+    "incompatibleRefs": "这个请求包含本地参考文件，无法发送到云端连接。",
+    "incompatibleSettings": "这个请求使用了云端无法复现的本地设置（分辨率、模式或种子）。",
+    "noCompatibleConnections": "还没有配置兼容的云端连接。请在设置中添加 H3（vllm-h3）连接。",
+    "manualPath": "如需在云端生成，请在输入框中把来源切换为「云端」后重新发送。"
   }
 }

@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import {
   buildH3DownloadPlan,
   inspectH3DownloadSpace,
+  recordH3VerifiedDownload,
 } from '../packages/desktop/src/process/services/runtime/h3DownloadPlan';
 import { downloadH3FromSources } from '../packages/desktop/src/process/services/runtime/h3Downloader';
 import { prepareH3Acceleration } from '../packages/desktop/src/process/services/runtime/h3Acceleration';
@@ -15,8 +16,6 @@ parentPort?.on('message', (message) => {
 });
 async function main() {
   if (workerData.download) {
-    if (!inspectH3DownloadSpace(workerData.bundleRoot).enough) throw new Error('H3_DISK_SPACE_INSUFFICIENT');
-    parentPort?.postMessage({ phase: 'downloading' });
     const sourceFile = path.join(workerData.bundleRoot, 'download-sources.json');
     const config = fs.existsSync(sourceFile)
       ? JSON.parse(fs.readFileSync(sourceFile, 'utf8').replace(/^\uFEFF/, ''))
@@ -29,7 +28,10 @@ async function main() {
       (config.publicSources !== undefined && typeof config.publicSources !== 'boolean')
     )
       throw new Error('H3_DOWNLOAD_SOURCE_CONFIG_INVALID');
-    for (const file of buildH3DownloadPlan(config).files) {
+    const plan = buildH3DownloadPlan(config);
+    if (!inspectH3DownloadSpace(workerData.bundleRoot, plan).enough) throw new Error('H3_DISK_SPACE_INSUFFICIENT');
+    parentPort?.postMessage({ phase: 'downloading' });
+    for (const file of plan.files) {
       controller.signal.throwIfAborted();
       const destination = path.join(workerData.bundleRoot, file.relativePath);
       if (file.embeddedBase64) {
@@ -98,6 +100,7 @@ async function main() {
             },
           }
         );
+        recordH3VerifiedDownload(workerData.bundleRoot, file);
       }
     }
   }

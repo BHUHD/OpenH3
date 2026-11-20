@@ -13,6 +13,7 @@ import type { LocalModelInstallContext } from './workflows/localModels';
 
 export type CreationKind = 'image' | 'video';
 export type CreationSource = 'local' | 'cloud';
+export const MANAGED_H3_MODEL_ID = 'managed-h3';
 export type CreationModelState =
   | 'downloaded'
   | 'loadable'

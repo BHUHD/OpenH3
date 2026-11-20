@@ -872,5 +872,18 @@
     "detecting": "Detectando dispositivo y preparando la instalación",
     "deviceInsufficient": "El dispositivo no cumple los requisitos. Consulta los elementos que faltan abajo.",
     "detectionIncomplete": "La detección está incompleta. No significa que el dispositivo sea incompatible."
+  },
+  "firstClipCloud": {
+    "loading": "Cargando conexiones en la nube…",
+    "loadError": "No se pudieron cargar las conexiones en la nube. Revisa la configuración e inténtalo de nuevo.",
+    "title": "Generar con una conexión en la nube",
+    "subtitle": "El modelo local aún no está listo. Puedes enviar esta solicitud a una conexión en la nube que hayas configurado.",
+    "submit": "Generar en la nube",
+    "destination": "Tu prompt se enviará a {{name}} ({{endpoint}}).",
+    "submitError": "No se pudo iniciar la generación en la nube. Inténtalo de nuevo.",
+    "incompatibleRefs": "Esta solicitud usa archivos de referencia locales, que no se pueden enviar a una conexión en la nube.",
+    "incompatibleSettings": "Esta solicitud usa ajustes locales (resolución, modo o semilla) que la generación en la nube no puede reproducir.",
+    "noCompatibleConnections": "No hay ninguna conexión en la nube compatible. Añade una conexión H3 (vllm-h3) en Ajustes.",
+    "manualPath": "Para generar en la nube, cambia la fuente a Nube en el cuadro de entrada y vuelve a enviar la solicitud."
   }
 }

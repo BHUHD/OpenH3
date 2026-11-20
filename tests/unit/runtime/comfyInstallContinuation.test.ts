@@ -48,6 +48,38 @@ it('wakes the original idle Agent once and keeps delivery durable across restart
   await setup().pump();
   expect(fetchImpl).toHaveBeenCalledTimes(2);
 });
+it('delivers the first managed clip to the original Agent once, using its exact existing job', async () => {
+  const managed = () =>
+    new ComfyInstallContinuation({
+      filename: path.join(root, 'continuations.json'),
+      backendPort: () => 12345,
+      operations: () => [],
+      firstClips: () => [
+        {
+          id: 'managed-operation',
+          requestId: 'request-1',
+          conversationId: 'chat',
+          state: 'completed',
+          snapshot: { jobId: 'original-job', statusTool: 'openh3_cloud_video_status' },
+        },
+      ],
+      fetchImpl,
+    });
+  const current = {
+    ...conversation(),
+    extra: { creation_request: { requestId: 'request-1', intent: 'generate', id: 'managed-h3' } },
+  };
+  fetchImpl
+    .mockResolvedValueOnce(response(current))
+    .mockResolvedValueOnce(response({ turn_id: 'turn-2', msg_id: 'message-2' }));
+  await managed().pump();
+  expect(JSON.parse(String(fetchImpl.mock.calls[1][1]?.body))).toEqual({
+    hidden: true,
+    content: expect.stringContaining('"jobId":"original-job","statusTool":"openh3_cloud_video_status"'),
+  });
+  await managed().pump();
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+});
 it.each(['completed', 'failed'] as const)(
   'returns a linked installation %s result to its generation conversation',
   async (state) => {

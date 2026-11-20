@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { H3GenerationSpec } from '../h3Job';
 
 export const H3_CLOUD_BASE_URL = 'http://10.1.1.32:8091/v1';
 export const H3_CLOUD_LORA_PATH =
@@ -37,6 +38,19 @@ export const cloudVideoInputSchema = z
   })
   .strict();
 export type CloudVideoInput = z.input<typeof cloudVideoInputSchema>;
+
+/** A first-clip route change may send the text, but may not discard or upload local references. */
+export function firstClipCloudInput(spec: H3GenerationSpec): CloudVideoInput | undefined {
+  if (
+    spec.referenceImagePath ||
+    spec.references?.length ||
+    spec.megapixels !== undefined ||
+    (spec.mode !== undefined && spec.mode !== 'auto' && spec.mode !== 't2v') ||
+    (spec.seed !== undefined && spec.seed > 2147483647)
+  )
+    return undefined;
+  return { prompt: spec.prompt, duration: spec.durationSeconds, seed: spec.seed };
+}
 export type CloudVideoJob = {
   id: string;
   requestId: string;

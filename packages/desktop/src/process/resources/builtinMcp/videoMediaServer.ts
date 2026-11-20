@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { BUILTIN_VIDEO_MEDIA_NAME } from './constants';
 import { cloudVideoInputSchema, type CloudVideoJob } from '@/common/chat/document/creation/cloudVideo';
 import type { CreationOperation } from '@/common/chat/document/creation/operation';
+import { MANAGED_H3_MODEL_ID } from '@/common/chat/document/creation/creation';
 
 const envValue = (canonical: string, legacy: string): string | undefined =>
   process.env[canonical] ?? process.env[legacy];
@@ -225,30 +226,35 @@ function legacyInstallationResult(operation: CreationOperation) {
     operation.state === 'awaiting-consent'
       ? {
           type: 'await-user-consent',
-          instruction: 'Wait for the existing installation card confirmation. Never accept terms on the user’s behalf.',
+          instruction: operation.managed
+            ? 'The user can choose local setup or a compatible configured cloud connection in the result card. This request is saved and will resume after their choice. Never accept terms or choose cloud for them.'
+            : 'Wait for the existing installation card confirmation. Never accept terms on the user’s behalf.',
         }
-      : operation.state === 'submitted' && operation.jobId
-        ? { type: 'monitor-same-job', tool: 'openh3_h3_job_status', jobId: operation.jobId, waitMs: 30000 }
-        : active
-          ? {
-              type: 'monitor-same-operation',
-              tool: 'openh3_h3_install_video_model',
-              action: 'status',
-              operationId: operation.id,
-              instruction:
-                'Remain engaged and inspect this same operation with bounded spaced checks. Do not start another installation or report queued work as complete.',
-            }
-          : operation.state === 'cancelled'
-            ? { type: 'respect-cancellation', instruction: 'Respect cancellation; do not start a replacement.' }
-            : {
-                type: 'diagnose-and-continue',
+      : operation.state === 'submitted' && operation.cloudJobId
+        ? { type: 'monitor-same-job', tool: 'openh3_cloud_video_status', jobId: operation.cloudJobId, waitMs: 30000 }
+        : operation.state === 'submitted' && operation.jobId
+          ? { type: 'monitor-same-job', tool: 'openh3_h3_job_status', jobId: operation.jobId, waitMs: 30000 }
+          : active
+            ? {
+                type: 'monitor-same-operation',
+                tool: 'openh3_h3_install_video_model',
+                action: 'status',
+                operationId: operation.id,
                 instruction:
-                  'Inspect this saved operation and its actual runtime logs, then continue permitted repair of the same goal. Do not repeat the unchanged failed action or compete with active or uncertain work.',
-              };
+                  'Remain engaged and inspect this same operation with bounded spaced checks. Do not start another installation or report queued work as complete.',
+              }
+            : operation.state === 'cancelled'
+              ? { type: 'respect-cancellation', instruction: 'Respect cancellation; do not start a replacement.' }
+              : {
+                  type: 'diagnose-and-continue',
+                  instruction:
+                    'Inspect this saved operation and its actual runtime logs, then continue permitted repair of the same goal. Do not repeat the unchanged failed action or compete with active or uncertain work.',
+                };
   return toolResult({
     creationOperationId: operation.id,
     state: operation.state,
     jobId: operation.jobId,
+    cloudVideoJobId: operation.cloudJobId,
     ...(operation.error ? { error: operation.error } : {}),
     stopPolling: !active,
     automaticRetryAllowed: false,
@@ -272,12 +278,21 @@ async function guardLegacyH3Submission(): Promise<void> {
   throw new Error('COMFY_SELECTION_CONTEXT_MISSING: inspect the current creation selection before submitting');
 }
 
+function managedH3Selected(): boolean {
+  return (
+    envValue('OPENH3_CREATION_MODEL', 'AIONUI_CREATION_MODEL') === MANAGED_H3_MODEL_ID &&
+    envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') === 'local' &&
+    envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') === 'video'
+  );
+}
+
 async function main() {
   const server = new McpServer(
     { name: BUILTIN_VIDEO_MEDIA_NAME, version: '1.0.0' },
     {
-      instructions:
-        'For local model installation tasks, a card supplies the user target, curated knowledge and acceptance criteria. The Agent owns the plan and execution, just as for a direct chat installation. Inspect existing profiles/environment and read openh3_comfy_model_guide for the selected family. Use command, file and web tools to reuse, install or repair according to actual evidence. openh3_comfy_install is an optional fixed-recipe executor, never a prerequisite or the only permitted path. Inspect saved operations before working; do not start competing processes while managed state is active or unknown. After a confirmed terminal installer failure, continue the goal using permitted general tools. Register a real component set as downloaded, then use openh3_comfy_profiles revalidate for representative generation. Validation results return to this conversation. After success call openh3_comfy_installation_complete to expose the verified model in the application. Guide recipes are knowledge, not proof of compatibility. Preserve selected family and explicit profile/precision choice, current approvals, source access, hashes, original parameters and other environments. Generate through the selected registered profile. Keep ordered media references for FastH3-Omni and full scene captions for FLUX. Even for a single output, keep working after submission: retain the job ID, monitor the same job to its terminal result with status waitMs=30000, inspect outputs and continue all authorized work before the final answer. Revalidation follows the same rule. UI cards and application callbacks supplement monitoring; queued/running states are not completed delivery. A bounded wait expiring means continue monitoring the same ID. Diagnose failures and continue permitted repair under the current approval mode. Never resubmit to monitor progress or claim submission or downloaded files as verified success.',
+      instructions: managedH3Selected()
+        ? 'The user selected the application-managed MiniMax H3 route. Use openh3_h3_generate_video for the original generation, keeping their prompt, duration, seed, size and ordered references. Follow nextAction. If the request awaits user consent, explain the card and preserve the saved request. The application resumes the saved request after the user chooses local setup or a compatible configured cloud connection. Do not start an independent installer or submit a replacement job. For an immediately submitted job, monitor the same job to its terminal result, inspect the output and finish the original request.'
+        : 'For local model installation tasks, a card supplies the user target, curated knowledge and acceptance criteria. The Agent owns the plan and execution, just as for a direct chat installation. Inspect existing profiles/environment and read openh3_comfy_model_guide for the selected family. Use command, file and web tools to reuse, install or repair according to actual evidence. openh3_comfy_install is an optional fixed-recipe executor, never a prerequisite or the only permitted path. Inspect saved operations before working; do not start competing processes while managed state is active or unknown. After a confirmed terminal installer failure, continue the goal using permitted general tools. Register a real component set as downloaded, then use openh3_comfy_profiles revalidate for representative generation. Validation results return to this conversation. After success call openh3_comfy_installation_complete to expose the verified model in the application. Guide recipes are knowledge, not proof of compatibility. Preserve selected family and explicit profile/precision choice, current approvals, source access, hashes, original parameters and other environments. Generate through the selected registered profile. Keep ordered media references for FastH3-Omni and full scene captions for FLUX. Even for a single output, keep working after submission: retain the job ID, monitor the same job to its terminal result with status waitMs=30000, inspect outputs and continue all authorized work before the final answer. Revalidation follows the same rule. UI cards and application callbacks supplement monitoring; queued/running states are not completed delivery. A bounded wait expiring means continue monitoring the same ID. Diagnose failures and continue permitted repair under the current approval mode. Never resubmit to monitor progress or claim submission or downloaded files as verified success.',
     }
   );
   registerResearchTools(server);
@@ -783,7 +798,7 @@ async function main() {
   registerProductTool(
     server,
     'openh3_h3_generate_video',
-    'Generate a short video with the local MiniMax H3 runtime. Leave mode as auto: no references routes to text-to-video; one image routes to first-frame video; two images route to first-and-last-frame video; three or more images, or any video/audio reference, routes to multimodal Ref2VA. The tool queues a job and returns its id; retain that real job ID. Keep working, even for a single output: monitor the same job with openh3_h3_job_status waitMs=30000 until a terminal result, inspect outputs, and continue authorized work before the final answer. If the bounded wait returns queued/running, call status again with the same ID. stopPolling and nextAction distinguish ongoing work from terminal or remoteUncertain jobs: diagnose a failure and continue permitted repair, or recover an uncertain existing prompt before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
+    'Generate a short video when the user selected the application-managed MiniMax H3 option (managed-h3), or use the historical H3 runtime in an unscoped conversation. Keep the original prompt, duration, seed, size and ordered references. An awaiting-consent result saves the generation for the user to continue from the card. Do not invoke an installer or select cloud on their behalf. Inspect progress with openh3_h3_install_video_model action=status and the creationOperationId. The application sends a continuation when the saved job finishes. Leave mode as auto: no references routes to text-to-video, up to two images route to first/last frames, and video/audio or more images route to multimodal generation. For a registered Comfy profile use openh3_comfy_generate. When immediately submitted, monitor the same job with waitMs=30000 until a terminal result, inspect outputs and continue the original request. Never resubmit to monitor or automatically retry unchanged failures.',
     {
       prompt: z.string().min(1).max(20_000),
       durationSeconds: z.number().min(4).max(15).optional(),
@@ -807,6 +822,14 @@ async function main() {
     },
     async (input) => {
       try {
+        if (managedH3Selected()) {
+          const operation = (await call('/api/creation/generate', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ requestId: creationRequestId(), spec: input }),
+          })) as CreationOperation;
+          return legacyInstallationResult(operation);
+        }
         await guardLegacyH3Submission();
         if (envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') === 'cloud')
           return {
