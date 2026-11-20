@@ -26,6 +26,7 @@ export default function H3GenerationPanel() {
   const [mode, setMode] = useState<H3RequestedMode>('auto');
   const [references, setReferences] = useState<H3Reference[]>([]);
   const [versions, setVersions] = useState<H3Version[]>([]);
+  const versionListRevision = useRef(0);
   const [comparisonIds, setComparisonIds] = useState<string[]>([]);
   const [comparison, setComparison] = useState<H3Version[]>([]);
   const comparisonIdsRef = useRef<string[]>([]);
@@ -49,12 +50,29 @@ export default function H3GenerationPanel() {
   }, []);
 
   const refreshVersions = (): void => {
+    const revision = ++versionListRevision.current;
     void h3JobApi
       .versions()
-      .then(setVersions)
-      .catch(() => setVersions([]));
+      .then((next) => {
+        if (revision === versionListRevision.current) setVersions(next);
+      })
+      .catch(() => {
+        // Keep the last visible list when a refresh fails.
+      });
   };
   useEffect(refreshVersions, []);
+
+  const updateVersions = async (update: () => Promise<H3Version[]>): Promise<void> => {
+    const revision = versionListRevision.current;
+    const next = await update();
+    // A completion refresh may have observed a newly published version while a write was in flight.
+    if (revision !== versionListRevision.current) {
+      refreshVersions();
+      return;
+    }
+    versionListRevision.current += 1;
+    setVersions(next);
+  };
 
   const finish = (next: H3Job): void => {
     setJob(next);
@@ -65,9 +83,7 @@ export default function H3GenerationPanel() {
     if (next.status === 'succeeded' && next.artifacts[0]?.resourcePath)
       setOutputUrl(h3JobApi.resourceUrl(next.artifacts[0].resourcePath));
     if (['succeeded', 'failed', 'cancelled'].includes(next.status)) sourceRef.current?.close();
-    // Refresh version list when generation succeeds so new candidates appear
-    // without requiring a remount (SSE delivers the terminal event before the
-    // backend version index is fully updated, so fetch once here).
+    // Refresh when generation completes so new candidates appear without a remount.
     if (next.status === 'succeeded') refreshVersions();
   };
 
@@ -149,7 +165,9 @@ export default function H3GenerationPanel() {
 
   const selectVersion = async (version: H3Version): Promise<void> => {
     try {
-      setVersions(await h3JobApi.selectVersion(version.id, versions.find((item) => item.selected)?.id ?? null));
+      await updateVersions(() =>
+        h3JobApi.selectVersion(version.id, versions.find((item) => item.selected)?.id ?? null)
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }
@@ -174,7 +192,7 @@ export default function H3GenerationPanel() {
 
   const rejectVersion = async (version: H3Version): Promise<void> => {
     try {
-      setVersions(await h3JobApi.rejectVersion(version.id));
+      await updateVersions(() => h3JobApi.rejectVersion(version.id));
       const nextIds = comparisonIdsRef.current.filter((id) => id !== version.id);
       comparisonIdsRef.current = nextIds;
       setComparisonIds(nextIds);
@@ -186,7 +204,7 @@ export default function H3GenerationPanel() {
 
   const undoVersion = async (version?: H3Version): Promise<void> => {
     try {
-      setVersions(await h3JobApi.undoVersion(version?.id));
+      await updateVersions(() => h3JobApi.undoVersion(version?.id));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     }

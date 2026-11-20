@@ -152,6 +152,47 @@ describe('H3 generation panel', () => {
     await waitFor(() => expect(h3.versions).toHaveBeenCalledTimes(2), { timeout: 3000 });
   });
 
+  it('keeps a newer selection when a completion refresh returns an older snapshot', async () => {
+    const source = {
+      id: 'source',
+      parentId: null,
+      label: 'Original',
+      jobId: 'old-job',
+      createdAt: '2026-01-01T00:00:00Z',
+      selected: true,
+    };
+    const candidate = { ...source, id: 'candidate', parentId: source.id, label: 'Candidate', selected: false };
+    const previous = [source, candidate];
+    let finishRefresh: (value: typeof previous) => void = () => undefined;
+    const pendingRefresh = new Promise<typeof previous>((resolve) => {
+      finishRefresh = resolve;
+    });
+    h3.versions.mockResolvedValueOnce(previous).mockReturnValueOnce(pendingRefresh);
+    h3.selectVersion.mockResolvedValue([
+      { ...source, selected: false },
+      { ...candidate, selected: true },
+    ]);
+    h3.create.mockResolvedValue({ id: 'job-refresh', status: 'queued', progress: 0, artifacts: [] });
+
+    render(<H3GenerationPanel />);
+    await screen.findByTestId('h3-select-candidate');
+    fireEvent.change(screen.getByRole('textbox', { name: 'preview.video.h3Prompt' }), {
+      target: { value: 'refresh' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'preview.video.h3Generate' }));
+    await waitFor(() => expect(h3.events).toHaveBeenCalledOnce());
+    const onJob = h3.events.mock.calls[0][1] as (job: unknown) => void;
+    act(() => onJob({ id: 'job-refresh', status: 'succeeded', progress: 1, artifacts: [] }));
+    expect(h3.versions).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByTestId('h3-select-candidate'));
+    await waitFor(() => expect(screen.getByTestId('h3-select-candidate')).toBeDisabled());
+    await act(async () => finishRefresh(previous));
+
+    expect(screen.getByTestId('h3-select-candidate')).toBeDisabled();
+    expect(screen.getByTestId('h3-select-source')).toBeEnabled();
+  });
+
   it('compares candidates and accepts against the selected source version', async () => {
     const versions = [
       {
