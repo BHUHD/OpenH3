@@ -2,6 +2,12 @@
   "aiCreation": "AI Creation",
   "aiCreationSubtitle": "Make something with your imagination",
   "creation": {
+    "accountModelUnavailable": "This model is no longer available for your account. Choose another model.",
+    "accountInputUnsupported": "Choose a video model that supports this input. A first frame requires image-to-video support.",
+    "chatDefault": "Chat default",
+    "clearChatDefault": "Use automatic routing in chat",
+    "noAccountModels": "No account models listed for this task",
+    "retryAccountModels": "Could not load account models · Retry",
     "kind": "Creation type",
     "source": "Model source",
     "model": "Creation model",

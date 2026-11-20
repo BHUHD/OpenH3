@@ -25,6 +25,15 @@ vi.mock('swr', () => ({
 }));
 
 describe('local ComfyUI profile selection', () => {
+  it('keeps a saved account choice unavailable when its catalog is missing, without exposing the previous account model', () => {
+    const id = 'account-media:["previous-issuer","private-image"]';
+    localStorage.setItem(
+      'creation.selection',
+      JSON.stringify({ source: 'cloud', kind: 'image', modelIds: { 'cloud-image': id } })
+    );
+    const { result } = renderHook(() => useCreationModels(true));
+    expect(result.current.model).toMatchObject({ id, available: false, state: 'unavailable', name: '' });
+  });
   it.each(['image', 'video'] as const)(
     'retains an Agent-registered custom %s in the selector and saved preference',
     (kind) => {

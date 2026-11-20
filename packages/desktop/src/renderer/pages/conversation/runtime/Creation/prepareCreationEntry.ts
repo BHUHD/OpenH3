@@ -1,6 +1,7 @@
 import type { ComfyFamily, ComfyIntent } from '@/common/chat/document/creation/comfy';
 import { comfyApi } from '@/common/chat/document/creation/comfyApi';
 import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
+import { accountMediaRef } from '@/common/chat/document/creation/accountMedia';
 import type { TemplateSnapshot } from '@/common/contentCatalog/snapshot';
 import { ipcBridge } from '@/common';
 import { MANAGED_H3_MODEL_ID, type CreationRequest } from '@/common/chat/document/creation/creation';
@@ -27,6 +28,13 @@ export function prepareCreationEntry(requestId: string, conversationId: string, 
   if (prior) return prior;
   const request = (async (): Promise<undefined> => {
     await mutate(['comfy.preparation-error', conversationId, requestId], null, false);
+    if (entry.source === 'cloud' && entry.id?.startsWith('account-media:')) {
+      const reference = accountMediaRef(entry.id);
+      if (!entry.kind || !reference) throw new Error('CLOUD_MEDIA_SELECTION_INVALID');
+      const bound = await cloudVideoApi.bindAccount(requestId, conversationId, entry.kind, reference);
+      if (!bound.ok) throw new Error('CLOUD_MEDIA_BIND_FAILED');
+      return undefined;
+    }
     if (entry.id === MANAGED_H3_MODEL_ID && entry.source === 'local' && entry.kind === 'video') {
       const bound = await h3JobApi.bindCreation(requestId, conversationId, true);
       if (!bound.ok) throw new Error('H3_MANAGED_BIND_FAILED');

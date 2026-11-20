@@ -23,6 +23,7 @@ pub struct CloudAccountService {
     pub(super) flows: Mutex<HashMap<String, LocalFlow>>,
     pub(super) flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     pub(super) catalog_flights: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    media_transfers: tokio::sync::Semaphore,
     ceremonies: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     pub(super) lifetimes: Mutex<HashMap<(String, i64), tokio::sync::watch::Sender<bool>>>,
 }
@@ -69,6 +70,7 @@ impl CloudAccountService {
             flows: Mutex::new(HashMap::new()),
             flights: Mutex::new(HashMap::new()),
             catalog_flights: Mutex::new(HashMap::new()),
+            media_transfers: tokio::sync::Semaphore::new(2),
             ceremonies: Mutex::new(HashMap::new()),
             lifetimes: Mutex::new(HashMap::new()),
         })
@@ -506,6 +508,18 @@ impl Stored {
         }
     }
 }
+/// Exclude credentials belonging to the currently authenticated grant from public metadata.
+fn contains_grant_secret(value: &str, s: &Stored) -> bool {
+    [
+        Some(s.credentials.access_token.as_str()),
+        Some(s.credentials.refresh_token.as_str()),
+        s.inference_key.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .any(|secret| !secret.is_empty() && value.contains(secret))
+}
+
 fn validate_credentials(c: &Credentials) -> Result<()> {
     if c.access_token.is_empty()
         || c.access_token.len() > 4096
@@ -522,6 +536,7 @@ fn validate_credentials(c: &Credentials) -> Result<()> {
 }
 
 mod billing;
+mod media;
 mod validation;
 
 mod topup;

@@ -1,3 +1,5 @@
+import type { AccountMediaCatalog } from '@/common/chat/document/creation/accountMedia';
+
 export type CloudCapabilities = {
   availability: 'disabled' | 'unconfigured' | 'available';
   registration_enabled: boolean;
@@ -11,7 +13,18 @@ export type CloudCapabilities = {
 
 /** Renderer-safe native account operations; no URL, headers or owner inputs. */
 export type CloudAccountRequest =
-  | { operation: 'capabilities' | 'session' | 'me' | 'devices' | 'logout' | 'wallet' | 'models' | 'topupOptions' }
+  | {
+      operation:
+        | 'capabilities'
+        | 'session'
+        | 'me'
+        | 'devices'
+        | 'logout'
+        | 'wallet'
+        | 'models'
+        | 'mediaModels'
+        | 'topupOptions';
+    }
   | {
       operation: 'usage';
       input: {
@@ -68,6 +81,7 @@ export type CloudAccountData =
   | CloudSession
   | CloudWallet
   | CloudModels
+  | AccountMediaCatalog
   | CloudUsage
   | CloudCapabilities
   | { status: 'registered' | 'revoked' }

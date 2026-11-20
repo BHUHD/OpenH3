@@ -122,6 +122,7 @@ export function browserCloudCheckout(order: CloudTopupOrder, intent: CloudTopupC
 export function cloudSuccessLimit(path: string): number {
   switch (path) {
     case 'models':
+    case 'media-models':
       return 8 * 1024 * 1024;
     case 'wallet':
       return 512 * 1024;

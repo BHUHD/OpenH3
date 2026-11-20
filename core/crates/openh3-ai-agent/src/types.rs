@@ -6,6 +6,8 @@ use aion_types::message::ImageInputCapability;
 use serde::{Deserialize, Serialize};
 
 use crate::session_context::AgentSessionContext;
+use crate::session_context::AgentSessionKind;
+use openh3_api_types::{SessionMcpServer, SessionMcpTransport};
 
 /// Data payload for sending a user message to an Agent.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,6 +40,8 @@ pub struct PromptMediaCaps {
 pub struct BuildTaskOptions {
     pub context: AgentSessionContext,
     pub runtime_capabilities: RuntimeCapabilities,
+    /// Indices verified against the desktop-owned MCP registry for this build.
+    pub desktop_media_servers: Vec<usize>,
 }
 
 impl BuildTaskOptions {
@@ -45,11 +49,39 @@ impl BuildTaskOptions {
         Self {
             context,
             runtime_capabilities: RuntimeCapabilities::default(),
+            desktop_media_servers: Vec::new(),
         }
     }
 
     pub fn conversation_id(&self) -> &str {
         self.context.conversation_id()
+    }
+
+    pub fn session_mcp_servers_mut(&mut self) -> &mut Vec<SessionMcpServer> {
+        match &mut self.context.kind {
+            AgentSessionKind::Acp(ctx) => &mut ctx.config.session_mcp_servers,
+            AgentSessionKind::Aionrs(ctx) => &mut ctx.config.session_mcp_servers,
+            AgentSessionKind::Antigravity(ctx) => &mut ctx.config.session_mcp_servers,
+        }
+    }
+
+    pub(crate) fn replace_runtime_token(&mut self, token: Option<&str>) {
+        self.context
+            .runtime_env
+            .retain(|(key, _)| key != OPENH3_RUNTIME_TOKEN_ENV && key != AIONUI_RUNTIME_TOKEN_ENV);
+        if let Some(token) = token {
+            self.context.runtime_env.extend([
+                (OPENH3_RUNTIME_TOKEN_ENV.into(), token.into()),
+                (AIONUI_RUNTIME_TOKEN_ENV.into(), token.into()),
+            ]);
+        }
+        for index in self.desktop_media_servers.clone() {
+            if let SessionMcpTransport::Stdio { env, .. } = &mut self.session_mcp_servers_mut()[index].transport {
+                // An explicit empty canonical value masks an inherited, stale credential.
+                env.insert(OPENH3_RUNTIME_TOKEN_ENV.into(), token.unwrap_or_default().into());
+                env.remove(AIONUI_RUNTIME_TOKEN_ENV);
+            }
+        }
     }
 
     pub fn apply_conversation_runtime_context(
@@ -99,12 +131,7 @@ impl BuildTaskOptions {
                 (AIONUI_BASE_URL_ENV.to_owned(), base_url.to_owned()),
             ]);
         }
-        if let Some(runtime_token) = runtime_token {
-            self.context.runtime_env.extend([
-                (OPENH3_RUNTIME_TOKEN_ENV.to_owned(), runtime_token.to_owned()),
-                (AIONUI_RUNTIME_TOKEN_ENV.to_owned(), runtime_token.to_owned()),
-            ]);
-        }
+        self.replace_runtime_token(runtime_token);
         self.runtime_capabilities.conversation_runtime_context_version = Some(CONVERSATION_RUNTIME_CONTEXT_VERSION);
     }
 }
@@ -124,10 +151,15 @@ pub const CONVERSATION_RUNTIME_CONTEXT_VERSION: u32 = 2;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RuntimeCapabilities {
     pub conversation_runtime_context_version: Option<u32>,
+    /// Ordinary-chat tools added for the user's active account defaults.
+    pub account_media_tools: Vec<String>,
 }
 
 impl RuntimeCapabilities {
     pub fn satisfies(&self, requested: &Self) -> bool {
+        if self.account_media_tools != requested.account_media_tools {
+            return false;
+        }
         match requested.conversation_runtime_context_version {
             Some(version) => self
                 .conversation_runtime_context_version

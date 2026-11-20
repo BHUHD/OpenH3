@@ -156,6 +156,12 @@
     }
   },
   "creation": {
+    "accountModelUnavailable": "このモデルは現在のアカウントで利用できません。別のモデルを選択してください。",
+    "accountInputUnsupported": "この入力に対応した動画モデルを選んでください。開始フレームを指定するには画像からの動画生成に対応している必要があります。",
+    "chatDefault": "チャットの既定モデル",
+    "clearChatDefault": "チャットでの自動選択に戻す",
+    "noAccountModels": "この用途のアカウントモデルはありません",
+    "retryAccountModels": "アカウントモデルを読み込めません · 再試行",
     "states": {
       "downloaded": "ダウンロード済み",
       "loadable": "読み込み可能",

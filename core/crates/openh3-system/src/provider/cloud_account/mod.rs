@@ -31,6 +31,16 @@ pub enum CloudAccountError {
     Transport,
     #[error("Invalid account gateway response")]
     Protocol,
+    #[error("Media catalog unavailable")]
+    MediaCatalogMissing,
+    #[error("Selected media model unavailable")]
+    MediaModelUnavailable,
+    #[error("Selected media model does not support this input")]
+    MediaCapabilityUnsupported,
+    #[error("Media job not found")]
+    MediaJobNotFound,
+    #[error("Insufficient media quota")]
+    MediaQuota,
     #[error("Account state changed; retry the operation")]
     Conflict,
     #[error("Top-up quote or idempotency terms conflict")]

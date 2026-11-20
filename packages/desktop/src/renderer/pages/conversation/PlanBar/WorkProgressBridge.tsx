@@ -12,6 +12,7 @@ import type { CreationOperation } from '@/common/chat/document/creation/operatio
 import { useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import { useConversationRuntimeView } from '@/renderer/pages/conversation/runtime/useConversationRuntimeView';
 import { useCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
+import { useOptionalCloudAccount } from '@/renderer/components/settings/SettingsModal/CloudAccount/Provider';
 import { useH3Jobs } from '@/renderer/pages/conversation/runtime/Creation/useH3Jobs';
 import { useEffect, useMemo } from 'react';
 import useSWR, { unstable_serialize, useSWRConfig } from 'swr';
@@ -19,6 +20,7 @@ import { projectWorkProgress, publishWorkProgress, workComfyIds, workCloudVideoI
 
 /** Mounted inside each chat's message provider; publishes to both right-panel hosts above that provider. */
 export default function WorkProgressBridge({ conversationId }: { conversationId: string }): null {
+  const accountKey = useOptionalCloudAccount()?.accountKey;
   const { cache, mutate } = useSWRConfig();
   const messages = useMessageList();
   const runtime = useConversationRuntimeView(conversationId);
@@ -66,7 +68,9 @@ export default function WorkProgressBridge({ conversationId }: { conversationId:
     [messages, creationData]
   );
   const { data: cloudData } = useSWR(
-    activeConversation === conversationId && cloudIds.length ? ['work.cloud-video', conversationId, cloudIds] : null,
+    activeConversation === conversationId && cloudIds.length
+      ? ['work.cloud-video', conversationId, cloudIds, accountKey]
+      : null,
     async () => {
       const jobs: CloudVideoJob[] = [];
       const unavailable: string[] = [];

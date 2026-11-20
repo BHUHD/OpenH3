@@ -14,7 +14,9 @@ use crate::active_lease::ActiveLeaseRegistry;
 use crate::agent_task::AgentInstance;
 use crate::error::AgentError;
 use crate::runtime_token::{RuntimeTokenScope, RuntimeTokenService, TEAM_RUNTIME_TOKEN_SESSION_GENERATION};
-use crate::types::{AIONUI_RUNTIME_TOKEN_ENV, BuildTaskOptions, RuntimeCapabilities};
+#[cfg(test)]
+use crate::types::AIONUI_RUNTIME_TOKEN_ENV;
+use crate::types::{BuildTaskOptions, RuntimeCapabilities};
 
 /// Factory function that creates an [`AgentInstance`] from build options.
 ///
@@ -165,14 +167,7 @@ impl WorkerTaskManagerImpl {
             TEAM_RUNTIME_TOKEN_SESSION_GENERATION,
             scopes,
         );
-        options
-            .context
-            .runtime_env
-            .retain(|(key, _)| key != AIONUI_RUNTIME_TOKEN_ENV);
-        options
-            .context
-            .runtime_env
-            .push((AIONUI_RUNTIME_TOKEN_ENV.to_owned(), issue.token));
+        options.replace_runtime_token(Some(&issue.token));
     }
 }
 
@@ -806,6 +801,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn account_media_defaults_rebuild_an_open_idle_chat_only_when_its_tools_change() {
+        let manager = make_manager();
+        let opts = make_options("chat");
+        let old = manager.get_or_build_task("chat", opts.clone()).await.unwrap();
+        let mut picked = opts.clone();
+        picked.runtime_capabilities.account_media_tools =
+            vec!["openh3-image-generation".into(), "openh3-video-media".into()];
+        let active = manager.get_or_build_task("chat", picked.clone()).await.unwrap();
+        assert!(!same_mock(&active, &old));
+        let unchanged = manager.get_or_build_task("chat", picked).await.unwrap();
+        assert!(same_mock(&active, &unchanged));
+        let cleared = manager.get_or_build_task("chat", opts).await.unwrap();
+        assert!(!same_mock(&active, &cleared));
+        assert_eq!(manager.active_count(), 1);
+    }
+
+    #[tokio::test]
     async fn capability_rebuild_refreshes_runtime_token_after_killing_existing_task() {
         let runtime_tokens = Arc::new(RuntimeTokenService::new());
         let old_issue = runtime_tokens.issue(
@@ -826,6 +838,12 @@ mod tests {
                         .iter()
                         .find(|(key, _)| key == AIONUI_RUNTIME_TOKEN_ENV)
                     {
+                        assert!(
+                            opts.context
+                                .runtime_env
+                                .iter()
+                                .any(|(key, value)| key == crate::types::OPENH3_RUNTIME_TOKEN_ENV && value == token)
+                        );
                         observed_tokens.lock().unwrap().push(token.clone());
                     }
                     Ok(mock_instance(MockAgent::new(opts.conversation_id(), None)))

@@ -66,8 +66,20 @@ impl Gateway {
         if let Some(bearer) = bearer {
             request = request.bearer_auth(bearer);
         }
-        let mut response = request.send().await.map_err(|_| Error::Transport)?;
+        let response = request.send().await.map_err(|_| Error::Transport)?;
         let status = response.status().as_u16();
+        // Older gateways may respond with the SPA's HTML fallback.
+        if path == "media-models"
+            && (matches!(status, 404 | 405)
+                || (status == 200
+                    && response
+                        .headers()
+                        .get("content-type")
+                        .and_then(|h| h.to_str().ok())
+                        .is_some_and(|h| h.split(';').next() == Some("text/html"))))
+        {
+            return Err(Error::MediaCatalogMissing);
+        }
         let retry_after = response
             .headers()
             .get("retry-after")
@@ -79,6 +91,7 @@ impl Gateway {
         let limit = if status == 200 {
             match path {
                 "models" => 8 * 1024 * 1024,
+                "media-models" => 8 * 1024 * 1024,
                 "wallet" => 512 * 1024,
                 "usage" => 2 * 1024 * 1024,
                 "topup/options" | "topup/orders" => 128 * 1024,
@@ -87,16 +100,7 @@ impl Gateway {
         } else {
             65536
         };
-        if response.content_length().is_some_and(|n| n > limit as u64) {
-            return Err(Error::Protocol);
-        }
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response.chunk().await.map_err(|_| Error::Transport)? {
-            if bytes.len() + chunk.len() > limit {
-                return Err(Error::Protocol);
-            }
-            bytes.extend_from_slice(&chunk);
-        }
+        let bytes = bounded_bytes(response, limit).await?;
         if status != 200 {
             let envelope: Envelope<serde_json::Value> = serde_json::from_slice(&bytes).map_err(|_| Error::Protocol)?;
             if envelope.success {
@@ -133,4 +137,70 @@ impl Gateway {
     ) -> Result<T> {
         self.call(Method::POST, path, Some(body), bearer).await
     }
+
+    /// Inference uses the device key and a fixed route on the configured issuer.
+    /// Neither redirects nor transport retries are permitted on billable requests.
+    pub(super) async fn media_call(
+        &self,
+        path: &str,
+        key: &str,
+        body: Option<&serde_json::Value>,
+        limit: usize,
+    ) -> Result<Vec<u8>> {
+        let url = self.endpoint.join(path).map_err(|_| Error::Protocol)?;
+        let request = match body {
+            Some(body) => self.client.post(url).json(body),
+            None => self.client.get(url),
+        };
+        let response = request
+            .bearer_auth(key)
+            .timeout(Duration::from_secs(240))
+            .send()
+            .await
+            .map_err(|_| Error::Transport)?;
+        if !response.status().is_success() {
+            return Err(match response.status().as_u16() {
+                400 | 413 | 422 => Error::Input,
+                401 => Error::Authentication,
+                402 => {
+                    // Only the configured gateway's local wallet classification
+                    // identifies a shortfall. Supplier payment errors are redacted.
+                    let bytes = bounded_bytes(response, 65536).await?;
+                    let error = serde_json::from_slice::<serde_json::Value>(&bytes).ok();
+                    if error
+                        .as_ref()
+                        .and_then(|v| v.pointer("/error/code"))
+                        .and_then(|v| v.as_str())
+                        == Some("native_insufficient_balance")
+                    {
+                        Error::MediaQuota
+                    } else {
+                        Error::Policy
+                    }
+                }
+                403 => Error::Policy,
+                404 if body.is_none() => Error::MediaJobNotFound,
+                404 => Error::Policy,
+                429 => Error::RateLimited { retry_after: None },
+                408 => Error::Transport,
+                500..=599 => Error::Transport,
+                _ => Error::Protocol,
+            });
+        }
+        bounded_bytes(response, limit).await
+    }
+}
+
+async fn bounded_bytes(mut response: reqwest::Response, limit: usize) -> Result<Vec<u8>> {
+    if response.content_length().is_some_and(|n| n > limit as u64) {
+        return Err(Error::Protocol);
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|_| Error::Transport)? {
+        if chunk.len() > limit - bytes.len() {
+            return Err(Error::Protocol);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(bytes)
 }

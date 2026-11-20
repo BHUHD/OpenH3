@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { accountMediaRef } from '@/common/chat/document/creation/accountMedia';
 import { ipcBridge } from '@/common';
 import { clearGuidDraftIfMatches, getGuidDraftScope, getGuidTemplateSnapshot } from './useGuidDraft';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
@@ -73,6 +74,7 @@ export type GuidSendDeps = {
   assistantDefaultDisabledBuiltinSkillIds?: string[];
   availableMcpServers: IMcpServer[];
   selectedMcpServerIds: string[] | undefined;
+  toggledMcpIds?: ReadonlySet<string>;
   assistantDefaultMcpIds?: string[];
   isGoogleAuth: boolean;
 
@@ -121,6 +123,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     assistantDefaultDisabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds,
+    toggledMcpIds,
     assistantDefaultMcpIds,
     setMentionOpen,
     setMentionQuery,
@@ -152,6 +155,12 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     const excludeBuiltinSkills = guidDisabledBuiltinSkills ?? assistantDefaultDisabledBuiltinSkillIds;
     const selectedAllMcpServerIds = selectedMcpServerIds ?? [];
     const selectedMcpServerIdSet = new Set(selectedAllMcpServerIds);
+    const excludedMediaKinds = new Set<'image' | 'video'>();
+    for (const server of availableMcpServers) {
+      if (!server.builtin || !toggledMcpIds?.has(server.id) || selectedMcpServerIdSet.has(server.id)) continue;
+      if (isBuiltinImageGenerationName(server.name)) excludedMediaKinds.add('image');
+      if (isBuiltinVideoMediaName(server.name)) excludedMediaKinds.add('video');
+    }
     const selectedUserMcpServerIds = availableMcpServers
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin !== true)
       .map((server) => server.id);
@@ -220,7 +229,12 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         Message.error(t('guid.creation.cloudVideoUnsupported'));
         return false;
       }
-      if (!creationModel?.available || (creationRequest.kind === 'image' && !creationModel.provider?.api_key?.trim())) {
+      if (
+        !creationModel?.available ||
+        (creationRequest.kind === 'image' &&
+          !accountMediaRef(creationRequest.id) &&
+          !creationModel.provider?.api_key?.trim())
+      ) {
         Message.error(t('guid.creation.configureCloud'));
         return false;
       }
@@ -415,7 +429,11 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             conversation_overrides: assistantOverrides,
           },
           extra: {
-            ...(creationSnapshot ? { creation_request: creationSnapshot } : {}),
+            ...(creationSnapshot
+              ? { creation_request: creationSnapshot }
+              : excludedMediaKinds.size
+                ? { account_media_excluded_kinds: [...excludedMediaKinds] }
+                : {}),
             default_files: files.map(chatFileRefPath),
             workspace: finalWorkspace,
             custom_workspace: isCustomWorkspace,
@@ -477,7 +495,11 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
           conversation_overrides: assistantOverrides,
         },
         extra: {
-          ...(creationSnapshot ? { creation_request: creationSnapshot } : {}),
+          ...(creationSnapshot
+            ? { creation_request: creationSnapshot }
+            : excludedMediaKinds.size
+              ? { account_media_excluded_kinds: [...excludedMediaKinds] }
+              : {}),
           workspace: finalWorkspace,
           custom_workspace: isCustomWorkspace,
           default_files: files.map(chatFileRefPath),
@@ -552,6 +574,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     assistantDefaultDisabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds,
+    toggledMcpIds,
     assistantDefaultMcpIds,
     navigate,
     t,

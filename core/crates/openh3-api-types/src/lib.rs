@@ -106,6 +106,10 @@ pub use cloud_account::{
     CloudAccountUsageResponse, CloudAccountVerification, CloudAccountVerificationMethod,
     CloudAccountVerificationPurpose, CloudAccountVerifyRequest, CloudAccountVerifyResponse, CloudAccountWalletResponse,
 };
+pub use cloud_account::{
+    CloudMediaCapability, CloudMediaImageRequest, CloudMediaJob, CloudMediaJobRequest, CloudMediaKind, CloudMediaModel,
+    CloudMediaModels, CloudMediaReference, CloudMediaSession, CloudMediaStatus, CloudMediaVideoRequest,
+};
 pub use confirmation::{ApprovalCheckQuery, ApprovalCheckResponse, ConfirmRequest, ConfirmationListResponse};
 pub use connection_test::TestBedrockConnectionRequest;
 pub use conversation::{

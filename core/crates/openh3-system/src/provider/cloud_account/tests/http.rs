@@ -48,6 +48,9 @@ const CSRF: [(&str, &str); 3] = [
     ("x-csrf-token", "csrf"),
 ];
 
+#[path = "http_media.rs"]
+mod media;
+
 #[tokio::test]
 async fn guarded_billing_reads_reject_ambiguous_filters_before_gateway_io() {
     let (app, server, _db, _) = router(true).await;

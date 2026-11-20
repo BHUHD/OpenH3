@@ -230,6 +230,39 @@ async fn call(ctx: &Ctx, request: Request<Body>) -> (StatusCode, serde_json::Val
 // ── Security ────────────────────────────────────────────────────────
 
 #[tokio::test]
+async fn verify_requires_a_live_helper_for_the_exact_owner_and_conversation() {
+    let ctx = setup().await;
+    let token = ctx.mint(USER, "conversation-a");
+    for (owner, conversation, value, status) in [
+        (USER, "conversation-a", token.as_str(), StatusCode::NO_CONTENT),
+        (OTHER_USER, "conversation-a", token.as_str(), StatusCode::UNAUTHORIZED),
+        (USER, "conversation-b", token.as_str(), StatusCode::UNAUTHORIZED),
+        (USER, "conversation-a", "fake", StatusCode::UNAUTHORIZED),
+    ] {
+        let req = Request::get("/api/runtime/conversations/verify")
+            .header(HEADER_USER_ID, owner)
+            .header(HEADER_CONVERSATION_ID, conversation)
+            .header(HEADER_RUNTIME_TOKEN, value)
+            .body(Body::empty())
+            .unwrap();
+        let r = ctx.router.clone().oneshot(req).await.unwrap();
+        assert_eq!(r.status(), status);
+        assert_eq!(r.headers()["cache-control"], "no-store");
+    }
+    ctx.tokens.invalidate_conversation(USER, "conversation-a");
+    let req = Request::get("/api/runtime/conversations/verify")
+        .header(HEADER_USER_ID, USER)
+        .header(HEADER_CONVERSATION_ID, "conversation-a")
+        .header(HEADER_RUNTIME_TOKEN, token)
+        .body(Body::empty())
+        .unwrap();
+    assert_eq!(
+        ctx.router.oneshot(req).await.unwrap().status(),
+        StatusCode::UNAUTHORIZED
+    );
+}
+
+#[tokio::test]
 async fn create_without_a_runtime_token_is_401() {
     let ctx = setup().await;
     ctx.caller("conv_a").await;

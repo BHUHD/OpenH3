@@ -18,10 +18,16 @@ import { BUILTIN_VIDEO_MEDIA_NAME } from './constants';
 import { cloudVideoInputSchema, type CloudVideoJob } from '@/common/chat/document/creation/cloudVideo';
 import type { CreationOperation } from '@/common/chat/document/creation/operation';
 import { MANAGED_H3_MODEL_ID } from '@/common/chat/document/creation/creation';
+import { accountMediaFetch, desktopMediaContext } from '../../services/media/cloud/accountMediaChannel';
+import {
+  accountCreationSelected,
+  accountVideo,
+  canCheckAccountDefault,
+} from '../../services/media/cloud/accountMediaTool';
 
 const envValue = (canonical: string, legacy: string): string | undefined =>
   process.env[canonical] ?? process.env[legacy];
-const port = () => Number(envValue('OPENH3_MEDIA_PORT', 'AIONUI_MEDIA_PORT') ?? 33002);
+const port = () => desktopMediaContext()?.port ?? Number(envValue('OPENH3_MEDIA_PORT', 'AIONUI_MEDIA_PORT') ?? 33002);
 class MediaServiceError extends Error {
   constructor(
     message: string,
@@ -37,10 +43,31 @@ function formatServiceError(prefix: string, error: unknown): string {
 }
 async function call(path: string, init?: RequestInit): Promise<unknown> {
   const timeout = AbortSignal.timeout(path === '/api/comfy/operations' ? 300_000 : 45_000);
-  const response = await fetch(`http://127.0.0.1:${port()}${path}`, {
-    ...init,
-    signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
-  });
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  const accountJob = path.startsWith('/api/cloud-video/jobs/') && !!desktopMediaContext();
+  const readAccountJob = () =>
+    accountMediaFetch(
+      path,
+      {
+        'x-openh3-runtime-token': envValue('OPENH3_RUNTIME_TOKEN', 'AIONUI_RUNTIME_TOKEN') ?? '',
+        'x-openh3-user-id': envValue('OPENH3_USER_ID', 'AIONUI_USER_ID') ?? '',
+        'x-openh3-conversation-id': envValue('OPENH3_CONVERSATION_ID', 'AIONUI_CONVERSATION_ID') ?? '',
+      },
+      undefined,
+      signal
+    );
+  const signed =
+    accountJob &&
+    (process.env.OPENH3_MEDIA_ACCOUNT_ONLY === '1' ||
+      accountCreationSelected('video') ||
+      canCheckAccountDefault('video'));
+  let response = signed
+    ? await readAccountJob()
+    : await fetch(`http://127.0.0.1:${port()}${path}`, { ...init, signal });
+  if (accountJob && !signed && response.status === 403) {
+    await response.body?.cancel();
+    response = await readAccountJob();
+  }
   const data = await response.json();
   if (!response.ok) {
     if (path === '/api/h3/status' && response.status === 503 && data?.install) return data;
@@ -286,15 +313,93 @@ function managedH3Selected(): boolean {
   );
 }
 
+function registerCloudVideoTools(server: McpServer) {
+  registerProductTool(
+    server,
+    'openh3_cloud_video_generate',
+    'Generate a cloud video using the connection selected in the client. Provide prompt, optional duration/width/height/seed, and ordered absolute imagePaths. H3 supports text, first frame or first+last frame (at most two images); deployed H3 does not support Ref2VA, video or audio inputs. H3 defaults to 4.4 seconds and 24fps; explicit sizes require short side 768 and multiples of 32. OpenAI video supports at most one image and seconds/size; omit seed/aspectRatio. Never install or start local ComfyUI for a cloud selection. Returns cloudVideoJobId and job; retain the real job ID and submissionId. Keep working, even for a single output: monitor the same job with openh3_cloud_video_status waitMs=30000 until a terminal result, inspect outputs, and continue authorized work before the final answer. If the bounded wait returns queued/running, call status again with the same ID. At terminal failure stop repeated polling, diagnose and continue permitted repair; an uncertain submission requires recovering its original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
+    {
+      input: cloudVideoInputSchema.extend({ duration: z.number().finite().positive().max(3600).optional() }),
+      submissionId: z
+        .string()
+        .uuid()
+        .describe(
+          'A new UUID for each user-requested generation. Reuse this exact UUID when recovering a lost response. Never create a replacement UUID to retry automatically.'
+        ),
+    },
+    async ({ input, submissionId }) => {
+      try {
+        const account = accountCreationSelected('video') || canCheckAccountDefault('video');
+        if (
+          accountCreationSelected('video') &&
+          !envValue('OPENH3_CREATION_REQUEST_ID', 'AIONUI_CREATION_REQUEST_ID')?.trim()
+        )
+          throw new Error('CLOUD_MEDIA_BINDING_REQUIRED');
+        if (
+          !account &&
+          (envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') !== 'cloud' ||
+            envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') !== 'video')
+        )
+          throw new Error('CLOUD_VIDEO_NOT_SELECTED');
+        const job = account
+          ? await accountVideo(input, submissionId)
+          : ((await call(
+              '/api/cloud-video/jobs',
+              jsonRequest({ requestId: creationRequestId(), submissionId, input })
+            )) as CloudVideoJob);
+        return toolResult({
+          cloudVideoJobId: job.id,
+          job,
+          stopPolling: job.status !== 'queued' && job.status !== 'running',
+          automaticRetryAllowed: false,
+        });
+      } catch (error) {
+        return toolError('Cloud video generation failed', error);
+      }
+    }
+  );
+  registerProductTool(
+    server,
+    'openh3_cloud_video_status',
+    'Read an existing cloud video job using its saved jobId. Set waitMs=30000 to wait up to 30 seconds with spaced read-only checks, returning early for a terminal result or uncertain submission; waitMs=0 returns one snapshot. Keep monitoring the same job while queued/running, even for a single output. A wait timeout is not completion: call status again, inspect outputs at the terminal result, and continue authorized work before the final answer. Cancelling this status wait stops observation only. stopPolling ends repeated status checks for a terminal job, not the original goal: diagnose failed jobs and continue permitted repair. Recover uncertain submissions using their original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
+    { jobId: z.string().uuid(), waitMs: statusWaitSchema },
+    async ({ jobId, waitMs }, { signal }) => {
+      try {
+        const job = (await waitForJob(
+          `/api/cloud-video/jobs/${encodeURIComponent(jobId)}?${new URLSearchParams(comfyScope() as Record<string, string>)}`,
+          waitMs,
+          signal
+        )) as CloudVideoJob;
+        return toolResult({
+          cloudVideoJobId: jobId,
+          job,
+          stopPolling: job.status !== 'queued' && job.status !== 'running',
+          automaticRetryAllowed: false,
+        });
+      } catch (error) {
+        return toolError('Cloud video query failed', error);
+      }
+    }
+  );
+}
+
 async function main() {
   const server = new McpServer(
     { name: BUILTIN_VIDEO_MEDIA_NAME, version: '1.0.0' },
     {
-      instructions: managedH3Selected()
-        ? 'The user selected the application-managed MiniMax H3 route. Use openh3_h3_generate_video for the original generation, keeping their prompt, duration, seed, size and ordered references. Follow nextAction. If the request awaits user consent, explain the card and preserve the saved request. The application resumes the saved request after the user chooses local setup or a compatible configured cloud connection. Do not start an independent installer or submit a replacement job. For an immediately submitted job, monitor the same job to its terminal result, inspect the output and finish the original request.'
-        : 'For local model installation tasks, a card supplies the user target, curated knowledge and acceptance criteria. The Agent owns the plan and execution, just as for a direct chat installation. Inspect existing profiles/environment and read openh3_comfy_model_guide for the selected family. Use command, file and web tools to reuse, install or repair according to actual evidence. openh3_comfy_install is an optional fixed-recipe executor, never a prerequisite or the only permitted path. Inspect saved operations before working; do not start competing processes while managed state is active or unknown. After a confirmed terminal installer failure, continue the goal using permitted general tools. Register a real component set as downloaded, then use openh3_comfy_profiles revalidate for representative generation. Validation results return to this conversation. After success call openh3_comfy_installation_complete to expose the verified model in the application. Guide recipes are knowledge, not proof of compatibility. Preserve selected family and explicit profile/precision choice, current approvals, source access, hashes, original parameters and other environments. Generate through the selected registered profile. Keep ordered media references for FastH3-Omni and full scene captions for FLUX. Even for a single output, keep working after submission: retain the job ID, monitor the same job to its terminal result with status waitMs=30000, inspect outputs and continue all authorized work before the final answer. Revalidation follows the same rule. UI cards and application callbacks supplement monitoring; queued/running states are not completed delivery. A bounded wait expiring means continue monitoring the same ID. Diagnose failures and continue permitted repair under the current approval mode. Never resubmit to monitor progress or claim submission or downloaded files as verified success.',
+      instructions:
+        process.env.OPENH3_MEDIA_ACCOUNT_ONLY === '1'
+          ? 'Generate and monitor videos using the user-selected account video model.'
+          : managedH3Selected()
+            ? 'The user selected the application-managed MiniMax H3 route. Use openh3_h3_generate_video for the original generation, keeping their prompt, duration, seed, size and ordered references. Follow nextAction. If the request awaits user consent, explain the card and preserve the saved request. The application resumes the saved request after the user chooses local setup or a compatible configured cloud connection. Do not start an independent installer or submit a replacement job. For an immediately submitted job, monitor the same job to its terminal result, inspect the output and finish the original request.'
+            : 'For local model installation tasks, a card supplies the user target, curated knowledge and acceptance criteria. The Agent owns the plan and execution, just as for a direct chat installation. Inspect existing profiles/environment and read openh3_comfy_model_guide for the selected family. Use command, file and web tools to reuse, install or repair according to actual evidence. openh3_comfy_install is an optional fixed-recipe executor, never a prerequisite or the only permitted path. Inspect saved operations before working; do not start competing processes while managed state is active or unknown. After a confirmed terminal installer failure, continue the goal using permitted general tools. Register a real component set as downloaded, then use openh3_comfy_profiles revalidate for representative generation. Validation results return to this conversation. After success call openh3_comfy_installation_complete to expose the verified model in the application. Guide recipes are knowledge, not proof of compatibility. Preserve selected family and explicit profile/precision choice, current approvals, source access, hashes, original parameters and other environments. Generate through the selected registered profile. Keep ordered media references for FastH3-Omni and full scene captions for FLUX. Even for a single output, keep working after submission: retain the job ID, monitor the same job to its terminal result with status waitMs=30000, inspect outputs and continue all authorized work before the final answer. Revalidation follows the same rule. UI cards and application callbacks supplement monitoring; queued/running states are not completed delivery. A bounded wait expiring means continue monitoring the same ID. Diagnose failures and continue permitted repair under the current approval mode. Never resubmit to monitor progress or claim submission or downloaded files as verified success.',
     }
   );
+  registerCloudVideoTools(server);
+  if (process.env.OPENH3_MEDIA_ACCOUNT_ONLY === '1') {
+    await server.connect(new StdioServerTransport());
+    return;
+  }
   registerResearchTools(server);
   registerProductTool(
     server,
@@ -375,64 +480,6 @@ async function main() {
     startSeconds: z.number().nonnegative().optional(),
     endSeconds: z.number().positive().optional(),
   };
-  registerProductTool(
-    server,
-    'openh3_cloud_video_generate',
-    'Generate a cloud video using the connection selected in the client. Provide prompt, optional duration/width/height/seed, and ordered absolute imagePaths. H3 supports text, first frame or first+last frame (at most two images); deployed H3 does not support Ref2VA, video or audio inputs. H3 defaults to 4.4 seconds and 24fps; explicit sizes require short side 768 and multiples of 32. OpenAI video supports at most one image and seconds/size; omit seed/aspectRatio. Never install or start local ComfyUI for a cloud selection. Returns cloudVideoJobId and job; retain the real job ID and submissionId. Keep working, even for a single output: monitor the same job with openh3_cloud_video_status waitMs=30000 until a terminal result, inspect outputs, and continue authorized work before the final answer. If the bounded wait returns queued/running, call status again with the same ID. At terminal failure stop repeated polling, diagnose and continue permitted repair; an uncertain submission requires recovering its original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
-    {
-      input: cloudVideoInputSchema,
-      submissionId: z
-        .string()
-        .uuid()
-        .describe(
-          'A new UUID for each user-requested generation. Reuse this exact UUID when recovering a lost response. Never create a replacement UUID to retry automatically.'
-        ),
-    },
-    async ({ input, submissionId }) => {
-      try {
-        if (
-          envValue('OPENH3_CREATION_SOURCE', 'AIONUI_CREATION_SOURCE') !== 'cloud' ||
-          envValue('OPENH3_CREATION_KIND', 'AIONUI_CREATION_KIND') !== 'video'
-        )
-          throw new Error('CLOUD_VIDEO_NOT_SELECTED');
-        const job = (await call(
-          '/api/cloud-video/jobs',
-          jsonRequest({ requestId: creationRequestId(), submissionId, input })
-        )) as CloudVideoJob;
-        return toolResult({
-          cloudVideoJobId: job.id,
-          job,
-          stopPolling: job.status !== 'queued' && job.status !== 'running',
-          automaticRetryAllowed: false,
-        });
-      } catch (error) {
-        return toolError('Cloud video generation failed', error);
-      }
-    }
-  );
-  registerProductTool(
-    server,
-    'openh3_cloud_video_status',
-    'Read an existing cloud video job using its saved jobId. Set waitMs=30000 to wait up to 30 seconds with spaced read-only checks, returning early for a terminal result or uncertain submission; waitMs=0 returns one snapshot. Keep monitoring the same job while queued/running, even for a single output. A wait timeout is not completion: call status again, inspect outputs at the terminal result, and continue authorized work before the final answer. Cancelling this status wait stops observation only. stopPolling ends repeated status checks for a terminal job, not the original goal: diagnose failed jobs and continue permitted repair. Recover uncertain submissions using their original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
-    { jobId: z.string().uuid(), waitMs: statusWaitSchema },
-    async ({ jobId, waitMs }, { signal }) => {
-      try {
-        const job = (await waitForJob(
-          `/api/cloud-video/jobs/${encodeURIComponent(jobId)}?${new URLSearchParams({ requestId: creationRequestId() })}`,
-          waitMs,
-          signal
-        )) as CloudVideoJob;
-        return toolResult({
-          cloudVideoJobId: jobId,
-          job,
-          stopPolling: job.status !== 'queued' && job.status !== 'running',
-          automaticRetryAllowed: false,
-        });
-      } catch (error) {
-        return toolError('Cloud video query failed', error);
-      }
-    }
-  );
   registerProductTool(
     server,
     'openh3_comfy_environment',

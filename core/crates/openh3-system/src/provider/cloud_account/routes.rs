@@ -12,6 +12,25 @@ use axum::{
 use openh3_api_types::*;
 use openh3_auth::CurrentUser;
 use serde::{Serialize, de::DeserializeOwned};
+use sha2::{Digest, Sha256};
+use std::net::{Ipv4Addr, SocketAddr};
+
+/// TCP addresses observed by Core, independent of HTTP Host and forwarded headers.
+#[derive(Clone)]
+pub struct CoreMediaSocket {
+    pub local: Option<SocketAddr>,
+    pub peer: SocketAddr,
+}
+impl axum::extract::connect_info::Connected<axum::serve::IncomingStream<'_, tokio::net::TcpListener>>
+    for CoreMediaSocket
+{
+    fn connect_info(stream: axum::serve::IncomingStream<'_, tokio::net::TcpListener>) -> Self {
+        Self {
+            local: stream.io().local_addr().ok(),
+            peer: *stream.remote_addr(),
+        }
+    }
+}
 
 pub const CAPABILITY_HEADER: &str = "x-openh3-cloud-capability";
 pub const PREFIX: &str = "/api/cloud-account";
@@ -30,6 +49,13 @@ pub fn route_label(path: &str) -> &'static str {
         "/api/cloud-account/devices" => "cloud.devices",
         "/api/cloud-account/wallet" => "cloud.wallet",
         "/api/cloud-account/models" => "cloud.models",
+        "/api/cloud-account/media-models" => "cloud.media-models",
+        "/api/cloud-account/media/session" => "cloud.media-session",
+        "/api/cloud-account/media/challenge" => "cloud.media-challenge",
+        "/api/cloud-account/media/image" => "cloud.media-image",
+        "/api/cloud-account/media/video" => "cloud.media-video",
+        "/api/cloud-account/media/video/status" => "cloud.media-status",
+        "/api/cloud-account/media/video/content" => "cloud.media-content",
         "/api/cloud-account/topup/options" => "cloud.topup-options",
         "/api/cloud-account/topup/quote" => "cloud.topup-quote",
         "/api/cloud-account/topup/create" => "cloud.topup-create",
@@ -76,6 +102,101 @@ fn failure(status: StatusCode, code: &'static str) -> Response {
     });
     response
 }
+
+fn media_capability(main: &str) -> String {
+    let media = Sha256::new()
+        .chain_update(b"openh3:media:v1\0")
+        .chain_update(main.as_bytes())
+        .finalize();
+    format!("{media:x}")
+}
+
+fn native_capability_matches(expected: &str, actual: &str, label: &str) -> bool {
+    if expected.is_empty() {
+        return false;
+    }
+    let supplied = Sha256::digest(actual.as_bytes());
+    // Accumulate over fixed-length digests to avoid credential-prefix timing leaks.
+    let matches = |candidate: &str| {
+        Sha256::digest(candidate.as_bytes())
+            .iter()
+            .zip(supplied)
+            .fold(0u8, |diff, (a, b)| diff | (a ^ b))
+            == 0
+    };
+    if matches(expected) {
+        return true;
+    }
+    if !matches!(
+        label,
+        "cloud.media-session"
+            | "cloud.media-models"
+            | "cloud.media-image"
+            | "cloud.media-video"
+            | "cloud.media-status"
+            | "cloud.media-content"
+    ) {
+        return false;
+    }
+    matches(&media_capability(expected))
+}
+
+async fn core_media_challenge(state: &CloudAccountRouterState, request: Request) -> Response {
+    use axum::extract::ConnectInfo;
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use hmac::{Hmac, Mac};
+    let invalid = || failure(StatusCode::BAD_REQUEST, "CLOUD_INPUT_INVALID");
+    let Some(main) = state.capability.as_deref().filter(|value| !value.is_empty()) else {
+        return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
+    };
+    let Some(ConnectInfo(socket)) = request.extensions().get::<ConnectInfo<CoreMediaSocket>>() else {
+        return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
+    };
+    let Some(local) = socket.local else { return invalid() };
+    if state.auth.identity_mode != openh3_auth::AuthIdentityMode::Local
+        || local.ip().to_canonical() != Ipv4Addr::LOCALHOST
+        || socket.peer.ip().to_canonical() != Ipv4Addr::LOCALHOST
+        || [
+            header::ORIGIN.as_str(),
+            header::REFERER.as_str(),
+            header::AUTHORIZATION.as_str(),
+            header::COOKIE.as_str(),
+            CAPABILITY_HEADER,
+            "x-openh3-webui-request",
+        ]
+        .iter()
+        .any(|key| request.headers().contains_key(*key))
+    {
+        return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
+    }
+    if request.method() != Method::GET {
+        return failure(StatusCode::METHOD_NOT_ALLOWED, "CLOUD_METHOD_INVALID");
+    }
+    let Some(nonce) = request
+        .uri()
+        .query()
+        .and_then(|q| q.strip_prefix("nonce="))
+        .filter(|s| s.len() == 64 && s.bytes().all(|b| b.is_ascii_digit() || matches!(b, b'a'..=b'f')))
+    else {
+        return invalid();
+    };
+    // Domain separation confines the proof to this operation. Binding both
+    // observed ports prevents another listener from forwarding the challenge.
+    let message = format!(
+        "openh3:media:core:v1\0{nonce}\0{}\0{}",
+        local.port(),
+        socket.peer.port()
+    );
+    if to_bytes(request.into_body(), 0).await.is_err() {
+        return invalid();
+    }
+    let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(media_capability(main).as_bytes()) else {
+        return invalid();
+    };
+    mac.update(message.as_bytes());
+    Json(serde_json::json!({"signature": STANDARD.encode(mac.finalize().into_bytes())})).into_response()
+}
+
 async fn authenticate(State(state): State<CloudAccountRouterState>, request: Request, next: Next) -> Response {
     use openh3_auth::*;
     let h = request.headers();
@@ -92,6 +213,9 @@ async fn authenticate(State(state): State<CloudAccountRouterState>, request: Req
     {
         return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
     }
+    if request.uri().path() == "/api/cloud-account/media/challenge" {
+        return core_media_challenge(&state, request).await;
+    }
     let web = h.contains_key("x-openh3-webui-request");
     let capability = h.get(CAPABILITY_HEADER);
     let mut auth = state.auth.clone();
@@ -100,19 +224,12 @@ async fn authenticate(State(state): State<CloudAccountRouterState>, request: Req
         return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
     }
     if auth.identity_mode == AuthIdentityMode::Local && !web {
-        // Compare fixed-length digests to avoid credential-prefix timing leaks.
-        use sha2::{Digest, Sha256};
         let valid = state
             .capability
             .as_deref()
             .zip(capability.and_then(|v| v.to_str().ok()))
             .is_some_and(|(expected, actual)| {
-                !expected.is_empty()
-                    && Sha256::digest(expected.as_bytes())
-                        .iter()
-                        .zip(Sha256::digest(actual.as_bytes()))
-                        .fold(0u8, |diff, (a, b)| diff | (a ^ b))
-                        == 0
+                native_capability_matches(expected, actual, route_label(request.uri().path()))
             });
         if !valid || h.contains_key(header::ORIGIN) || h.contains_key(header::REFERER) {
             return failure(StatusCode::UNAUTHORIZED, "LOCAL_AUTH_REQUIRED");
@@ -161,6 +278,11 @@ fn result<T: Serialize>(value: Result<T, CloudAccountError>) -> Response {
                 RateLimited { .. } => (StatusCode::TOO_MANY_REQUESTS, "CLOUD_RATE_LIMITED"),
                 Transport => (StatusCode::SERVICE_UNAVAILABLE, "CLOUD_TRANSPORT"),
                 Protocol => (StatusCode::BAD_GATEWAY, "CLOUD_PROTOCOL"),
+                MediaCatalogMissing => (StatusCode::SERVICE_UNAVAILABLE, "CLOUD_MEDIA_UNAVAILABLE"),
+                MediaModelUnavailable => (StatusCode::FORBIDDEN, "CLOUD_MEDIA_MODEL_UNAVAILABLE"),
+                MediaCapabilityUnsupported => (StatusCode::UNPROCESSABLE_ENTITY, "CLOUD_MEDIA_CAPABILITY_UNSUPPORTED"),
+                MediaJobNotFound => (StatusCode::NOT_FOUND, "CLOUD_MEDIA_JOB_NOT_FOUND"),
+                MediaQuota => (StatusCode::PAYMENT_REQUIRED, "CLOUD_MEDIA_QUOTA"),
                 Conflict => (StatusCode::CONFLICT, "CLOUD_CONFLICT"),
                 TopupConflict => (StatusCode::CONFLICT, "CLOUD_TOPUP_CONFLICT"),
                 WalletCapacity => (StatusCode::CONFLICT, "CLOUD_WALLET_CAPACITY"),
@@ -188,7 +310,14 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
     let label = route_label(request.uri().path());
     let read = matches!(
         label,
-        "cloud.capabilities" | "cloud.session" | "cloud.me" | "cloud.devices" | "cloud.wallet" | "cloud.models"
+        "cloud.capabilities"
+            | "cloud.session"
+            | "cloud.me"
+            | "cloud.devices"
+            | "cloud.wallet"
+            | "cloud.models"
+            | "cloud.media-models"
+            | "cloud.media-session"
     );
     if label == "cloud.unknown" {
         return failure(StatusCode::NOT_FOUND, "CLOUD_NOT_FOUND");
@@ -204,7 +333,13 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
     if !read
         && !matches!(
             label,
-            "cloud.logout" | "cloud.usage" | "cloud.topup-options" | "cloud.topup-quote" | "cloud.topup-orders"
+            "cloud.logout"
+                | "cloud.usage"
+                | "cloud.topup-options"
+                | "cloud.topup-quote"
+                | "cloud.topup-orders"
+                | "cloud.media-status"
+                | "cloud.media-content"
         )
         && state.limiter.check_and_increment(&owner).is_err()
     {
@@ -219,7 +354,12 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
     {
         return failure(StatusCode::BAD_REQUEST, "CLOUD_INPUT_INVALID");
     }
-    let Ok(body) = to_bytes(request.into_body(), 16384).await else {
+    let body_limit = match label {
+        "cloud.media-video" => 12 * 1024 * 1024,
+        "cloud.media-image" => 1024 * 1024,
+        _ => 16384,
+    };
+    let Ok(body) = to_bytes(request.into_body(), body_limit).await else {
         return failure(StatusCode::PAYLOAD_TOO_LARGE, "CLOUD_INPUT_INVALID");
     };
     if read && !body.is_empty() {
@@ -241,6 +381,18 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
         "cloud.devices" => result(service.devices(&owner).await),
         "cloud.wallet" => result(service.wallet(&owner).await),
         "cloud.models" => result(service.models(&owner).await),
+        "cloud.media-models" => result(service.media_models(&owner).await),
+        "cloud.media-session" => result(service.media_session(&owner).await),
+        "cloud.media-image" => match decode(&body) {
+            Ok(input) => binary(service.generate_image(&owner, input).await),
+            Err(error) => result::<()>(Err(error)),
+        },
+        "cloud.media-video" => call!(create_video),
+        "cloud.media-status" => call!(video_status),
+        "cloud.media-content" => match decode(&body) {
+            Ok(input) => binary(service.video_content(&owner, input).await),
+            Err(error) => result::<()>(Err(error)),
+        },
         "cloud.usage" => call!(usage),
         "cloud.topup-quote" => call!(topup_quote),
         "cloud.topup-create" => call!(topup_create),
@@ -259,6 +411,13 @@ async fn dispatch(State(state): State<CloudAccountRouterState>, request: Request
             result(service.logout(&owner).await)
         }
         _ => failure(StatusCode::BAD_REQUEST, "CLOUD_INPUT_INVALID"),
+    }
+}
+
+fn binary(output: Result<(&'static str, Vec<u8>), CloudAccountError>) -> Response {
+    match output {
+        Ok((mime, bytes)) => ([(header::CONTENT_TYPE, mime)], bytes).into_response(),
+        Err(error) => result::<()>(Err(error)),
     }
 }
 

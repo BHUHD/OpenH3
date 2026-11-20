@@ -400,7 +400,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
           ...previous,
           catalogPending: false,
           catalogRead: true,
-          catalog: catalog.success && catalog.data && 'models' in catalog.data ? catalog.data : undefined,
+          catalog: catalog.success && catalog.data && 'quote_semantics' in catalog.data ? catalog.data : undefined,
           notice:
             !catalog.success || (catalog.data && 'status' in catalog.data && catalog.data.status === 'unavailable')
               ? 'catalogFailed'
@@ -583,7 +583,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
         ...previous,
         catalogPending: false,
         catalogRead: true,
-        catalog: result?.success && result.data && 'models' in result.data ? result.data : undefined,
+        catalog: result?.success && result.data && 'quote_semantics' in result.data ? result.data : undefined,
         notice: result?.success ? undefined : 'catalogFailed',
       }));
     },

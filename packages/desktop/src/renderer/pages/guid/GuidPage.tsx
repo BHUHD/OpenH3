@@ -108,6 +108,7 @@ const GuidPage: React.FC = () => {
   const [guidEnabledSkills, setGuidEnabledSkills] = useState<string[] | undefined>(undefined);
   const [availableMcpServers, setAvailableMcpServers] = useState<IMcpServer[]>([]);
   const [guidSelectedMcpServerIds, setGuidSelectedMcpServerIds] = useState<string[] | undefined>(undefined);
+  const [toggledMcpIds, setToggledMcpIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const refreshSkills = useCallback(() => {
     void ipcBridge.fs.listAvailableSkills
@@ -154,6 +155,7 @@ const GuidPage: React.FC = () => {
   }, []);
 
   const handleToggleMcpServer = useCallback((serverId: string) => {
+    setToggledMcpIds((prior) => new Set(prior).add(serverId));
     setGuidSelectedMcpServerIds((prev) => {
       const current = prev ?? [];
       return current.includes(serverId) ? current.filter((id) => id !== serverId) : [...current, serverId];
@@ -305,6 +307,7 @@ const GuidPage: React.FC = () => {
     assistantDefaultDisabledBuiltinSkillIds: resolvedAssistantDefaults.disabledBuiltinSkillIds,
     availableMcpServers,
     selectedMcpServerIds: guidSelectedMcpServerIds,
+    toggledMcpIds,
     assistantDefaultMcpIds: resolvedAssistantDefaults.mcpIds,
     isGoogleAuth: modelSelection.isGoogleAuth,
 
@@ -522,6 +525,7 @@ const GuidPage: React.FC = () => {
         }
       }
       setGuidSelectedMcpServerIds(resolvedDefaults.mcpIds);
+      setToggledMcpIds(new Set());
       if (appliedAssistantDefaultsKeyRef.current === signature) setAppliedAssistantDefaultsKey(signature);
     };
 
@@ -753,6 +757,7 @@ const GuidPage: React.FC = () => {
             models={creation.models}
             model={creation.model}
             inventoryError={creation.inventoryError}
+            accountMedia={creation.accountMedia}
             onChange={(update) => {
               setCreationIntent(undefined);
               creation.setSelection(update);

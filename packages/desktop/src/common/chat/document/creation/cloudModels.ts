@@ -3,6 +3,7 @@ import { isImageGenSupported } from '@/common/utils/imageModelAllowlist';
 import type { CreationKind, CreationModel } from './creation';
 import type { PublicVideoConnection } from './cloudVideo';
 import { H3_CLOUD_BASE_URL } from './cloudVideo';
+import { accountMediaId, type AccountMediaCatalog } from './accountMedia';
 
 /** Public connection presets. Credentials are supplied by the user. */
 export const CLOUD_IMAGE_PRESETS = [
@@ -21,10 +22,25 @@ export const CLOUD_IMAGE_PRESETS = [
 export function cloudCreationModels(
   providers: IProvider[],
   kind: CreationKind,
-  videoConnections: PublicVideoConnection[] = []
+  videoConnections: PublicVideoConnection[] = [],
+  account?: AccountMediaCatalog
 ): CreationModel[] {
+  const accountModels: CreationModel[] = account
+    ? account.models
+        .filter((model) => model.kind === kind)
+        .map((model) => ({
+          id: accountMediaId(account.account_key, model.model_id),
+          name: model.display_name,
+          capabilities: model.capabilities,
+          kind,
+          source: 'cloud',
+          state: 'configured',
+          available: true,
+        }))
+    : [];
   if (kind === 'video')
     return [
+      ...accountModels,
       ...videoConnections.map(
         (connection): CreationModel => ({
           id: `cloud-video:${connection.id}`,
@@ -52,7 +68,7 @@ export function cloudCreationModels(
         : []),
     ];
   const configured = providers
-    .filter((provider) => provider.enabled !== false)
+    .filter((provider) => provider.enabled !== false && provider.managed_by !== 'cloud_account')
     .flatMap((provider) =>
       provider.models
         .filter((model) => provider.model_enabled?.[model] !== false && isImageGenSupported(provider, model))
@@ -69,6 +85,7 @@ export function cloudCreationModels(
         )
     );
   return [
+    ...accountModels,
     ...configured,
     ...CLOUD_IMAGE_PRESETS.filter(
       (preset) =>

@@ -30,6 +30,22 @@ function fixture() {
   return { root, adapter, service, connection, options };
 }
 describe('persistent cloud video jobs', () => {
+  it.runIf(process.platform === 'win32')(
+    'recovers from a transient file lock while saving a submitted job',
+    async () => {
+      const { service, adapter, options } = fixture();
+      const rename = vi.spyOn(fs, 'renameSync').mockImplementationOnce(() => {
+        throw Object.assign(new Error('sharing violation'), { code: 'EPERM' });
+      });
+      try {
+        const job = await service.submit('request', { prompt: 'fox' });
+        expect(new CloudVideoService(options).job(job.id, 'conversation')).toMatchObject({ remoteId: 'remote-1' });
+        expect(adapter.submit).toHaveBeenCalledTimes(1);
+      } finally {
+        rename.mockRestore();
+      }
+    }
+  );
   it('only submits a managed first clip to its explicitly confirmed connection', async () => {
     const { service, adapter, connection, options } = fixture();
     service.bind('managed', 'conversation', connection.id, true);

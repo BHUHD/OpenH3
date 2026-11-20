@@ -28,6 +28,12 @@ import {
 import { handleComfyRoute } from '../packages/desktop/src/process/services/media/comfy/routes';
 import { CloudVideoService } from '../packages/desktop/src/process/services/media/cloud/CloudVideoService';
 import { handleCloudVideoRoute } from '../packages/desktop/src/process/services/media/cloud/routes';
+import { createInterface } from 'node:readline';
+import { createPrivateKey, sign, type KeyObject } from 'node:crypto';
+import {
+  AccountMediaBroker,
+  type MediaCore,
+} from '../packages/desktop/src/process/services/media/cloud/accountMediaBroker';
 import { defaultComfyInstallPlanner } from '../packages/desktop/src/process/services/media/comfy/planning/installPlanner';
 import { H3_PORTABLE_INSTALL_EVIDENCE } from '../packages/desktop/src/process/services/media/comfy/planning/legacyInstallPlan';
 import { createComfyProfileDiscovery } from '../packages/desktop/src/process/services/media/comfy/discovery';
@@ -89,7 +95,40 @@ function verifyFirstClip(file: string, mimeType = 'video/mp4'): Promise<void> {
     'generation'
   );
 }
+let mediaCore: MediaCore | undefined;
+let mediaIdentity: KeyObject | undefined;
+// Only the owning Electron process has the write end of the startup pipe.
+// Public runtime-context updates cannot redirect a privileged Core request.
+if (process.env.OPENH3_MEDIA_OWNED_PIPE === '1') {
+  const channel = createInterface({ input: process.stdin });
+  channel.on('line', (line) => {
+    try {
+      const v = JSON.parse(line) as MediaCore & { privateKey?: string };
+      if (v.privateKey)
+        mediaIdentity = createPrivateKey({ key: Buffer.from(v.privateKey, 'base64'), format: 'der', type: 'pkcs8' });
+      if (
+        mediaIdentity &&
+        Number.isInteger(v.port) &&
+        v.port > 0 &&
+        v.port <= 65535 &&
+        /^[a-f0-9]{64}$/.test(v.capability)
+      )
+        mediaCore = { port: v.port, capability: v.capability };
+    } catch {
+      /* Ignore malformed startup messages without logging private data. */
+    }
+  });
+  channel.on('close', () => {
+    mediaCore = undefined;
+    mediaIdentity = undefined;
+  });
+}
 const cloudVideoService = new CloudVideoService({
+  accountBroker: new AccountMediaBroker(() => mediaCore),
+  signChallenge: (challenge) => {
+    if (!mediaIdentity) throw new Error('CLOUD_MEDIA_CORE_UNAVAILABLE');
+    return sign(null, challenge, mediaIdentity).toString('base64');
+  },
   root: path.join(dataDir, 'cloud-video'),
   verifyManagedOutput: verifyFirstClip,
 });

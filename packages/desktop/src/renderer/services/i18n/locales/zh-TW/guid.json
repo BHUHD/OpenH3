@@ -156,6 +156,12 @@
     }
   },
   "creation": {
+    "accountModelUnavailable": "此模型已無法供目前帳號使用，請重新選擇模型。",
+    "accountInputUnsupported": "請選擇支援此輸入的影片模型。使用圖片作為首幀時，需要支援圖生影片。",
+    "chatDefault": "聊天預設模型",
+    "clearChatDefault": "恢復聊天自動選擇",
+    "noAccountModels": "帳號尚無此類型的模型",
+    "retryAccountModels": "無法載入帳號模型，點擊重試",
     "states": {
       "downloaded": "已下載",
       "loadable": "可載入",

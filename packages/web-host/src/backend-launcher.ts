@@ -10,6 +10,7 @@
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import { mkdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { connect, createServer, type Socket } from 'node:net';
 import { cleanupRegisteredAgentProcesses } from './agent-process-registry.js';
 import type { AppMetadata, BackendBinaryResolver } from './types.js';
@@ -232,7 +233,8 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
 export function buildSpawnEnv(
   dirs?: BackendDirConfig,
   contentHost?: { port: number; token: string },
-  cloudCapability?: string
+  cloudCapability?: string,
+  desktopMedia?: { port: number; publicKey: string; defaultsFile: string }
 ): NodeJS.ProcessEnv {
   // PREBUILDS_ONLY protects the packaged Electron process's own node-gyp-build
   // natives (see desktop process/index.ts) and must stay scoped to it. Agent
@@ -254,9 +256,11 @@ export function buildSpawnEnv(
   }
   // Windows inherited environment names are case-insensitive; object-rest is not.
   for (const key of Object.keys(parentEnv)) {
-    if (key.toUpperCase() === 'OPENH3_CLOUD_ACCOUNT_CAPABILITY') delete parentEnv[key];
+    if (['OPENH3_CLOUD_ACCOUNT_CAPABILITY', 'OPENH3_DESKTOP_MEDIA_CONTEXT'].includes(key.toUpperCase()))
+      delete parentEnv[key];
   }
   if (cloudCapability) parentEnv.OPENH3_CLOUD_ACCOUNT_CAPABILITY = cloudCapability;
+  if (desktopMedia && cloudCapability) parentEnv.OPENH3_DESKTOP_MEDIA_CONTEXT = JSON.stringify(desktopMedia);
   if (contentHost) {
     parentEnv.OPENH3_CONTENT_PORT = String(contentHost.port);
     parentEnv.OPENH3_CONTENT_TOKEN = contentHost.token;
@@ -553,6 +557,10 @@ async function probeHealthCheckTcpConnect(port: number, timeoutMs = 1_000): Prom
 
 export class BackendLifecycleManager {
   private cloudCapability?: string;
+  private desktopMedia?: { port: number; publicKey: string };
+  configureDesktopMedia(port: number, publicKey: string): void {
+    this.desktopMedia = { port, publicKey };
+  }
   /** Bind the main-owned per-launch secret only to this Core child. */
   configureCloudAccount(capability: string): void {
     this.cloudCapability = capability;
@@ -737,7 +745,15 @@ export class BackendLifecycleManager {
     try {
       this.childProcess = spawn(binaryPath, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: buildSpawnEnv(dirs, this.contentHost, this.cloudCapability),
+        env: buildSpawnEnv(
+          dirs,
+          this.contentHost,
+          this.cloudCapability,
+          this.desktopMedia && {
+            ...this.desktopMedia,
+            defaultsFile: join(dbPath, 'cloud-video', 'account-defaults.json'),
+          }
+        ),
         cwd: dirs?.workDir ?? dbPath,
         detached: process.platform !== 'win32',
       });

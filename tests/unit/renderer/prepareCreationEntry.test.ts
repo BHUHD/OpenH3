@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareCreationEntry } from '@/renderer/pages/conversation/runtime/Creation/prepareCreationEntry';
 import { comfyFamilySchema } from '@/common/chat/document/creation/comfy';
+import { cloudVideoApi } from '@/common/chat/document/creation/cloudVideoApi';
 
 const mocks = vi.hoisted(() => ({ bind: vi.fn(), requestInstall: vi.fn(), get: vi.fn(), update: vi.fn() }));
 vi.mock('@/common/chat/document/creation/comfyApi', () => ({ comfyApi: mocks }));
@@ -9,6 +10,26 @@ vi.mock('@/common', () => ({
 }));
 
 describe('model-card creation orchestration', () => {
+  it.each(['image', 'video'] as const)(
+    'binds managed %s by account and model without a manual connection',
+    async (kind) => {
+      const bind = vi.spyOn(cloudVideoApi, 'bindAccount').mockResolvedValue({ ok: true });
+      try {
+        await prepareCreationEntry('request-account-' + kind, 'conversation', {
+          kind,
+          source: 'cloud',
+          id: 'account-media:["user-1","vendor/model:a"]',
+        });
+        expect(bind).toHaveBeenCalledWith('request-account-' + kind, 'conversation', kind, {
+          accountId: 'user-1',
+          modelId: 'vendor/model:a',
+        });
+        expect(mocks.bind).not.toHaveBeenCalled();
+      } finally {
+        bind.mockRestore();
+      }
+    }
+  );
   beforeEach(() => {
     mocks.bind.mockReset().mockResolvedValue({ ok: true });
     mocks.requestInstall.mockReset().mockResolvedValue({ id: 'operation-1', state: 'running' });

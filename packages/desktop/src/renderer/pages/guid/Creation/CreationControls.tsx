@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Button, Dropdown, Menu, Modal } from '@arco-design/web-react';
+import { Button, Dropdown, Menu, Message, Modal } from '@arco-design/web-react';
 import { Check, Down, Magic, Plus, SettingConfig } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { CLOUD_IMAGE_PRESETS } from '@/common/chat/document/creation/cloudModels';
+import type { useAccountMedia } from './useAccountMedia';
+import { accountMediaId } from '@/common/chat/document/creation/accountMedia';
 import CloudModelSetup from './CloudModelSetup';
 import CloudVideoSetup from './CloudVideoSetup';
 import type {
@@ -20,13 +22,42 @@ type Props = {
   onChange: React.Dispatch<React.SetStateAction<CreationSelection>>;
   onManageLocal: (model: CreationModel) => void;
   inventoryError?: string;
+  accountMedia?: ReturnType<typeof useAccountMedia>;
 };
 
-export default function CreationControls({ selection, models, model, onChange, onManageLocal, inventoryError }: Props) {
+export default function CreationControls({
+  selection,
+  models,
+  model,
+  onChange,
+  onManageLocal,
+  inventoryError,
+  accountMedia,
+}: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [configuring, setConfiguring] = useState<CreationModel>();
+  const [saving, setSaving] = useState(false);
+  const [message, contextHolder] = Message.useMessage();
   const empty = !models.length;
+  const defaultRef = accountMedia?.defaultModel;
+  const defaultId = defaultRef && accountMediaId(defaultRef.accountId, defaultRef.modelId);
+  const saveChoice = async (id: string, done: () => void) => {
+    if (saving) return;
+    if (!accountMedia) {
+      done();
+      return;
+    }
+    setSaving(true);
+    try {
+      await accountMedia.setDefault(selection.kind, id);
+      done();
+    } catch {
+      message.error(t('guid.creation.cloudSetup.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
   const emptyLocal = empty && selection.source === 'local' && model.state === 'not-installed';
   const manage = () => {
     setOpen(false);
@@ -42,9 +73,46 @@ export default function CreationControls({ selection, models, model, onChange, o
         : `guid.creation.${item.source}${item.kind === 'image' ? 'Image' : 'Video'}`
     );
   const providerName = (item: CreationModel) =>
-    item.provider?.name ?? CLOUD_IMAGE_PRESETS.find((preset) => preset.id === item.presetId)?.name;
+    item.capabilities?.map((capability) => t(`guid.comfy.workflows.tasks.${capability}`)).join(' · ') ??
+    item.provider?.name ??
+    CLOUD_IMAGE_PRESETS.find((preset) => preset.id === item.presetId)?.name;
+  const renderModel = (item: CreationModel) => (
+    <Menu.Item
+      key={item.id}
+      disabled={saving || (item.source === 'cloud' && (item.state === 'unsupported' || item.state === 'unavailable'))}
+      onClick={() => {
+        if (item.source === 'cloud' && !item.available) {
+          setOpen(false);
+          setConfiguring(item);
+          return;
+        }
+        void saveChoice(item.id, () => {
+          onChange((previous) => ({
+            ...previous,
+            modelIds: { ...previous.modelIds, [`${selection.source}-${selection.kind}`]: item.id },
+          }));
+          setOpen(false);
+          if (item.source === 'local' && !item.profileId && !item.available) onManageLocal(item);
+        });
+      }}
+    >
+      <span className={styles.menuCheck} aria-hidden='true'>
+        {item.id === model.id && <Check theme='outline' size='14' />}
+      </span>
+      <span className={styles.menuModel} title={[modelName(item), providerName(item)].filter(Boolean).join(' · ')}>
+        <span className={styles.modelName}>{modelName(item)}</span>
+        {providerName(item) && <span className={styles.providerName}>{providerName(item)}</span>}
+      </span>
+      {item.source === 'cloud' && (
+        <span className={styles.state}>
+          {item.id === defaultId ? t('guid.creation.chatDefault') : t(`guid.creation.states.${item.state}`)}
+        </span>
+      )}
+    </Menu.Item>
+  );
   return (
     <>
+      {contextHolder}
       <div className={styles.segment} role='group' aria-label={t('guid.creation.kind')}>
         {(['image', 'video'] as CreationKind[]).map((kind) => (
           <Button
@@ -53,7 +121,12 @@ export default function CreationControls({ selection, models, model, onChange, o
             size='small'
             aria-pressed={selection.kind === kind}
             className={selection.kind === kind ? styles.selected : undefined}
-            onClick={() => onChange((previous) => ({ ...previous, kind }))}
+            onClick={() =>
+              onChange((previous) => {
+                const sources = { ...previous.sources, [previous.kind]: previous.source };
+                return { ...previous, kind, sources, source: sources[kind] ?? previous.source };
+              })
+            }
           >
             {t(`guid.templateFilters.${kind}`)}
           </Button>
@@ -67,7 +140,13 @@ export default function CreationControls({ selection, models, model, onChange, o
             size='small'
             aria-pressed={selection.source === source}
             className={selection.source === source ? styles.selected : undefined}
-            onClick={() => onChange((previous) => ({ ...previous, source }))}
+            onClick={() =>
+              onChange((previous) => ({
+                ...previous,
+                source,
+                sources: { ...previous.sources, [previous.kind]: source },
+              }))
+            }
           >
             {t(`guid.creation.${source}`)}
           </Button>
@@ -105,39 +184,36 @@ export default function CreationControls({ selection, models, model, onChange, o
                 {t(emptyLocal ? 'guid.creation.noLocalModelsHint' : `guid.creation.states.${model.state}`)}
               </Menu.Item>
             )}
-            {models.map((item) => (
+            {accountMedia?.catalogState && (
+              <Menu.ItemGroup key='account' title={t('settings.cloudAccount.title')}>
+                {accountMedia.catalogState === 'unavailable' ? (
+                  <Menu.Item key='retry-account' onClick={accountMedia.refresh}>
+                    {t('guid.creation.retryAccountModels')}
+                  </Menu.Item>
+                ) : accountMedia.catalogState !== 'available' ? (
+                  <Menu.Item key='account-status' disabled>
+                    {t(
+                      accountMedia.catalogState === 'empty'
+                        ? 'guid.creation.noAccountModels'
+                        : 'guid.creation.states.checking'
+                    )}
+                  </Menu.Item>
+                ) : null}
+                {models.filter((item) => item.id.startsWith('account-media:')).map(renderModel)}
+              </Menu.ItemGroup>
+            )}
+            {models.filter((item) => !item.id.startsWith('account-media:')).map(renderModel)}
+            {defaultRef && (
               <Menu.Item
-                key={item.id}
-                disabled={item.source === 'cloud' && (item.state === 'unsupported' || item.state === 'unavailable')}
+                key='clear-chat-default'
+                disabled={saving}
                 onClick={() => {
-                  if (item.source === 'cloud' && !item.available) {
-                    setOpen(false);
-                    setConfiguring(item);
-                    return;
-                  }
-                  onChange((previous) => ({
-                    ...previous,
-                    modelIds: { ...previous.modelIds, [`${selection.source}-${selection.kind}`]: item.id },
-                  }));
-                  setOpen(false);
-                  if (item.source === 'local' && !item.profileId && !item.available) onManageLocal(item);
+                  void saveChoice('', () => setOpen(false));
                 }}
               >
-                <span className={styles.menuCheck} aria-hidden='true'>
-                  {item.id === model.id && <Check theme='outline' size='14' />}
-                </span>
-                <span
-                  className={styles.menuModel}
-                  title={[modelName(item), providerName(item)].filter(Boolean).join(' · ')}
-                >
-                  <span className={styles.modelName}>{modelName(item)}</span>
-                  {providerName(item) && <span className={styles.providerName}>{providerName(item)}</span>}
-                </span>
-                {item.source === 'cloud' && (
-                  <span className={styles.state}>{t(`guid.creation.states.${item.state}`)}</span>
-                )}
+                {t('guid.creation.clearChatDefault')}
               </Menu.Item>
-            ))}
+            )}
             <Menu.Item key='manage' className={styles.manageItem} onClick={manage}>
               <SettingConfig theme='outline' size='14' />
               {t(selection.source === 'local' ? 'guid.creation.manageLocal' : 'guid.creation.configureCloud')}
@@ -188,11 +264,13 @@ export default function CreationControls({ selection, models, model, onChange, o
           model={configuring}
           onClose={() => setConfiguring(undefined)}
           onSaved={(id) => {
-            onChange((previous) => ({
-              ...previous,
-              modelIds: { ...previous.modelIds, [`cloud-${configuring.kind}`]: id },
-            }));
-            setConfiguring(undefined);
+            void saveChoice(id, () => {
+              onChange((previous) => ({
+                ...previous,
+                modelIds: { ...previous.modelIds, [`cloud-${configuring.kind}`]: id },
+              }));
+              setConfiguring(undefined);
+            });
           }}
         />
       )}

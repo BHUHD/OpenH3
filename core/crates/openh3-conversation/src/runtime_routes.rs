@@ -10,7 +10,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::extract::rejection::JsonRejection;
 use axum::http::{HeaderMap, StatusCode};
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{Json, Router};
 use openh3_ai_agent::{RuntimeTokenScope, RuntimeTokenService, TEAM_RUNTIME_TOKEN_SESSION_GENERATION};
 use openh3_api_types::{
@@ -41,7 +41,21 @@ pub struct ConversationRuntimeRouterState {
 pub fn conversation_runtime_routes(state: ConversationRuntimeRouterState) -> Router {
     Router::new()
         .route("/api/runtime/conversations/create", post(create))
+        .route("/api/runtime/conversations/verify", get(verify))
         .with_state(state)
+}
+
+/// Trusted local services check the live helper identity without creating a conversation.
+async fn verify(
+    State(state): State<ConversationRuntimeRouterState>,
+    headers: HeaderMap,
+) -> impl axum::response::IntoResponse {
+    let status = if runtime_caller(&state, &headers).is_some() {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::UNAUTHORIZED
+    };
+    (status, [(axum::http::header::CACHE_CONTROL, "no-store")])
 }
 
 struct RuntimeCaller {

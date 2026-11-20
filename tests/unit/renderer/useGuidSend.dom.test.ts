@@ -671,6 +671,58 @@ describe('useGuidSend', () => {
     expect(initial.creationRequestId).toBe(payload.extra.creation_request.requestId);
   });
 
+  it('starts an account image session with the existing Agent model and no manual provider credentials', async () => {
+    const deps = createDeps();
+    deps.selectedAcpModel = 'gpt-6.2-sol';
+    deps.creationModel = {
+      id: 'account-media:["user-1","studio-image"]',
+      name: 'Studio',
+      kind: 'image',
+      source: 'cloud',
+      state: 'configured',
+      available: true,
+    };
+    deps.availableMcpServers.push({
+      id: 'images',
+      name: 'aionui-image-generation',
+      builtin: true,
+      transport: { type: 'stdio', command: 'node', env: { AIONUI_IMG_API_KEY: 'byok-secret' } },
+    } as IMcpServer);
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(true);
+    });
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.extra.creation_request.id).toBe(deps.creationModel.id);
+    expect(JSON.stringify(payload)).not.toContain('byok-secret');
+    expect(JSON.stringify(payload)).toContain('gpt-6.2-sol');
+  });
+
+  it('remembers explicit media-tool opt-outs without turning an unconfigured tool into an opt-out', async () => {
+    const deps = createDeps();
+    deps.availableMcpServers.push(
+      {
+        id: 'images',
+        name: 'aionui-image-generation',
+        builtin: true,
+        transport: { type: 'stdio', command: 'node' },
+      } as IMcpServer,
+      {
+        id: 'video',
+        name: 'openh3-video-media',
+        builtin: true,
+        transport: { type: 'stdio', command: 'node' },
+      } as IMcpServer
+    );
+    deps.toggledMcpIds = new Set(['images', 'video']);
+    deps.selectedMcpServerIds = ['video'];
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(true);
+    });
+    expect(createConversationInvokeMock.mock.calls[0][0].extra.account_media_excluded_kinds).toEqual(['image']);
+  });
+
   it('keeps an explicit cloud image request bound to its source before the first turn', async () => {
     const deps = createDeps();
     deps.creationModel = {
