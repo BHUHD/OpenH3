@@ -216,6 +216,50 @@ describe('resolveImageGenerationMigrationConfig', () => {
 });
 
 describe('built-in ComfyUI tool upgrades', () => {
+  it('repairs a legacy image entrypoint for local generation without a cloud selection', async () => {
+    httpRequestMock.mockResolvedValue(undefined);
+    const legacy = {
+      ...imageServer(),
+      name: 'aionui-image-generation',
+      enabled: false,
+      transport: {
+        type: 'stdio' as const,
+        command: 'node',
+        args: ['D:/AionUi/out/main/builtin-mcp-image-gen.js'],
+        env: { CUSTOM_SETTING: 'preserve' },
+      },
+      original_json: '{}',
+    };
+    const inventory = useServerInventory([legacy]);
+
+    await runBackendMigrations(configFile as never);
+
+    const image = inventory.find((server) => server.id === legacy.id);
+    expect(image).toMatchObject({
+      name: BUILTIN_IMAGE_GEN_NAME,
+      builtin: true,
+      enabled: false,
+      transport: {
+        type: 'stdio',
+        command: 'node',
+        args: ['/mock/builtin-mcp-image-gen.js'],
+        env: legacy.transport.env,
+      },
+    });
+    expect(JSON.parse(image!.original_json!)).toEqual({
+      mcpServers: {
+        [BUILTIN_IMAGE_GEN_NAME]: {
+          command: 'node',
+          args: ['/mock/builtin-mcp-image-gen.js'],
+          env: legacy.transport.env,
+        },
+      },
+    });
+    updateServerMock.mockClear();
+    await runBackendMigrations(configFile as never);
+    expect(updateServerMock.mock.calls.filter(([request]) => request.id === legacy.id)).toHaveLength(0);
+  });
+
   it.each(['aionui-video-media', BUILTIN_VIDEO_MEDIA_NAME])(
     'repairs the stale media entrypoint for %s while preserving its ID and user environment',
     async (name) => {

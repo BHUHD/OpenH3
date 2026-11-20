@@ -45,7 +45,7 @@ use openh3_db::{
     UpsertConversationAssistantSnapshotParams, resolve_agent_binding_from_rows,
 };
 use openh3_extension::AssistantRuleDispatcher;
-use openh3_mcp::{AcpMcpCapabilities, parse_acp_mcp_capabilities};
+use openh3_mcp::{AcpMcpCapabilities, McpServerTransport, parse_acp_mcp_capabilities};
 use openh3_project::{ProjectService, ResolvedChatMessage, canonical};
 use openh3_realtime::EventBroadcaster;
 use openh3_runtime::{RuntimeCommandProbe, probe_node_runtime_supported, probe_runtime_command, resolve_command_path};
@@ -70,6 +70,17 @@ const ACP_CANCEL_DRAIN_TIMEOUT: Duration = Duration::from_secs(15);
 const LEGACY_CONVERSATION_ARCHIVED_MESSAGE: &str =
     "This historical conversation can no longer be continued. Please start a new conversation.";
 const DEPRECATED_AGENT_TYPE_MESSAGE: &str = "This agent type is no longer supported for new conversations.";
+const BUILTIN_IMAGE_MCP_NAME: &str = "openh3-image-generation";
+const BUILTIN_IMAGE_MCP_SCRIPT_SUFFIX: &str = "/out/main/builtin-mcp-image-gen.js";
+
+fn is_builtin_image_mcp_snapshot(name: &str, command: &str, args: &[String]) -> bool {
+    matches!(
+        name,
+        BUILTIN_IMAGE_MCP_NAME | "aionui-image-generation" | "AionUi Image Generation" | "builtin-image-gen"
+    ) && command == "node"
+        && matches!(args, [script] if Path::new(script).is_absolute()
+            && script.replace('\\', "/").ends_with(BUILTIN_IMAGE_MCP_SCRIPT_SUFFIX))
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub(crate) struct AssistantConversationOverrides {
@@ -4865,6 +4876,7 @@ impl ConversationService {
                 .build_options(row, seed)
                 .await?;
         self.refresh_live_skill_context(row, &mut options).await;
+        self.refresh_builtin_image_mcp_entrypoint(&mut options).await;
         Ok(options)
     }
 
@@ -4880,7 +4892,66 @@ impl ConversationService {
                 .build_options_with_workspace_override(row, workspace_override, seed)
                 .await?;
         self.refresh_live_skill_context(row, &mut options).await;
+        self.refresh_builtin_image_mcp_entrypoint(&mut options).await;
         Ok(options)
+    }
+
+    /// Preserve frozen tool selections and preferences while repairing replaced product binaries.
+    async fn refresh_builtin_image_mcp_entrypoint(&self, options: &mut BuildTaskOptions) {
+        let Some(repo) = self
+            .mcp_server_repo
+            .read()
+            .ok()
+            .and_then(|guard| guard.as_ref().cloned())
+        else {
+            return;
+        };
+        let user_id = &options.context.conversation.user_id;
+        let conversation_id = &options.context.conversation.conversation_id;
+        let servers = match &mut options.context.kind {
+            AgentSessionKind::Acp(ctx) => &mut ctx.config.session_mcp_servers,
+            AgentSessionKind::Aionrs(ctx) => &mut ctx.config.session_mcp_servers,
+            AgentSessionKind::Antigravity(ctx) => &mut ctx.config.session_mcp_servers,
+        };
+        let mut canonical_name_present = servers.iter().any(|server| server.name == BUILTIN_IMAGE_MCP_NAME);
+        for server in servers {
+            let SessionMcpTransport::Stdio { command, args, .. } = &mut server.transport else {
+                continue;
+            };
+            if !is_builtin_image_mcp_snapshot(&server.name, command, args) {
+                continue;
+            }
+            let row = match repo.find_by_id(user_id, &server.id).await {
+                Ok(Some(row)) if row.builtin && row.name == BUILTIN_IMAGE_MCP_NAME => row,
+                Ok(_) => continue,
+                Err(error) => {
+                    warn!(conversation_id, server_id = %server.id, %error, "Could not resolve built-in image MCP entrypoint");
+                    continue;
+                }
+            };
+            let Ok(McpServerTransport::Stdio {
+                command: current_command,
+                args: current_args,
+                ..
+            }) = McpServerTransport::from_db(&row.transport_type, &row.transport_config)
+            else {
+                continue;
+            };
+            if !is_builtin_image_mcp_snapshot(&row.name, &current_command, &current_args) {
+                continue;
+            }
+            // The runtime identifies MCP servers by name. Keep a legacy alias
+            // if renaming it would replace another frozen server.
+            let rename = !canonical_name_present;
+            if rename || *args != current_args {
+                debug!(conversation_id, server_id = %server.id, "Refreshed frozen built-in image MCP launch target");
+                if rename {
+                    server.name = row.name;
+                    canonical_name_present = true;
+                }
+                *args = current_args;
+            }
+        }
     }
 
     async fn refresh_live_skill_context(

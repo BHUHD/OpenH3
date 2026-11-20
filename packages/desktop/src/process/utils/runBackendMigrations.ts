@@ -444,15 +444,15 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
 
   await runBuiltinMcpStep(BUILTIN_IMAGE_GEN_NAME, async () => {
     if (
-      imageEnvResolution.ok === true &&
       existingImageServer &&
       existingImageServer.transport.type === 'stdio' &&
       imageServer.transport.type === 'stdio'
     ) {
-      const mergedEnv = {
-        ...removeImageGenerationEnvKeys(existingImageServer.transport.env || {}),
-        ...imageEnvResolution.env,
-      };
+      // The same entrypoint serves local workflows when no cloud provider is configured.
+      const existingEnv = existingImageServer.transport.env ?? {};
+      const mergedEnv = imageEnvResolution.ok
+        ? { ...removeImageGenerationEnvKeys(existingEnv), ...imageEnvResolution.env }
+        : existingEnv;
       const updatedTransport = {
         ...imageServer.transport,
         env: mergedEnv,
@@ -472,7 +472,9 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
       );
       const imageTransportChanged = !isSameStdioTransport(existingImageServer.transport, updatedTransport);
       const imageOriginalJsonChanged = existingImageServer.original_json !== original_json;
-      const imageServerChanged = imageTransportChanged || imageOriginalJsonChanged;
+      const imageIdentityChanged =
+        existingImageServer.name !== BUILTIN_IMAGE_GEN_NAME || existingImageServer.builtin !== true;
+      const imageServerChanged = imageTransportChanged || imageOriginalJsonChanged || imageIdentityChanged;
       console.info(
         '[Migration] image MCP bootstrap decision, server id: %s, transport changed: %s, json changed: %s, will update: %s',
         existingImageServer.id,
@@ -492,12 +494,6 @@ async function ensureBootstrapMcpServersInDb(configFile: ConfigFile): Promise<vo
         });
         imageServerUpdated = true;
       }
-    } else if (existingImageServer && imageEnvResolution.ok === false) {
-      console.warn(
-        '[Migration] skipped image MCP env update because provider could not be resolved, server id: %s, reason: %s',
-        existingImageServer.id,
-        imageEnvResolution.reason
-      );
     }
   });
 
