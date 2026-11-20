@@ -11,6 +11,8 @@ import {
 } from '@/process/services/media/comfy/runtimeCoordinator';
 import type { ComfyProfile } from '@/common/chat/document/creation/comfy';
 import { runComfyInstallSmoke, type ComfySmokeReceipt } from '@/process/services/media/comfy/smokeRunner';
+import * as environment from '@/process/services/media/comfy/discovery/environment';
+import { retiredComfyInterpreter } from '@/process/services/media/comfy/discovery/retiredRuntime';
 
 let directory = '';
 afterEach(() => {
@@ -203,6 +205,78 @@ describe('coordinated install smoke recovery', () => {
 });
 
 describe('shared Comfy runtime coordinator', () => {
+  it.runIf(process.platform === 'win32')(
+    'switches a settled legacy lease only after confirming its exact local interpreter exited',
+    async () => {
+      directory = fs.mkdtempSync(path.join(os.tmpdir(), 'comfy-cold-switch-'));
+      const python = path.join(directory, 'python.exe');
+      const sameImage = path.join(directory, 'python3.exe');
+      fs.writeFileSync(python, 'fixture');
+      fs.linkSync(python, sameImage);
+      const oldProfile = {
+        environment: { baseUrl: 'http://127.0.0.1:8192', root: directory, python },
+        components: [],
+      } as ComfyProfile;
+      const previous = new ComfyRuntimeCoordinator({ directory });
+      const oldSignature = comfyRuntimeSignature(oldProfile);
+      const context = { kind: 'comfy', profile: oldProfile, outputRoot: directory };
+      await previous.run(
+        'machine',
+        oldSignature,
+        async () => undefined,
+        async () => undefined,
+        undefined,
+        { context }
+      );
+      const refused = new TypeError('fetch failed', {
+        cause: Object.assign(new Error('refused'), {
+          code: 'ECONNREFUSED',
+          syscall: 'connect',
+          address: '127.0.0.1',
+          port: 8192,
+        }),
+      });
+      const census = vi.spyOn(environment, 'runComfyCommand');
+      const cleanup = vi.fn().mockRejectedValue(refused);
+      const execute = vi.fn(async () => 'video');
+      const restarted = new ComfyRuntimeCoordinator({ directory });
+      const switchRuntime = () => restarted.run('machine', 'new-h3-signature', execute, cleanup);
+      for (const value of [
+        JSON.stringify([python]),
+        JSON.stringify([sameImage]),
+        JSON.stringify([null]),
+        'null',
+        'invalid',
+      ]) {
+        census.mockResolvedValueOnce(value);
+        await expect(switchRuntime()).rejects.toBe(refused);
+      }
+      census.mockRejectedValueOnce(new Error('access denied'));
+      await expect(switchRuntime()).rejects.toBe(refused);
+      expect(execute).not.toHaveBeenCalled();
+      census.mockResolvedValueOnce('[]');
+      await expect(switchRuntime()).resolves.toBe('video');
+      expect(cleanup).toHaveBeenCalledWith('component-switch', context);
+      expect(execute).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('preserves cleanup errors without an exact loopback connection refusal', async () => {
+    const run = vi.fn();
+    const failure = (code: string, port = 8192) =>
+      new TypeError('fetch failed', { cause: { code, syscall: 'connect', address: '127.0.0.1', port } });
+    for (const [url, error] of [
+      ['http://localhost:8192', failure('ECONNREFUSED')],
+      ['http://example.test:8192', failure('ECONNREFUSED')],
+      ['http://127.0.0.1:8192', failure('ETIMEDOUT')],
+      ['http://127.0.0.1:8192', failure('ECONNREFUSED', 8188)],
+      ['http://127.0.0.1:8192', new Error('COMFY_MEMORY_CLEAR_QUEUE_BUSY')],
+      ['http://127.0.0.1:8192', new Error('COMFY_SERVER_ENVIRONMENT_MISMATCH')],
+    ] as const)
+      expect(await retiredComfyInterpreter(url, 'C:/runtime/python.exe', error, run)).toBe(false);
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it.runIf(process.platform === 'win32')(
     'retries transient Windows replacement locks without losing the device fence',
     async () => {

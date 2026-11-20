@@ -96,8 +96,33 @@ export class ComfyRuntimeCoordinator {
         throw new Error('COMFY_REMOTE_STATE_UNCONFIRMED');
       if (!options.recover) {
         for (const prior of previous) {
-          if (prior.state.signature && prior.state.signature !== signature)
-            await cleanup('component-switch', prior.state.context);
+          if (prior.state.signature && prior.state.signature !== signature) {
+            try {
+              await cleanup('component-switch', prior.state.context);
+            } catch (error) {
+              // Old Windows leases store the exact environment but no server PID.
+              // Its cache is gone only if the previous interpreter is demonstrably absent.
+              const binding = prior.state.context as ComfyRuntimeBinding | undefined;
+              if (
+                !Number.isFinite(prior.state.completedAt) ||
+                signal?.aborted ||
+                binding?.kind !== 'comfy' ||
+                !binding.profile?.environment ||
+                prior.state.signature !== comfyRuntimeSignature(binding.profile)
+              )
+                throw error;
+              const { retiredComfyInterpreter } = await import('./discovery/retiredRuntime');
+              if (
+                !(await retiredComfyInterpreter(
+                  binding.profile.environment.baseUrl,
+                  binding.profile.environment.python,
+                  error
+                ))
+              )
+                throw error;
+              if (signal?.aborted) throw new Error('COMFY_JOB_CANCELLED');
+            }
+          }
         }
       }
       // Persist before entering the task. A dead process lock can be removed,
