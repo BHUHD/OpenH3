@@ -492,8 +492,13 @@
 }
 
 @keyframes gen-light-creation-pulse {
-  0%, 100% { opacity: 0.28; }
-  50% { opacity: 0.52; }
+  0%,
+  100% {
+    opacity: 0.28;
+  }
+  50% {
+    opacity: 0.52;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
