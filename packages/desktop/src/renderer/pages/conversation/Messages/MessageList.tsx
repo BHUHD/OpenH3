@@ -237,6 +237,7 @@ const MessageItem: React.FC<{
   isLastMessage?: boolean;
   hasForkAnchor?: boolean;
   turnTexts?: string[];
+  results?: React.ReactNode;
 }> = React.memo(
   HOC((props) => {
     const { message, highlighted, rowWidthClass } = props as {
@@ -271,6 +272,7 @@ const MessageItem: React.FC<{
       isLastMessage,
       hasForkAnchor,
       turnTexts,
+      results,
     }: {
       message: TMessage;
       highlighted?: boolean;
@@ -279,6 +281,7 @@ const MessageItem: React.FC<{
       isLastMessage?: boolean;
       hasForkAnchor?: boolean;
       turnTexts?: string[];
+      results?: React.ReactNode;
     }) => {
       const { t } = useTranslation();
       switch (message.type) {
@@ -290,6 +293,7 @@ const MessageItem: React.FC<{
               isLastMessage={isLastMessage}
               hasForkAnchor={hasForkAnchor}
               turnTexts={turnTexts}
+              results={results}
             ></MessageText>
           );
         case 'tips':
@@ -334,6 +338,7 @@ const MessageItem: React.FC<{
     prev.showCopyRow === next.showCopyRow &&
     prev.isLastMessage === next.isLastMessage &&
     prev.hasForkAnchor === next.hasForkAnchor &&
+    prev.results === next.results &&
     // Compare by content: the map is rebuilt per render, so reference equality
     // would defeat the memo for the one row that carries the copy button.
     (prev.turnTexts === next.turnTexts ||
@@ -704,7 +709,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
     scrollToBottom('smooth');
   };
 
-  const renderItem = (_index: number, item: (typeof processedList)[0]) => {
+  const renderItem = (item: IProcessedItem, results?: React.ReactNode) => {
     const highlighted = matchesTargetMessage(item, highlightedMessageId);
     if ('type' in item && item.type === 'artifact') {
       return (
@@ -774,7 +779,48 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         isLastMessage={message.id === lastMessageId}
         hasForkAnchor={forkAnchoredIds.has(message.id)}
         turnTexts={aiTurnTextsById.get(message.id)}
+        results={results}
       ></MessageItem>
+    );
+  };
+
+  const renderTurn = (item: IProcessedItem, index: number) => {
+    const id = item.id;
+    const conversationId = conversationContext?.conversation_id;
+    const hasMedia = h3ResultGroups.has(id) || cloudVideoGroups.has(id) || comfyGenerationGroups.has(id);
+    const hasResults = hasMedia || creationResultGroups.has(id) || (!installation && comfyResultGroups.has(id));
+    const results = hasResults && (
+      <>
+        {h3ResultGroups.has(id) && <H3ToolResults messages={[]} jobIds={h3ResultGroups.get(id)} />}
+        {conversationId &&
+          creationResultGroups
+            .get(id)
+            ?.map((operationId) => (
+              <CreationInstallResult key={operationId} id={operationId} conversationId={conversationId} />
+            ))}
+        {!installation &&
+          conversationId &&
+          comfyResultGroups
+            .get(id)
+            ?.map((operationId) => (
+              <ComfyOperationResult key={operationId} id={operationId} conversationId={conversationId} compact />
+            ))}
+        {conversationId &&
+          cloudVideoGroups
+            .get(id)
+            ?.map((jobId) => <CloudVideoResult key={jobId} id={jobId} conversationId={conversationId} />)}
+        {conversationId &&
+          comfyGenerationGroups
+            .get(id)
+            ?.map((jobId) => <ComfyGenerationResult key={jobId} id={jobId} conversationId={conversationId} />)}
+      </>
+    );
+    const inReply = hasMedia && item.type === 'text' && item.position === 'left';
+    return (
+      <React.Fragment key={getProcessedItemAnchorId(item) || index}>
+        {renderItem(item, inReply ? results : undefined)}
+        {!inReply && results && <div className={rowWidthClass + ' min-w-0 px-8px'}>{results}</div>}
+      </React.Fragment>
     );
   };
 
@@ -835,48 +881,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
                 key={conversationContext?.conversation_id}
                 workspace={conversationContext?.workspace}
               >
-                {processedList.map((item, index) => (
-                  <React.Fragment key={getProcessedItemAnchorId(item) || index}>
-                    {renderItem(index, item)}
-                    {h3ResultGroups.has(item.id) && (
-                      <div className={rowWidthClass + ' min-w-0 px-8px'}>
-                        <H3ToolResults messages={[]} jobIds={h3ResultGroups.get(item.id)} />
-                      </div>
-                    )}
-                    {conversationContext?.conversation_id &&
-                      creationResultGroups.get(item.id)?.map((operationId) => (
-                        <div key={operationId} className={rowWidthClass + ' min-w-0 px-8px'}>
-                          <CreationInstallResult
-                            id={operationId}
-                            conversationId={conversationContext.conversation_id}
-                          />
-                        </div>
-                      ))}
-                    {!installation &&
-                      conversationContext?.conversation_id &&
-                      comfyResultGroups.get(item.id)?.map((operationId) => (
-                        <div key={operationId} className={rowWidthClass + ' min-w-0 px-8px'}>
-                          <ComfyOperationResult
-                            id={operationId}
-                            conversationId={conversationContext.conversation_id}
-                            compact
-                          />
-                        </div>
-                      ))}
-                    {conversationContext?.conversation_id &&
-                      cloudVideoGroups.get(item.id)?.map((jobId) => (
-                        <div key={jobId} className={rowWidthClass + ' min-w-0 px-8px'}>
-                          <CloudVideoResult id={jobId} conversationId={conversationContext.conversation_id} />
-                        </div>
-                      ))}
-                    {conversationContext?.conversation_id &&
-                      comfyGenerationGroups.get(item.id)?.map((jobId) => (
-                        <div key={jobId} className={rowWidthClass + ' min-w-0 px-8px'}>
-                          <ComfyGenerationResult id={jobId} conversationId={conversationContext.conversation_id} />
-                        </div>
-                      ))}
-                  </React.Fragment>
-                ))}
+                {processedList.map(renderTurn)}
               </RenderedMediaProvider>
               <div className='h-20px' />
             </div>

@@ -825,6 +825,7 @@
     "artifactUnavailable": "暂时无法读取本地视频文件。应用会从已知输出目录恢复；请确认文件仍在原位置，然后重试播放。"
   },
   "generationActions": {
+    "forArtifact": "{{fileName}} 的操作",
     "copyPrompt": "复制提示词",
     "regenerate": "再来一版",
     "useAsReference": "作为参考图",
@@ -835,6 +836,8 @@
     "fileChanges": "文件改动（{{count}}）"
   },
   "workProgress": {
+    "history": "历史任务",
+    "partial": "部分完成",
     "tab": "进度",
     "title": "工作进度",
     "panel": "右侧面板",

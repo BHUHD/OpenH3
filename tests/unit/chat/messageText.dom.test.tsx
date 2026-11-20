@@ -822,6 +822,15 @@ describe('MessageText fork entry point', () => {
     );
   };
 
+  it('places the media result immediately after the reply and above its hover controls', () => {
+    render(<MessageText message={forkMessage()} results={<video aria-label='reply video' />} />);
+    const media = screen.getByLabelText('reply video');
+    expect(screen.getByTestId('message-text-content').compareDocumentPosition(media)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(media.compareDocumentPosition(screen.getByTestId('copy-icon'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   beforeEach(() => {
     forkMocks.fork.mockReset().mockResolvedValue({ id: 'conv-forked' });
     forkMocks.ensureRuntime.mockReset().mockResolvedValue(undefined);

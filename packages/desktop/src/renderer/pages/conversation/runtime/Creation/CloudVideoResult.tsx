@@ -60,7 +60,7 @@ export default function CloudVideoResult({ id, conversationId }: { id: string; c
         : (job?.progress ?? 0);
   return (
     <div
-      className='mt-12px p-12px rd-12px border border-3 text-t-primary space-y-8px max-w-full'
+      className='mt-6px px-12px py-8px rd-12px border border-3 text-t-primary space-y-6px max-w-full'
       style={{
         boxSizing: 'border-box',
         width: job?.status === 'succeeded' ? (mediaWidth ? mediaWidth + 26 : 'fit-content') : undefined,

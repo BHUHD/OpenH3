@@ -12,6 +12,7 @@ import { localFileRef } from '@/common/types/chatFile';
 import { requestConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { copyText } from '@/renderer/utils/ui/clipboard';
 import { downloadArtifact } from './downloadArtifact';
+import styles from './GenerationActions.module.css';
 
 type GenerationActionsProps = {
   /** Needed by the prefill actions, which stay hidden when the card has no conversation. */
@@ -58,38 +59,47 @@ const GenerationActions: React.FC<GenerationActionsProps> = ({
   };
 
   return (
-    <div className={`${inline ? '' : 'mt-8px '}flex flex-wrap items-center gap-4px`} data-testid='generation-actions'>
-      <Button size='mini' type='text' loading={saving} icon={<Download size={14} />} onClick={() => void download()}>
-        {t('common.download')}
-      </Button>
-      {prompt && (
-        <Button size='mini' type='text' icon={<Copy size={14} />} onClick={copyPrompt}>
-          {t('conversation.generationActions.copyPrompt')}
+    <div
+      role='group'
+      aria-label={t('conversation.generationActions.forArtifact', { fileName })}
+      className={`${styles.actions} ${inline ? '' : 'mt-8px'}`}
+      data-testid='generation-actions'
+    >
+      <div className={styles.pair}>
+        <Button size='small' loading={saving} icon={<Download size={14} aria-hidden />} onClick={() => void download()}>
+          {t('common.download')}
         </Button>
-      )}
-      {prompt && conversationId && (
-        <Button
-          size='mini'
-          type='text'
-          icon={<Refresh size={14} />}
-          onClick={() => requestConversationSendBoxPrefill(conversationId, prompt)}
-        >
-          {t('conversation.generationActions.regenerate')}
-        </Button>
-      )}
-      {referencePath && conversationId && (
-        <Button
-          size='mini'
-          type='text'
-          icon={<Picture size={14} />}
-          onClick={() =>
-            requestConversationSendBoxPrefill(conversationId, t('conversation.generationActions.referencePrompt'), [
-              localFileRef(referencePath),
-            ])
-          }
-        >
-          {t('conversation.generationActions.useAsReference')}
-        </Button>
+        {prompt && (
+          <Button size='small' icon={<Copy size={14} aria-hidden />} onClick={copyPrompt}>
+            {t('conversation.generationActions.copyPrompt')}
+          </Button>
+        )}
+      </div>
+      {conversationId && (prompt || referencePath) && (
+        <div className={styles.pair}>
+          {prompt && (
+            <Button
+              size='small'
+              icon={<Refresh size={14} aria-hidden />}
+              onClick={() => requestConversationSendBoxPrefill(conversationId, prompt)}
+            >
+              {t('conversation.generationActions.regenerate')}
+            </Button>
+          )}
+          {referencePath && (
+            <Button
+              size='small'
+              icon={<Picture size={14} aria-hidden />}
+              onClick={() =>
+                requestConversationSendBoxPrefill(conversationId, t('conversation.generationActions.referencePrompt'), [
+                  localFileRef(referencePath),
+                ])
+              }
+            >
+              {t('conversation.generationActions.useAsReference')}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

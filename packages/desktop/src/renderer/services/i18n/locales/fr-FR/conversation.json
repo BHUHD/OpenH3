@@ -825,6 +825,7 @@
     "artifactUnavailable": "Le fichier vidéo local est indisponible. L’application vérifie les dossiers de sortie connus. Vérifiez que le fichier original est toujours présent, puis réessayez la lecture."
   },
   "generationActions": {
+    "forArtifact": "Actions pour {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -835,6 +836,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Tâches précédentes",
+    "partial": "Partiellement terminé",
     "tab": "Progression",
     "title": "Progression du travail",
     "panel": "Panneau droit",

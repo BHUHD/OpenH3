@@ -825,6 +825,7 @@
     "artifactUnavailable": "The local video file is unavailable. The app checks known output folders for recovery. Confirm the original file is still present, then retry playback."
   },
   "generationActions": {
+    "forArtifact": "Actions for {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -835,6 +836,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Earlier tasks",
+    "partial": "Partially completed",
     "tab": "Progress",
     "title": "Work progress",
     "panel": "Right panel",

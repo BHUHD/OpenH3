@@ -1,0 +1,74 @@
+.actions,
+.pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Keep save/copy and the two drafting actions together when a portrait card wraps. */
+.pair {
+  flex: 1 1 11.5rem;
+}
+
+.pair:has(> :only-child) {
+  flex: 0.5 1 5.75rem;
+}
+
+.pair:only-child {
+  flex: 0 1 auto;
+}
+
+.pair :global(.arco-btn) {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: min(100%, 4.75rem);
+  max-width: 100%;
+  min-height: 32px;
+  height: auto;
+  padding: 4px 5px;
+  border: 1px solid var(--border-base);
+  border-radius: 6px;
+  background: var(--bg-1);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pair :global(.arco-btn) > :first-child {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.pair :global(.arco-btn) > span:last-child {
+  margin: 0;
+}
+
+.pair :global(.arco-btn):hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.pair :global(.arco-btn):active {
+  background: var(--bg-3);
+}
+
+.pair :global(.arco-btn):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+@media (pointer: coarse) {
+  .pair :global(.arco-btn) {
+    min-height: 44px;
+  }
+}

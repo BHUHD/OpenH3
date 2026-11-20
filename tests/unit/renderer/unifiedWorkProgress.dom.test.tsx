@@ -646,8 +646,8 @@ describe('work progress right-panel integration', () => {
     await waitFor(() =>
       expect(document.querySelector('[data-work-task="generation"]')).toHaveAttribute('data-status', 'running')
     );
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '2');
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.getByRole('status')).toHaveAttribute('data-status', 'running');
   });
   it('follows the initial H3 submission through completion after the assistant turn has ended', async () => {
     setCurrentConversation('c1');
@@ -665,15 +665,15 @@ describe('work progress right-panel integration', () => {
       </SWRConfig>
     );
     await waitFor(() => expect(mocks.h3Events).toHaveBeenCalledOnce());
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+    expect(screen.queryByRole('progressbar')).toBeNull();
     const update = mocks.h3Events.mock.calls[0][1];
     act(() => update({ ...queued, status: 'running' }));
     await waitFor(() =>
       expect(document.querySelector('[data-work-task="generation"]')).toHaveAttribute('data-status', 'running')
     );
     act(() => update({ ...queued, status: 'succeeded' }));
-    await waitFor(() => expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1'));
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '1');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveAttribute('data-status', 'completed'));
+    expect(screen.queryByRole('progressbar')).toBeNull();
     expect(mocks.h3Get).toHaveBeenCalledWith(jobId);
     expect(mocks.prefill).not.toHaveBeenCalled();
     expect(mocks.h3Close).toHaveBeenCalledOnce();
@@ -888,16 +888,20 @@ it('keeps independent generation and installation work visible together', () => 
   expect(snapshot.tasks).toContainEqual(expect.objectContaining({ id: jobId, kind: 'generation', status: 'running' }));
 });
 
-it('excludes an explicitly recovered failure from progress once its successful retry is available', () => {
+it('keeps an explicitly recovered failure in history after its successful retry is available', () => {
   const failed = { ...job('failed'), id: operationId, recoveredBy: jobId, error: 'COMFY_PROFILE_CHANGED' };
   const snapshot = projectWorkProgress([], runtime, [], [failed, job()]);
-  expect(snapshot.tasks).toHaveLength(1);
-  expect(snapshot.tasks[0]).toMatchObject({ id: jobId, status: 'completed' });
+  expect(snapshot.tasks.filter((task) => !task.historical)).toEqual([
+    expect.objectContaining({ id: jobId, status: 'completed' }),
+  ]);
+  expect(snapshot.tasks.find((task) => task.id === operationId)).toMatchObject({ status: 'failed', historical: true });
   publishWorkProgress('c1', snapshot);
   render(<ConversationWorkProgress conversationId='c1' />);
   expect(screen.getByRole('status')).toHaveTextContent('conversation.workProgress.statuses.completed');
-  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
-  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '1');
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.getByRole('list', { name: 'conversation.workProgress.history' })).toHaveTextContent(
+    'COMFY_PROFILE_CHANGED'
+  );
 });
 
 it.each(['missing', 'failed', 'running', 'uncertain'])(
@@ -922,6 +926,40 @@ it('preserves an independent failure alongside an explicitly recovered failure',
   const failed = { ...job('failed'), id: operationId, recoveredBy: jobId };
   const independent = { ...job('failed'), id: 'independent', error: 'different user task' };
   const snapshot = projectWorkProgress([], runtime, [], [failed, job(), independent]);
-  expect(snapshot.tasks).toHaveLength(2);
-  expect(snapshot.tasks).toContainEqual(expect.objectContaining({ id: 'independent', status: 'failed' }));
+  expect(snapshot.tasks.filter((task) => !task.historical)).toHaveLength(2);
+  expect(snapshot.tasks.filter((task) => !task.historical)).toContainEqual(
+    expect.objectContaining({ id: 'independent', status: 'failed' })
+  );
+});
+
+it('separates earlier attempts and API-only jobs from the current turn, keeping a live older job visible', () => {
+  const start = Date.parse('2026-11-20T08:00:00Z');
+  const messages: TMessage[] = [
+    tool('submit-old', 'openh3_comfy_generate', 'completed', { output: JSON.stringify({ comfyJobId: operationId }) }),
+    {
+      id: 'user',
+      conversation_id: 'c1',
+      position: 'right',
+      type: 'text',
+      created_at: start,
+      content: { content: 'Generate' },
+    },
+    tool('submit-new', 'openh3_comfy_generate', 'completed', { output: JSON.stringify({ comfyJobId: jobId }) }),
+  ];
+  const snapshot = projectWorkProgress(
+    messages,
+    runtime,
+    [],
+    [
+      { ...job('failed'), id: operationId },
+      { ...job('failed'), id: 'older-api-only' },
+      { ...job('running'), id: 'still-generating' },
+      job(),
+    ]
+  );
+  expect(snapshot.tasks.filter((task) => task.historical).map((task) => task.id)).toEqual([
+    operationId,
+    'older-api-only',
+  ]);
+  expect(snapshot.tasks.filter((task) => !task.historical).map((task) => task.id)).toEqual([jobId, 'still-generating']);
 });

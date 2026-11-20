@@ -826,6 +826,7 @@
     "artifactUnavailable": "El vídeo local no está disponible. La aplicación busca en las carpetas de salida conocidas. Comprueba que el archivo original siga allí y vuelve a reproducirlo."
   },
   "generationActions": {
+    "forArtifact": "Acciones para {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -836,6 +837,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Tareas anteriores",
+    "partial": "Completado parcialmente",
     "tab": "Progreso",
     "title": "Progreso del trabajo",
     "panel": "Panel derecho",

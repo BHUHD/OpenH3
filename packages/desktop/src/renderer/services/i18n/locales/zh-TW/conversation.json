@@ -825,6 +825,7 @@
     "artifactUnavailable": "暫時無法讀取本機影片檔案。應用程式會從已知輸出目錄復原；請確認檔案仍在原位置，然後重試播放。"
   },
   "generationActions": {
+    "forArtifact": "{{fileName}} 的操作",
     "copyPrompt": "複製提示詞",
     "regenerate": "再來一版",
     "useAsReference": "作為參考圖",
@@ -835,6 +836,8 @@
     "fileChanges": "檔案變更（{{count}}）"
   },
   "workProgress": {
+    "history": "先前的任務",
+    "partial": "部分完成",
     "tab": "進度",
     "title": "工作進度",
     "panel": "右側面板",

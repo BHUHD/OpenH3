@@ -826,6 +826,7 @@
     "artifactUnavailable": "Die lokale Videodatei ist nicht verfügbar. Die App prüft bekannte Ausgabeordner zur Wiederherstellung. Prüfen Sie, ob die Originaldatei noch vorhanden ist, und starten Sie die Wiedergabe erneut."
   },
   "generationActions": {
+    "forArtifact": "Aktionen für {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -836,6 +837,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Frühere Aufgaben",
+    "partial": "Teilweise abgeschlossen",
     "tab": "Fortschritt",
     "title": "Arbeitsfortschritt",
     "panel": "Rechtes Panel",

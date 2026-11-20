@@ -31,6 +31,8 @@ export type WorkTask = {
   summaryKey?: WorkSummaryKey;
   kind: WorkKind;
   status: WorkStatus;
+  /** Retained for inspection, excluded from the current turn's overview. */
+  historical?: boolean;
   detail?: string;
   children?: WorkTask[];
   operationId?: string;
@@ -201,6 +203,35 @@ export function projectWorkProgress(
   cloudActivity: { jobs: CloudVideoJob[]; unavailable: string[] } = { jobs: [], unavailable: [] }
 ): WorkSnapshot {
   const tasks = new Map<string, WorkTask>();
+  const lastUser = messages.findLastIndex((message) => message.position === 'right');
+  const currentMessages = lastUser < 0 ? messages : messages.slice(lastUser + 1);
+  const currentRefs = new Set<string>();
+  if (lastUser >= 0) {
+    const comfy = workComfyIds(currentMessages);
+    for (const id of [
+      ...comfy.jobs,
+      ...comfy.operations,
+      ...h3ToolJobIds(currentMessages),
+      ...workCloudVideoIds(currentMessages),
+      ...creationOperationIds(currentMessages),
+    ])
+      currentRefs.add(id);
+    for (const operation of h3Activity.operations ?? []) {
+      if (!currentRefs.has(operation.id)) continue;
+      if (operation.jobId) currentRefs.add(operation.jobId);
+      if (operation.cloudJobId) currentRefs.add(operation.cloudJobId);
+    }
+  }
+  // Durable activities can be discovered before the tool writes its result, or
+  // after restarting the app. Prefer a message reference to a timestamp. Live
+  // backend work can outlast the assistant turn that submitted it.
+  const history = (id: string, referenced: boolean, at: string | undefined, live: boolean) =>
+    lastUser >= 0 &&
+    !live &&
+    !currentRefs.has(id) &&
+    (referenced || (at !== undefined && Date.parse(at) < (messages[lastUser].created_at ?? 0)))
+      ? { historical: true }
+      : {};
   const latestPlan = messages.findLast((message) => message.type === 'plan');
   const stale = (value: WorkStatus): WorkStatus => {
     if (value !== 'running') return value;
@@ -212,9 +243,11 @@ export function projectWorkProgress(
     (latestPlan.content.entries.length > 1 || latestPlan.content.entries.some((entry) => entry.status !== 'completed'))
   ) {
     const entries = latestPlan.content.entries;
-    const belongsToOlderTurn = Boolean(
-      latestPlan.content.turn_id && runtime.activeTurnId && latestPlan.content.turn_id !== runtime.activeTurnId
-    );
+    const belongsToOlderTurn =
+      messages.indexOf(latestPlan) < lastUser ||
+      Boolean(
+        latestPlan.content.turn_id && runtime.activeTurnId && latestPlan.content.turn_id !== runtime.activeTurnId
+      );
     const following = messages.slice(messages.indexOf(latestPlan) + 1);
     const nextUser = following.findIndex((message) => message.position === 'right');
     const failed = (nextUser < 0 ? following : following.slice(0, nextUser)).some(
@@ -226,6 +259,7 @@ export function projectWorkProgress(
       title: '',
       kind: 'plan',
       status: entries.every((entry) => entry.status === 'completed') ? 'completed' : unfinishedStatus,
+      ...(belongsToOlderTurn && { historical: true }),
       children: entries.map((entry, index) => ({
         id: `plan:${index}`,
         title: entry.content,
@@ -240,13 +274,7 @@ export function projectWorkProgress(
   const h3Ids = [
     ...new Set([...h3ToolJobIds(messages), ...creationOperations.map((operation) => operation.jobId).filter(uuid)]),
   ];
-  let lastUser = -1;
-  messages.forEach((message, index) => {
-    if (message.position === 'right') lastUser = index;
-  });
-  const recentTools = messages
-    .slice(lastUser + 1)
-    .filter((message) => ['tool_call', 'acp_tool_call'].includes(message.type));
+  const recentTools = currentMessages.filter((message) => ['tool_call', 'acp_tool_call'].includes(message.type));
   for (const [index, message] of messages.entries()) {
     if (message.type === 'tool_group') {
       const entries = message.content.filter(
@@ -280,6 +308,7 @@ export function projectWorkProgress(
         title: '',
         kind: 'workflow',
         status: aggregateStatus(children),
+        ...(index < lastUser && { historical: true }),
         children,
       });
       continue;
@@ -291,6 +320,7 @@ export function projectWorkProgress(
         title: message.content.command,
         kind: 'background',
         status: exit ? (exit.exit_code === 0 ? 'completed' : 'failed') : stale('running'),
+        ...(index < lastUser && exit && { historical: true }),
       });
       continue;
     }
@@ -315,7 +345,8 @@ export function projectWorkProgress(
     const summary = resolveToolSummary(name, description, input);
     if (summary.summaryKey === 'waitForGeneration' && h3Ids.includes(text(input.jobId) ?? text(input.job_id) ?? ''))
       continue;
-    if ([...tasks.values()].some((task) => task.kind === 'plan') && toolKind === 'task') continue;
+    const plan = tasks.get('plan');
+    if (plan && !plan.historical && toolKind === 'task') continue;
     const terminal = ['completed', 'failed', 'cancelled'].includes(toolStatus);
     const hasMeaningfulSummary = Boolean(summary.summaryKey || summary.title);
     // A single completed ordinary tool is not a multi-step task. Known ComfyUI
@@ -339,6 +370,7 @@ export function projectWorkProgress(
       ...summary,
       kind: toolKind,
       status: detached ? toolStatus : stale(toolStatus),
+      ...(index < lastUser && terminal && { historical: true }),
       detail: native?.error,
     });
   }
@@ -359,6 +391,12 @@ export function projectWorkProgress(
       id,
       title: operation?.plan.name ?? '',
       kind: 'install',
+      ...history(
+        id,
+        ids.operations.includes(id),
+        operation?.updatedAt,
+        Boolean(operation && ['running', 'authorized', 'awaiting-consent'].includes(operation.state))
+      ),
       status: unavailableIds.includes(id)
         ? 'interrupted'
         : operation?.state === 'paused'
@@ -371,19 +409,24 @@ export function projectWorkProgress(
   }
   for (const id of new Set([...ids.jobs, ...jobs.map((item) => item.id)])) {
     const job = jobs.find((item) => item.id === id);
-    if (
+    const recovered =
       job?.status === 'failed' &&
       !job.submissionUncertain &&
       job.recoveredBy &&
       jobs.some(
         (success) => success.id === job.recoveredBy && success.status === 'succeeded' && !success.submissionUncertain
-      )
-    )
-      continue;
+      );
     tasks.set(id, {
       id,
       title: job?.profileId ?? '',
       kind: 'generation',
+      ...history(
+        id,
+        ids.jobs.includes(id),
+        job?.createdAt,
+        Boolean(job && (['running', 'queued'].includes(job.status) || job.submissionUncertain))
+      ),
+      ...(recovered && { historical: true }),
       status: unavailableIds.includes(id) || job?.submissionUncertain ? 'interrupted' : status(job?.status),
       ...withValue(
         'progress',
@@ -400,6 +443,7 @@ export function projectWorkProgress(
       id: `prepare:${preparation.requestId}`,
       title: preparation.family,
       kind: 'install',
+      ...history(preparation.requestId, false, preparation.updatedAt, preparation.status === 'detecting'),
       status:
         preparation.status === 'detecting' ? 'running' : preparation.status === 'failed' ? 'failed' : 'interrupted',
       preparing: preparation.status === 'detecting',
@@ -418,6 +462,12 @@ export function projectWorkProgress(
       title: '',
       summaryKey: 'installModel',
       kind: 'install',
+      ...history(
+        id,
+        true,
+        operation?.updatedAt,
+        Boolean(operation && !['submitted', 'failed', 'paused', 'cancelled'].includes(operation.state))
+      ),
       status:
         h3Activity.unavailableOperations?.includes(id) || operation?.state === 'paused'
           ? 'interrupted'
@@ -437,6 +487,12 @@ export function projectWorkProgress(
       title: '',
       summaryKey: 'generateVideo',
       kind: 'generation',
+      ...history(
+        id,
+        true,
+        job?.startedAt,
+        Boolean(job && (['queued', 'running'].includes(job.status) || job.remoteUncertain))
+      ),
       // Completing the submit tool is not completing the remote GPU job. Only
       // the authoritative job API may transition this task to a terminal state.
       status: unavailable || job?.remoteUncertain ? 'interrupted' : status(job?.status),
@@ -444,11 +500,11 @@ export function projectWorkProgress(
       detail: [job?.error, job?.diagnosis?.action].filter(Boolean).join('\n') || undefined,
     });
   }
-  for (const id of new Set([
+  const cloudReferences = [
     ...workCloudVideoIds(messages),
     ...creationOperations.flatMap((operation) => (operation.cloudJobId ? [operation.cloudJobId] : [])),
-    ...cloudActivity.jobs.map((job) => job.id),
-  ])) {
+  ];
+  for (const id of new Set([...cloudReferences, ...cloudActivity.jobs.map((job) => job.id)])) {
     const job = cloudActivity.jobs.find((item) => item.id === id);
     const unavailable = cloudActivity.unavailable.includes(id);
     tasks.set('cloud:' + id, {
@@ -456,6 +512,12 @@ export function projectWorkProgress(
       title: job?.model ?? '',
       summaryKey: 'generateVideo',
       kind: 'generation',
+      ...history(
+        id,
+        cloudReferences.includes(id),
+        job?.createdAt,
+        Boolean(job && (['queued', 'running'].includes(job.status) || job.submissionUncertain))
+      ),
       status: unavailable || job?.submissionUncertain ? 'interrupted' : status(job?.status),
       ...withValue(
         'progress',

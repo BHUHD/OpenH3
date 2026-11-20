@@ -825,6 +825,7 @@
     "artifactUnavailable": "로컬 동영상 파일을 읽을 수 없습니다. 앱이 알려진 출력 폴더에서 복구를 시도합니다. 원본 파일이 있는지 확인한 후 재생을 다시 시도하세요."
   },
   "generationActions": {
+    "forArtifact": "{{fileName}} 작업",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -835,6 +836,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "이전 작업",
+    "partial": "일부 완료",
     "tab": "진행 상황",
     "title": "작업 진행 상황",
     "panel": "오른쪽 패널",

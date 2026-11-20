@@ -112,7 +112,7 @@ function ComfyGenerationCard({ id, conversationId }: { id: string; conversationI
     job && Number.isFinite(job.progress) ? Math.round(Math.min(100, Math.max(0, job.progress))) : undefined;
   return (
     <div
-      className='mt-12px p-12px rd-12px bg-2 text-t-primary space-y-8px'
+      className='mt-6px px-12px py-8px rd-12px bg-2 text-t-primary space-y-6px'
       data-testid='comfy-generation-result'
       style={
         {

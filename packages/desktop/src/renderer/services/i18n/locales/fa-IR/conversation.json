@@ -825,6 +825,7 @@
     "artifactUnavailable": "فایل ویدیوی محلی در دسترس نیست. برنامه پوشه‌های خروجی شناخته‌شده را برای بازیابی بررسی می‌کند. از وجود فایل اصلی مطمئن شوید و پخش را دوباره امتحان کنید."
   },
   "generationActions": {
+    "forArtifact": "اقدام‌ها برای {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -835,6 +836,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "کارهای قبلی",
+    "partial": "بخشی تکمیل شد",
     "tab": "پیشرفت",
     "title": "پیشرفت کار",
     "panel": "پنل سمت راست",

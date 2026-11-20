@@ -827,6 +827,7 @@
     "artifactUnavailable": "Yerel video dosyasına erişilemiyor. Uygulama bilinen çıktı klasörlerini kontrol eder. Özgün dosyanın durduğunu doğrulayıp oynatmayı yeniden deneyin."
   },
   "generationActions": {
+    "forArtifact": "{{fileName}} için işlemler",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -837,6 +838,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Önceki görevler",
+    "partial": "Kısmen tamamlandı",
     "tab": "İlerleme",
     "title": "İş ilerlemesi",
     "panel": "Sağ panel",

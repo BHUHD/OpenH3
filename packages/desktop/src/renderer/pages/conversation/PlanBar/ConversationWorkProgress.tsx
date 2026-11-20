@@ -4,33 +4,23 @@ import { requestConversationSendBoxPrefill } from '@/renderer/hooks/chat/useSend
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ComfyOperationResult from '@/renderer/pages/conversation/runtime/Creation/ComfyOperationResult';
-import { useWorkProgress, type WorkStatus, type WorkTask } from './workProgress';
+import { useWorkProgress, type WorkTask } from './workProgress';
+import { summarizeWorkProgress, visibleWorkRows } from './summarizeWorkProgress';
 import GenerationQueue from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationQueue';
 import styles from './WorkProgress.module.css';
-
-const leafTasks = (tasks: WorkTask[]): WorkTask[] =>
-  tasks.flatMap((task) => (task.children?.length ? leafTasks(task.children) : [task]));
 
 export default function ConversationWorkProgress({ conversationId }: { conversationId: string }) {
   const { t } = useTranslation();
   const snapshot = useWorkProgress(conversationId);
   const [openedOperations, setOpenedOperations] = useState<Set<string>>(() => new Set());
-  const entries = leafTasks(snapshot.tasks);
-  // A plan is already a checklist. Keep the wrapper in the projection for
-  // identity/status aggregation, but render its entries directly like the
-  // sketch instead of adding an extra "Plan" row above the checklist.
-  const visibleTasks = snapshot.tasks.flatMap((task) =>
-    task.kind === 'plan' && task.children ? task.children : [task]
-  );
-  const completed = entries.filter((entry) => entry.status === 'completed').length;
-  const overallStatus: WorkStatus =
-    snapshot.pendingConfirmations > 0
-      ? 'waiting'
-      : snapshot.isProcessing || entries.some((entry) => entry.status === 'running')
-        ? 'running'
-        : ((['failed', 'waiting', 'interrupted', 'pending', 'cancelled'] as const).find((status) =>
-            entries.some((entry) => entry.status === status)
-          ) ?? 'completed');
+  const current = snapshot.tasks.filter((task) => !task.historical);
+  const history = snapshot.tasks.filter((task) => task.historical);
+  const overview = summarizeWorkProgress(snapshot);
+  const meter = overview.meter;
+  const measurement =
+    meter?.unit === 'percent'
+      ? `${meter.value}%`
+      : meter && t('conversation.planBar.progress', { completed: meter.value, total: meter.max });
   const toggleOperation = (id: string) =>
     setOpenedOperations((current) => {
       const next = new Set(current);
@@ -103,47 +93,63 @@ export default function ConversationWorkProgress({ conversationId }: { conversat
       className={styles.panel}
       aria-label={t('conversation.workProgress.title')}
     >
-      {!!entries.length && (
+      {!!snapshot.tasks.length && overview.status !== 'history' && (
         <div className={styles.overview}>
           <div className={styles.summary}>
-            <span className={styles.count}>
-              {t('conversation.planBar.progress', { completed, total: entries.length })}
-            </span>
+            {meter && <span className={styles.count}>{measurement}</span>}
             <span
               role='status'
               aria-live='polite'
               aria-atomic='true'
               className={styles.overallStatus}
-              data-status={overallStatus}
+              data-status={overview.status}
             >
-              {t(`conversation.workProgress.statuses.${overallStatus}`)}
+              {overview.media && <>{t('conversation.workProgress.kinds.generation')} · </>}
+              {overview.status === 'partial'
+                ? t('conversation.workProgress.partial')
+                : t(`conversation.workProgress.statuses.${overview.status}`)}
             </span>
           </div>
-          <div
-            className={styles.progressTrack}
-            role='progressbar'
-            aria-label={t('conversation.workProgress.title')}
-            aria-valuemin={0}
-            aria-valuemax={entries.length}
-            aria-valuenow={completed}
-            aria-valuetext={t('conversation.planBar.progress', { completed, total: entries.length })}
-          >
-            <div className={styles.progressFill} style={{ width: `${(completed / entries.length) * 100}%` }} />
-          </div>
+          {meter && (
+            <div
+              className={styles.progressTrack}
+              role='progressbar'
+              aria-label={t('conversation.workProgress.title')}
+              aria-valuemin={0}
+              aria-valuemax={meter.max}
+              aria-valuenow={meter.value}
+              aria-valuetext={measurement}
+            >
+              <div className={styles.progressFill} style={{ width: `${(meter.value / meter.max) * 100}%` }} />
+            </div>
+          )}
         </div>
       )}
       {snapshot.pendingConfirmations > 0 && (
         <p className={styles.waitingHint}>{t('conversation.workProgress.waitingHint')}</p>
       )}
-      {!entries.length ? (
+      {!snapshot.tasks.length ? (
         <p className={styles.empty}>{t('conversation.workProgress.empty')}</p>
       ) : (
-        <ol className={styles.tasks} aria-label={t('conversation.workProgress.title')}>
-          {visibleTasks.map(row)}
-        </ol>
+        <>
+          {!!current.length && (
+            <ol className={styles.tasks} aria-label={t('conversation.workProgress.title')}>
+              {visibleWorkRows(current).map(row)}
+            </ol>
+          )}
+          {!!history.length && (
+            <>
+              <div className={styles.detail}>{t('conversation.workProgress.history')}</div>
+              <ol className={styles.tasks} aria-label={t('conversation.workProgress.history')}>
+                {visibleWorkRows(history).map(row)}
+              </ol>
+            </>
+          )}
+        </>
       )}
       {!snapshot.isProcessing &&
-        snapshot.tasks.some(
+        !overview.media &&
+        current.some(
           (task) => ['interrupted', 'failed'].includes(task.status) && task.kind !== 'generation' && !task.operationId
         ) && (
           <Button

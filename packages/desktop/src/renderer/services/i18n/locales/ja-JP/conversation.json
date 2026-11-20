@@ -825,6 +825,7 @@
     "artifactUnavailable": "ローカル動画ファイルを読み込めません。既知の出力フォルダーから復元を試みます。元のファイルが残っていることを確認し、再生を再試行してください。"
   },
   "generationActions": {
+    "forArtifact": "{{fileName}} の操作",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -835,6 +836,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "以前のタスク",
+    "partial": "一部完了",
     "tab": "進捗",
     "title": "作業の進捗",
     "panel": "右パネル",

@@ -12,7 +12,11 @@ import GenerationActions from '@/renderer/pages/conversation/runtime/GenerationC
 
 const m = vi.hoisted(() => ({ copyText: vi.fn(), prefill: vi.fn(), download: vi.fn() }));
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { fileName?: string }) => (options?.fileName ? `${key} ${options.fileName}` : key),
+  }),
+}));
 vi.mock('@/renderer/utils/ui/clipboard', () => ({ copyText: m.copyText }));
 vi.mock('@/renderer/hooks/chat/useSendBoxDraft', () => ({ requestConversationSendBoxPrefill: m.prefill }));
 vi.mock('@/renderer/pages/conversation/runtime/GenerationCard/downloadArtifact', () => ({
@@ -49,10 +53,13 @@ describe('GenerationActions', () => {
     render(
       <GenerationActions conversationId='c1' src={SRC} fileName='a.png' prompt='a cat' referencePath='D:/out/a.png' />
     );
-    expect(hasButton('common.download')).toBe(true);
-    expect(hasButton('copyPrompt')).toBe(true);
-    expect(hasButton('regenerate')).toBe(true);
-    expect(hasButton('useAsReference')).toBe(true);
+    const group = screen.getByRole('group', { name: 'conversation.generationActions.forArtifact a.png' });
+    expect(Array.from(group.querySelectorAll('button'))).toEqual([
+      button('common.download'),
+      button('copyPrompt'),
+      button('regenerate'),
+      button('useAsReference'),
+    ]);
   });
 
   it('hides the actions that need a conversation when there is none', () => {

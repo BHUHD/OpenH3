@@ -203,7 +203,7 @@ export function H3ToolResult({ id }: { id: string }) {
     }
   };
   return (
-    <div className='mt-12px p-12px rd-12px border border-3 space-y-8px' data-testid='h3-chat-result'>
+    <div className='mt-6px px-12px py-8px rd-12px border border-3 space-y-6px' data-testid='h3-chat-result'>
       <div className='flex items-center justify-between gap-12px'>
         <span role='status' aria-live='polite'>
           {t('conversation.h3Activity.title')} ·{' '}

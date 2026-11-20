@@ -103,9 +103,18 @@ vi.mock('@/renderer/pages/conversation/Messages/useAutoScroll', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Messages/components/MessageText', () => ({
-  default: ({ message, showCopyRow }: { message: IMessageText; showCopyRow?: boolean }) => (
+  default: ({
+    message,
+    showCopyRow,
+    results,
+  }: {
+    message: IMessageText;
+    showCopyRow?: boolean;
+    results?: React.ReactNode;
+  }) => (
     <div data-testid={`msgtext-${message.id}`} data-copy-row={String(showCopyRow ?? true)}>
       {message.content.content}
+      {results}
     </div>
   ),
 }));
@@ -325,9 +334,7 @@ describe('MessageList', () => {
       wrapper: ({ children }) => <Wrapper messages={[submitted, final]}>{children}</Wrapper>,
     });
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('conversation.h3Activity.queued'));
-    expect(screen.getByTestId('msgtext-final').parentElement?.parentElement).toContainElement(
-      screen.getByTestId('h3-chat-result')
-    );
+    expect(screen.getByTestId('msgtext-final')).toContainElement(screen.getByTestId('h3-chat-result'));
     const update = h3Events.mock.calls[0][1];
     act(() => update({ ...queued, status: 'running' }));
     expect(screen.getByRole('status')).toHaveTextContent('conversation.h3Activity.running');

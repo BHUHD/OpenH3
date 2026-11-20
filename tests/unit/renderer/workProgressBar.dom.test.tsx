@@ -133,3 +133,50 @@ it('click expands task list; click again collapses', () => {
   fireEvent.click(toggle);
   // After collapse only the summary-row span remains (or none if status changed)
 });
+
+it('summarizes delivered media, keeps historical and tool failures inspectable and omits synthetic progress', () => {
+  f.useWorkProgress.mockReturnValue(
+    snap({
+      tasks: [
+        { id: 'old', title: 'Previous attempt', kind: 'generation', status: 'failed', historical: true },
+        { id: 'tool', title: 'First tool attempt', kind: 'task', status: 'failed' },
+        { id: 'image', title: 'Lime', kind: 'generation', status: 'completed' },
+      ],
+    })
+  );
+  render(<WorkProgressBar conversationId='c1' />);
+  expect(screen.getByRole('button')).toHaveTextContent('conversation.workProgress.statuses.completed');
+  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(screen.queryByText('conversation.planBar.progress')).toBeNull();
+  fireEvent.click(screen.getByRole('button'));
+  expect(screen.getByText('Previous attempt')).toBeVisible();
+  expect(screen.getByText('First tool attempt')).toBeVisible();
+  expect(screen.getAllByText('conversation.workProgress.statuses.failed')).toHaveLength(2);
+});
+
+it('shows partial completion for independent generation outcomes', () => {
+  f.useWorkProgress.mockReturnValue(
+    snap({
+      tasks: [
+        { id: 'video', title: 'Video', kind: 'generation', status: 'failed' },
+        { id: 'image', title: 'Image', kind: 'generation', status: 'completed' },
+      ],
+    })
+  );
+  render(<WorkProgressBar conversationId='c1' />);
+  expect(screen.getByRole('button')).toHaveTextContent('conversation.workProgress.partial');
+});
+
+it('uses the same reported percentage for the meter and its label without averaging previous steps', () => {
+  f.useWorkProgress.mockReturnValue(
+    snap({
+      tasks: [
+        { id: 'setup', title: 'Setup', kind: 'task', status: 'completed' },
+        { id: 'generate', title: 'Generate', kind: 'generation', status: 'running', progress: 24 },
+      ],
+    })
+  );
+  render(<WorkProgressBar conversationId='c1' />);
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '24');
+  expect(screen.getByText('24%')).toBeVisible();
+});

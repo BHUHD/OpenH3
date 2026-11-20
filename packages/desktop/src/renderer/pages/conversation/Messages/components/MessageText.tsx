@@ -104,7 +104,8 @@ const MessageText: React.FC<{
   /** All text segments of this message's turn, in order — the copy button
    * copies the whole reply, not just the segment it happens to sit on. */
   turnTexts?: string[];
-}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false, turnTexts }) => {
+  results?: React.ReactNode;
+}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false, turnTexts, results }) => {
   const logos = useAgentLogos();
   // Filter think tags from content before rendering
   // 在渲染前过滤 think 标签
@@ -236,7 +237,11 @@ const MessageText: React.FC<{
 
   return (
     <>
-      <div className={classNames('min-w-0 flex flex-col group', isUserMessage ? 'items-end' : 'items-start')}>
+      <div
+        className={classNames('min-w-0 flex flex-col group', isUserMessage ? 'items-end' : 'items-start', {
+          'w-full': Boolean(results),
+        })}
+      >
         <ModelSource message={message} />
         {cronMeta && <MessageCronBadge meta={cronMeta} />}
         {isTeammateMessage && displaySenderName && (
@@ -347,6 +352,7 @@ const MessageText: React.FC<{
             </div>
           )}
         </div>
+        {results && <div className='min-w-0 w-full'>{results}</div>}
         {isPendingDelivery && (
           <div className='text-12px text-t-secondary mt-4px select-none' data-testid='message-status-badge'>
             {t('messages.delivery.pending', { defaultValue: 'Unread' })}

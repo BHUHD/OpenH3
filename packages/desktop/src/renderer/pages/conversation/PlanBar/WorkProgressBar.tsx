@@ -9,6 +9,7 @@ import { Down, Right } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useWorkProgress } from '@/renderer/pages/conversation/PlanBar/workProgress';
 import type { WorkTask } from '@/renderer/pages/conversation/PlanBar/workProgress';
+import { summarizeWorkProgress, visibleWorkRows } from './summarizeWorkProgress';
 import GenerationQueue from '@/renderer/pages/conversation/runtime/GenerationCard/GenerationQueue';
 import styles from './WorkProgressBar.module.css';
 
@@ -56,44 +57,21 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
       ? t(`conversation.workProgress.summaries.${task.summaryKey}`)
       : task.title || t(`conversation.workProgress.kinds.${task.kind}`);
 
-  const tasks = snapshot.tasks.flatMap((task) => (task.kind === 'plan' && task.children ? task.children : [task]));
-  const leaves = tasks.flatMap((task) => (task.children?.length ? task.children : [task]));
-  const completed = leaves.filter((e) => e.status === 'completed').length;
-  const total = leaves.length;
-  const running = leaves.filter((e) => e.status === 'running');
-  const anyRunning = running.length > 0;
-  const anyPending = leaves.some((e) => e.status === 'pending');
-  const anyWaiting = leaves.some((e) => e.status === 'waiting');
-  const anyFailed = leaves.some((e) => e.status === 'failed');
-  const anyInterrupted = leaves.some((e) => e.status === 'interrupted' || e.status === 'cancelled');
-
-  if (!total) return null;
-
-  const waiting = anyWaiting || snapshot.pendingConfirmations > 0;
-
-  // Derive status text from leaf states to cover all WorkStatus values.
-  // This ensures background tasks, pending queues and waiting confirmations
-  // all display the correct label instead of always falling through to "completed".
-  const statusText = anyRunning
-    ? taskLabel(running[0])
-    : waiting
-      ? t('conversation.workProgress.statuses.waiting')
-      : snapshot.isProcessing
-        ? t('conversation.workProgress.statuses.running')
-        : anyPending
-          ? t('conversation.workProgress.statuses.pending')
-          : anyFailed
-            ? t('conversation.workProgress.statuses.failed')
-            : anyInterrupted
-              ? t('conversation.workProgress.statuses.interrupted')
-              : t('conversation.workProgress.statuses.completed');
-  const failedOnly = !snapshot.isProcessing && !anyRunning && !waiting && !anyPending && anyFailed;
-
-  // Running generations that report real progress move the bar between whole-task completions.
-  const partial = running.reduce((sum, task) => sum + (realProgress(task) ?? 0) / 100, 0);
-  const percentNow = Math.round(Math.min(1, (completed + partial) / total) * 100);
-  const livePercents = running.map(realProgress).filter((value): value is number => value !== undefined);
-  const livePercent = livePercents.length === 1 ? Math.round(livePercents[0]) : undefined;
+  const overview = summarizeWorkProgress(snapshot);
+  const current = visibleWorkRows(snapshot.tasks.filter((item) => !item.historical));
+  const history = visibleWorkRows(snapshot.tasks.filter((item) => item.historical));
+  const leaves = current.flatMap((task) => (task.children?.length ? task.children : [task]));
+  if (!snapshot.tasks.length) return null;
+  const statusText = overview.task
+    ? taskLabel(overview.task)
+    : overview.status === 'history' || overview.status === 'partial'
+      ? t(`conversation.workProgress.${overview.status}`)
+      : t(`conversation.workProgress.statuses.${overview.status}`);
+  const meter = overview.meter;
+  const measurement =
+    meter?.unit === 'percent'
+      ? `${meter.value}%`
+      : meter && t('conversation.planBar.progress', { completed: meter.value, total: meter.max });
 
   const toggle = () => setExpanded((v) => !v);
 
@@ -108,7 +86,14 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
         role='button'
         tabIndex={0}
         aria-expanded={expanded}
-        aria-label={expanded ? t('conversation.planBar.collapse') : t('conversation.planBar.expand')}
+        aria-label={[
+          overview.media && t('conversation.workProgress.kinds.generation'),
+          statusText,
+          measurement,
+          expanded ? t('conversation.planBar.collapse') : t('conversation.planBar.expand'),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
         className='flex items-center gap-10px px-12px py-8px rd-12px bg-2 cursor-pointer select-none text-t-secondary hover:text-t-primary transition-colors'
         onClick={toggle}
         onKeyDown={(e) => {
@@ -121,23 +106,30 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
         {expanded ? <Down size={13} /> : <Right size={13} />}
         <GenerationQueue tasks={leaves} />
         <span
-          className={`text-13px font-[500] truncate min-w-0 max-w-240px ${failedOnly ? 'text-danger' : 'text-t-primary'}`}
+          className={`text-13px font-[500] truncate min-w-0 max-w-240px ${overview.status === 'failed' ? 'text-danger' : 'text-t-primary'}`}
         >
+          {overview.media && <>{t('conversation.workProgress.kinds.generation')} · </>}
           {statusText}
         </span>
-        {/* Progress track */}
-        <div
-          role='progressbar'
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percentNow}
-          className={`${styles.track} rd-full bg-3 overflow-hidden`}
-        >
-          <div className='h-full rd-full bg-primary transition-all duration-300' style={{ width: `${percentNow}%` }} />
-        </div>
-        <span className='text-12px tabular-nums shrink-0'>
-          {livePercent !== undefined ? `${livePercent}%` : t('conversation.planBar.progress', { completed, total })}
-        </span>
+        {meter && (
+          <>
+            <div
+              role='progressbar'
+              aria-label={overview.task ? taskLabel(overview.task) : t('conversation.planBar.title')}
+              aria-valuemin={0}
+              aria-valuemax={meter.max}
+              aria-valuenow={meter.value}
+              aria-valuetext={measurement}
+              className={`${styles.track} rd-full bg-3 overflow-hidden`}
+            >
+              <div
+                className='h-full rd-full bg-primary transition-all duration-300'
+                style={{ width: `${(meter.value / meter.max) * 100}%` }}
+              />
+            </div>
+            <span className='text-12px tabular-nums shrink-0'>{measurement}</span>
+          </>
+        )}
       </div>
 
       {/* Expanded task list */}
@@ -146,37 +138,43 @@ const WorkProgressBar: React.FC<WorkProgressBarProps> = ({ conversationId }) => 
           className='flex flex-col gap-8px pt-8px px-12px overflow-y-auto overscroll-contain'
           style={{ maxHeight: 'min(22vh, 180px)' }}
         >
-          {tasks.map((task, i) => {
+          {[...current, ...history].map((task, i) => {
             const taskLeaves = task.children?.length ? task.children : [task];
-            const done = taskLeaves.filter((e) => e.status === 'completed').length;
             const isRunning = task.status === 'running' || taskLeaves.some((e) => e.status === 'running');
             const percent = isRunning ? realProgress(task) : undefined;
             return (
-              <div key={`${i}-${task.id}`} className='flex items-center gap-10px text-13px text-t-secondary'>
-                {task.kind === 'generation' ? (
-                  <GenerationThumb task={task} running={isRunning} />
-                ) : (
-                  <span
-                    className={[
-                      'size-5px rd-full shrink-0',
-                      isRunning ? 'bg-primary' : done === taskLeaves.length ? 'bg-success' : 'bg-3',
-                    ].join(' ')}
-                    aria-hidden='true'
-                  />
+              <React.Fragment key={task.id}>
+                {i === current.length && (
+                  <div className='text-12px text-t-secondary'>{t('conversation.workProgress.history')}</div>
                 )}
-                <span className={isRunning ? 'text-t-primary truncate min-w-0' : 'truncate min-w-0'}>
-                  {taskLabel(task)}
-                </span>
-                {task.children?.length ? (
-                  <span className='text-12px text-t-disabled tabular-nums ml-auto shrink-0'>
-                    {done}/{taskLeaves.length}
+                <div data-status={task.status} className='flex items-center gap-10px text-13px text-t-secondary'>
+                  {task.kind === 'generation' ? (
+                    <GenerationThumb task={task} running={isRunning} />
+                  ) : (
+                    <span
+                      className={[
+                        'size-5px rd-full shrink-0',
+                        isRunning
+                          ? 'bg-primary'
+                          : task.status === 'completed'
+                            ? 'bg-success'
+                            : task.status === 'failed'
+                              ? 'bg-danger'
+                              : 'bg-3',
+                      ].join(' ')}
+                      aria-hidden='true'
+                    />
+                  )}
+                  <span className={isRunning ? 'text-t-primary truncate min-w-0' : 'truncate min-w-0'}>
+                    {taskLabel(task)}
                   </span>
-                ) : percent !== undefined ? (
                   <span className='text-12px text-t-secondary tabular-nums ml-auto shrink-0'>
-                    {Math.round(percent)}%
+                    {percent !== undefined
+                      ? `${Math.round(percent)}%`
+                      : t(`conversation.workProgress.statuses.${task.status}`)}
                   </span>
-                ) : null}
-              </div>
+                </div>
+              </React.Fragment>
             );
           })}
         </div>

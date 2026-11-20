@@ -841,6 +841,7 @@
     "artifactUnavailable": "Локальний відеофайл недоступний. Застосунок перевіряє відомі папки виводу. Переконайтеся, що оригінальний файл збережено, і повторіть відтворення."
   },
   "generationActions": {
+    "forArtifact": "Дії з файлом {{fileName}}",
     "copyPrompt": "Copy prompt",
     "regenerate": "Generate again",
     "useAsReference": "Use as reference",
@@ -851,6 +852,8 @@
     "fileChanges": "File changes ({{count}})"
   },
   "workProgress": {
+    "history": "Попередні завдання",
+    "partial": "Частково завершено",
     "tab": "Прогрес",
     "title": "Перебіг роботи",
     "panel": "Права панель",
