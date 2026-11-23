@@ -222,7 +222,8 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
   }, [query.data, owner, matches, matchesRead, clearProviders, mutate]);
   const renderEpoch = fence.current.epoch;
   const cancel = useCallback(() => {
-    if (!matches({ owner, epoch: renderEpoch })) return;
+    // A host can unmount after an operation starts but before its next render.
+    if (!live.current || fence.current.owner !== owner) return;
     fence.current.epoch++;
     targetRef.current = undefined;
     setDeviceTarget(undefined);
@@ -236,7 +237,7 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
       error: undefined,
       revision: previous.revision + 1,
     }));
-  }, [matches, owner, renderEpoch]);
+  }, [owner]);
   const switchView = useCallback(
     (view: View) => {
       if (!matches({ owner, epoch: renderEpoch })) return;

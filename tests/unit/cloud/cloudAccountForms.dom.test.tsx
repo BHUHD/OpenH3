@@ -527,10 +527,15 @@ const VisibleHost = ({ visible }: { visible: boolean }) => (
 );
 it('does not restore secrets after switching forms or unmounting a pending form', async () => {
   let finish: (value: CloudAccountResponse) => void = vi.fn();
+  let onLoginStarted: () => void = () => {};
+  const loginStarted = new Promise<void>((resolve) => {
+    onLoginStarted = resolve;
+  });
   f.request.mockImplementation(async (r) =>
     r.operation === 'login'
       ? new Promise((resolve) => {
           finish = resolve;
+          onLoginStarted();
         })
       : {
           success: true,
@@ -544,9 +549,14 @@ it('does not restore secrets after switching forms or unmounting a pending form'
   await click('login');
   await fill('username', 'alice');
   await fill('password', 'pending-secret');
-  await click('login');
-  await waitFor(() => expect(f.request.mock.calls.some(([r]) => r.operation === 'login')).toBe(true));
-  view.rerender(<VisibleHost visible={false} />);
+  const submit = screen
+    .getAllByRole('button', { name: 'settings.cloudAccount.login', exact: true })
+    .find((button) => button.getAttribute('type') === 'submit')!;
+  await act(async () => {
+    fireEvent.click(submit);
+    await loginStarted;
+    view.rerender(<VisibleHost visible={false} />);
+  });
   await act(async () =>
     finish({
       success: true,
