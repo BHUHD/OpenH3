@@ -384,11 +384,15 @@ const path = require('node:path');
 
 const originalLoad = Module._load;
 
-function recordPrepareCall(options) {
+function recordCall(call) {
   const callsPath = process.env.AIONUI_PREPARE_CALLS_FILE;
   const calls = fs.existsSync(callsPath) ? JSON.parse(fs.readFileSync(callsPath, 'utf8')) : [];
-  calls.push(options ?? null);
+  calls.push(call);
   fs.writeFileSync(callsPath, JSON.stringify(calls));
+}
+
+function recordPrepareCall(options) {
+  recordCall(options ?? null);
   return { prepared: true, dir: 'mock-bundled-aioncore', sourceType: 'mock' };
 }
 
@@ -433,6 +437,16 @@ childProcess.execSync = function mockedExecSync(command) {
   }
   return Buffer.from('');
 };
+
+// Check runtime preparation arguments without downloading or unpacking runtime archives.
+childProcess.execFileSync = function mockedExecFileSync(executable, args) {
+  const script = path.basename(args[0]);
+  if (executable !== process.execPath || !['prepareBundledGit.js', 'prepareBundledPython.js'].includes(script)) {
+    throw new Error('Unexpected execFileSync: ' + executable + ' ' + args.join(' '));
+  }
+  recordCall({ script, arch: args[1] });
+  return Buffer.from('');
+};
 `,
       'utf8'
     );
@@ -468,7 +482,11 @@ childProcess.execSync = function mockedExecSync(command) {
       }
 
       const calls = JSON.parse(readFileSync(callsPath, 'utf8')) as Array<{ arch?: string } | null>;
-      expect(calls).toContainEqual(expect.objectContaining({ arch: expectedArch }));
+      expect(calls).toEqual([
+        expect.objectContaining({ projectRoot: repoRoot, arch: expectedArch }),
+        { script: 'prepareBundledGit.js', arch: expectedArch },
+        { script: 'prepareBundledPython.js', arch: expectedArch },
+      ]);
     } finally {
       if (movedExistingOut || !hadExistingOut) rmSync(outDir, { recursive: true, force: true });
       if (movedExistingOut) {
