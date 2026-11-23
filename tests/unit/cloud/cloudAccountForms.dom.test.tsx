@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { SWRConfig } from 'swr';
+import useSWR, { SWRConfig } from 'swr';
 import type { CloudAccountRequest, CloudAccountResponse, CloudSession } from '@/common/types/platform/cloudAccount';
 
 const f = vi.hoisted(() => ({
@@ -79,6 +79,42 @@ afterEach(() => {
   cleanup();
   delete window.electronAPI;
   vi.useRealTimers();
+});
+
+it('retains the desktop managed provider when the local owner resolves after the provider list', async () => {
+  f.webUser = false;
+  window.electronAPI = {} as typeof window.electronAPI;
+  let resolveOwner!: (owner: { id: string }) => void;
+  f.currentUser.mockReturnValue(new Promise((resolve) => (resolveOwner = resolve)));
+  f.request.mockImplementation(async (request) =>
+    request.operation === 'capabilities'
+      ? { success: true, data: capabilities }
+      : {
+          success: true,
+          data: {
+            state: 'connected',
+            generation: '2',
+            account: { id: '42', username: 'alice', display_name: 'Alice', email: null },
+          },
+        }
+  );
+  const official = { id: 'managed', managed_by: 'cloud_account' };
+  const listProviders = async () => [official];
+  function Selection() {
+    const { data } = useSWR('providers', listProviders);
+    const { session } = useCloudAccount();
+    return <output>{`${session?.state ?? 'loading'}:${data?.[0]?.id ?? 'missing'}`}</output>;
+  }
+  render(
+    <SWRConfig value={{ provider: () => new Map() }}>
+      <CloudAccountProvider>
+        <Selection />
+      </CloudAccountProvider>
+    </SWRConfig>
+  );
+  await screen.findByText('loading:managed');
+  await act(async () => resolveOwner({ id: f.owner }));
+  expect(await screen.findByText('connected:managed')).toBeInTheDocument();
 });
 
 it('logs in with an existing short password and preserves connected success if catalog fails', async () => {

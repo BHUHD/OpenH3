@@ -128,10 +128,12 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
     };
   }, []);
   useEffect(() => {
-    const changed = renderedOwner.current !== owner;
+    const previousOwner = renderedOwner.current;
     renderedOwner.current = owner;
     setState((previous) => ({ ...empty(), revision: previous.revision + 1 }));
-    if (changed)
+    // The provider list can arrive before the local desktop owner on startup.
+    // Clear it only when leaving an owner who has already been resolved.
+    if (previousOwner !== undefined && previousOwner !== owner)
       void mutate<IProvider[]>(
         'providers',
         (providers) => providers?.filter((provider) => provider.managed_by !== 'cloud_account'),
@@ -397,6 +399,8 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
         // after success AND failure because failure clears admission as well.
         const catalog = await requestCloudAccount({ operation: 'models' });
         if (!matches(ticket)) return;
+        await mutate('providers');
+        if (!matches(ticket)) return;
         setState((previous) => ({
           ...previous,
           catalogPending: false,
@@ -407,7 +411,6 @@ export const CloudAccountProvider: React.FC<React.PropsWithChildren> = ({ childr
               ? 'catalogFailed'
               : undefined,
         }));
-        void mutate('providers');
       } else if (identity) {
         void mutate('providers');
         if (request.operation !== 'login') void query.mutate();
