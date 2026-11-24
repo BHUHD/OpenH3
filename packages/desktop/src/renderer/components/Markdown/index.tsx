@@ -29,6 +29,7 @@ import { SelectionActions } from '../files/SelectionActions';
 import { MARKDOWN_REMARK_PLUGINS, MarkdownTable, MarkdownTd } from './markdownComponents';
 import {
   remarkLocalVideo,
+  remarkStandaloneLinks,
   resolveLocalFileLinkPath,
   resolveLocalFileLinkReference,
   safeDecodeURIComponent,
@@ -124,13 +125,13 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
             diagramPanZoom
           />
         ),
-        a: ({ node: _node, ...rest }: Record<string, unknown>) => {
+        a: ({ node: _node, 'data-standalone-link': standalone, ...rest }: Record<string, unknown>) => {
           const anchorProps = rest as React.AnchorHTMLAttributes<HTMLAnchorElement>;
           const rawHref = typeof anchorProps.href === 'string' ? anchorProps.href : '';
           const localFileReference = resolveLocalFileLinkReference(rawHref, undefined, workspace);
           if (localFileReference) {
             return (
-              <LocalFileLink reference={localFileReference} onOpen={onLocalFileLink}>
+              <LocalFileLink reference={localFileReference} onOpen={onLocalFileLink} standalone={standalone === 'true'}>
                 {anchorProps.children}
               </LocalFileLink>
             );
@@ -159,7 +160,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
           <SelectionActions>
             <div ref={onRef} className='markdown-shadow-body'>
               <ReactMarkdown
-                remarkPlugins={[...MARKDOWN_REMARK_PLUGINS, remarkLocalVideo]}
+                remarkPlugins={[...MARKDOWN_REMARK_PLUGINS, remarkLocalVideo, remarkStandaloneLinks]}
                 rehypePlugins={rehypePlugins}
                 components={components}
                 urlTransform={(url) =>

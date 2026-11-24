@@ -11,7 +11,7 @@ export type ContextAction = {
   disabled?: boolean;
   run: () => void | Promise<void>;
 };
-export type MenuPoint = { x: number; y: number };
+export type MenuPoint = { x: number; y: number; trigger?: HTMLElement };
 
 /** A shared, keyboard-accessible menu, also used by scriptless document frames. */
 export function ContextActions({
@@ -29,14 +29,15 @@ export function ContextActions({
   useLayoutEffect(() => {
     if (!point || !root.current) return;
     const box = root.current.getBoundingClientRect();
+    const left = point.trigger ? point.x - box.width : point.x;
     setPosition({
-      x: Math.max(8, Math.min(point.x, window.innerWidth - box.width - 8)),
+      x: Math.max(8, Math.min(left, window.innerWidth - box.width - 8)),
       y: Math.max(8, Math.min(point.y, window.innerHeight - box.height - 8)),
     });
   }, [point, actions.length]);
   useLayoutEffect(() => {
     if (!point || !root.current) return;
-    const previousFocus = document.activeElement;
+    const previousFocus = point.trigger ?? document.activeElement;
     root.current
       .querySelector<HTMLElement>('[role="menuitem"]:not([aria-disabled="true"])')
       ?.focus({ preventScroll: true });
@@ -48,6 +49,7 @@ export function ContextActions({
   useEffect(() => {
     if (!point) return;
     const close = (event: Event) => {
+      if (point.trigger && event.composedPath().includes(point.trigger)) return;
       if (!root.current?.contains(event.target as Node)) onClose();
     };
     document.addEventListener('pointerdown', close, true);
@@ -94,6 +96,7 @@ export function ContextActions({
           <Menu.Item
             key={action.key}
             disabled={action.disabled}
+            aria-disabled={action.disabled || undefined}
             onClick={() => {
               onClose();
               void Promise.resolve()

@@ -8,7 +8,35 @@ import type React from 'react';
 
 import { diffColors } from '@/renderer/styles/colors';
 
-type MarkdownNode = { type: string; value?: string; url?: string; children?: MarkdownNode[] };
+type MarkdownNode = {
+  type: string;
+  value?: string;
+  url?: string;
+  children?: MarkdownNode[];
+  data?: { hProperties?: Record<string, unknown> };
+};
+
+/** Mark standalone links so chat can present file deliveries as cards. */
+export const remarkStandaloneLinks = () => (tree: MarkdownNode) => {
+  const visit = (node: MarkdownNode) => {
+    if (!node.children) return;
+    if (node.type === 'paragraph') {
+      const content = node.children.filter(
+        (child) => child.type !== 'break' && !(child.type === 'text' && !child.value?.trim())
+      );
+      if (content.every((child) => child.type === 'link' || child.type === 'linkReference')) {
+        for (const link of content) {
+          const data = (link.data ??= {});
+          data.hProperties = { ...data.hProperties, 'data-standalone-link': 'true' };
+        }
+      }
+      return;
+    }
+    node.children.forEach(visit);
+  };
+  visit(tree);
+};
+
 /** Accept a local video delivery as a file link, without enabling arbitrary HTML. */
 export const remarkLocalVideo = () => (tree: MarkdownNode) => {
   const visit = (parent: MarkdownNode) => {

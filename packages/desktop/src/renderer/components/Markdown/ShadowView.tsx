@@ -149,6 +149,158 @@ export const createInitStyle = (
     background: var(--bg-3);
     color: var(--text-primary);
   }
+  .markdown-output-file {
+    --file-card-max-width: 24rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    box-sizing: border-box;
+    inline-size: min(100%, var(--file-card-max-width));
+    min-block-size: 50px;
+    padding: 3px 5px 3px 3px;
+    border: 1px solid color-mix(in srgb, var(--border-base) 80%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-2) 55%, var(--bg-1));
+    vertical-align: middle;
+    font-family: var(--chat-font-family, inherit);
+    transition: background-color 140ms ease-out, border-color 140ms ease-out;
+  }
+  .markdown-output-file + .markdown-output-file {
+    margin-block-start: 6px;
+  }
+  .markdown-output-file:hover, .markdown-output-file:focus-within {
+    background: var(--bg-2);
+    border-color: var(--border-base);
+  }
+  .markdown-output-file-main,
+  .markdown-output-file-download,
+  .markdown-output-file-menu {
+    display: inline-flex;
+    align-items: center;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+  }
+  .markdown-output-file-main {
+    flex: 1;
+    min-width: 0;
+    min-height: 42px;
+    gap: 8px;
+    padding: 3px 5px;
+    text-align: start;
+  }
+  .markdown-output-file-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: var(--bg-1);
+  }
+  .markdown-output-file-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .markdown-output-file-text {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+  .markdown-output-file-name {
+    display: flex;
+    min-width: 0;
+  }
+  .markdown-output-file-name > span {
+    font-size: calc(${fontSize} * 0.96);
+    font-weight: 550;
+    line-height: 1.32;
+    white-space: nowrap;
+  }
+  .markdown-output-file-suffix {
+    flex: none;
+  }
+  .markdown-output-file-stem,
+  .markdown-output-file-description {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .markdown-output-file-description {
+    font-size: calc(${fontSize} * 0.85);
+    line-height: 1.3;
+    color: var(--text-secondary);
+  }
+  .markdown-output-file-download,
+  .markdown-output-file-menu {
+    justify-content: center;
+    flex: none;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    color: var(--text-secondary);
+    transition: color 140ms ease-out, background-color 140ms ease-out;
+  }
+  .markdown-output-file button {
+    cursor: pointer;
+  }
+  button.markdown-output-file-main:hover,
+  .markdown-output-file-download:hover,
+  .markdown-output-file-menu:hover,
+  .markdown-output-file-menu[aria-expanded='true'] {
+    background: var(--bg-3);
+    color: var(--text-primary);
+  }
+  .markdown-output-file button:active {
+    background: var(--bg-3);
+  }
+  .markdown-output-file button.arco-btn-loading {
+    cursor: progress;
+    opacity: 0.65;
+  }
+  .markdown-output-file button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+  }
+  ul > li:has(> .markdown-output-file:only-child, > p:only-child > .markdown-output-file:only-child) {
+    list-style-type: none;
+  }
+  ul:has(> li > .markdown-output-file:only-child, > li > p:only-child > .markdown-output-file:only-child),
+  p:has(> .markdown-output-file ~ .markdown-output-file):not(:has(> :not(.markdown-output-file, br))) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16.5rem), 1fr));
+    gap: 7px 8px;
+    max-inline-size: 40rem;
+    padding-inline-start: 0;
+  }
+  ul:has(> li:only-child > .markdown-output-file:only-child, > li:only-child > p:only-child > .markdown-output-file:only-child) {
+    max-inline-size: 24rem;
+  }
+  ul > li:has(> .markdown-output-file:only-child, > p:only-child > .markdown-output-file:only-child),
+  ul > li > p:only-child:has(> .markdown-output-file:only-child) {
+    margin-block: 0;
+    min-width: 0;
+  }
+  ul > li > .markdown-output-file:only-child,
+  ul > li > p:only-child > .markdown-output-file:only-child,
+  p:has(> .markdown-output-file ~ .markdown-output-file):not(:has(> :not(.markdown-output-file, br))) > .markdown-output-file {
+    inline-size: 100%;
+    margin-block-start: 0;
+  }
+  p:has(> .markdown-output-file ~ .markdown-output-file):not(:has(> :not(.markdown-output-file, br))) > br {
+    display: none;
+  }
+  ul:has(> li > .markdown-output-file:only-child, > li > p:only-child > .markdown-output-file:only-child)
+    > li:not(:has(> .markdown-output-file:only-child, > p:only-child > .markdown-output-file:only-child)) {
+    grid-column: 1 / -1;
+    margin-inline-start: 24px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .markdown-output-file, .markdown-output-file button { transition: none; }
+  }
   h1{
     font-size: 24px;
     line-height: 32px;

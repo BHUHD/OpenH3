@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Copy, Download, FolderOpen, PreviewOpen } from '@icon-park/react';
+import { Button, Message } from '@arco-design/web-react';
+import { Copy, Download, FolderOpen, MoreOne, PreviewOpen } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
 import type { ChatFileRef } from '@/common/types/chatFile';
@@ -17,17 +18,28 @@ type FileActionsProps = {
   onOpen?: () => void | Promise<void>;
   children: React.ReactNode;
   className?: string;
+  menuButtonClassName?: string;
 };
 
 /** File actions are shared by chat links, directory entries and preview titles. */
-export function FileActions({ file, path, name, directory, onOpen, children, className }: FileActionsProps) {
+export function FileActions({
+  file,
+  path,
+  name,
+  directory,
+  onOpen,
+  children,
+  className,
+  menuButtonClassName,
+}: FileActionsProps) {
   const { t } = useTranslation();
+  const desktop = isElectronDesktop();
   const [point, setPoint] = useState<MenuPoint | null>(null);
   const [isDirectory, setDirectory] = useState(directory);
   const close = useCallback(() => setPoint(null), []);
   const identity = JSON.stringify(file);
   useEffect(() => {
-    if (!point) return;
+    if (!point || (point.trigger && !desktop)) return;
     if (directory !== undefined) {
       setDirectory(directory);
       return;
@@ -45,11 +57,12 @@ export function FileActions({ file, path, name, directory, onOpen, children, cla
     return () => {
       active = false;
     };
-  }, [point, identity, directory]);
+  }, [point, identity, directory, desktop]);
   const absolute = path ?? (file.kind !== 'project' ? file.path : undefined);
   const actions: ContextAction[] = [];
-  if (onOpen) actions.push({ key: 'preview', label: t('preview.preview'), icon: <PreviewOpen />, run: onOpen });
-  if (isElectronDesktop()) {
+  if (onOpen && !point?.trigger)
+    actions.push({ key: 'preview', label: t('preview.preview'), icon: <PreviewOpen />, run: onOpen });
+  if (desktop) {
     actions.push({
       key: 'open',
       label: t('preview.openInSystemApp'),
@@ -72,7 +85,7 @@ export function FileActions({ file, path, name, directory, onOpen, children, cla
       },
     });
   }
-  if (absolute || isElectronDesktop())
+  if (absolute || desktop)
     actions.push({
       key: 'copyPath',
       label: t('preview.copyPath'),
@@ -81,6 +94,7 @@ export function FileActions({ file, path, name, directory, onOpen, children, cla
         if (absolute) await copyText(absolute);
         else if (file.kind === 'project')
           await ipcBridge.fs.copyAbsolutePath.invoke({ pe_id: file.pe_id, relative_path: file.relative_path });
+        if (point?.trigger) Message.success(t('common.copySuccess'));
       },
     });
   if (file.kind === 'project')
@@ -109,10 +123,10 @@ export function FileActions({ file, path, name, directory, onOpen, children, cla
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       },
     });
-  if (isDirectory === false)
+  if (isDirectory === false && !point?.trigger)
     actions.push({
       key: 'download',
-      label: isElectronDesktop() ? t('preview.saveAs') : t('preview.downloadFile'),
+      label: desktop ? t('preview.saveAs') : t('preview.downloadFile'),
       icon: <Download />,
       run: () => downloadFileFromRef(file, name),
     });
@@ -128,6 +142,22 @@ export function FileActions({ file, path, name, directory, onOpen, children, cla
       onKeyDown={(event) => contextMenuKey(event, setPoint)}
     >
       {children}
+      {menuButtonClassName && (
+        <Button
+          type='text'
+          className={menuButtonClassName}
+          aria-label={t('common.more')}
+          title={t('common.more')}
+          aria-haspopup='menu'
+          aria-expanded={Boolean(point?.trigger)}
+          icon={<MoreOne size={16} aria-hidden />}
+          onClick={(event) => {
+            const trigger = event.currentTarget as HTMLElement;
+            const bounds = trigger.getBoundingClientRect();
+            setPoint((current) => (current?.trigger ? null : { x: bounds.right, y: bounds.bottom + 4, trigger }));
+          }}
+        />
+      )}
       <ContextActions point={point} actions={actions} onClose={close} />
     </span>
   );

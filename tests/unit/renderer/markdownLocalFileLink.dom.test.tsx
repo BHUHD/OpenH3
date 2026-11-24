@@ -5,13 +5,14 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MarkdownView from '@/renderer/components/Markdown';
 import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
 import { RenderedMediaProvider, useRegisterRenderedMedia } from '@/renderer/components/Markdown/RenderedMediaContext';
 
 const copyTextMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const downloadFileMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('@/common/adapter/httpBridge', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/common/adapter/httpBridge')>()),
@@ -46,22 +47,35 @@ vi.mock('@/renderer/utils/ui/clipboard', () => ({
   copyText: copyTextMock,
 }));
 
+vi.mock('@/renderer/utils/file/download', () => ({
+  downloadFileFromRef: downloadFileMock,
+}));
+
 vi.mock('@arco-design/web-react', () => ({
   Button: ({
     children,
     icon,
+    loading,
     ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: React.ReactNode }) => (
-    <button type='button' {...props}>
+  }: React.ButtonHTMLAttributes<HTMLButtonElement> & { icon?: React.ReactNode; loading?: boolean }) => (
+    <button type='button' disabled={loading} {...props}>
       {icon}
       {children}
     </button>
   ),
   Message: {
     error: vi.fn(),
+    success: vi.fn(),
   },
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   Image: { PreviewGroup: ({ srcList }: { srcList: string[] }) => <span role='dialog' data-src={srcList[0]} /> },
+  Menu: Object.assign(({ children }: React.PropsWithChildren) => <div role='menu'>{children}</div>, {
+    Item: ({ children, disabled, onClick }: React.PropsWithChildren<{ disabled?: boolean; onClick: () => void }>) => (
+      <button role='menuitem' disabled={disabled} onClick={onClick}>
+        {children}
+      </button>
+    ),
+  }),
 }));
 
 vi.mock('@icon-park/react', () => ({
@@ -69,6 +83,7 @@ vi.mock('@icon-park/react', () => ({
   PreviewOpen: () => <span />,
   FolderOpen: () => <span />,
   Download: () => <span />,
+  MoreOne: () => <span />,
 }));
 
 vi.mock('react-i18next', () => ({
@@ -78,6 +93,46 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('MarkdownView local file links', () => {
+  it('shows standalone output files as cards with preview and download actions', async () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <MarkdownView onLocalFileLink={onOpen}>
+        {
+          '- [Budget](C:/out/budget.xlsx)\n- [Website](C:/out/index.html)\n- See [draft](C:/out/draft.md) for details.\n- [Source](C:/out/index.html#L5)'
+        }
+      </MarkdownView>
+    );
+
+    const cards = container.querySelectorAll('.markdown-output-file');
+    expect(cards).toHaveLength(2);
+    const card = within(cards[0] as HTMLElement);
+    expect(card.getByText('Budget')).toBeInTheDocument();
+    fireEvent.click(card.getByRole('button', { name: 'budget.xlsx' }));
+    expect(onOpen).toHaveBeenCalledWith('C:/out/budget.xlsx', expect.any(Object));
+    fireEvent.click(card.getByRole('button', { name: 'preview.downloadFile' }));
+    await waitFor(() =>
+      expect(downloadFileMock).toHaveBeenCalledWith({ kind: 'local', path: 'C:/out/budget.xlsx' }, 'budget.xlsx')
+    );
+    expect(screen.getByRole('button', { name: 'draft.md' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Source L5' })).toBeInTheDocument();
+  });
+
+  it('opens file actions from the overflow button and restores focus when dismissed', async () => {
+    render(<MarkdownView>{'[report.xlsx](C:/out/report.xlsx)'}</MarkdownView>);
+    const overflow = screen.getByRole('button', { name: 'common.more' });
+    overflow.focus();
+    fireEvent.click(overflow);
+    const copyPath = screen.getByRole('menuitem', { name: 'preview.copyPath' });
+    expect(overflow).toHaveAttribute('aria-expanded', 'true');
+    expect(copyPath).toHaveFocus();
+    fireEvent.keyDown(copyPath, { key: 'Escape' });
+    expect(overflow).toHaveFocus();
+    expect(overflow).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(overflow);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'preview.copyPath' }));
+    await waitFor(() => expect(copyTextMock).toHaveBeenCalledWith('C:/out/report.xlsx'));
+  });
+
   it('converts local HTML video delivery to the same file player without executing HTML attributes', () => {
     const path = 'D:/生成结果/clip.mp4';
     const { container } = render(
@@ -104,7 +159,7 @@ describe('MarkdownView local file links', () => {
         <MarkdownView onLocalFileLink={onOpen}>{'[下载繁體預算](./交付/經費預算表.docx)'}</MarkdownView>
       </ConversationProvider>
     );
-    expect(screen.queryByText('下载繁體預算')).not.toBeInTheDocument();
+    expect(screen.getByText('下载繁體預算')).toBeInTheDocument();
     expect(screen.getByTestId('file-type-icon-file')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '經費預算表.docx' }));
     expect(onOpen).toHaveBeenCalledWith('C:/项目/活动/交付/經費預算表.docx', expect.any(Object));
@@ -176,7 +231,7 @@ describe('MarkdownView local file links', () => {
     expect(screen.getByRole('dialog')).toHaveAttribute('data-src', src);
   });
 
-  it('renders local file links as app controls instead of browser anchors', () => {
+  it('renders local file links as app controls instead of browser anchors', async () => {
     const onLocalFileLink = vi.fn();
 
     render(
@@ -195,8 +250,11 @@ describe('MarkdownView local file links', () => {
       })
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    expect(copyTextMock).toHaveBeenCalledWith('C:/Users/Administrator/AppData/Roaming/AionUi/report.xlsx');
+    fireEvent.click(screen.getByRole('button', { name: 'common.more' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'preview.copyPath' }));
+    await waitFor(() =>
+      expect(copyTextMock).toHaveBeenCalledWith('C:/Users/Administrator/AppData/Roaming/AionUi/report.xlsx')
+    );
   });
 
   it('renders line references as file chips and copies the full reference', () => {
@@ -284,8 +342,7 @@ describe('MarkdownView local file links', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'report.xlsx' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    expect(copyTextMock).toHaveBeenCalledWith('C:/Users/Administrator/AppData/Roaming/AionUi/report.xlsx');
+    expect(screen.getByRole('button', { name: 'common.more' })).toBeInTheDocument();
   });
 
   it('keeps ordinary http links as browser anchors', () => {
