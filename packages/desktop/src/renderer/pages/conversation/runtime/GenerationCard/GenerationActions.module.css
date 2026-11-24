@@ -1,74 +1,81 @@
-.actions,
-.pair {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 4px;
+.frame {
   min-width: 0;
+  container-type: inline-size;
+}
+
+.inline {
+  flex: 0 1 22rem;
   max-width: 100%;
 }
 
-/* Keep save/copy and the two drafting actions together when a portrait card wraps. */
-.pair {
-  flex: 1 1 11.5rem;
+.actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
 }
 
-.pair:has(> :only-child) {
-  flex: 0.5 1 5.75rem;
-}
-
-.pair:only-child {
-  flex: 0 1 auto;
-}
-
-.pair :global(.arco-btn) {
+.actions :global(.arco-btn) {
   display: inline-flex;
-  flex: 1 1 0;
+  flex: 0 1 auto;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  box-sizing: border-box;
-  min-width: min(100%, 4.75rem);
-  max-width: 100%;
-  min-height: 32px;
-  height: auto;
-  padding: 4px 5px;
-  border: 1px solid var(--border-base);
-  border-radius: 6px;
-  background: var(--bg-1);
-  color: var(--text-primary);
+  min-width: 32px;
+  height: 32px;
+  padding-inline: 8px;
+  border-radius: 7px;
+  color: var(--text-secondary);
   font-size: 12px;
-  line-height: 16px;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
-.pair :global(.arco-btn) > :first-child {
+.actions :global(.arco-btn) > :first-child {
   display: inline-flex;
   flex: none;
   align-items: center;
 }
 
-.pair :global(.arco-btn) > span:last-child {
+.actions :global(.arco-btn) > span + span {
+  min-width: 0;
   margin: 0;
 }
 
-.pair :global(.arco-btn):hover {
-  border-color: var(--primary);
-  color: var(--primary);
+.label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.pair :global(.arco-btn):active {
+.actions :global(.arco-btn):hover {
+  background: var(--bg-2);
+  color: var(--text-primary);
+}
+
+.actions :global(.arco-btn):active {
   background: var(--bg-3);
 }
 
-.pair :global(.arco-btn):focus-visible {
+.actions :global(.arco-btn):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 1px;
 }
 
+@container (width < 19rem) {
+  .actions .label {
+    display: none;
+  }
+
+  .actions :global(.arco-btn) > span + span {
+    display: none;
+  }
+}
+
 @media (pointer: coarse) {
-  .pair :global(.arco-btn) {
-    min-height: 44px;
+  .actions :global(.arco-btn) {
+    min-width: 44px;
+    height: 44px;
   }
 }
