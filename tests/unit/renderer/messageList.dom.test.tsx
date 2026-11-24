@@ -61,6 +61,7 @@ vi.mock('@arco-design/web-react', () => ({
   ),
   Progress: () => <div />,
   Spin: () => <span />,
+  Tooltip: ({ children }: PropsWithChildren) => <>{children}</>,
   Image: {
     PreviewGroup: ({ children }: PropsWithChildren) => <>{children}</>,
   },

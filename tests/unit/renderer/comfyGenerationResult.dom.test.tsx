@@ -116,7 +116,7 @@ describe('ComfyUI generation result', () => {
     expect(view.container.querySelectorAll('video')).toHaveLength(1);
     expect(screen.getByText('Caption')).toBeInTheDocument();
     expect(screen.getByText('Generated image')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open original' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'final image.png' })).toHaveAccessibleDescription('Open original');
     view.rerender(content(false));
     await act(async () => {});
     expect(screen.getByRole('img', { name: 'Generated image' })).toBeInTheDocument();

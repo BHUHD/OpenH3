@@ -22,6 +22,21 @@ beforeEach(() => {
 });
 
 describe('file and selection context actions', () => {
+  it('skips disabled actions when focusing a newly opened menu', () => {
+    render(
+      <ContextActions
+        point={{ x: 20, y: 20 }}
+        actions={[
+          { key: 'open', label: 'Open', disabled: true, run: vi.fn() },
+          { key: 'show', label: 'Show folder', run: vi.fn() },
+        ]}
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('menuitem', { name: 'Open' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('menuitem', { name: 'Show folder' })).toHaveFocus();
+  });
+
   it('repositions at the viewport edge when file metadata adds an action', () => {
     const geometry = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
