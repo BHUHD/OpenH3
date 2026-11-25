@@ -104,8 +104,17 @@ const MessageText: React.FC<{
   /** All text segments of this message's turn, in order — the copy button
    * copies the whole reply, not just the segment it happens to sit on. */
   turnTexts?: string[];
+  generatedImagePaths?: ReadonlyMap<string, string>;
   results?: React.ReactNode;
-}> = ({ message, showCopyRow = true, isLastMessage = false, hasForkAnchor = false, turnTexts, results }) => {
+}> = ({
+  message,
+  showCopyRow = true,
+  isLastMessage = false,
+  hasForkAnchor = false,
+  turnTexts,
+  generatedImagePaths,
+  results,
+}) => {
   const logos = useAgentLogos();
   // Filter think tags from content before rendering
   // 在渲染前过滤 think 标签
@@ -346,7 +355,11 @@ const MessageText: React.FC<{
             </CollapsibleContent>
           ) : (
             <div data-testid='message-text-content'>
-              <MarkdownView codeStyle={CODE_STYLE} onLocalFileLink={handleLocalFileLink}>
+              <MarkdownView
+                codeStyle={CODE_STYLE}
+                onLocalFileLink={handleLocalFileLink}
+                generatedImagePaths={generatedImagePaths}
+              >
                 {data}
               </MarkdownView>
             </div>

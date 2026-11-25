@@ -1,3 +1,5 @@
+import type { TMessage } from '@/common/chat/chatLib';
+
 /** Read JSON tool payloads from both native and ACP tool transports. */
 export function toolResultRecords(message: { type: string; content: unknown }): Record<string, unknown>[] {
   if (!['tool_call', 'acp_tool_call', 'tool_group'].includes(message.type)) return [];
@@ -36,6 +38,39 @@ export function creationOperationIds(messages: Array<{ type: string; content: un
         )
     ),
   ];
+}
+
+/** Use completed image tool outputs to resolve file links in the same assistant turn. */
+export function generatedImagePathsByMessage(messages: TMessage[]): Map<string, ReadonlyMap<string, string>> {
+  const replies = new Map<string, ReadonlyMap<string, string>>();
+  let imagePaths = new Map<string, string>();
+  for (const message of messages) {
+    if (message.position === 'right') imagePaths = new Map();
+    if (message.hidden) continue;
+    if (message.type === 'text' && message.position === 'left' && imagePaths.size) {
+      replies.set(message.id, imagePaths);
+    }
+    if (
+      message.type !== 'tool_call' ||
+      !['openh3_image_generation', 'aionui_image_generation'].includes(message.content.name) ||
+      message.content.status !== 'completed' ||
+      !message.content.output
+    )
+      continue;
+    const output = message.content.output;
+    const texts = [output, ...toolResultRecords({ type: 'tool_call', content: output }).map((record) => record.text)];
+    for (const text of texts) {
+      if (typeof text !== 'string') continue;
+      const savedPath = /(?:^|\r?\n)Generated image saved to: ((?:[A-Za-z]:[/\\]|\/|\\\\)[^\r\n]+)$/i.exec(
+        text.trimEnd()
+      )?.[1];
+      const fileName = savedPath?.split(/[/\\]/).pop()?.toLowerCase();
+      if (savedPath && fileName && /^img-\d+(?:-[a-f0-9-]{36})?\.(?:png|jpe?g|webp|gif)$/.test(fileName)) {
+        imagePaths.set(fileName, savedPath);
+      }
+    }
+  }
+  return replies;
 }
 
 /** Extract submitted H3 jobs from MCP/native/ACP results, never from tool arguments. */

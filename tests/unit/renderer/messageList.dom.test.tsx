@@ -107,13 +107,19 @@ vi.mock('@/renderer/pages/conversation/Messages/components/MessageText', () => (
   default: ({
     message,
     showCopyRow,
+    generatedImagePaths,
     results,
   }: {
     message: IMessageText;
     showCopyRow?: boolean;
+    generatedImagePaths?: ReadonlyMap<string, string>;
     results?: React.ReactNode;
   }) => (
-    <div data-testid={`msgtext-${message.id}`} data-copy-row={String(showCopyRow ?? true)}>
+    <div
+      data-testid={`msgtext-${message.id}`}
+      data-copy-row={String(showCopyRow ?? true)}
+      data-image-path={generatedImagePaths?.get('img-1795578249176.png')}
+    >
       {message.content.content}
       {results}
     </div>
@@ -312,6 +318,30 @@ describe('MessageList', () => {
       diff: 'diff',
     });
     useTeamPermissionMock.mockReturnValue(null);
+  });
+
+  it('provides the image path reported by the generation tool only to replies in that turn', () => {
+    const actualPath = 'D:\\QA\\profile\\workspace\\img-1795578249176.png';
+    const generated: TMessage = {
+      id: 'image-tool',
+      conversation_id: 'conversation-1',
+      type: 'tool_call',
+      content: {
+        call_id: 'image-call',
+        name: 'openh3_image_generation',
+        status: 'completed',
+        args: {},
+        output: 'Generated image saved to: ' + actualPath,
+      },
+    };
+    const reply = { ...createTextMessage(), id: 'image-reply', position: 'left' as const };
+    const nextPrompt = { ...createTextMessage(), id: 'next-prompt', position: 'right' as const };
+    const nextReply = { ...reply, id: 'next-reply' };
+    render(<MessageList />, {
+      wrapper: ({ children }) => <Wrapper messages={[generated, reply, nextPrompt, nextReply]}>{children}</Wrapper>,
+    });
+    expect(screen.getByTestId('msgtext-image-reply')).toHaveAttribute('data-image-path', actualPath);
+    expect(screen.getByTestId('msgtext-next-reply')).not.toHaveAttribute('data-image-path');
   });
 
   it('shows the initial MCP generation job after the final reply and completes it without a follow-up question', async () => {

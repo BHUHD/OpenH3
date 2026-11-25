@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHmac, generateKeyPairSync, randomUUID, sign } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { AccountMediaBroker } from '@/process/services/media/cloud/accountMediaBroker';
 import { CloudVideoService } from '@/process/services/media/cloud/CloudVideoService';
 import { handleCloudVideoRoute } from '@/process/services/media/cloud/routes';
@@ -14,10 +15,12 @@ import { buildSpawnEnv } from '../../../../packages/web-host/src/backend-launche
 type ToolReply = { content: Array<{ text: string }>; isError?: boolean };
 type Callback = (args: Record<string, unknown>, extra: { signal: AbortSignal }) => Promise<ToolReply>;
 const registered = vi.hoisted(() => new Map<string, Callback>());
+const toolSchemas = vi.hoisted(() => new Map<string, z.ZodRawShape>());
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
   McpServer: class {
-    tool(name: string, _description: string, _schema: unknown, callback: Callback) {
+    tool(name: string, _description: string, schema: z.ZodRawShape, callback: Callback) {
       registered.set(name, callback);
+      toolSchemas.set(name, schema);
     }
     async connect() {}
   },
@@ -399,9 +402,17 @@ describe('account media selection, execution and artifact delivery', () => {
     vi.stubEnv('OPENH3_CREATION_REQUEST_ID', requestId);
     await import('@/process/resources/builtinMcp/videoMediaServer');
     await f.api('account-bind', { kind: 'video', requestId, conversationId: f.conversationId, ...f.vid }, 'ui');
+    const schema = z.object(toolSchemas.get('openh3_cloud_video_generate')!);
+    const submissionId = randomUUID();
+    expect(schema.safeParse({ input: { prompt: 'timelapse', seed: 0 }, submissionId }).success).toBe(false);
+    expect(schema.safeParse({ input: { prompt: 'timelapse', aspectRatio: '16:9' }, submissionId }).success).toBe(false);
+    expect(schema.safeParse({ input: { prompt: 'timelapse', duration: 4.4 }, submissionId }).success).toBe(false);
+    expect(
+      schema.safeParse({ input: { prompt: 'timelapse', imagePaths: ['first.png', 'last.png'] }, submissionId }).success
+    ).toBe(false);
     const reply = await invoke('aionui_cloud_video_generate', {
       input: { prompt: 'timelapse', duration: 8, width: 1024, height: 768 },
-      submissionId: randomUUID(),
+      submissionId,
     });
     expect(reply.isError).not.toBe(true);
     const { cloudVideoJobId } = JSON.parse(reply.content[0].text);

@@ -314,12 +314,23 @@ function managedH3Selected(): boolean {
 }
 
 function registerCloudVideoTools(server: McpServer) {
+  const accountInput = process.env.OPENH3_MEDIA_ACCOUNT_ONLY === '1' || accountCreationSelected('video');
+  const inputSchema = accountInput
+    ? cloudVideoInputSchema.omit({ seed: true, aspectRatio: true }).extend({
+        duration: z.number().int().positive().max(3600).optional(),
+        imagePaths: z.array(z.string().min(1)).max(1).default([]),
+      })
+    : cloudVideoInputSchema.extend({ duration: z.number().finite().positive().max(3600).optional() });
+  const inputGuide = accountInput
+    ? 'Generate a video using the selected account model. Send the prompt, optional whole seconds as duration, and width and height together for a specific size. For models that support image-to-video, provide at most one workspace image path as the first frame.'
+    : 'Generate a cloud video using the connection selected in the client. Provide prompt, optional duration/width/height/seed, and ordered absolute imagePaths. H3 supports text, first frame or first+last frame (at most two images); deployed H3 does not support Ref2VA, video or audio inputs. H3 defaults to 4.4 seconds and 24fps; explicit sizes require short side 768 and multiples of 32. OpenAI video and account models support at most one image and seconds/size; omit seed and aspectRatio.';
   registerProductTool(
     server,
     'openh3_cloud_video_generate',
-    'Generate a cloud video using the connection selected in the client. Provide prompt, optional duration/width/height/seed, and ordered absolute imagePaths. H3 supports text, first frame or first+last frame (at most two images); deployed H3 does not support Ref2VA, video or audio inputs. H3 defaults to 4.4 seconds and 24fps; explicit sizes require short side 768 and multiples of 32. OpenAI video supports at most one image and seconds/size; omit seed/aspectRatio. Never install or start local ComfyUI for a cloud selection. Returns cloudVideoJobId and job; retain the real job ID and submissionId. Keep working, even for a single output: monitor the same job with openh3_cloud_video_status waitMs=30000 until a terminal result, inspect outputs, and continue authorized work before the final answer. If the bounded wait returns queued/running, call status again with the same ID. At terminal failure stop repeated polling, diagnose and continue permitted repair; an uncertain submission requires recovering its original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
+    inputGuide +
+      ' Never install or start local ComfyUI for a cloud selection. Returns cloudVideoJobId and job; retain the real job ID and submissionId. Keep working, even for a single output: monitor the same job with openh3_cloud_video_status waitMs=30000 until a terminal result, inspect outputs, and continue authorized work before the final answer. If the bounded wait returns queued/running, call status again with the same ID. At terminal failure stop repeated polling, diagnose and continue permitted repair; an uncertain submission requires recovering its original identity before further generation. Never resubmit to monitor progress or automatically retry unchanged failures.',
     {
-      input: cloudVideoInputSchema.extend({ duration: z.number().finite().positive().max(3600).optional() }),
+      input: inputSchema,
       submissionId: z
         .string()
         .uuid()

@@ -45,6 +45,7 @@ import H3ToolResults, { h3TurnResults, stripH3PlayerMarkup } from './components/
 import CreationInstallResult from '../runtime/Creation/CreationInstallResult';
 import { ComfyInstallationTranscript } from '../runtime/Creation/ComfyInstallationTranscript';
 import { creationTurnResults } from '../runtime/Creation/turnResults';
+import { generatedImagePathsByMessage } from '@/common/chat/document/creation/toolResults';
 import ComfyOperationResult, { comfyTurnResults } from '../runtime/Creation/ComfyOperationResult';
 import ComfyGenerationResult, { comfyGenerationTurnResults } from '../runtime/Creation/ComfyGenerationResult';
 import CloudVideoResult, { cloudVideoTurnResults } from '../runtime/Creation/CloudVideoResult';
@@ -237,6 +238,7 @@ const MessageItem: React.FC<{
   isLastMessage?: boolean;
   hasForkAnchor?: boolean;
   turnTexts?: string[];
+  generatedImagePaths?: ReadonlyMap<string, string>;
   results?: React.ReactNode;
 }> = React.memo(
   HOC((props) => {
@@ -272,6 +274,7 @@ const MessageItem: React.FC<{
       isLastMessage,
       hasForkAnchor,
       turnTexts,
+      generatedImagePaths,
       results,
     }: {
       message: TMessage;
@@ -281,6 +284,7 @@ const MessageItem: React.FC<{
       isLastMessage?: boolean;
       hasForkAnchor?: boolean;
       turnTexts?: string[];
+      generatedImagePaths?: ReadonlyMap<string, string>;
       results?: React.ReactNode;
     }) => {
       const { t } = useTranslation();
@@ -293,6 +297,7 @@ const MessageItem: React.FC<{
               isLastMessage={isLastMessage}
               hasForkAnchor={hasForkAnchor}
               turnTexts={turnTexts}
+              generatedImagePaths={generatedImagePaths}
               results={results}
             ></MessageText>
           );
@@ -491,6 +496,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   const comfyResultGroups = useMemo(() => comfyTurnResults(processedList), [processedList]);
   const comfyGenerationGroups = useMemo(() => comfyGenerationTurnResults(processedList), [processedList]);
   const cloudVideoGroups = useMemo(() => cloudVideoTurnResults(processedList), [processedList]);
+  const generatedImages = useMemo(() => generatedImagePathsByMessage(list), [list]);
   const h3KnownJobs = useMemo(() => [...h3ResultGroups.values()].flat(), [h3ResultGroups]);
 
   // An AI reply can be split into several messages (thinking / multiple text /
@@ -779,6 +785,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
         isLastMessage={message.id === lastMessageId}
         hasForkAnchor={forkAnchoredIds.has(message.id)}
         turnTexts={aiTurnTextsById.get(message.id)}
+        generatedImagePaths={generatedImages.get(message.id)}
         results={results}
       ></MessageItem>
     );

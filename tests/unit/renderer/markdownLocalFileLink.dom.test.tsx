@@ -93,6 +93,22 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('MarkdownView local file links', () => {
+  it('opens and downloads the exact Windows image reported by the generation tool', async () => {
+    const onOpen = vi.fn();
+    const name = 'img-1795578249176.png';
+    const savedPath = 'D:\\QA\\profile\\workspace\\' + name;
+    const realPath = 'D:/QA/profile/workspace/' + name;
+    render(
+      <MarkdownView generatedImagePaths={new Map([[name, savedPath]])} onLocalFileLink={onOpen}>
+        {`[Image](D:/QA/hhaiapi/profile/workspace/${name})`}
+      </MarkdownView>
+    );
+    fireEvent.click(screen.getByRole('button', { name }));
+    expect(onOpen).toHaveBeenCalledWith(realPath, expect.objectContaining({ filePath: realPath }));
+    fireEvent.click(screen.getByRole('button', { name: 'preview.downloadFile' }));
+    await waitFor(() => expect(downloadFileMock).toHaveBeenCalledWith({ kind: 'local', path: realPath }, name));
+  });
+
   it('shows standalone output files as cards with preview and download actions', async () => {
     const onOpen = vi.fn();
     const { container } = render(

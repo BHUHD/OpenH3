@@ -33,6 +33,7 @@ import {
   resolveLocalFileLinkPath,
   resolveLocalFileLinkReference,
   safeDecodeURIComponent,
+  toLocalFileHref,
 } from './markdownUtils';
 import type { LocalFileLinkReference } from './markdownUtils';
 import { useRenderedMedia } from './RenderedMediaContext';
@@ -70,12 +71,22 @@ type MarkdownViewProps = {
   className?: string;
   onRef?: (el?: HTMLDivElement | null) => void;
   onLocalFileLink?: (path: string, reference?: LocalFileLinkReference) => void | Promise<void>;
+  generatedImagePaths?: ReadonlyMap<string, string>;
   /** Enable raw HTML rendering in markdown content. Use with caution — only for trusted sources. */
   allowHtml?: boolean;
 };
 
 const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
-  ({ hiddenCodeCopyButton, codeStyle, className, onRef, onLocalFileLink, allowHtml, children: childrenProp }) => {
+  ({
+    hiddenCodeCopyButton,
+    codeStyle,
+    className,
+    onRef,
+    onLocalFileLink,
+    generatedImagePaths,
+    allowHtml,
+    children: childrenProp,
+  }) => {
     const { t } = useTranslation();
     const preview = useOptionalPreviewContext();
     const workspace = useConversationContextSafe()?.workspace;
@@ -128,8 +139,13 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
         a: ({ node: _node, 'data-standalone-link': standalone, ...rest }: Record<string, unknown>) => {
           const anchorProps = rest as React.AnchorHTMLAttributes<HTMLAnchorElement>;
           const rawHref = typeof anchorProps.href === 'string' ? anchorProps.href : '';
-          const localFileReference = resolveLocalFileLinkReference(rawHref, undefined, workspace);
+          let localFileReference = resolveLocalFileLinkReference(rawHref, undefined, workspace);
           if (localFileReference) {
+            const name = localFileReference.filePath.split(/[/\\]/).pop();
+            const generatedPath = name && generatedImagePaths?.get(name.toLowerCase());
+            if (generatedPath && localFileReference.line == null) {
+              localFileReference = resolveLocalFileLinkReference(toLocalFileHref(generatedPath)) ?? localFileReference;
+            }
             return (
               <LocalFileLink reference={localFileReference} onOpen={onLocalFileLink} standalone={standalone === 'true'}>
                 {anchorProps.children}
@@ -149,7 +165,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
           return <MarkdownVideo {...(rest as React.VideoHTMLAttributes<HTMLVideoElement>)} />;
         },
       }),
-      [codeStyle, hiddenCodeCopyButton, handleLinkClick, onLocalFileLink, workspace]
+      [codeStyle, hiddenCodeCopyButton, handleLinkClick, onLocalFileLink, generatedImagePaths, workspace]
     );
 
     const rehypePlugins = useMemo(() => (allowHtml ? [rehypeRaw, rehypeKatex] : [rehypeKatex]), [allowHtml]);
